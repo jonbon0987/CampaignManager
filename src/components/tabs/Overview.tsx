@@ -3,16 +3,16 @@ import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 
 export default function Overview() {
-  const { data, setData } = useCampaign();
-  const [form, setForm] = useState(data.overview);
+  const { overview, setOverview } = useCampaign();
+  const [form, setForm] = useState(overview);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setForm(data.overview);
-  }, [data.overview]);
+    setForm(overview);
+  }, [overview]);
 
   const handleSave = () => {
-    setData(prev => ({ ...prev, overview: form }));
+    setOverview(form);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
