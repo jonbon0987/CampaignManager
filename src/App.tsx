@@ -8,7 +8,7 @@ import NPCs from './components/tabs/NPCs';
 import LoreLocations from './components/tabs/LoreLocations';
 import Modules from './components/tabs/Modules';
 import HooksIdeas from './components/tabs/HooksIdeas';
-import { signInWithGitHub, signOut, onAuthStateChange } from './lib/auth';
+import { signInWithGitHub, signInWithEmail, signUpWithEmail, signOut, onAuthStateChange } from './lib/auth';
 
 type Tab = 'overview' | 'sessions' | 'pcs' | 'npcs' | 'lore' | 'modules' | 'hooks';
 
@@ -120,9 +120,33 @@ function AppInner({ user }: { user: User }) {
 }
 
 function LoginScreen() {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSignIn() {
+  async function handleEmailSubmit(e: { preventDefault(): void }) {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    setLoading(true);
+    try {
+      if (mode === 'signin') {
+        await signInWithEmail(email, password);
+      } else {
+        await signUpWithEmail(email, password);
+        setMessage('Check your email to confirm your account.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGitHub() {
     setLoading(true);
     try {
       await signInWithGitHub();
@@ -146,25 +170,79 @@ function LoginScreen() {
         </h1>
         <p className="text-sm" style={{ color: '#6a6490' }}>D&D Campaign Manager</p>
       </div>
-      <button
-        onClick={handleSignIn}
-        disabled={loading}
-        className="flex items-center gap-3 px-6 py-3 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-        style={{ backgroundColor: '#24292e', color: '#e8d5b0', border: '1px solid #3a3660' }}
-      >
-        <svg height="20" viewBox="0 0 16 16" width="20" fill="currentColor">
-          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
-            0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
-            -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87
-            2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
-            0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21
-            2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04
-            2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82
-            2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0
-            1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-        </svg>
-        {loading ? 'Redirecting…' : 'Sign in with GitHub'}
-      </button>
+
+      <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
+        {/* Email form */}
+        <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            className="px-4 py-2 rounded text-sm outline-none"
+            style={{ backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660' }}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            className="px-4 py-2 rounded text-sm outline-none"
+            style={{ backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660' }}
+          />
+          {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+          {message && <p className="text-xs" style={{ color: '#6ab87a' }}>{message}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
+            style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+          >
+            {loading ? '…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
+          </button>
+        </form>
+
+        <p className="text-xs text-center" style={{ color: '#6a6490' }}>
+          {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+          <button
+            onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setMessage(''); }}
+            className="underline"
+            style={{ color: '#9990b0' }}
+          >
+            {mode === 'signin' ? 'Sign up' : 'Sign in'}
+          </button>
+        </p>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px" style={{ backgroundColor: '#3a3660' }} />
+          <span className="text-xs" style={{ color: '#6a6490' }}>or</span>
+          <div className="flex-1 h-px" style={{ backgroundColor: '#3a3660' }} />
+        </div>
+
+        {/* GitHub */}
+        <button
+          onClick={handleGitHub}
+          disabled={loading}
+          className="flex items-center justify-center gap-3 px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
+          style={{ backgroundColor: '#24292e', color: '#e8d5b0', border: '1px solid #3a3660' }}
+        >
+          <svg height="18" viewBox="0 0 16 16" width="18" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+              0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+              -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87
+              2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
+              0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21
+              2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04
+              2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82
+              2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0
+              1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+          </svg>
+          Sign in with GitHub
+        </button>
+      </div>
     </div>
   );
 }

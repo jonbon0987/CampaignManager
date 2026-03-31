@@ -8,6 +8,24 @@ import { supabase } from './supabase';
 import type { User } from '@supabase/supabase-js';
 
 /**
+ * Sign in with email and password.
+ */
+export async function signInWithEmail(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) 
+    throw error;
+}
+
+/**
+ * Sign up with email and password.
+ */
+export async function signUpWithEmail(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) 
+    throw error;
+}
+
+/**
  * Redirect the user to GitHub for OAuth.
  * Supabase handles the callback automatically.
  */
