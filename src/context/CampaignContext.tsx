@@ -1,6 +1,8 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext } from 'react';
+import type { ReactNode } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { CampaignData, defaultCampaignData } from '../types';
+import { defaultCampaignData } from '../types';
+import type { CampaignData } from '../types';
 
 interface CampaignContextType {
   data: CampaignData;
