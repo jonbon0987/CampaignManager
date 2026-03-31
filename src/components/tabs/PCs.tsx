@@ -2,69 +2,70 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { PC } from '../../types';
+import type { PlayerCharacter } from '../../lib/database.types';
 
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
+type PCForm = {
+  character_name: string;
+  player_name: string | null;
+  race: string | null;
+  class: string | null;
+  background: string | null;
+  story_hooks: string | null;
+  key_npcs: string | null;
+  is_active: boolean;
+};
 
-const emptyPC = (): Omit<PC, 'id'> => ({
-  playerName: '',
-  characterName: '',
+const emptyForm = (): PCForm => ({
+  character_name: '',
+  player_name: '',
   race: '',
-  characterClass: '',
-  level: 1,
-  backstory: '',
-  hooks: '',
-  connections: '',
+  class: '',
+  background: '',
+  story_hooks: '',
+  key_npcs: '',
+  is_active: true,
 });
 
 export default function PCs() {
-  const { data, setData } = useCampaign();
+  const { pcs, upsertPC, deletePC } = useCampaign();
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingPC, setEditingPC] = useState<PC | null>(null);
-  const [form, setForm] = useState(emptyPC());
+  const [editingPC, setEditingPC] = useState<PlayerCharacter | null>(null);
+  const [form, setForm] = useState<PCForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const openAdd = () => {
     setEditingPC(null);
-    setForm(emptyPC());
+    setForm(emptyForm());
     setModalOpen(true);
   };
 
-  const openEdit = (pc: PC) => {
+  const openEdit = (pc: PlayerCharacter) => {
     setEditingPC(pc);
     setForm({
-      playerName: pc.playerName,
-      characterName: pc.characterName,
+      character_name: pc.character_name,
+      player_name: pc.player_name,
       race: pc.race,
-      characterClass: pc.characterClass,
-      level: pc.level,
-      backstory: pc.backstory,
-      hooks: pc.hooks,
-      connections: pc.connections,
+      class: pc.class,
+      background: pc.background,
+      story_hooks: pc.story_hooks,
+      key_npcs: pc.key_npcs,
+      is_active: pc.is_active,
     });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingPC) {
-      setData(prev => ({
-        ...prev,
-        pcs: prev.pcs.map(pc => pc.id === editingPC.id ? { ...pc, ...form } : pc),
-      }));
-    } else {
-      setData(prev => ({
-        ...prev,
-        pcs: [...prev.pcs, { id: generateId(), ...form }],
-      }));
-    }
+  const handleSave = async () => {
+    await upsertPC({
+      ...(editingPC ? { id: editingPC.id } : {}),
+      ...form,
+      dm_notes: editingPC?.dm_notes ?? null,
+    });
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this character?')) {
-      setData(prev => ({ ...prev, pcs: prev.pcs.filter(pc => pc.id !== id) }));
+      await deletePC(id);
       if (expandedId === id) setExpandedId(null);
     }
   };
@@ -86,13 +87,13 @@ export default function PCs() {
         </button>
       </div>
 
-      {data.pcs.length === 0 ? (
+      {pcs.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#6a6490' }}>
           No player characters yet. Add your first PC!
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.pcs.map(pc => (
+          {pcs.map(pc => (
             <div
               key={pc.id}
               className="rounded-lg border flex flex-col"
@@ -105,13 +106,13 @@ export default function PCs() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-bold text-lg" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
-                      {pc.characterName || 'Unnamed'}
+                      {pc.character_name || 'Unnamed'}
                     </h3>
                     <div className="text-sm mt-1" style={{ color: '#c9a84c' }}>
-                      {[pc.race, pc.characterClass, pc.level ? `Lvl ${pc.level}` : null].filter(Boolean).join(' · ')}
+                      {[pc.race, pc.class].filter(Boolean).join(' · ')}
                     </div>
                     <div className="text-xs mt-1" style={{ color: '#9990b0' }}>
-                      Player: {pc.playerName || '—'}
+                      Player: {pc.player_name || '—'}
                     </div>
                   </div>
                   <span className="text-xs ml-2 mt-1" style={{ color: '#6a6490' }}>
@@ -121,25 +122,25 @@ export default function PCs() {
 
                 {expandedId === pc.id && (
                   <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
-                    {pc.backstory && (
+                    {pc.background && (
                       <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Backstory</div>
-                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{pc.backstory}</p>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Background</div>
+                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{pc.background}</p>
                       </div>
                     )}
-                    {pc.hooks && (
+                    {pc.story_hooks && (
                       <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Character Hooks</div>
-                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{pc.hooks}</p>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Story Hooks</div>
+                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{pc.story_hooks}</p>
                       </div>
                     )}
-                    {pc.connections && (
+                    {pc.key_npcs && (
                       <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Connections</div>
-                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{pc.connections}</p>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Key NPCs</div>
+                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{pc.key_npcs}</p>
                       </div>
                     )}
-                    {!pc.backstory && !pc.hooks && !pc.connections && (
+                    {!pc.background && !pc.story_hooks && !pc.key_npcs && (
                       <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No additional details recorded.</p>
                     )}
                   </div>
@@ -178,8 +179,8 @@ export default function PCs() {
           <FormField label="Player's Name">
             <input
               type="text"
-              value={form.playerName}
-              onChange={e => setForm(prev => ({ ...prev, playerName: e.target.value }))}
+              value={form.player_name ?? ''}
+              onChange={e => setForm(prev => ({ ...prev, player_name: e.target.value }))}
               placeholder="e.g., John"
               style={inputStyle}
             />
@@ -187,8 +188,8 @@ export default function PCs() {
           <FormField label="Character Name">
             <input
               type="text"
-              value={form.characterName}
-              onChange={e => setForm(prev => ({ ...prev, characterName: e.target.value }))}
+              value={form.character_name}
+              onChange={e => setForm(prev => ({ ...prev, character_name: e.target.value }))}
               placeholder="e.g., Thorin Ironforge"
               style={inputStyle}
             />
@@ -196,7 +197,7 @@ export default function PCs() {
           <FormField label="Race">
             <input
               type="text"
-              value={form.race}
+              value={form.race ?? ''}
               onChange={e => setForm(prev => ({ ...prev, race: e.target.value }))}
               placeholder="e.g., Dwarf"
               style={inputStyle}
@@ -205,43 +206,33 @@ export default function PCs() {
           <FormField label="Class">
             <input
               type="text"
-              value={form.characterClass}
-              onChange={e => setForm(prev => ({ ...prev, characterClass: e.target.value }))}
+              value={form.class ?? ''}
+              onChange={e => setForm(prev => ({ ...prev, class: e.target.value }))}
               placeholder="e.g., Fighter"
               style={inputStyle}
             />
           </FormField>
         </div>
-        <FormField label="Level">
-          <input
-            type="number"
-            value={form.level}
-            min={1}
-            max={20}
-            onChange={e => setForm(prev => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
-            style={{ ...inputStyle, maxWidth: '100px' }}
-          />
-        </FormField>
-        <FormField label="Backstory">
+        <FormField label="Background">
           <textarea
-            value={form.backstory}
-            onChange={e => setForm(prev => ({ ...prev, backstory: e.target.value }))}
+            value={form.background ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, background: e.target.value }))}
             placeholder="Character background and history..."
             style={{ ...textareaStyle, minHeight: '100px' }}
           />
         </FormField>
-        <FormField label="Character Hooks">
+        <FormField label="Story Hooks">
           <textarea
-            value={form.hooks}
-            onChange={e => setForm(prev => ({ ...prev, hooks: e.target.value }))}
+            value={form.story_hooks ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, story_hooks: e.target.value }))}
             placeholder="Personal quests, unresolved story threads, motivations..."
             style={{ ...textareaStyle, minHeight: '80px' }}
           />
         </FormField>
-        <FormField label="Connections">
+        <FormField label="Key NPCs">
           <textarea
-            value={form.connections}
-            onChange={e => setForm(prev => ({ ...prev, connections: e.target.value }))}
+            value={form.key_npcs ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, key_npcs: e.target.value }))}
             placeholder="Relationships with NPCs, other PCs, factions..."
             style={{ ...textareaStyle, minHeight: '80px' }}
           />

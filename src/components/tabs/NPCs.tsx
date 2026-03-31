@@ -2,50 +2,53 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { NPC } from '../../types';
+import type { NPC } from '../../lib/database.types';
 
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
+type NPCForm = {
+  name: string;
+  role: string | null;
+  affiliation: string | null;
+  status: NPC['status'];
+  description: string | null;
+  hooks_motivations: string | null;
+};
 
-const emptyNPC = (): Omit<NPC, 'id'> => ({
+const emptyForm = (): NPCForm => ({
   name: '',
   role: '',
+  affiliation: '',
+  status: 'active',
   description: '',
-  backstory: '',
-  connections: '',
-  notes: '',
-  status: 'alive',
+  hooks_motivations: '',
 });
 
 const statusStyles: Record<NPC['status'], { bg: string; text: string }> = {
-  alive:   { bg: '#1a3a1a', text: '#4caf7d' },
-  dead:    { bg: '#3a1a1a', text: '#e05c5c' },
-  unknown: { bg: '#2a2a1a', text: '#c9a84c' },
-  missing: { bg: '#1a1a3a', text: '#6090e0' },
+  active:   { bg: '#1a3a1a', text: '#4caf7d' },
+  deceased: { bg: '#3a1a1a', text: '#e05c5c' },
+  unknown:  { bg: '#2a2a1a', text: '#c9a84c' },
 };
 
 export default function NPCs() {
-  const { data, setData } = useCampaign();
+  const { npcs, upsertNPC, deleteNPC } = useCampaign();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingNPC, setEditingNPC] = useState<NPC | null>(null);
-  const [form, setForm] = useState(emptyNPC());
+  const [form, setForm] = useState<NPCForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const filtered = data.npcs.filter(npc => {
+  const filtered = npcs.filter(npc => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
       npc.name.toLowerCase().includes(q) ||
-      npc.role.toLowerCase().includes(q) ||
-      npc.description.toLowerCase().includes(q)
+      (npc.role ?? '').toLowerCase().includes(q) ||
+      (npc.description ?? '').toLowerCase().includes(q)
     );
   });
 
   const openAdd = () => {
     setEditingNPC(null);
-    setForm(emptyNPC());
+    setForm(emptyForm());
     setModalOpen(true);
   };
 
@@ -54,33 +57,28 @@ export default function NPCs() {
     setForm({
       name: npc.name,
       role: npc.role,
-      description: npc.description,
-      backstory: npc.backstory,
-      connections: npc.connections,
-      notes: npc.notes,
+      affiliation: npc.affiliation,
       status: npc.status,
+      description: npc.description,
+      hooks_motivations: npc.hooks_motivations,
     });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingNPC) {
-      setData(prev => ({
-        ...prev,
-        npcs: prev.npcs.map(npc => npc.id === editingNPC.id ? { ...npc, ...form } : npc),
-      }));
-    } else {
-      setData(prev => ({
-        ...prev,
-        npcs: [...prev.npcs, { id: generateId(), ...form }],
-      }));
-    }
+  const handleSave = async () => {
+    await upsertNPC({
+      ...(editingNPC ? { id: editingNPC.id } : {}),
+      ...form,
+      dm_notes: editingNPC?.dm_notes ?? null,
+      location: editingNPC?.location ?? null,
+      first_session: editingNPC?.first_session ?? null,
+    });
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this NPC?')) {
-      setData(prev => ({ ...prev, npcs: prev.npcs.filter(npc => npc.id !== id) }));
+      await deleteNPC(id);
       if (expandedId === id) setExpandedId(null);
     }
   };
@@ -138,6 +136,9 @@ export default function NPCs() {
                       {npc.role && (
                         <div className="text-sm mt-0.5" style={{ color: '#9990b0' }}>{npc.role}</div>
                       )}
+                      {npc.affiliation && (
+                        <div className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{npc.affiliation}</div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <span
@@ -154,33 +155,18 @@ export default function NPCs() {
 
                   {npc.description && (
                     <p className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }}>
-                      {expandedId === npc.id ? npc.description : npc.description.substring(0, 100) + (npc.description.length > 100 ? '...' : '')}
+                      {expandedId === npc.id
+                        ? npc.description
+                        : npc.description.substring(0, 100) + (npc.description.length > 100 ? '...' : '')}
                     </p>
                   )}
 
-                  {expandedId === npc.id && (
+                  {expandedId === npc.id && npc.hooks_motivations && (
                     <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
-                      {npc.backstory && (
-                        <div className="mb-3">
-                          <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Backstory</div>
-                          <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{npc.backstory}</p>
-                        </div>
-                      )}
-                      {npc.connections && (
-                        <div className="mb-3">
-                          <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Connections</div>
-                          <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{npc.connections}</p>
-                        </div>
-                      )}
-                      {npc.notes && (
-                        <div className="mb-3">
-                          <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Notes</div>
-                          <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{npc.notes}</p>
-                        </div>
-                      )}
-                      {!npc.backstory && !npc.connections && !npc.notes && (
-                        <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No additional details recorded.</p>
-                      )}
+                      <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>
+                        Hooks & Motivations
+                      </div>
+                      <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{npc.hooks_motivations}</p>
                     </div>
                   )}
                 </div>
@@ -227,55 +213,47 @@ export default function NPCs() {
           <FormField label="Role / Title">
             <input
               type="text"
-              value={form.role}
+              value={form.role ?? ''}
               onChange={e => setForm(prev => ({ ...prev, role: e.target.value }))}
               placeholder="e.g., Merchant, Villain, Quest Giver"
               style={inputStyle}
             />
           </FormField>
+          <FormField label="Affiliation">
+            <input
+              type="text"
+              value={form.affiliation ?? ''}
+              onChange={e => setForm(prev => ({ ...prev, affiliation: e.target.value }))}
+              placeholder="e.g., Merchant Guild, City Watch"
+              style={inputStyle}
+            />
+          </FormField>
+          <FormField label="Status">
+            <select
+              value={form.status}
+              onChange={e => setForm(prev => ({ ...prev, status: e.target.value as NPC['status'] }))}
+              style={inputStyle}
+            >
+              <option value="active">Active</option>
+              <option value="deceased">Deceased</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </FormField>
         </div>
-        <FormField label="Status">
-          <select
-            value={form.status}
-            onChange={e => setForm(prev => ({ ...prev, status: e.target.value as NPC['status'] }))}
-            style={inputStyle}
-          >
-            <option value="alive">Alive</option>
-            <option value="dead">Dead</option>
-            <option value="unknown">Unknown</option>
-            <option value="missing">Missing</option>
-          </select>
-        </FormField>
         <FormField label="Description">
           <textarea
-            value={form.description}
+            value={form.description ?? ''}
             onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
             placeholder="Physical appearance, personality, and first impressions..."
             style={{ ...textareaStyle, minHeight: '80px' }}
           />
         </FormField>
-        <FormField label="Backstory">
+        <FormField label="Hooks & Motivations">
           <textarea
-            value={form.backstory}
-            onChange={e => setForm(prev => ({ ...prev, backstory: e.target.value }))}
-            placeholder="History, secrets, motivations..."
+            value={form.hooks_motivations ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, hooks_motivations: e.target.value }))}
+            placeholder="Personal goals, secrets, relationships..."
             style={{ ...textareaStyle, minHeight: '100px' }}
-          />
-        </FormField>
-        <FormField label="Connections">
-          <textarea
-            value={form.connections}
-            onChange={e => setForm(prev => ({ ...prev, connections: e.target.value }))}
-            placeholder="Relationships with PCs, other NPCs, factions..."
-            style={{ ...textareaStyle, minHeight: '80px' }}
-          />
-        </FormField>
-        <FormField label="Notes">
-          <textarea
-            value={form.notes}
-            onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
-            placeholder="Other important information..."
-            style={{ ...textareaStyle, minHeight: '80px' }}
           />
         </FormField>
       </Modal>

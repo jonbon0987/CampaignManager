@@ -2,73 +2,71 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { Session } from '../../types';
+import type { Session } from '../../lib/database.types';
 
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
+type SessionForm = {
+  session_number: number;
+  session_date: string | null;
+  summary: string | null;
+};
 
-const emptySession = (): Omit<Session, 'id'> => ({
-  number: 1,
-  date: new Date().toISOString().split('T')[0],
-  title: '',
-  notes: '',
+const emptyForm = (): SessionForm => ({
+  session_number: 1,
+  session_date: new Date().toISOString().split('T')[0],
+  summary: '',
 });
 
 export default function SessionNotes() {
-  const { data, setData } = useCampaign();
+  const { sessions, upsertSession, deleteSession } = useCampaign();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
-  const [form, setForm] = useState(emptySession());
+  const [form, setForm] = useState<SessionForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const filtered = data.sessions
+  const filtered = sessions
     .filter(s => {
       if (!search) return true;
       const q = search.toLowerCase();
       return (
-        s.title.toLowerCase().includes(q) ||
-        s.notes.toLowerCase().includes(q) ||
-        s.date.includes(q) ||
-        String(s.number).includes(q)
+        (s.summary ?? '').toLowerCase().includes(q) ||
+        (s.session_date ?? '').includes(q) ||
+        String(s.session_number).includes(q)
       );
     })
-    .sort((a, b) => b.number - a.number);
+    .sort((a, b) => b.session_number - a.session_number);
 
   const openAdd = () => {
-    const nextNumber = data.sessions.length > 0
-      ? Math.max(...data.sessions.map(s => s.number)) + 1
+    const nextNumber = sessions.length > 0
+      ? Math.max(...sessions.map(s => s.session_number)) + 1
       : 1;
     setEditingSession(null);
-    setForm({ ...emptySession(), number: nextNumber });
+    setForm({ ...emptyForm(), session_number: nextNumber });
     setModalOpen(true);
   };
 
-  const openEdit = (session: Session) => {
-    setEditingSession(session);
-    setForm({ number: session.number, date: session.date, title: session.title, notes: session.notes });
+  const openEdit = (s: Session) => {
+    setEditingSession(s);
+    setForm({ session_number: s.session_number, session_date: s.session_date, summary: s.summary });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingSession) {
-      setData(prev => ({
-        ...prev,
-        sessions: prev.sessions.map(s => s.id === editingSession.id ? { ...s, ...form } : s),
-      }));
-    } else {
-      setData(prev => ({
-        ...prev,
-        sessions: [...prev.sessions, { id: generateId(), ...form }],
-      }));
-    }
+  const handleSave = async () => {
+    await upsertSession({
+      session_number: form.session_number,
+      session_date: form.session_date,
+      summary: form.summary,
+      combats: editingSession?.combats ?? null,
+      loot_rewards: editingSession?.loot_rewards ?? null,
+      hooks_notes: editingSession?.hooks_notes ?? null,
+      dm_notes: editingSession?.dm_notes ?? null,
+    });
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this session?')) {
-      setData(prev => ({ ...prev, sessions: prev.sessions.filter(s => s.id !== id) }));
+      await deleteSession(id);
       if (expandedId === id) setExpandedId(null);
     }
   };
@@ -95,7 +93,7 @@ export default function SessionNotes() {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search sessions by title, notes, or date..."
+          placeholder="Search sessions by summary or date..."
           style={{ ...inputStyle, maxWidth: '420px' }}
         />
       </div>
@@ -116,13 +114,10 @@ export default function SessionNotes() {
                 <div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-semibold px-2 py-1 rounded" style={{ backgroundColor: '#22203a', color: '#c9a84c' }}>
-                      Session {session.number}
-                    </span>
-                    <span className="font-semibold" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
-                      {session.title || 'Untitled Session'}
+                      Session {session.session_number}
                     </span>
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6a6490' }}>{session.date}</div>
+                  <div className="text-xs mt-1" style={{ color: '#6a6490' }}>{session.session_date ?? '—'}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -146,9 +141,9 @@ export default function SessionNotes() {
               </div>
               {expandedId === session.id && (
                 <div className="p-4">
-                  {session.notes ? (
+                  {session.summary ? (
                     <pre className="whitespace-pre-wrap text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif', lineHeight: '1.7' }}>
-                      {session.notes}
+                      {session.summary}
                     </pre>
                   ) : (
                     <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No notes recorded for this session.</p>
@@ -171,8 +166,8 @@ export default function SessionNotes() {
           <FormField label="Session #">
             <input
               type="number"
-              value={form.number}
-              onChange={e => setForm(prev => ({ ...prev, number: parseInt(e.target.value) || 1 }))}
+              value={form.session_number}
+              onChange={e => setForm(prev => ({ ...prev, session_number: parseInt(e.target.value) || 1 }))}
               min={1}
               style={inputStyle}
             />
@@ -180,25 +175,16 @@ export default function SessionNotes() {
           <FormField label="Date">
             <input
               type="date"
-              value={form.date}
-              onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))}
+              value={form.session_date ?? ''}
+              onChange={e => setForm(prev => ({ ...prev, session_date: e.target.value || null }))}
               style={inputStyle}
             />
           </FormField>
         </div>
-        <FormField label="Title">
-          <input
-            type="text"
-            value={form.title}
-            onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="e.g., The Dragon's Lair"
-            style={inputStyle}
-          />
-        </FormField>
         <FormField label="Session Notes">
           <textarea
-            value={form.notes}
-            onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+            value={form.summary ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, summary: e.target.value || null }))}
             placeholder="What happened this session..."
             style={{ ...textareaStyle, minHeight: '320px' }}
           />

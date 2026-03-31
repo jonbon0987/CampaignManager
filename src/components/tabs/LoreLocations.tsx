@@ -2,58 +2,64 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { Location } from '../../types';
+import type { Location } from '../../lib/database.types';
 
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
+const LOCATION_TYPES = ['city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
 
-const LOCATION_TYPES: Location['type'][] = [
-  'region', 'city', 'town', 'dungeon', 'building', 'landmark', 'wilderness', 'other'
-];
+type LocationForm = {
+  name: string;
+  region: string | null;
+  location_type: string | null;
+  description: string | null;
+  history: string | null;
+  status: string | null;
+};
 
-const emptyLocation = (): Omit<Location, 'id'> => ({
+const emptyForm = (): LocationForm => ({
   name: '',
-  type: 'other',
+  region: '',
+  location_type: 'other',
   description: '',
-  lore: '',
-  currentInfo: '',
+  history: '',
+  status: null,
 });
 
-const typeColors: Record<Location['type'], string> = {
-  region:     '#4a3080',
+const typeColors: Record<string, string> = {
   city:       '#2a5a7a',
   town:       '#2a5a4a',
   dungeon:    '#6a2a2a',
-  building:   '#4a4a2a',
+  faction_hq: '#4a3080',
   landmark:   '#2a4a6a',
-  wilderness: '#2a5a3a',
   other:      '#3a3a4a',
 };
 
+function formatType(t: string) {
+  return t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export default function LoreLocations() {
-  const { data, setData } = useCampaign();
+  const { locations, upsertLocation, deleteLocation } = useCampaign();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-  const [form, setForm] = useState(emptyLocation());
+  const [form, setForm] = useState<LocationForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<Location['type'] | 'all'>('all');
+  const [filterType, setFilterType] = useState<string>('all');
 
-  const filtered = data.locations.filter(loc => {
-    if (filterType !== 'all' && loc.type !== filterType) return false;
+  const filtered = locations.filter(loc => {
+    if (filterType !== 'all' && loc.location_type !== filterType) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
       loc.name.toLowerCase().includes(q) ||
-      loc.description.toLowerCase().includes(q) ||
-      loc.lore.toLowerCase().includes(q)
+      (loc.description ?? '').toLowerCase().includes(q) ||
+      (loc.history ?? '').toLowerCase().includes(q)
     );
   });
 
   const openAdd = () => {
     setEditingLocation(null);
-    setForm(emptyLocation());
+    setForm(emptyForm());
     setModalOpen(true);
   };
 
@@ -61,32 +67,28 @@ export default function LoreLocations() {
     setEditingLocation(loc);
     setForm({
       name: loc.name,
-      type: loc.type,
+      region: loc.region,
+      location_type: loc.location_type,
       description: loc.description,
-      lore: loc.lore,
-      currentInfo: loc.currentInfo,
+      history: loc.history,
+      status: loc.status,
     });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingLocation) {
-      setData(prev => ({
-        ...prev,
-        locations: prev.locations.map(loc => loc.id === editingLocation.id ? { ...loc, ...form } : loc),
-      }));
-    } else {
-      setData(prev => ({
-        ...prev,
-        locations: [...prev.locations, { id: generateId(), ...form }],
-      }));
-    }
+  const handleSave = async () => {
+    await upsertLocation({
+      ...(editingLocation ? { id: editingLocation.id } : {}),
+      ...form,
+      population: editingLocation?.population ?? null,
+      dm_notes: editingLocation?.dm_notes ?? null,
+    });
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this location?')) {
-      setData(prev => ({ ...prev, locations: prev.locations.filter(loc => loc.id !== id) }));
+      await deleteLocation(id);
       if (expandedId === id) setExpandedId(null);
     }
   };
@@ -118,12 +120,12 @@ export default function LoreLocations() {
         />
         <select
           value={filterType}
-          onChange={e => setFilterType(e.target.value as Location['type'] | 'all')}
+          onChange={e => setFilterType(e.target.value)}
           style={{ ...inputStyle, maxWidth: '160px' }}
         >
           <option value="all">All Types</option>
           {LOCATION_TYPES.map(t => (
-            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+            <option key={t} value={t}>{formatType(t)}</option>
           ))}
         </select>
       </div>
@@ -134,78 +136,79 @@ export default function LoreLocations() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(loc => (
-            <div
-              key={loc.id}
-              className="rounded-lg border flex flex-col"
-              style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
-            >
+          {filtered.map(loc => {
+            const color = typeColors[loc.location_type ?? 'other'] ?? typeColors.other;
+            return (
               <div
-                className="p-4 cursor-pointer flex-1"
-                onClick={() => setExpandedId(expandedId === loc.id ? null : loc.id)}
+                key={loc.id}
+                className="rounded-lg border flex flex-col"
+                style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
               >
-                <div className="flex items-start justify-between">
-                  <h3 className="font-bold text-lg flex-1 pr-2" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
-                    {loc.name || 'Unnamed Location'}
-                  </h3>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span
-                      className="text-xs px-2 py-0.5 rounded capitalize"
-                      style={{ backgroundColor: typeColors[loc.type] + 'aa', color: '#e8d5b0' }}
-                    >
-                      {loc.type}
-                    </span>
-                    <span className="text-xs ml-1" style={{ color: '#6a6490' }}>
-                      {expandedId === loc.id ? '▲' : '▼'}
-                    </span>
+                <div
+                  className="p-4 cursor-pointer flex-1"
+                  onClick={() => setExpandedId(expandedId === loc.id ? null : loc.id)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-2">
+                      <h3 className="font-bold text-lg" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                        {loc.name || 'Unnamed Location'}
+                      </h3>
+                      {loc.region && (
+                        <div className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{loc.region}</div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {loc.location_type && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded"
+                          style={{ backgroundColor: color + 'aa', color: '#e8d5b0' }}
+                        >
+                          {formatType(loc.location_type)}
+                        </span>
+                      )}
+                      <span className="text-xs ml-1" style={{ color: '#6a6490' }}>
+                        {expandedId === loc.id ? '▲' : '▼'}
+                      </span>
+                    </div>
                   </div>
+
+                  {loc.description && (
+                    <p className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }}>
+                      {expandedId === loc.id
+                        ? loc.description
+                        : loc.description.substring(0, 120) + (loc.description.length > 120 ? '...' : '')}
+                    </p>
+                  )}
+
+                  {expandedId === loc.id && loc.history && (
+                    <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
+                      <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>
+                        Lore & History
+                      </div>
+                      <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{loc.history}</p>
+                    </div>
+                  )}
                 </div>
 
-                {loc.description && (
-                  <p className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }}>
-                    {expandedId === loc.id ? loc.description : loc.description.substring(0, 120) + (loc.description.length > 120 ? '...' : '')}
-                  </p>
-                )}
-
-                {expandedId === loc.id && (
-                  <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
-                    {loc.lore && (
-                      <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Lore & History</div>
-                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{loc.lore}</p>
-                      </div>
-                    )}
-                    {loc.currentInfo && (
-                      <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Current Information</div>
-                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{loc.currentInfo}</p>
-                      </div>
-                    )}
-                    {!loc.lore && !loc.currentInfo && (
-                      <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No lore or current information recorded.</p>
-                    )}
-                  </div>
-                )}
+                <div className="flex gap-2 p-3 pt-0">
+                  <button
+                    onClick={() => openEdit(loc)}
+                    className="text-xs px-2 py-1 rounded flex-1 transition-colors"
+                    style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(loc.id)}
+                    className="text-xs px-2 py-1 rounded transition-colors"
+                    style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-
-              <div className="flex gap-2 p-3 pt-0">
-                <button
-                  onClick={() => openEdit(loc)}
-                  className="text-xs px-2 py-1 rounded flex-1 transition-colors"
-                  style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(loc.id)}
-                  className="text-xs px-2 py-1 rounded transition-colors"
-                  style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -228,19 +231,28 @@ export default function LoreLocations() {
           </FormField>
           <FormField label="Type">
             <select
-              value={form.type}
-              onChange={e => setForm(prev => ({ ...prev, type: e.target.value as Location['type'] }))}
+              value={form.location_type ?? 'other'}
+              onChange={e => setForm(prev => ({ ...prev, location_type: e.target.value }))}
               style={inputStyle}
             >
               {LOCATION_TYPES.map(t => (
-                <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                <option key={t} value={t}>{formatType(t)}</option>
               ))}
             </select>
           </FormField>
         </div>
+        <FormField label="Region">
+          <input
+            type="text"
+            value={form.region ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, region: e.target.value }))}
+            placeholder="e.g., The Northern Reaches"
+            style={inputStyle}
+          />
+        </FormField>
         <FormField label="Description">
           <textarea
-            value={form.description}
+            value={form.description ?? ''}
             onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
             placeholder="What does this place look like? Who lives here? What is it known for?"
             style={{ ...textareaStyle, minHeight: '80px' }}
@@ -248,18 +260,10 @@ export default function LoreLocations() {
         </FormField>
         <FormField label="Lore & History">
           <textarea
-            value={form.lore}
-            onChange={e => setForm(prev => ({ ...prev, lore: e.target.value }))}
+            value={form.history ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, history: e.target.value }))}
             placeholder="Historical events, ancient secrets, myths, and legends..."
             style={{ ...textareaStyle, minHeight: '120px' }}
-          />
-        </FormField>
-        <FormField label="Current Information">
-          <textarea
-            value={form.currentInfo}
-            onChange={e => setForm(prev => ({ ...prev, currentInfo: e.target.value }))}
-            placeholder="What is currently happening here? Active plot points, recent events..."
-            style={{ ...textareaStyle, minHeight: '100px' }}
           />
         </FormField>
       </Modal>

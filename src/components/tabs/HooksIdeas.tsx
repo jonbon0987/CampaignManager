@@ -2,80 +2,98 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { Hook } from '../../types';
+import type { Hook } from '../../lib/database.types';
 
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
+const CATEGORIES = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
+type Category = (typeof CATEGORIES)[number];
 
-const emptyHook = (): Omit<Hook, 'id'> => ({
-  title: '',
-  content: '',
-  priority: 'medium',
-  used: false,
-});
-
-const priorityStyles: Record<Hook['priority'], { border: string; badge: string; badgeBg: string }> = {
-  high:   { border: '#6a2a2a', badge: '#e05c5c', badgeBg: '#3a1a1a' },
-  medium: { border: '#4a3a1a', badge: '#c9a84c', badgeBg: '#2a2a10' },
-  low:    { border: '#1a3a3a', badge: '#4caf7d', badgeBg: '#0a2a1a' },
+type HookForm = {
+  title: string;
+  category: string | null;
+  description: string | null;
+  is_active: boolean;
 };
 
+const emptyForm = (): HookForm => ({
+  title: '',
+  category: 'side_quest',
+  description: '',
+  is_active: true,
+});
+
+const categoryStyles: Record<Category, { border: string; badge: string; badgeBg: string }> = {
+  main_plot:     { border: '#6a2a2a', badge: '#e05c5c', badgeBg: '#3a1a1a' },
+  side_quest:    { border: '#4a3a1a', badge: '#c9a84c', badgeBg: '#2a2a10' },
+  character_arc: { border: '#1a3a3a', badge: '#4caf7d', badgeBg: '#0a2a1a' },
+  faction:       { border: '#2a1a4a', badge: '#9060e0', badgeBg: '#1a0a3a' },
+};
+
+const defaultStyle = categoryStyles.side_quest;
+
+function getStyle(category: string | null) {
+  return categoryStyles[category as Category] ?? defaultStyle;
+}
+
+function formatCategory(cat: string | null) {
+  if (!cat) return 'Misc';
+  return cat.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export default function HooksIdeas() {
-  const { data, setData } = useCampaign();
+  const { hooks, upsertHook, deleteHook } = useCampaign();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHook, setEditingHook] = useState<Hook | null>(null);
-  const [form, setForm] = useState(emptyHook());
-  const [filterPriority, setFilterPriority] = useState<Hook['priority'] | 'all'>('all');
-  const [showUsed, setShowUsed] = useState(false);
+  const [form, setForm] = useState<HookForm>(emptyForm());
+  const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
+  const [showInactive, setShowInactive] = useState(false);
 
-  const filtered = data.hooks.filter(h => {
-    if (!showUsed && h.used) return false;
-    if (filterPriority !== 'all' && h.priority !== filterPriority) return false;
+  const filtered = hooks.filter(h => {
+    if (!showInactive && !h.is_active) return false;
+    if (filterCategory !== 'all' && h.category !== filterCategory) return false;
     return true;
   });
 
   const openAdd = () => {
     setEditingHook(null);
-    setForm(emptyHook());
+    setForm(emptyForm());
     setModalOpen(true);
   };
 
   const openEdit = (hook: Hook) => {
     setEditingHook(hook);
-    setForm({ title: hook.title, content: hook.content, priority: hook.priority, used: hook.used });
+    setForm({ title: hook.title, category: hook.category, description: hook.description, is_active: hook.is_active });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingHook) {
-      setData(prev => ({
-        ...prev,
-        hooks: prev.hooks.map(h => h.id === editingHook.id ? { ...h, ...form } : h),
-      }));
-    } else {
-      setData(prev => ({
-        ...prev,
-        hooks: [...prev.hooks, { id: generateId(), ...form }],
-      }));
-    }
+  const handleSave = async () => {
+    await upsertHook({
+      ...(editingHook ? { id: editingHook.id } : {}),
+      ...form,
+      last_updated_session: editingHook?.last_updated_session ?? null,
+      dm_only_notes: editingHook?.dm_only_notes ?? null,
+    });
     setModalOpen(false);
   };
 
-  const toggleUsed = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      hooks: prev.hooks.map(h => h.id === id ? { ...h, used: !h.used } : h),
-    }));
+  const toggleActive = async (hook: Hook) => {
+    await upsertHook({
+      id: hook.id,
+      title: hook.title,
+      category: hook.category,
+      description: hook.description,
+      is_active: !hook.is_active,
+      last_updated_session: hook.last_updated_session,
+      dm_only_notes: hook.dm_only_notes,
+    });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this idea?')) {
-      setData(prev => ({ ...prev, hooks: prev.hooks.filter(h => h.id !== id) }));
+      await deleteHook(id);
     }
   };
 
-  const unusedCount = data.hooks.filter(h => !h.used).length;
+  const activeCount = hooks.filter(h => h.is_active).length;
 
   return (
     <div>
@@ -85,7 +103,7 @@ export default function HooksIdeas() {
             Hooks & Ideas
           </h2>
           <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>
-            {unusedCount} unused {unusedCount === 1 ? 'idea' : 'ideas'} · {data.hooks.length} total
+            {activeCount} active · {hooks.length} total
           </p>
         </div>
         <button
@@ -100,80 +118,80 @@ export default function HooksIdeas() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6 items-center">
-        <div className="flex gap-1">
-          {(['all', 'high', 'medium', 'low'] as const).map(p => (
+        <div className="flex gap-1 flex-wrap">
+          {(['all', ...CATEGORIES] as const).map(c => (
             <button
-              key={p}
-              onClick={() => setFilterPriority(p)}
-              className="text-xs px-3 py-1.5 rounded capitalize transition-colors"
+              key={c}
+              onClick={() => setFilterCategory(c)}
+              className="text-xs px-3 py-1.5 rounded transition-colors"
               style={{
-                backgroundColor: filterPriority === p ? '#3a3660' : '#22203a',
-                color: filterPriority === p ? '#e8d5b0' : '#9990b0',
+                backgroundColor: filterCategory === c ? '#3a3660' : '#22203a',
+                color: filterCategory === c ? '#e8d5b0' : '#9990b0',
                 border: '1px solid #3a3660',
               }}
             >
-              {p === 'all' ? 'All' : p}
+              {c === 'all' ? 'All' : formatCategory(c)}
             </button>
           ))}
         </div>
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none" style={{ color: '#9990b0' }}>
           <input
             type="checkbox"
-            checked={showUsed}
-            onChange={e => setShowUsed(e.target.checked)}
+            checked={showInactive}
+            onChange={e => setShowInactive(e.target.checked)}
             style={{ accentColor: '#c9a84c' }}
           />
-          Show used ideas
+          Show resolved
         </label>
       </div>
 
       {filtered.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#6a6490' }}>
-          {data.hooks.length === 0
+          {hooks.length === 0
             ? 'No ideas yet. Start your DM scratchpad!'
             : 'No ideas match the current filters.'}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(hook => {
-            const ps = priorityStyles[hook.priority];
+            const ps = getStyle(hook.category);
             return (
               <div
                 key={hook.id}
                 className="rounded-lg border p-4 flex flex-col"
                 style={{
                   backgroundColor: '#1a1828',
-                  borderColor: hook.used ? '#2a2a3a' : ps.border,
-                  opacity: hook.used ? 0.55 : 1,
+                  borderColor: hook.is_active ? ps.border : '#2a2a3a',
+                  opacity: hook.is_active ? 1 : 0.55,
                 }}
               >
                 <div className="flex items-start justify-between mb-2 gap-2">
-                  <h3 className="font-bold flex-1" style={{ color: hook.used ? '#6a6490' : '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                  <h3 className="font-bold flex-1" style={{ color: hook.is_active ? '#e8d5b0' : '#6a6490', fontFamily: 'Georgia, serif' }}>
                     {hook.title || 'Untitled Idea'}
                   </h3>
                   <span
-                    className="text-xs px-2 py-0.5 rounded capitalize shrink-0"
+                    className="text-xs px-2 py-0.5 rounded shrink-0"
                     style={{ backgroundColor: ps.badgeBg, color: ps.badge }}
                   >
-                    {hook.priority}
+                    {formatCategory(hook.category)}
                   </span>
                 </div>
 
-                <p className="text-sm flex-1 mb-4" style={{ color: hook.used ? '#5a5470' : '#c9b88a', lineHeight: '1.6' }}>
-                  {hook.content || <span style={{ fontStyle: 'italic', color: '#4a4460' }}>No details written.</span>}
+                <p className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }}>
+                  {hook.description || <span style={{ fontStyle: 'italic', color: '#4a4460' }}>No details written.</span>}
                 </p>
 
                 <div className="flex gap-2 mt-auto">
                   <button
-                    onClick={() => toggleUsed(hook.id)}
+                    onClick={() => toggleActive(hook)}
                     className="text-xs px-2 py-1 rounded flex-1 transition-colors"
                     style={{
                       backgroundColor: '#22203a',
-                      color: hook.used ? '#4caf7d' : '#9990b0',
+                      color: hook.is_active ? '#9990b0' : '#4caf7d',
                       border: '1px solid #3a3660',
                     }}
                   >
-                    {hook.used ? '↩ Unmark' : '✓ Mark Used'}
+                    {hook.is_active ? '✓ Resolve' : '↩ Reopen'}
                   </button>
                   <button
                     onClick={() => openEdit(hook)}
@@ -211,30 +229,30 @@ export default function HooksIdeas() {
             style={inputStyle}
           />
         </FormField>
-        <FormField label="Priority">
-          <div className="flex gap-2">
-            {(['high', 'medium', 'low'] as const).map(p => (
+        <FormField label="Category">
+          <div className="flex gap-2 flex-wrap">
+            {CATEGORIES.map(c => (
               <button
-                key={p}
-                onClick={() => setForm(prev => ({ ...prev, priority: p }))}
-                className="text-sm px-4 py-2 rounded capitalize flex-1 transition-colors"
+                key={c}
+                onClick={() => setForm(prev => ({ ...prev, category: c }))}
+                className="text-sm px-4 py-2 rounded flex-1 transition-colors"
                 style={{
-                  backgroundColor: form.priority === p ? priorityStyles[p].badgeBg : '#22203a',
-                  color: priorityStyles[p].badge,
-                  border: `1px solid ${priorityStyles[p].border}`,
-                  fontWeight: form.priority === p ? 600 : 400,
-                  outline: form.priority === p ? `1px solid ${priorityStyles[p].badge}` : 'none',
+                  backgroundColor: form.category === c ? categoryStyles[c].badgeBg : '#22203a',
+                  color: categoryStyles[c].badge,
+                  border: `1px solid ${categoryStyles[c].border}`,
+                  fontWeight: form.category === c ? 600 : 400,
+                  outline: form.category === c ? `1px solid ${categoryStyles[c].badge}` : 'none',
                 }}
               >
-                {p}
+                {formatCategory(c)}
               </button>
             ))}
           </div>
         </FormField>
         <FormField label="Details / Notes">
           <textarea
-            value={form.content}
-            onChange={e => setForm(prev => ({ ...prev, content: e.target.value }))}
+            value={form.description ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
             placeholder="Describe the idea, how it could play out, related characters or locations..."
             style={{ ...textareaStyle, minHeight: '220px' }}
           />

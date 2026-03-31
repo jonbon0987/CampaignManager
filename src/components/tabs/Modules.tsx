@@ -2,74 +2,69 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { CampaignModule } from '../../types';
+import type { Module } from '../../lib/database.types';
 
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
+type ModuleForm = {
+  chapter: string | null;
+  title: string;
+  synopsis: string | null;
+  encounters: string | null;
+  status: Module['status'];
+};
 
-const emptyModule = (): Omit<CampaignModule, 'id'> => ({
-  number: 1,
+const emptyForm = (): ModuleForm => ({
+  chapter: '',
   title: '',
-  description: '',
-  keyEvents: '',
-  status: 'upcoming',
+  synopsis: '',
+  encounters: '',
+  status: 'planned',
 });
 
-const statusStyles: Record<CampaignModule['status'], { bg: string; text: string; border: string }> = {
-  upcoming:  { bg: '#1a1a3a', text: '#6090e0', border: '#3a3a7a' },
+const statusStyles: Record<Module['status'], { bg: string; text: string; border: string }> = {
+  planned:   { bg: '#1a1a3a', text: '#6090e0', border: '#3a3a7a' },
   active:    { bg: '#1a3a1a', text: '#4caf7d', border: '#2a7a2a' },
   completed: { bg: '#2a2a2a', text: '#7a7a7a', border: '#4a4a4a' },
 };
 
 export default function Modules() {
-  const { data, setData } = useCampaign();
+  const { modules, upsertModule, deleteModule } = useCampaign();
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingModule, setEditingModule] = useState<CampaignModule | null>(null);
-  const [form, setForm] = useState(emptyModule());
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [form, setForm] = useState<ModuleForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const sorted = [...data.modules].sort((a, b) => a.number - b.number);
-
   const openAdd = () => {
-    const nextNumber = data.modules.length > 0
-      ? Math.max(...data.modules.map(m => m.number)) + 1
-      : 1;
     setEditingModule(null);
-    setForm({ ...emptyModule(), number: nextNumber });
+    setForm(emptyForm());
     setModalOpen(true);
   };
 
-  const openEdit = (mod: CampaignModule) => {
+  const openEdit = (mod: Module) => {
     setEditingModule(mod);
     setForm({
-      number: mod.number,
+      chapter: mod.chapter,
       title: mod.title,
-      description: mod.description,
-      keyEvents: mod.keyEvents,
+      synopsis: mod.synopsis,
+      encounters: mod.encounters,
       status: mod.status,
     });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingModule) {
-      setData(prev => ({
-        ...prev,
-        modules: prev.modules.map(m => m.id === editingModule.id ? { ...m, ...form } : m),
-      }));
-    } else {
-      setData(prev => ({
-        ...prev,
-        modules: [...prev.modules, { id: generateId(), ...form }],
-      }));
-    }
+  const handleSave = async () => {
+    await upsertModule({
+      ...(editingModule ? { id: editingModule.id } : {}),
+      ...form,
+      played_session: editingModule?.played_session ?? null,
+      rewards: editingModule?.rewards ?? null,
+      dm_notes: editingModule?.dm_notes ?? null,
+    });
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this module?')) {
-      setData(prev => ({ ...prev, modules: prev.modules.filter(m => m.id !== id) }));
+      await deleteModule(id);
       if (expandedId === id) setExpandedId(null);
     }
   };
@@ -91,13 +86,13 @@ export default function Modules() {
         </button>
       </div>
 
-      {sorted.length === 0 ? (
+      {modules.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#6a6490' }}>
           No modules yet. Add your first campaign chapter!
         </div>
       ) : (
         <div className="space-y-3">
-          {sorted.map(mod => {
+          {modules.map(mod => {
             const ss = statusStyles[mod.status];
             const isExpanded = expandedId === mod.id;
             return (
@@ -111,19 +106,21 @@ export default function Modules() {
                   style={{ borderBottom: isExpanded ? '1px solid #3a3660' : 'none' }}
                   onClick={() => setExpandedId(isExpanded ? null : mod.id)}
                 >
-                  <div
-                    className="text-3xl font-bold shrink-0 w-10 text-center"
-                    style={{ color: '#3a3660', fontFamily: 'Georgia, serif' }}
-                  >
-                    {String(mod.number).padStart(2, '0')}
-                  </div>
+                  {mod.chapter && (
+                    <div
+                      className="text-3xl font-bold shrink-0 w-10 text-center"
+                      style={{ color: '#3a3660', fontFamily: 'Georgia, serif' }}
+                    >
+                      {mod.chapter}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
-                      Chapter {mod.number}: {mod.title || 'Untitled'}
+                      {mod.chapter ? `Chapter ${mod.chapter}: ` : ''}{mod.title || 'Untitled'}
                     </h3>
-                    {mod.description && (
+                    {mod.synopsis && (
                       <p className="text-sm mt-0.5" style={{ color: '#9990b0' }}>
-                        {mod.description.substring(0, 90)}{mod.description.length > 90 ? '...' : ''}
+                        {mod.synopsis.substring(0, 90)}{mod.synopsis.length > 90 ? '...' : ''}
                       </p>
                     )}
                   </div>
@@ -142,21 +139,21 @@ export default function Modules() {
 
                 {isExpanded && (
                   <div className="p-4">
-                    {mod.description && (
+                    {mod.synopsis && (
                       <div className="mb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Description</div>
-                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{mod.description}</p>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Synopsis</div>
+                        <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.6' }}>{mod.synopsis}</p>
                       </div>
                     )}
-                    {mod.keyEvents && (
+                    {mod.encounters && (
                       <div className="mb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Key Events</div>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>Encounters</div>
                         <pre className="text-sm whitespace-pre-wrap" style={{ color: '#e8d5b0', lineHeight: '1.7', fontFamily: 'Georgia, serif' }}>
-                          {mod.keyEvents}
+                          {mod.encounters}
                         </pre>
                       </div>
                     )}
-                    {!mod.description && !mod.keyEvents && (
+                    {!mod.synopsis && !mod.encounters && (
                       <p className="text-sm mb-4" style={{ color: '#6a6490', fontStyle: 'italic' }}>No details recorded for this module.</p>
                     )}
                     <div className="flex gap-2">
@@ -191,22 +188,22 @@ export default function Modules() {
         wide
       >
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Chapter #">
+          <FormField label="Chapter">
             <input
-              type="number"
-              value={form.number}
-              min={1}
-              onChange={e => setForm(prev => ({ ...prev, number: parseInt(e.target.value) || 1 }))}
+              type="text"
+              value={form.chapter ?? ''}
+              onChange={e => setForm(prev => ({ ...prev, chapter: e.target.value }))}
+              placeholder="e.g., 1"
               style={inputStyle}
             />
           </FormField>
           <FormField label="Status">
             <select
               value={form.status}
-              onChange={e => setForm(prev => ({ ...prev, status: e.target.value as CampaignModule['status'] }))}
+              onChange={e => setForm(prev => ({ ...prev, status: e.target.value as Module['status'] }))}
               style={inputStyle}
             >
-              <option value="upcoming">Upcoming</option>
+              <option value="planned">Planned</option>
               <option value="active">Active</option>
               <option value="completed">Completed</option>
             </select>
@@ -221,18 +218,18 @@ export default function Modules() {
             style={inputStyle}
           />
         </FormField>
-        <FormField label="Description">
+        <FormField label="Synopsis">
           <textarea
-            value={form.description}
-            onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+            value={form.synopsis ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, synopsis: e.target.value }))}
             placeholder="Overview of this chapter's events, goals, and themes..."
             style={{ ...textareaStyle, minHeight: '100px' }}
           />
         </FormField>
-        <FormField label="Key Events">
+        <FormField label="Encounters">
           <textarea
-            value={form.keyEvents}
-            onChange={e => setForm(prev => ({ ...prev, keyEvents: e.target.value }))}
+            value={form.encounters ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, encounters: e.target.value }))}
             placeholder="Important scenes, encounters, story beats, revelations..."
             style={{ ...textareaStyle, minHeight: '160px' }}
           />
