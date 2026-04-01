@@ -15,7 +15,7 @@ interface Node {
   vx: number;
   vy: number;
   pinned: boolean;
-  groupId: string | null; // faction / party grouping key
+  groupId: string | null;
 }
 
 interface Edge {
@@ -55,14 +55,13 @@ function distance(a: Node, b: Node) {
 }
 
 function tickForces(nodes: Node[], edges: Edge[], w: number, h: number) {
-  const REPULSION   = 22000;
-  const LINK_DIST   = 280;
-  const LINK_K      = 0.025;
-  const GROUP_K     = 0.008; // pull group-mates together
-  const CENTER_K    = 0.003;
-  const DAMPING     = 0.82;
+  const REPULSION = 22000;
+  const LINK_DIST = 280;
+  const LINK_K    = 0.025;
+  const GROUP_K   = 0.008;
+  const CENTER_K  = 0.003;
+  const DAMPING   = 0.82;
 
-  // repulsion
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i], b = nodes[j];
@@ -75,7 +74,6 @@ function tickForces(nodes: Node[], edges: Edge[], w: number, h: number) {
     }
   }
 
-  // spring forces along edges
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   for (const e of edges) {
     const a = nodeMap.get(e.from);
@@ -89,7 +87,6 @@ function tickForces(nodes: Node[], edges: Edge[], w: number, h: number) {
     if (!b.pinned) { b.vx -= f * dx; b.vy -= f * dy; }
   }
 
-  // group cohesion — pull allies with same groupId together
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i], b = nodes[j];
@@ -103,7 +100,6 @@ function tickForces(nodes: Node[], edges: Edge[], w: number, h: number) {
     }
   }
 
-  // drift toward canvas center
   const cx = w / 2, cy = h / 2;
   for (const n of nodes) {
     if (n.pinned) continue;
@@ -111,7 +107,6 @@ function tickForces(nodes: Node[], edges: Edge[], w: number, h: number) {
     n.vy += (cy - n.y) * CENTER_K;
   }
 
-  // integrate + dampen + clamp
   for (const n of nodes) {
     if (n.pinned) continue;
     n.vx *= DAMPING;
@@ -147,17 +142,19 @@ function draw(
   edges: Edge[],
   hoveredId: string | null,
   selectedId: string | null,
+  hiddenTypes: Set<RelationshipType>,
   w: number,
   h: number,
   dpr: number,
 ) {
   ctx.clearRect(0, 0, w * dpr, h * dpr);
 
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
-  const focusId = selectedId ?? hoveredId;
+  const nodeMap  = new Map(nodes.map(n => [n.id, n]));
+  const focusId  = selectedId ?? hoveredId;
 
   // edges
   for (const e of edges) {
+    if (hiddenTypes.has(e.type)) continue;
     const a = nodeMap.get(e.from);
     const b = nodeMap.get(e.to);
     if (!a || !b) continue;
@@ -178,20 +175,15 @@ function draw(
     ctx.lineTo(x2, y2);
     ctx.stroke();
 
-    // arrowhead
-    ctx.fillStyle   = color;
+    ctx.fillStyle = color;
     drawArrow(ctx, x1, y1, x2, y2);
 
-    // edge label — only for edges connected to the focused node
     if (isFocusEdge && e.label) {
       const mx = (x1 + x2) / 2;
       const my = (y1 + y2) / 2;
-      ctx.globalAlpha  = 1;
-      ctx.fillStyle    = color;
       ctx.font         = `12px Georgia, serif`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      // small background for readability
       const tw = ctx.measureText(e.label).width;
       ctx.globalAlpha = 0.7;
       ctx.fillStyle   = '#0d0c1a';
@@ -213,35 +205,30 @@ function draw(
 
     ctx.globalAlpha = isFaded ? 0.35 : 1;
 
-    // glow for selected
     if (isSelected) {
       ctx.shadowColor = baseColor;
       ctx.shadowBlur  = 18;
     }
 
-    // circle fill
     ctx.beginPath();
     ctx.arc(n.x, n.y, NODE_RADIUS, 0, Math.PI * 2);
     ctx.fillStyle = isHovered ? '#2a2840' : '#1a1828';
     ctx.fill();
 
-    // border
     ctx.strokeStyle = isSelected ? '#fff' : baseColor;
     ctx.lineWidth   = isSelected ? 2.5 : 1.5;
     ctx.stroke();
 
     ctx.shadowBlur = 0;
 
-    // label
     ctx.fillStyle    = isHovered ? '#fff' : '#e8d5b0';
     ctx.font         = `bold 13px Georgia, serif`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
 
-    // wrap long names at 2 lines
-    const words  = n.label.split(' ');
-    const line1  = words.slice(0, Math.ceil(words.length / 2)).join(' ');
-    const line2  = words.slice(Math.ceil(words.length / 2)).join(' ');
+    const words = n.label.split(' ');
+    const line1 = words.slice(0, Math.ceil(words.length / 2)).join(' ');
+    const line2 = words.slice(Math.ceil(words.length / 2)).join(' ');
     if (line2) {
       ctx.fillText(line1, n.x, n.y - 7);
       ctx.fillText(line2, n.x, n.y + 7);
@@ -249,7 +236,6 @@ function draw(
       ctx.fillText(line1, n.x, n.y);
     }
 
-    // PC / NPC badge
     ctx.font      = `10px Georgia, serif`;
     ctx.fillStyle = baseColor;
     ctx.fillText(n.kind.toUpperCase(), n.x, n.y + NODE_RADIUS + 13);
@@ -265,18 +251,54 @@ const REL_TYPES: RelationshipType[] = ['ally', 'rival', 'foe', 'neutral'];
 export default function CharacterWeb() {
   const { pcs, npcs, relationships, upsertRelationship, deleteRelationship } = useCampaign();
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef    = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animRef   = useRef<number>(0);
-  const nodesRef  = useRef<Node[]>([]);
-  const edgesRef  = useRef<Edge[]>([]);
-  const hoveredRef  = useRef<string | null>(null);
-  const selectedRef = useRef<string | null>(null);
-  const dragRef   = useRef<{ id: string; ox: number; oy: number } | null>(null);
-  const sizeRef   = useRef({ w: 800, h: 600 });
+  const animRef      = useRef<number>(0);
+  const nodesRef     = useRef<Node[]>([]);
+  const edgesRef     = useRef<Edge[]>([]);
+  const hoveredRef   = useRef<string | null>(null);
+  const selectedRef  = useRef<string | null>(null);
+  const dragRef      = useRef<{ id: string; ox: number; oy: number } | null>(null);
+  const sizeRef      = useRef({ w: 800, h: 600 });
+
+  // which characters are shown on the canvas
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
+  // initialised to "all" once we know the full list
+  const initialisedRef = useRef(false);
+
+  // which relationship types are shown
+  const [hiddenTypes, setHiddenTypes] = useState<Set<RelationshipType>>(() => new Set());
+  const hiddenTypesRef = useRef<Set<RelationshipType>>(new Set());
 
   const [, forceRerender] = useState(0);
   const rerender = useCallback(() => forceRerender(n => n + 1), []);
+
+  // keep a ref in sync so the animation loop can read hiddenTypes without
+  // causing a re-render cascade
+  useEffect(() => {
+    hiddenTypesRef.current = hiddenTypes;
+  }, [hiddenTypes]);
+
+  // seed visibleIds when characters first load
+  useEffect(() => {
+    if (initialisedRef.current) return;
+    const allIds = [...pcs.map(p => p.id), ...npcs.map(n => n.id)];
+    if (allIds.length === 0) return;
+    initialisedRef.current = true;
+    setVisibleIds(new Set(allIds));
+  }, [pcs, npcs]);
+
+  // keep visibleIds in sync when new characters are added (auto-show them)
+  useEffect(() => {
+    if (!initialisedRef.current) return;
+    setVisibleIds(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const p of pcs)  { if (!next.has(p.id))  { next.add(p.id);  changed = true; } }
+      for (const n of npcs) { if (!next.has(n.id))  { next.add(n.id);  changed = true; } }
+      return changed ? next : prev;
+    });
+  }, [pcs, npcs]);
 
   // ── build nodes & edges from context data ──────────────────────────────────
 
@@ -285,9 +307,6 @@ export default function CharacterWeb() {
     const h = sizeRef.current.h;
     const prevMap = new Map(nodesRef.current.map(n => [n.id, n]));
 
-    // determine ally groupings from relationships
-    // PCs all share the group 'pcs'; NPC ally clusters get a group id from
-    // the smallest node id in the connected component of ally edges.
     const allyAdj = new Map<string, Set<string>>();
     for (const r of relationships) {
       if (r.relationship_type !== 'ally') continue;
@@ -297,18 +316,12 @@ export default function CharacterWeb() {
       allyAdj.get(r.to_id)!.add(r.from_id);
     }
 
-    // find connected components among ally-linked nodes
     const visited  = new Set<string>();
     const groupMap = new Map<string, string>();
 
-    // treat all PCs as one group
     const pcIds = new Set(pcs.map(p => p.id));
-    for (const id of pcIds) {
-      groupMap.set(id, 'pcs');
-      visited.add(id);
-    }
+    for (const id of pcIds) { groupMap.set(id, 'pcs'); visited.add(id); }
 
-    // BFS for NPC ally clusters
     const allIds = [...pcs.map(p => p.id), ...npcs.map(n => n.id)];
     for (const startId of allIds) {
       if (visited.has(startId)) continue;
@@ -410,18 +423,30 @@ export default function CharacterWeb() {
       const { w, h } = sizeRef.current;
       const dpr = window.devicePixelRatio || 1;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      tickForces(nodesRef.current, edgesRef.current, w, h);
-      draw(ctx!, nodesRef.current, edgesRef.current, hoveredRef.current, selectedRef.current, w, h, dpr);
+      // only simulate/draw visible nodes and edges between visible nodes
+      const visNodes = nodesRef.current.filter(n => visibleIdsRef.current.has(n.id));
+      const visEdges = edgesRef.current.filter(
+        e => visibleIdsRef.current.has(e.from) && visibleIdsRef.current.has(e.to)
+      );
+      tickForces(visNodes, visEdges, w, h);
+      draw(ctx!, visNodes, visEdges, hoveredRef.current, selectedRef.current, hiddenTypesRef.current, w, h, dpr);
       animRef.current = requestAnimationFrame(loop);
     }
     animRef.current = requestAnimationFrame(loop);
     return () => { running = false; cancelAnimationFrame(animRef.current); };
   }, []);
 
+  // keep a ref so the animation loop closure can read the latest visibleIds
+  const visibleIdsRef = useRef<Set<string>>(visibleIds);
+  useEffect(() => {
+    visibleIdsRef.current = visibleIds;
+  }, [visibleIds]);
+
   // ── hit-test ───────────────────────────────────────────────────────────────
 
   function nodeAt(x: number, y: number): Node | null {
     for (const n of nodesRef.current) {
+      if (!visibleIdsRef.current.has(n.id)) continue;
       const dx = n.x - x, dy = n.y - y;
       if (dx * dx + dy * dy <= NODE_RADIUS * NODE_RADIUS) return n;
     }
@@ -477,6 +502,35 @@ export default function CharacterWeb() {
       if (canvasRef.current) canvasRef.current.style.cursor = hoveredRef.current ? 'grab' : 'default';
     }
   }, []);
+
+  // ── visibility helpers ─────────────────────────────────────────────────────
+
+  const allCharIds = [...pcs.map(p => p.id), ...npcs.map(n => n.id)];
+
+  function toggleCharacter(id: string) {
+    setVisibleIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        // deselect if hidden
+        if (selectedRef.current === id) { selectedRef.current = null; rerender(); }
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function showAll()  { setVisibleIds(new Set(allCharIds)); }
+  function hideAll()  { setVisibleIds(new Set()); selectedRef.current = null; rerender(); }
+
+  function toggleType(t: RelationshipType) {
+    setHiddenTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  }
 
   // ── relationship editor modal ──────────────────────────────────────────────
 
@@ -543,10 +597,14 @@ export default function CharacterWeb() {
     }
   }
 
-  // when a char is selected, find its edges for the sidebar
-  const selectedNode = nodesRef.current.find(n => n.id === selectedRef.current) ?? null;
+  // sidebar: selected node info
+  const visNodes   = nodesRef.current.filter(n => visibleIds.has(n.id));
+  const selectedNode  = visNodes.find(n => n.id === selectedRef.current) ?? null;
   const selectedEdges = selectedNode
-    ? edgesRef.current.filter(e => e.from === selectedNode.id || e.to === selectedNode.id)
+    ? edgesRef.current.filter(
+        e => (e.from === selectedNode.id || e.to === selectedNode.id)
+          && visibleIds.has(e.from) && visibleIds.has(e.to)
+      )
     : [];
 
   const selectStyle: React.CSSProperties = {
@@ -555,10 +613,14 @@ export default function CharacterWeb() {
     WebkitAppearance: 'none' as const,
   };
 
+  // group chars for the filter panel
+  const pcList  = pcs.map(p => ({ id: p.id,  kind: 'pc'  as CharacterKind, name: p.character_name }));
+  const npcList = npcs.map(n => ({ id: n.id, kind: 'npc' as CharacterKind, name: n.name }));
+
   return (
     <div className="flex flex-col" style={{ height: 'calc(100dvh - 145px)', minHeight: 560 }}>
       {/* header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-2xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
           Character Web
         </h2>
@@ -573,14 +635,32 @@ export default function CharacterWeb() {
         </button>
       </div>
 
-      {/* legend */}
+      {/* legend — clickable type toggles */}
       <div className="flex flex-wrap gap-4 mb-3 text-xs" style={{ color: '#9990b0', fontFamily: 'Georgia, serif' }}>
-        {REL_TYPES.map(t => (
-          <span key={t} className="flex items-center gap-1">
-            <span style={{ display: 'inline-block', width: 28, height: 2, backgroundColor: EDGE_COLOR[t], borderRadius: 1 }} />
-            {EDGE_LABEL[t]}
-          </span>
-        ))}
+        {REL_TYPES.map(t => {
+          const hidden = hiddenTypes.has(t);
+          return (
+            <button
+              key={t}
+              onClick={() => toggleType(t)}
+              className="flex items-center gap-1.5"
+              title={hidden ? `Show ${EDGE_LABEL[t]}` : `Hide ${EDGE_LABEL[t]}`}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                color: hidden ? '#4a4460' : '#9990b0',
+                textDecoration: hidden ? 'line-through' : 'none',
+                opacity: hidden ? 0.5 : 1,
+              }}
+            >
+              <span style={{
+                display: 'inline-block', width: 28, height: 2,
+                backgroundColor: hidden ? '#4a4460' : EDGE_COLOR[t],
+                borderRadius: 1,
+              }} />
+              {EDGE_LABEL[t]}
+            </button>
+          );
+        })}
         <span className="flex items-center gap-1 ml-4">
           <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', border: `2px solid ${PC_COLOR}`, backgroundColor: '#1a1828' }} />
           PC
@@ -589,7 +669,7 @@ export default function CharacterWeb() {
           <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', border: `2px solid ${NPC_COLOR}`, backgroundColor: '#1a1828' }} />
           NPC
         </span>
-        <span className="ml-auto italic" style={{ color: '#6a6490' }}>Drag nodes to rearrange · click to inspect</span>
+        <span className="ml-auto italic" style={{ color: '#6a6490' }}>Drag nodes · click to inspect · click legend to filter</span>
       </div>
 
       {/* main area: canvas + sidebar */}
@@ -600,7 +680,7 @@ export default function CharacterWeb() {
           className="rounded-lg border overflow-hidden"
           style={{ flex: '1 1 0', minHeight: 0, backgroundColor: '#0d0c1a', borderColor: '#3a3660', position: 'relative' }}
         >
-          {pcs.length === 0 && npcs.length === 0 && (
+          {allCharIds.length === 0 && (
             <div
               className="absolute inset-0 flex items-center justify-center text-sm"
               style={{ color: '#6a6490', pointerEvents: 'none' }}
@@ -620,9 +700,105 @@ export default function CharacterWeb() {
 
         {/* sidebar */}
         <div
-          className="rounded-lg border p-4 flex flex-col gap-3"
+          className="rounded-lg border p-3 flex flex-col gap-3"
           style={{ width: 240, backgroundColor: '#1a1828', borderColor: '#3a3660', overflowY: 'auto' }}
         >
+          {/* ── character filter ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold" style={{ color: '#9990b0' }}>Characters</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={showAll}
+                  className="text-xs px-1.5 py-0.5 rounded"
+                  style={{ color: '#9990b0', border: '1px solid #3a3660' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#9990b0')}
+                >
+                  All
+                </button>
+                <button
+                  onClick={hideAll}
+                  className="text-xs px-1.5 py-0.5 rounded"
+                  style={{ color: '#9990b0', border: '1px solid #3a3660' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#9990b0')}
+                >
+                  None
+                </button>
+              </div>
+            </div>
+
+            {pcList.length > 0 && (
+              <div className="mb-1">
+                <div className="text-xs mb-1" style={{ color: '#6a6490' }}>PCs</div>
+                <div className="flex flex-col gap-0.5">
+                  {pcList.map(c => {
+                    const on = visibleIds.has(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => toggleCharacter(c.id)}
+                        className="text-xs text-left px-2 py-1 rounded flex items-center gap-2"
+                        style={{
+                          backgroundColor: on ? '#2a2020' : 'transparent',
+                          border: `1px solid ${on ? PC_COLOR + '66' : '#3a3660'}`,
+                          color: on ? PC_COLOR : '#4a4460',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = PC_COLOR)}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = on ? PC_COLOR + '66' : '#3a3660')}
+                      >
+                        <span style={{
+                          width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                          backgroundColor: on ? PC_COLOR : '#4a4460',
+                          display: 'inline-block',
+                        }} />
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {npcList.length > 0 && (
+              <div>
+                <div className="text-xs mb-1 mt-1" style={{ color: '#6a6490' }}>NPCs</div>
+                <div className="flex flex-col gap-0.5">
+                  {npcList.map(c => {
+                    const on = visibleIds.has(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => toggleCharacter(c.id)}
+                        className="text-xs text-left px-2 py-1 rounded flex items-center gap-2"
+                        style={{
+                          backgroundColor: on ? '#181e2a' : 'transparent',
+                          border: `1px solid ${on ? NPC_COLOR + '66' : '#3a3660'}`,
+                          color: on ? NPC_COLOR : '#4a4460',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = NPC_COLOR)}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = on ? NPC_COLOR + '66' : '#3a3660')}
+                      >
+                        <span style={{
+                          width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                          backgroundColor: on ? NPC_COLOR : '#4a4460',
+                          display: 'inline-block',
+                        }} />
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ height: 1, backgroundColor: '#3a3660' }} />
+
+          {/* ── selected node info ── */}
           {selectedNode ? (
             <>
               <div>
@@ -634,7 +810,6 @@ export default function CharacterWeb() {
                 </div>
                 <div className="text-xs" style={{ color: '#6a6490' }}>
                   {selectedNode.kind === 'pc' ? 'Player Character' : 'NPC'}
-                  {selectedNode.groupId === 'pcs' ? ' · The New Renegades' : ''}
                 </div>
               </div>
               <div className="text-xs font-semibold" style={{ color: '#9990b0' }}>
@@ -701,7 +876,6 @@ export default function CharacterWeb() {
               Click a node to see its relationships.
             </div>
           )}
-
         </div>
       </div>
 
@@ -763,7 +937,6 @@ export default function CharacterWeb() {
             />
           </FormField>
 
-          {/* colour preview */}
           <div
             className="flex items-center gap-2 px-3 py-2 rounded text-xs"
             style={{ backgroundColor: '#0d0c1a', border: `1px solid ${EDGE_COLOR[relForm.relationship_type]}` }}
