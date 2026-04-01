@@ -349,6 +349,7 @@ export const Relationships = {
       .order('created_at');
     if (error) throw error;
     return data;
+  },
 
   async upsert(rel: CharacterRelationshipInsert & { id?: string }): Promise<CharacterRelationship> {
     const user_id = await getUserId();
@@ -359,13 +360,15 @@ export const Relationships = {
       .single();
     if (error) throw error;
     return data;
+  },
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('character_relationships').delete().eq('id', id);
-    const { error } = await supabase.from('submodules').delete().eq('id', id);
     if (error) throw error;
   },
-    
+};
+
+// ============================================================
 // SUBMODULES
 // ============================================================
 

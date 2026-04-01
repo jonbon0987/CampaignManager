@@ -35,7 +35,7 @@ const supabase = createClient(supabaseUrl, key);
 
 // --------------- Replace with your actual Supabase user UUID ---------------
 // Find it in: Authentication → Users → your account row
-const USER_ID = '6529dd61-6bca-4403-8a07-3bf8423f6d8d';
+const USER_ID: string = '6529dd61-6bca-4403-8a07-3bf8423f6d8d';
 
 // ============================================================
 // HELPERS

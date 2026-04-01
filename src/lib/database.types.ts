@@ -136,47 +136,11 @@ export interface CharacterRelationship {
   to_kind: CharacterKind;              // 'pc' | 'npc'
   relationship_type: RelationshipType; // 'ally' | 'rival' | 'foe' | 'neutral'
   label: string | null;                // optional short description on the edge
-export interface Submodule {
-  id: string;
-  user_id: string;
-  module_id: string;
-  title: string;
-  submodule_type: string | null;   // location | heist | event | social | travel | other
-  summary: string | null;
-  content: string | null;          // full long-form write-up
-  dm_notes: string | null;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Scene {
-  id: string;
-  user_id: string;
-  submodule_id: string;
-  title: string;
-  scene_type: string | null;       // encounter | puzzle | social | trap | exploration | other
-  summary: string | null;
-  content: string | null;          // full long-form write-up
-  dm_notes: string | null;
-  sort_order: number;
   created_at: string;
   updated_at: string;
 }
 
 export type CharacterRelationshipInsert = Omit<CharacterRelationship, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export interface ModuleSheet {
-  id: string;
-  user_id: string;
-  module_id: string;
-  title: string;
-  sheet_type: string | null;       // monster | npc | pc | vehicle | other
-  content: string | null;          // full stat block / character sheet text
-  dm_notes: string | null;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
 
 // --------------- Insert shapes (omit server-set fields) ---------------
 
@@ -188,10 +152,49 @@ export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'upd
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type SubmoduleInsert = Omit<Submodule, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type SceneInsert = Omit<Scene, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type ModuleSheetInsert = Omit<ModuleSheet, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+
+export interface Submodule {
+  id: string;
+  user_id: string;
+  module_id: string;
+  title: string;
+  submodule_type: string | null;
+  summary: string | null;
+  content: string | null;
+  dm_notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface Scene {
+  id: string;
+  user_id: string;
+  submodule_id: string;
+  title: string;
+  scene_type: string | null;
+  summary: string | null;
+  content: string | null;
+  dm_notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface ModuleSheet {
+  id: string;
+  user_id: string;
+  module_id: string;
+  title: string;
+  sheet_type: string | null;
+  content: string | null;
+  dm_notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
+export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
+export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
 // --------------- Supabase Database type (used by createClient<Database>) ---------------
 
 export interface Database {
@@ -201,60 +204,73 @@ export interface Database {
         Row: Session;
         Insert: SessionInsert & { user_id: string };
         Update: Partial<SessionInsert>;
+        Relationships: [];
       };
       player_characters: {
         Row: PlayerCharacter;
         Insert: PlayerCharacterInsert & { user_id: string };
         Update: Partial<PlayerCharacterInsert>;
+        Relationships: [];
       };
       npcs: {
         Row: NPC;
         Insert: NPCInsert & { user_id: string };
         Update: Partial<NPCInsert>;
+        Relationships: [];
       };
       locations: {
         Row: Location;
         Insert: LocationInsert & { user_id: string };
         Update: Partial<LocationInsert>;
+        Relationships: [];
       };
       factions: {
         Row: Faction;
         Insert: FactionInsert & { user_id: string };
         Update: Partial<FactionInsert>;
+        Relationships: [];
       };
       hooks: {
         Row: Hook;
         Insert: HookInsert & { user_id: string };
         Update: Partial<HookInsert>;
+        Relationships: [];
       };
       lore_entries: {
         Row: LoreEntry;
         Insert: LoreEntryInsert & { user_id: string };
         Update: Partial<LoreEntryInsert>;
+        Relationships: [];
       };
       modules: {
         Row: Module;
         Insert: ModuleInsert & { user_id: string };
         Update: Partial<ModuleInsert>;
+        Relationships: [];
       };
       character_relationships: {
         Row: CharacterRelationship;
         Insert: CharacterRelationshipInsert & { user_id: string };
         Update: Partial<CharacterRelationshipInsert>;
+        Relationships: [];
+      };
       submodules: {
         Row: Submodule;
         Insert: SubmoduleInsert & { user_id: string };
         Update: Partial<SubmoduleInsert>;
+        Relationships: [];
       };
       scenes: {
         Row: Scene;
         Insert: SceneInsert & { user_id: string };
         Update: Partial<SceneInsert>;
+        Relationships: [];
       };
       module_sheets: {
         Row: ModuleSheet;
         Insert: ModuleSheetInsert & { user_id: string };
         Update: Partial<ModuleSheetInsert>;
+        Relationships: [];
       };
     };
   };

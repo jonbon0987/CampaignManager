@@ -263,6 +263,8 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const deleteRelationship = useCallback(async (id: string) => {
     await RelationshipsDB.delete(id);
     setRelationships(prev => prev.filter(r => r.id !== id));
+  }, []);
+
   // ---- Submodules ----
   const loadSubmodules = useCallback(async (moduleId: string) => {
     setSubmodules(await SubmodulesDB.getByModule(moduleId));
