@@ -52,6 +52,7 @@ export interface NPC {
   dm_notes: string | null;
   location: string | null;
   first_session: number | null;
+  met_by_pcs: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -123,6 +124,18 @@ export interface Module {
   updated_at: string;
 }
 
+export type RelationshipType = 'ally' | 'rival' | 'foe' | 'neutral';
+export type CharacterKind = 'pc' | 'npc';
+
+export interface CharacterRelationship {
+  id: string;
+  user_id: string;
+  from_id: string;                     // UUID of the source character
+  from_kind: CharacterKind;            // 'pc' | 'npc'
+  to_id: string;                       // UUID of the target character
+  to_kind: CharacterKind;              // 'pc' | 'npc'
+  relationship_type: RelationshipType; // 'ally' | 'rival' | 'foe' | 'neutral'
+  label: string | null;                // optional short description on the edge
 export interface Submodule {
   id: string;
   user_id: string;
@@ -151,6 +164,7 @@ export interface Scene {
   updated_at: string;
 }
 
+export type CharacterRelationshipInsert = Omit<CharacterRelationship, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export interface ModuleSheet {
   id: string;
   user_id: string;
@@ -223,6 +237,10 @@ export interface Database {
         Insert: ModuleInsert & { user_id: string };
         Update: Partial<ModuleInsert>;
       };
+      character_relationships: {
+        Row: CharacterRelationship;
+        Insert: CharacterRelationshipInsert & { user_id: string };
+        Update: Partial<CharacterRelationshipInsert>;
       submodules: {
         Row: Submodule;
         Insert: SubmoduleInsert & { user_id: string };

@@ -11,6 +11,7 @@ type NPCForm = {
   status: NPC['status'];
   description: string | null;
   hooks_motivations: string | null;
+  met_by_pcs: boolean;
 };
 
 const emptyForm = (): NPCForm => ({
@@ -20,6 +21,7 @@ const emptyForm = (): NPCForm => ({
   status: 'active',
   description: '',
   hooks_motivations: '',
+  met_by_pcs: false,
 });
 
 const statusStyles: Record<NPC['status'], { bg: string; text: string }> = {
@@ -61,6 +63,7 @@ export default function NPCs() {
       status: npc.status,
       description: npc.description,
       hooks_motivations: npc.hooks_motivations,
+      met_by_pcs: npc.met_by_pcs,
     });
     setModalOpen(true);
   };
@@ -74,6 +77,22 @@ export default function NPCs() {
       first_session: editingNPC?.first_session ?? null,
     });
     setModalOpen(false);
+  };
+
+  const handleToggleMet = async (npc: NPC) => {
+    await upsertNPC({
+      id: npc.id,
+      name: npc.name,
+      role: npc.role,
+      affiliation: npc.affiliation,
+      status: npc.status,
+      description: npc.description,
+      hooks_motivations: npc.hooks_motivations,
+      dm_notes: npc.dm_notes,
+      location: npc.location,
+      first_session: npc.first_session,
+      met_by_pcs: !npc.met_by_pcs,
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -147,6 +166,18 @@ export default function NPCs() {
                       >
                         {npc.status}
                       </span>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleToggleMet(npc); }}
+                        className="text-xs px-2 py-0.5 rounded transition-colors"
+                        title={npc.met_by_pcs ? 'PCs have met this NPC' : 'PCs have not met this NPC'}
+                        style={{
+                          backgroundColor: npc.met_by_pcs ? '#1a2e3a' : '#22203a',
+                          color: npc.met_by_pcs ? '#4ab8d4' : '#4a4870',
+                          border: `1px solid ${npc.met_by_pcs ? '#2a6080' : '#3a3660'}`,
+                        }}
+                      >
+                        {npc.met_by_pcs ? 'Met' : 'Unmet'}
+                      </button>
                       <span className="text-xs ml-1" style={{ color: '#6a6490' }}>
                         {expandedId === npc.id ? '▲' : '▼'}
                       </span>
@@ -255,6 +286,17 @@ export default function NPCs() {
             placeholder="Personal goals, secrets, relationships..."
             style={{ ...textareaStyle, minHeight: '100px' }}
           />
+        </FormField>
+        <FormField label="Met by PCs">
+          <label className="flex items-center gap-2 cursor-pointer" style={{ color: '#c9b88a' }}>
+            <input
+              type="checkbox"
+              checked={form.met_by_pcs}
+              onChange={e => setForm(prev => ({ ...prev, met_by_pcs: e.target.checked }))}
+              style={{ accentColor: '#4ab8d4', width: '16px', height: '16px' }}
+            />
+            <span className="text-sm">The PCs have met this NPC</span>
+          </label>
         </FormField>
       </Modal>
     </div>

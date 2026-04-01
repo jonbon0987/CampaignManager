@@ -15,6 +15,7 @@ import type {
   Hook, HookInsert,
   LoreEntry, LoreEntryInsert,
   Module, ModuleInsert,
+  CharacterRelationship, CharacterRelationshipInsert,
   Submodule, SubmoduleInsert,
   Scene, SceneInsert,
   ModuleSheet, ModuleSheetInsert,
@@ -337,6 +338,34 @@ export const Modules = {
 };
 
 // ============================================================
+// CHARACTER RELATIONSHIPS
+// ============================================================
+
+export const Relationships = {
+  async getAll(): Promise<CharacterRelationship[]> {
+    const { data, error } = await supabase
+      .from('character_relationships')
+      .select('*')
+      .order('created_at');
+    if (error) throw error;
+    return data;
+
+  async upsert(rel: CharacterRelationshipInsert & { id?: string }): Promise<CharacterRelationship> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('character_relationships')
+      .upsert({ ...rel, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('character_relationships').delete().eq('id', id);
+    const { error } = await supabase.from('submodules').delete().eq('id', id);
+    if (error) throw error;
+  },
+    
 // SUBMODULES
 // ============================================================
 
@@ -350,7 +379,7 @@ export const Submodules = {
     if (error) throw error;
     return data;
   },
-
+    
   async upsert(sub: SubmoduleInsert & { id?: string }): Promise<Submodule> {
     const user_id = await getUserId();
     const { data, error } = await supabase
