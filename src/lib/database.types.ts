@@ -52,6 +52,7 @@ export interface NPC {
   dm_notes: string | null;
   location: string | null;
   first_session: number | null;
+  met_by_pcs: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -270,6 +270,8 @@ export default function CharacterWeb() {
   const [hiddenTypes, setHiddenTypes] = useState<Set<RelationshipType>>(() => new Set());
   const hiddenTypesRef = useRef<Set<RelationshipType>>(new Set());
 
+  const [metOnly, setMetOnly] = useState(false);
+
   const [, forceRerender] = useState(0);
   const rerender = useCallback(() => forceRerender(n => n + 1), []);
 
@@ -508,11 +510,11 @@ export default function CharacterWeb() {
   const allCharIds = [...pcs.map(p => p.id), ...npcs.map(n => n.id)];
 
   function toggleCharacter(id: string) {
+    setMetOnly(false);
     setVisibleIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        // deselect if hidden
         if (selectedRef.current === id) { selectedRef.current = null; rerender(); }
       } else {
         next.add(id);
@@ -521,8 +523,26 @@ export default function CharacterWeb() {
     });
   }
 
-  function showAll()  { setVisibleIds(new Set(allCharIds)); }
-  function hideAll()  { setVisibleIds(new Set()); selectedRef.current = null; rerender(); }
+  const metNpcIds = new Set(npcs.filter(n => n.met_by_pcs).map(n => n.id));
+  const pcIds     = new Set(pcs.map(p => p.id));
+
+  function showAll()     { setVisibleIds(new Set(allCharIds)); }
+  function hideAll()     { setVisibleIds(new Set()); selectedRef.current = null; rerender(); }
+  function showMetOnly() {
+    const next = new Set([...pcIds, ...metNpcIds]);
+    setVisibleIds(next);
+    if (selectedRef.current && !next.has(selectedRef.current)) {
+      selectedRef.current = null;
+      rerender();
+    }
+  }
+
+  function handleMetOnlyToggle() {
+    const next = !metOnly;
+    setMetOnly(next);
+    if (next) showMetOnly();
+    else showAll();
+  }
 
   function toggleType(t: RelationshipType) {
     setHiddenTypes(prev => {
@@ -614,8 +634,11 @@ export default function CharacterWeb() {
   };
 
   // group chars for the filter panel
-  const pcList  = pcs.map(p => ({ id: p.id,  kind: 'pc'  as CharacterKind, name: p.character_name }));
-  const npcList = npcs.map(n => ({ id: n.id, kind: 'npc' as CharacterKind, name: n.name }));
+  const pcList      = pcs.map(p => ({ id: p.id, kind: 'pc'  as CharacterKind, name: p.character_name }));
+  const metNpcList  = npcs.filter(n =>  n.met_by_pcs).map(n => ({ id: n.id, kind: 'npc' as CharacterKind, name: n.name }));
+  const unmetNpcList = npcs.filter(n => !n.met_by_pcs).map(n => ({ id: n.id, kind: 'npc' as CharacterKind, name: n.name }));
+
+  const [unmetExpanded, setUnmetExpanded] = useState(false);
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100dvh - 145px)', minHeight: 560 }}>
@@ -669,7 +692,25 @@ export default function CharacterWeb() {
           <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', border: `2px solid ${NPC_COLOR}`, backgroundColor: '#1a1828' }} />
           NPC
         </span>
-        <span className="ml-auto italic" style={{ color: '#6a6490' }}>Drag nodes · click to inspect · click legend to filter</span>
+        <button
+          onClick={handleMetOnlyToggle}
+          className="ml-auto flex items-center gap-1.5 text-xs px-2 py-0.5 rounded transition-colors"
+          title={metOnly ? 'Show all NPCs' : 'Show only NPCs the party has met'}
+          style={{
+            backgroundColor: metOnly ? '#1a2e3a' : '#22203a',
+            color:           metOnly ? '#4ab8d4' : '#6a6490',
+            border:          `1px solid ${metOnly ? '#2a6080' : '#3a3660'}`,
+            cursor: 'pointer',
+          }}
+        >
+          <span style={{
+            width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+            backgroundColor: metOnly ? '#4ab8d4' : '#4a4870',
+            display: 'inline-block',
+          }} />
+          Met only
+        </button>
+        <span className="italic" style={{ color: '#6a6490' }}>Drag nodes · click to inspect · click legend to filter</span>
       </div>
 
       {/* main area: canvas + sidebar */}
@@ -709,7 +750,7 @@ export default function CharacterWeb() {
               <span className="text-xs font-semibold" style={{ color: '#9990b0' }}>Characters</span>
               <div className="flex gap-1">
                 <button
-                  onClick={showAll}
+                  onClick={() => { setMetOnly(false); showAll(); }}
                   className="text-xs px-1.5 py-0.5 rounded"
                   style={{ color: '#9990b0', border: '1px solid #3a3660' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
@@ -718,7 +759,7 @@ export default function CharacterWeb() {
                   All
                 </button>
                 <button
-                  onClick={hideAll}
+                  onClick={() => { setMetOnly(false); hideAll(); }}
                   className="text-xs px-1.5 py-0.5 rounded"
                   style={{ color: '#9990b0', border: '1px solid #3a3660' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
@@ -762,36 +803,82 @@ export default function CharacterWeb() {
               </div>
             )}
 
-            {npcList.length > 0 && (
+            {(metNpcList.length > 0 || unmetNpcList.length > 0) && (
               <div>
-                <div className="text-xs mb-1 mt-1" style={{ color: '#6a6490' }}>NPCs</div>
-                <div className="flex flex-col gap-0.5">
-                  {npcList.map(c => {
-                    const on = visibleIds.has(c.id);
-                    return (
-                      <button
-                        key={c.id}
-                        onClick={() => toggleCharacter(c.id)}
-                        className="text-xs text-left px-2 py-1 rounded flex items-center gap-2"
-                        style={{
-                          backgroundColor: on ? '#181e2a' : 'transparent',
-                          border: `1px solid ${on ? NPC_COLOR + '66' : '#3a3660'}`,
-                          color: on ? NPC_COLOR : '#4a4460',
-                          cursor: 'pointer',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = NPC_COLOR)}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = on ? NPC_COLOR + '66' : '#3a3660')}
-                      >
-                        <span style={{
-                          width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                          backgroundColor: on ? NPC_COLOR : '#4a4460',
-                          display: 'inline-block',
-                        }} />
-                        {c.name}
-                      </button>
-                    );
-                  })}
-                </div>
+                {metNpcList.length > 0 && (
+                  <>
+                    <div className="text-xs mb-1 mt-1" style={{ color: '#6a6490' }}>NPCs — Met</div>
+                    <div className="flex flex-col gap-0.5">
+                      {metNpcList.map(c => {
+                        const on = visibleIds.has(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => toggleCharacter(c.id)}
+                            className="text-xs text-left px-2 py-1 rounded flex items-center gap-2"
+                            style={{
+                              backgroundColor: on ? '#181e2a' : 'transparent',
+                              border: `1px solid ${on ? NPC_COLOR + '66' : '#3a3660'}`,
+                              color: on ? NPC_COLOR : '#4a4460',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = NPC_COLOR)}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = on ? NPC_COLOR + '66' : '#3a3660')}
+                          >
+                            <span style={{
+                              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                              backgroundColor: on ? NPC_COLOR : '#4a4460',
+                              display: 'inline-block',
+                            }} />
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {unmetNpcList.length > 0 && (
+                  <div className="mt-1">
+                    <button
+                      onClick={() => setUnmetExpanded(v => !v)}
+                      className="text-xs mb-1 flex items-center gap-1 w-full"
+                      style={{ color: '#6a6490', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      <span style={{ fontSize: 9 }}>{unmetExpanded ? '▼' : '▶'}</span>
+                      NPCs — Unmet ({unmetNpcList.length})
+                    </button>
+                    {unmetExpanded && (
+                      <div className="flex flex-col gap-0.5">
+                        {unmetNpcList.map(c => {
+                          const on = visibleIds.has(c.id);
+                          return (
+                            <button
+                              key={c.id}
+                              onClick={() => toggleCharacter(c.id)}
+                              className="text-xs text-left px-2 py-1 rounded flex items-center gap-2"
+                              style={{
+                                backgroundColor: on ? '#181e2a' : 'transparent',
+                                border: `1px solid ${on ? '#5a5080' : '#3a3660'}`,
+                                color: on ? '#9990b0' : '#4a4460',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.borderColor = '#5a5080')}
+                              onMouseLeave={e => (e.currentTarget.style.borderColor = on ? '#5a5080' : '#3a3660')}
+                            >
+                              <span style={{
+                                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                                backgroundColor: on ? '#6a6490' : '#3a3660',
+                                display: 'inline-block',
+                              }} />
+                              {c.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
