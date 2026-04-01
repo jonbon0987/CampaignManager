@@ -15,6 +15,9 @@ import type {
   Hook, HookInsert,
   LoreEntry, LoreEntryInsert,
   Module, ModuleInsert,
+  Submodule, SubmoduleInsert,
+  Scene, SceneInsert,
+  ModuleSheet, ModuleSheetInsert,
 } from './database.types';
 
 // --------------- Helper ---------------
@@ -329,6 +332,102 @@ export const Modules = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('modules').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// SUBMODULES
+// ============================================================
+
+export const Submodules = {
+  async getByModule(moduleId: string): Promise<Submodule[]> {
+    const { data, error } = await supabase
+      .from('submodules')
+      .select('*')
+      .eq('module_id', moduleId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(sub: SubmoduleInsert & { id?: string }): Promise<Submodule> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('submodules')
+      .upsert({ ...sub, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('submodules').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// SCENES
+// ============================================================
+
+export const Scenes = {
+  async getBySubmodule(submoduleId: string): Promise<Scene[]> {
+    const { data, error } = await supabase
+      .from('scenes')
+      .select('*')
+      .eq('submodule_id', submoduleId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(scene: SceneInsert & { id?: string }): Promise<Scene> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('scenes')
+      .upsert({ ...scene, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('scenes').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// MODULE SHEETS
+// ============================================================
+
+export const ModuleSheets = {
+  async getByModule(moduleId: string): Promise<ModuleSheet[]> {
+    const { data, error } = await supabase
+      .from('module_sheets')
+      .select('*')
+      .eq('module_id', moduleId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(sheet: ModuleSheetInsert & { id?: string }): Promise<ModuleSheet> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('module_sheets')
+      .upsert({ ...sheet, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('module_sheets').delete().eq('id', id);
     if (error) throw error;
   },
 };
