@@ -7,6 +7,7 @@ import Characters from './components/tabs/Characters';
 import LoreLocations from './components/tabs/LoreLocations';
 import Modules from './components/tabs/Modules';
 import HooksIdeas from './components/tabs/HooksIdeas';
+import AIAssistant from './components/AIAssistant';
 import { signInWithGitHub, signInWithEmail, signUpWithEmail, signOut, onAuthStateChange } from './lib/auth';
 
 type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'hooks';
@@ -22,6 +23,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [aiOpen, setAiOpen] = useState(false);
   const { overview, loading, error } = useCampaign();
 
   const campaignTitle = overview.title || 'Campaign Manager';
@@ -46,6 +48,13 @@ function AppInner({ user }: { user: User }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs" style={{ color: '#6a6490' }}>{user.email}</span>
+            <button
+              onClick={() => setAiOpen(true)}
+              className="text-xs px-3 py-1 rounded transition-colors font-medium"
+              style={{ backgroundColor: '#c9a84c', color: '#0f0e17', border: 'none' }}
+            >
+              ✦ Assistant
+            </button>
             <button
               onClick={signOut}
               className="text-xs px-3 py-1 rounded transition-colors"
@@ -112,6 +121,8 @@ function AppInner({ user }: { user: User }) {
           )}
         </div>
       </main>
+
+      <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   );
 }

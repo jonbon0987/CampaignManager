@@ -12,6 +12,9 @@ import {
   Lore as LoreDB,
   Modules as ModulesDB,
   Relationships as RelationshipsDB,
+  Submodules as SubmodulesDB,
+  Scenes as ScenesDB,
+  ModuleSheets as ModuleSheetsDB,
 } from '../lib/db';
 import type {
   Session, SessionInsert,
@@ -23,6 +26,9 @@ import type {
   LoreEntry, LoreEntryInsert,
   Module, ModuleInsert,
   CharacterRelationship, CharacterRelationshipInsert,
+  Submodule, SubmoduleInsert,
+  Scene, SceneInsert,
+  ModuleSheet, ModuleSheetInsert,
 } from '../lib/database.types';
 
 const defaultOverview: CampaignOverview = {
@@ -86,6 +92,24 @@ interface CampaignContextType {
   // Character relationships
   upsertRelationship: (r: CharacterRelationshipInsert & { id?: string }) => Promise<void>;
   deleteRelationship: (id: string) => Promise<void>;
+  
+  // Submodules
+  submodules: Submodule[];
+  loadSubmodules: (moduleId: string) => Promise<void>;
+  upsertSubmodule: (s: SubmoduleInsert & { id?: string }) => Promise<void>;
+  deleteSubmodule: (id: string, moduleId: string) => Promise<void>;
+
+  // Scenes
+  scenes: Scene[];
+  loadScenes: (submoduleId: string) => Promise<void>;
+  upsertScene: (s: SceneInsert & { id?: string }) => Promise<void>;
+  deleteScene: (id: string, submoduleId: string) => Promise<void>;
+
+  // Module Sheets
+  moduleSheets: ModuleSheet[];
+  loadModuleSheets: (moduleId: string) => Promise<void>;
+  upsertModuleSheet: (s: ModuleSheetInsert & { id?: string }) => Promise<void>;
+  deleteModuleSheet: (id: string, moduleId: string) => Promise<void>;
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -102,6 +126,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [lore, setLore] = useState<LoreEntry[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [relationships, setRelationships] = useState<CharacterRelationship[]>([]);
+  const [submodules, setSubmodules] = useState<Submodule[]>([]);
+  const [scenes, setScenes] = useState<Scene[]>([]);
+  const [moduleSheets, setModuleSheets] = useState<ModuleSheet[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -236,6 +263,49 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const deleteRelationship = useCallback(async (id: string) => {
     await RelationshipsDB.delete(id);
     setRelationships(prev => prev.filter(r => r.id !== id));
+  // ---- Submodules ----
+  const loadSubmodules = useCallback(async (moduleId: string) => {
+    setSubmodules(await SubmodulesDB.getByModule(moduleId));
+  }, []);
+
+  const upsertSubmodule = useCallback(async (s: SubmoduleInsert & { id?: string }) => {
+    await SubmodulesDB.upsert(s);
+    setSubmodules(await SubmodulesDB.getByModule(s.module_id));
+  }, []);
+
+  const deleteSubmodule = useCallback(async (id: string, moduleId: string) => {
+    await SubmodulesDB.delete(id);
+    setSubmodules(await SubmodulesDB.getByModule(moduleId));
+  }, []);
+
+  // ---- Scenes ----
+  const loadScenes = useCallback(async (submoduleId: string) => {
+    setScenes(await ScenesDB.getBySubmodule(submoduleId));
+  }, []);
+
+  const upsertScene = useCallback(async (s: SceneInsert & { id?: string }) => {
+    await ScenesDB.upsert(s);
+    setScenes(await ScenesDB.getBySubmodule(s.submodule_id));
+  }, []);
+
+  const deleteScene = useCallback(async (id: string, submoduleId: string) => {
+    await ScenesDB.delete(id);
+    setScenes(await ScenesDB.getBySubmodule(submoduleId));
+  }, []);
+
+  // ---- Module Sheets ----
+  const loadModuleSheets = useCallback(async (moduleId: string) => {
+    setModuleSheets(await ModuleSheetsDB.getByModule(moduleId));
+  }, []);
+
+  const upsertModuleSheet = useCallback(async (s: ModuleSheetInsert & { id?: string }) => {
+    await ModuleSheetsDB.upsert(s);
+    setModuleSheets(await ModuleSheetsDB.getByModule(s.module_id));
+  }, []);
+
+  const deleteModuleSheet = useCallback(async (id: string, moduleId: string) => {
+    await ModuleSheetsDB.delete(id);
+    setModuleSheets(await ModuleSheetsDB.getByModule(moduleId));
   }, []);
 
   return (
@@ -252,6 +322,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       upsertLore, deleteLore,
       upsertModule, deleteModule,
       upsertRelationship, deleteRelationship,
+      submodules, loadSubmodules, upsertSubmodule, deleteSubmodule,
+      scenes, loadScenes, upsertScene, deleteScene,
+      moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
     }}>
       {children}
     </CampaignContext.Provider>
