@@ -3,25 +3,21 @@ import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
 import Overview from './components/tabs/Overview';
 import SessionNotes from './components/tabs/SessionNotes';
-import PCs from './components/tabs/PCs';
-import NPCs from './components/tabs/NPCs';
+import Characters from './components/tabs/Characters';
 import LoreLocations from './components/tabs/LoreLocations';
 import Modules from './components/tabs/Modules';
 import HooksIdeas from './components/tabs/HooksIdeas';
-import CharacterWeb from './components/tabs/CharacterWeb';
 import { signInWithGitHub, signInWithEmail, signUpWithEmail, signOut, onAuthStateChange } from './lib/auth';
 
-type Tab = 'overview' | 'sessions' | 'pcs' | 'npcs' | 'lore' | 'modules' | 'hooks' | 'web';
+type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'hooks';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'overview',  label: 'Overview' },
-  { id: 'sessions',  label: 'Session Notes' },
-  { id: 'pcs',       label: 'PCs' },
-  { id: 'npcs',      label: 'NPCs' },
-  { id: 'lore',      label: 'Lore & Locations' },
-  { id: 'modules',   label: 'Modules' },
-  { id: 'hooks',     label: 'Hooks & Ideas' },
-  { id: 'web',       label: 'Character Web' },
+  { id: 'overview',    label: 'Overview' },
+  { id: 'sessions',    label: 'Session Notes' },
+  { id: 'characters',  label: 'Characters' },
+  { id: 'lore',        label: 'Lore & Locations' },
+  { id: 'modules',     label: 'Modules' },
+  { id: 'hooks',       label: 'Hooks & Ideas' },
 ];
 
 function AppInner({ user }: { user: User }) {
@@ -95,8 +91,8 @@ function AppInner({ user }: { user: User }) {
       </nav>
 
       {/* Content */}
-      <main className="flex-1 p-6 overflow-hidden flex flex-col min-h-0">
-        <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
+      <main className="flex-1 p-6 overflow-y-auto flex flex-col">
+        <div className="max-w-7xl mx-auto w-full flex flex-col">
           {error && (
             <div className="mb-4 px-4 py-3 rounded text-sm" style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
               Failed to load data: {error}
@@ -106,14 +102,12 @@ function AppInner({ user }: { user: User }) {
             <div className="text-center py-24" style={{ color: '#6a6490' }}>Loading campaign data…</div>
           ) : (
             <>
-              {activeTab === 'overview'  && <Overview />}
-              {activeTab === 'sessions'  && <SessionNotes />}
-              {activeTab === 'pcs'       && <PCs />}
-              {activeTab === 'npcs'      && <NPCs />}
-              {activeTab === 'lore'      && <LoreLocations />}
-              {activeTab === 'modules'   && <Modules />}
-              {activeTab === 'hooks'     && <HooksIdeas />}
-              {activeTab === 'web'       && <CharacterWeb />}
+              {activeTab === 'overview'    && <Overview />}
+              {activeTab === 'sessions'    && <SessionNotes />}
+              {activeTab === 'characters'  && <Characters />}
+              {activeTab === 'lore'        && <LoreLocations />}
+              {activeTab === 'modules'     && <Modules />}
+              {activeTab === 'hooks'       && <HooksIdeas />}
             </>
           )}
         </div>

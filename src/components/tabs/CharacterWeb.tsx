@@ -270,7 +270,7 @@ export default function CharacterWeb() {
   const [hiddenTypes, setHiddenTypes] = useState<Set<RelationshipType>>(() => new Set());
   const hiddenTypesRef = useRef<Set<RelationshipType>>(new Set());
 
-  const [metOnly, setMetOnly] = useState(false);
+  const [metOnly, setMetOnly] = useState(true);
 
   const [, forceRerender] = useState(0);
   const rerender = useCallback(() => forceRerender(n => n + 1), []);
@@ -287,8 +287,16 @@ export default function CharacterWeb() {
     const allIds = [...pcs.map(p => p.id), ...npcs.map(n => n.id)];
     if (allIds.length === 0) return;
     initialisedRef.current = true;
-    setVisibleIds(new Set(allIds));
-  }, [pcs, npcs]);
+    if (metOnly) {
+      const metIds = new Set([
+        ...pcs.map(p => p.id),
+        ...npcs.filter(n => n.met_by_pcs).map(n => n.id),
+      ]);
+      setVisibleIds(metIds);
+    } else {
+      setVisibleIds(new Set(allIds));
+    }
+  }, [pcs, npcs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // keep visibleIds in sync when new characters are added (auto-show them)
   useEffect(() => {
@@ -297,10 +305,10 @@ export default function CharacterWeb() {
       const next = new Set(prev);
       let changed = false;
       for (const p of pcs)  { if (!next.has(p.id))  { next.add(p.id);  changed = true; } }
-      for (const n of npcs) { if (!next.has(n.id))  { next.add(n.id);  changed = true; } }
+      for (const n of npcs) { if (!next.has(n.id) && (!metOnly || n.met_by_pcs)) { next.add(n.id); changed = true; } }
       return changed ? next : prev;
     });
-  }, [pcs, npcs]);
+  }, [pcs, npcs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── build nodes & edges from context data ──────────────────────────────────
 
@@ -641,7 +649,7 @@ export default function CharacterWeb() {
   const [unmetExpanded, setUnmetExpanded] = useState(false);
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100dvh - 145px)', minHeight: 560 }}>
+    <div className="flex flex-col" style={{ height: '80vh', minHeight: 600 }}>
       {/* header */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-2xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
