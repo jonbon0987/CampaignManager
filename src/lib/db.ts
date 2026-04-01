@@ -19,6 +19,7 @@ import type {
   Submodule, SubmoduleInsert,
   Scene, SceneInsert,
   ModuleSheet, ModuleSheetInsert,
+  MonsterStatblock, MonsterStatblockInsert,
 } from './database.types';
 
 // --------------- Helper ---------------
@@ -428,6 +429,37 @@ export const Scenes = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('scenes').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// MONSTER STATBLOCKS
+// ============================================================
+
+export const MonsterStatblocks = {
+  async getAll(): Promise<MonsterStatblock[]> {
+    const { data, error } = await supabase
+      .from('monster_statblocks')
+      .select('*')
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(monster: MonsterStatblockInsert & { id?: string }): Promise<MonsterStatblock> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('monster_statblocks')
+      .upsert({ ...monster, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('monster_statblocks').delete().eq('id', id);
     if (error) throw error;
   },
 };

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { Module, Submodule, Scene, ModuleSheet } from '../../lib/database.types';
+import type { Module, Submodule, Scene, ModuleSheet, MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form types ---------------
 
@@ -47,7 +47,7 @@ type SheetForm = {
 
 const emptySheetForm = (): SheetForm => ({
   title: '',
-  sheet_type: 'monster',
+  sheet_type: 'creature',
   content: '',
   dm_notes: '',
 });
@@ -91,7 +91,7 @@ const typeColors: Record<string, { bg: string; text: string; border: string }> =
   trap:        { bg: '#3a2a1a', text: '#e08040', border: '#7a4a2a' },
   exploration: { bg: '#1a3a2a', text: '#60c080', border: '#2a6a4a' },
   other:       { bg: '#1a1a1a', text: '#808080', border: '#404040' },
-  monster:     { bg: '#3a1a1a', text: '#e07070', border: '#7a2a2a' },
+  creature:    { bg: '#3a1a1a', text: '#e07070', border: '#7a2a2a' },
   npc:         { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
   pc:          { bg: '#1a3a1a', text: '#4caf7d', border: '#2a7a2a' },
   vehicle:     { bg: '#2a2a1a', text: '#c0b060', border: '#5a5a2a' },
@@ -123,12 +123,19 @@ interface ModuleDetailProps {
 // MAIN COMPONENT
 // ================================================================
 
+// Helper: parse linked_monster_ids JSON field
+function parseLinkedIds(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw) as string[]; } catch { return []; }
+}
+
 export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: ModuleDetailProps) {
   const {
     upsertModule, deleteModule,
     submodules, loadSubmodules, upsertSubmodule, deleteSubmodule,
     scenes, loadScenes, upsertScene, deleteScene,
     moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
+    monsterStatblocks,
   } = useCampaign();
 
   const [activeSection, setActiveSection] = useState<'submodules' | 'sheets' | 'overview'>('submodules');
@@ -160,6 +167,12 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   const [viewingSubmodule, setViewingSubmodule] = useState<Submodule | null>(null);
   const [viewingScene, setViewingScene] = useState<Scene | null>(null);
   const [viewingSheet, setViewingSheet] = useState<ModuleSheet | null>(null);
+
+  // Creature picker
+  const [creaturePickerTarget, setCreaturePickerTarget] = useState<
+    { kind: 'submodule'; item: Submodule } | { kind: 'scene'; item: Scene } | null
+  >(null);
+  const [viewingLinkedCreature, setViewingLinkedCreature] = useState<MonsterStatblock | null>(null);
 
   useEffect(() => {
     loadSubmodules(mod.id);
@@ -310,7 +323,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     setEditingSheet(sheet);
     setSheetForm({
       title: sheet.title,
-      sheet_type: sheet.sheet_type ?? 'monster',
+      sheet_type: sheet.sheet_type ?? 'creature',
       content: sheet.content ?? '',
       dm_notes: sheet.dm_notes ?? '',
     });
@@ -336,6 +349,39 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     if (confirm(`Delete "${sheet.title}"?`)) {
       await deleteModuleSheet(sheet.id, sheet.module_id);
       if (viewingSheet?.id === sheet.id) setViewingSheet(null);
+    }
+  };
+
+  // ---- Creature linking ----
+
+  const handleLinkCreature = async (creatureId: string) => {
+    if (!creaturePickerTarget) return;
+    if (creaturePickerTarget.kind === 'submodule') {
+      const sub = creaturePickerTarget.item;
+      const ids = parseLinkedIds(sub.linked_monster_ids);
+      if (ids.includes(creatureId)) { setCreaturePickerTarget(null); return; }
+      await upsertSubmodule({ ...sub, linked_monster_ids: JSON.stringify([...ids, creatureId]) });
+    } else {
+      const scene = creaturePickerTarget.item;
+      const ids = parseLinkedIds(scene.linked_monster_ids);
+      if (ids.includes(creatureId)) { setCreaturePickerTarget(null); return; }
+      await upsertScene({ ...scene, linked_monster_ids: JSON.stringify([...ids, creatureId]) });
+    }
+    setCreaturePickerTarget(null);
+  };
+
+  const handleUnlinkCreature = async (
+    target: { kind: 'submodule'; item: Submodule } | { kind: 'scene'; item: Scene },
+    creatureId: string,
+  ) => {
+    if (target.kind === 'submodule') {
+      const sub = target.item;
+      const ids = parseLinkedIds(sub.linked_monster_ids).filter(id => id !== creatureId);
+      await upsertSubmodule({ ...sub, linked_monster_ids: JSON.stringify(ids) });
+    } else {
+      const scene = target.item;
+      const ids = parseLinkedIds(scene.linked_monster_ids).filter(id => id !== creatureId);
+      await upsertScene({ ...scene, linked_monster_ids: JSON.stringify(ids) });
     }
   };
 
@@ -521,12 +567,68 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                       </div>
                     </div>
 
-                    {/* Scenes (expanded) */}
+                    {/* Scenes + Linked Creatures (expanded) */}
                     {isSubExpanded && (
                       <div
                         className="border-t"
                         style={{ borderColor: '#2a2648', backgroundColor: '#0f0e1a' }}
                       >
+                        {/* Linked Creatures */}
+                        {(() => {
+                          const linkedIds = parseLinkedIds(sub.linked_monster_ids);
+                          const linked = linkedIds
+                            .map(id => monsterStatblocks.find(m => m.id === id))
+                            .filter((m): m is MonsterStatblock => !!m);
+                          return (
+                            <div className="px-4 pt-3 pb-1">
+                              <div className="flex justify-between items-center mb-2">
+                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Creatures</span>
+                                <button
+                                  onClick={() => setCreaturePickerTarget({ kind: 'submodule', item: sub })}
+                                  className="text-xs px-2.5 py-1 rounded"
+                                  style={{ backgroundColor: '#3a1a1a', color: '#e07070', border: '1px solid #7a2a2a' }}
+                                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#5a2a2a')}
+                                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#3a1a1a')}
+                                >
+                                  + Link Creature
+                                </button>
+                              </div>
+                              {linked.length === 0 ? (
+                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No creatures linked.</p>
+                              ) : (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {linked.map(m => {
+                                    const ts = getTypeStyle(m.creature_type);
+                                    return (
+                                      <div
+                                        key={m.id}
+                                        className="flex items-center gap-1.5 rounded border px-2 py-1"
+                                        style={{ backgroundColor: ts.bg, borderColor: ts.border }}
+                                      >
+                                        <button
+                                          onClick={() => setViewingLinkedCreature(m)}
+                                          className="text-xs font-medium"
+                                          style={{ color: ts.text }}
+                                        >
+                                          {m.name}{m.challenge_rating ? ` (CR ${m.challenge_rating})` : ''}
+                                        </button>
+                                        <button
+                                          onClick={() => handleUnlinkCreature({ kind: 'submodule', item: sub }, m.id)}
+                                          className="text-xs"
+                                          style={{ color: '#6a6490' }}
+                                          title="Unlink"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         <div className="flex justify-between items-center px-4 py-3">
                           <span style={{ ...sectionLabel, marginBottom: 0 }}>Scenes</span>
                           <button
@@ -573,8 +675,53 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                                         {scene.summary.substring(0, 140)}{scene.summary.length > 140 ? '…' : ''}
                                       </p>
                                     )}
+                                    {/* Linked creatures on scene */}
+                                    {(() => {
+                                      const linkedIds = parseLinkedIds(scene.linked_monster_ids);
+                                      const linked = linkedIds
+                                        .map(id => monsterStatblocks.find(m => m.id === id))
+                                        .filter((m): m is MonsterStatblock => !!m);
+                                      return linked.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                          {linked.map(m => {
+                                            const ts = getTypeStyle(m.creature_type);
+                                            return (
+                                              <div
+                                                key={m.id}
+                                                className="flex items-center gap-1 rounded border px-1.5 py-0.5"
+                                                style={{ backgroundColor: ts.bg, borderColor: ts.border }}
+                                              >
+                                                <button
+                                                  onClick={() => setViewingLinkedCreature(m)}
+                                                  className="text-xs"
+                                                  style={{ color: ts.text }}
+                                                >
+                                                  {m.name}{m.challenge_rating ? ` CR${m.challenge_rating}` : ''}
+                                                </button>
+                                                <button
+                                                  onClick={() => handleUnlinkCreature({ kind: 'scene', item: scene }, m.id)}
+                                                  className="text-xs"
+                                                  style={{ color: '#6a6490' }}
+                                                  title="Unlink"
+                                                >
+                                                  ✕
+                                                </button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : null;
+                                    })()}
                                   </div>
                                   <div className="flex gap-1.5 shrink-0">
+                                    <button
+                                      onClick={() => setCreaturePickerTarget({ kind: 'scene', item: scene })}
+                                      className="text-xs px-2 py-1 rounded"
+                                      style={{ backgroundColor: '#3a1a1a', color: '#e07070', border: '1px solid #7a2a2a' }}
+                                      title="Link creature"
+                                    >
+                                      + Creature
+                                    </button>
                                     <button
                                       onClick={() => setViewingScene(scene)}
                                       className="text-xs px-2.5 py-1 rounded"
@@ -630,7 +777,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
 
           {modSheets.length === 0 ? (
             <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-              No sheets yet. Add a monster stat block or character sheet.
+              No sheets yet. Add a creature stat block or character sheet.
             </p>
           ) : (
             <div className="space-y-2">
@@ -943,7 +1090,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
               onChange={e => setSheetForm(prev => ({ ...prev, sheet_type: e.target.value }))}
               style={inputStyle}
             >
-              <option value="monster">Monster</option>
+              <option value="creature">Creature</option>
               <option value="npc">NPC</option>
               <option value="pc">Player Character</option>
               <option value="vehicle">Vehicle</option>
@@ -964,7 +1111,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           <textarea
             value={sheetForm.content}
             onChange={e => setSheetForm(prev => ({ ...prev, content: e.target.value }))}
-            placeholder={`Paste or write the full stat block or character sheet here.\n\nExamples:\n— Monster: AC, HP, Speed, ability scores, saves, skills, actions, legendary actions\n— NPC: appearance, personality, motivations, secrets, stats if needed\n— PC: class, race, ability scores, HP, features, equipment, backstory notes`}
+            placeholder={`Paste or write the full stat block or character sheet here.\n\nExamples:\n— Creature: AC, HP, Speed, ability scores, saves, skills, actions, legendary actions\n— NPC: appearance, personality, motivations, secrets, stats if needed\n— PC: class, race, ability scores, HP, features, equipment, backstory notes`}
             style={{ ...textareaStyle, minHeight: '360px', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: '1.6' }}
           />
         </FormField>
@@ -1102,6 +1249,136 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                 Edit
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ================================================================
+          CREATURE PICKER MODAL
+      ================================================================ */}
+      {creaturePickerTarget && (
+        <Modal
+          isOpen={!!creaturePickerTarget}
+          onClose={() => setCreaturePickerTarget(null)}
+          title="Link Creature Stat Sheet"
+          wide
+        >
+          <div className="space-y-3">
+            {monsterStatblocks.length === 0 ? (
+              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
+                No creature stat sheets yet. Add some from the Creature Sheets tab first.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs" style={{ color: '#9990b0' }}>
+                  Select a creature to link to this {creaturePickerTarget.kind}.
+                  Linked creatures are shown inline when viewing it.
+                </p>
+                {(() => {
+                  const existingIds = parseLinkedIds(creaturePickerTarget.item.linked_monster_ids);
+                  return monsterStatblocks.map(m => {
+                    const ts = getTypeStyle(m.creature_type);
+                    const alreadyLinked = existingIds.includes(m.id);
+                    return (
+                      <div
+                        key={m.id}
+                        className="rounded border p-3 flex items-center justify-between gap-3"
+                        style={{ backgroundColor: '#1a1828', borderColor: alreadyLinked ? ts.border : '#3a3660' }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded border capitalize shrink-0"
+                            style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border }}
+                          >
+                            {m.creature_type ?? 'other'}
+                          </span>
+                          <span className="text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                            {m.name}
+                          </span>
+                          {m.challenge_rating && (
+                            <span className="text-xs" style={{ color: '#9990b0' }}>CR {m.challenge_rating}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleLinkCreature(m.id)}
+                          disabled={alreadyLinked}
+                          className="text-xs px-3 py-1 rounded shrink-0 disabled:opacity-50"
+                          style={{
+                            backgroundColor: alreadyLinked ? '#1a1828' : '#a07830',
+                            color: alreadyLinked ? '#6a6490' : '#e8d5b0',
+                            border: alreadyLinked ? '1px solid #3a3660' : 'none',
+                          }}
+                        >
+                          {alreadyLinked ? 'Already linked' : 'Link'}
+                        </button>
+                      </div>
+                    );
+                  });
+                })()}
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ================================================================
+          LINKED CREATURE VIEW MODAL
+      ================================================================ */}
+      {viewingLinkedCreature && (
+        <Modal
+          isOpen={!!viewingLinkedCreature}
+          onClose={() => setViewingLinkedCreature(null)}
+          title={viewingLinkedCreature.name}
+          wide
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(() => {
+                const ts = getTypeStyle(viewingLinkedCreature.creature_type);
+                return (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded border capitalize"
+                    style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border }}
+                  >
+                    {viewingLinkedCreature.creature_type ?? 'other'}
+                  </span>
+                );
+              })()}
+              {viewingLinkedCreature.challenge_rating && (
+                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#c08060', border: '1px solid #5a3a2a' }}>
+                  CR {viewingLinkedCreature.challenge_rating}
+                </span>
+              )}
+              {viewingLinkedCreature.tags && (
+                <span className="text-xs" style={{ color: '#6a6490' }}>{viewingLinkedCreature.tags}</span>
+              )}
+            </div>
+            {viewingLinkedCreature.content && (
+              <div>
+                <div style={sectionLabel}>Stat Block</div>
+                <pre
+                  className="text-sm whitespace-pre-wrap rounded p-3"
+                  style={{
+                    color: '#e8d5b0',
+                    lineHeight: '1.7',
+                    fontFamily: 'monospace',
+                    fontSize: '0.8rem',
+                    backgroundColor: '#0f0e17',
+                    border: '1px solid #3a3660',
+                  }}
+                >
+                  {viewingLinkedCreature.content}
+                </pre>
+              </div>
+            )}
+            {viewingLinkedCreature.dm_notes && (
+              <div>
+                <div style={sectionLabel}>DM Notes</div>
+                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
+                  {viewingLinkedCreature.dm_notes}
+                </p>
+              </div>
+            )}
           </div>
         </Modal>
       )}

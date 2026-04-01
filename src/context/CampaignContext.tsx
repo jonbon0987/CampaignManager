@@ -15,6 +15,7 @@ import {
   Submodules as SubmodulesDB,
   Scenes as ScenesDB,
   ModuleSheets as ModuleSheetsDB,
+  MonsterStatblocks as MonsterStatblocksDB,
 } from '../lib/db';
 import type {
   Session, SessionInsert,
@@ -29,6 +30,7 @@ import type {
   Submodule, SubmoduleInsert,
   Scene, SceneInsert,
   ModuleSheet, ModuleSheetInsert,
+  MonsterStatblock, MonsterStatblockInsert,
 } from '../lib/database.types';
 
 const defaultOverview: CampaignOverview = {
@@ -110,6 +112,11 @@ interface CampaignContextType {
   loadModuleSheets: (moduleId: string) => Promise<void>;
   upsertModuleSheet: (s: ModuleSheetInsert & { id?: string }) => Promise<void>;
   deleteModuleSheet: (id: string, moduleId: string) => Promise<void>;
+
+  // Monster Statblocks
+  monsterStatblocks: MonsterStatblock[];
+  upsertMonsterStatblock: (m: MonsterStatblockInsert & { id?: string }) => Promise<void>;
+  deleteMonsterStatblock: (id: string) => Promise<void>;
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -129,6 +136,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [submodules, setSubmodules] = useState<Submodule[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [moduleSheets, setModuleSheets] = useState<ModuleSheet[]>([]);
+  const [monsterStatblocks, setMonsterStatblocks] = useState<MonsterStatblock[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +165,12 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       setLore(le);
       setModules(m);
       setRelationships(r);
+      // monster_statblocks requires the migration to be run first
+      try {
+        setMonsterStatblocks(await MonsterStatblocksDB.getAll());
+      } catch {
+        // table doesn't exist yet — silently ignore until migration is applied
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
@@ -310,6 +324,17 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setModuleSheets(await ModuleSheetsDB.getByModule(moduleId));
   }, []);
 
+  // ---- Monster Statblocks ----
+  const upsertMonsterStatblock = useCallback(async (m: MonsterStatblockInsert & { id?: string }) => {
+    await MonsterStatblocksDB.upsert(m);
+    setMonsterStatblocks(await MonsterStatblocksDB.getAll());
+  }, []);
+
+  const deleteMonsterStatblock = useCallback(async (id: string) => {
+    await MonsterStatblocksDB.delete(id);
+    setMonsterStatblocks(prev => prev.filter(m => m.id !== id));
+  }, []);
+
   return (
     <CampaignContext.Provider value={{
       overview, setOverview,
@@ -327,6 +352,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       submodules, loadSubmodules, upsertSubmodule, deleteSubmodule,
       scenes, loadScenes, upsertScene, deleteScene,
       moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
+      monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock,
     }}>
       {children}
     </CampaignContext.Provider>

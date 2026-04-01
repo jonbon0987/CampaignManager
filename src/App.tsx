@@ -7,10 +7,11 @@ import Characters from './components/tabs/Characters';
 import LoreLocations from './components/tabs/LoreLocations';
 import Modules from './components/tabs/Modules';
 import HooksIdeas from './components/tabs/HooksIdeas';
+import CreatureStatblocks from './components/tabs/CreatureStatblocks';
 import AIAssistant from './components/AIAssistant';
 import { signInWithGitHub, signInWithEmail, signUpWithEmail, signOut, onAuthStateChange } from './lib/auth';
 
-type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'hooks';
+type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'hooks';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',    label: 'Overview' },
@@ -18,6 +19,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'characters',  label: 'Characters' },
   { id: 'lore',        label: 'Lore & Locations' },
   { id: 'modules',     label: 'Modules' },
+  { id: 'creatures',   label: 'Creature Sheets' },
   { id: 'hooks',       label: 'Hooks & Ideas' },
 ];
 
@@ -116,6 +118,7 @@ function AppInner({ user }: { user: User }) {
               {activeTab === 'characters'  && <Characters />}
               {activeTab === 'lore'        && <LoreLocations />}
               {activeTab === 'modules'     && <Modules />}
+              {activeTab === 'creatures'   && <CreatureStatblocks />}
               {activeTab === 'hooks'       && <HooksIdeas />}
             </>
           )}

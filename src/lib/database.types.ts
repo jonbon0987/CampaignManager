@@ -154,6 +154,20 @@ export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 
 export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
 
+export interface MonsterStatblock {
+  id: string;
+  user_id: string;
+  name: string;
+  creature_type: string | null;
+  challenge_rating: string | null;
+  content: string | null;
+  dm_notes: string | null;
+  tags: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Submodule {
   id: string;
   user_id: string;
@@ -164,6 +178,7 @@ export interface Submodule {
   content: string | null;
   dm_notes: string | null;
   sort_order: number;
+  linked_monster_ids: string | null;  // JSON array of MonsterStatblock UUIDs
   created_at: string;
   updated_at: string;
 }
@@ -177,6 +192,7 @@ export interface Scene {
   content: string | null;
   dm_notes: string | null;
   sort_order: number;
+  linked_monster_ids: string | null;  // JSON array of MonsterStatblock UUIDs
   created_at: string;
   updated_at: string;
 }
@@ -192,6 +208,7 @@ export interface ModuleSheet {
   created_at: string;
   updated_at: string;
 }
+export type MonsterStatblockInsert = Omit<MonsterStatblock, "id" | "user_id" | "created_at" | "updated_at">;
 export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
 export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
 export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
@@ -270,6 +287,12 @@ export interface Database {
         Row: ModuleSheet;
         Insert: ModuleSheetInsert & { user_id: string };
         Update: Partial<ModuleSheetInsert>;
+        Relationships: [];
+      };
+      monster_statblocks: {
+        Row: MonsterStatblock;
+        Insert: MonsterStatblockInsert & { user_id: string };
+        Update: Partial<MonsterStatblockInsert>;
         Relationships: [];
       };
     };
