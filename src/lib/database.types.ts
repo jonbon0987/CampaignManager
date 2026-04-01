@@ -123,6 +123,24 @@ export interface Module {
   updated_at: string;
 }
 
+export type RelationshipType = 'ally' | 'rival' | 'foe' | 'neutral';
+export type CharacterKind = 'pc' | 'npc';
+
+export interface CharacterRelationship {
+  id: string;
+  user_id: string;
+  from_id: string;                     // UUID of the source character
+  from_kind: CharacterKind;            // 'pc' | 'npc'
+  to_id: string;                       // UUID of the target character
+  to_kind: CharacterKind;              // 'pc' | 'npc'
+  relationship_type: RelationshipType; // 'ally' | 'rival' | 'foe' | 'neutral'
+  label: string | null;                // optional short description on the edge
+  created_at: string;
+  updated_at: string;
+}
+
+export type CharacterRelationshipInsert = Omit<CharacterRelationship, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 // --------------- Insert shapes (omit server-set fields) ---------------
 
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
@@ -178,6 +196,11 @@ export interface Database {
         Row: Module;
         Insert: ModuleInsert & { user_id: string };
         Update: Partial<ModuleInsert>;
+      };
+      character_relationships: {
+        Row: CharacterRelationship;
+        Insert: CharacterRelationshipInsert & { user_id: string };
+        Update: Partial<CharacterRelationshipInsert>;
       };
     };
   };

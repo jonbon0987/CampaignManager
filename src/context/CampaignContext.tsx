@@ -11,6 +11,7 @@ import {
   Hooks as HooksDB,
   Lore as LoreDB,
   Modules as ModulesDB,
+  Relationships as RelationshipsDB,
 } from '../lib/db';
 import type {
   Session, SessionInsert,
@@ -21,6 +22,7 @@ import type {
   Hook, HookInsert,
   LoreEntry, LoreEntryInsert,
   Module, ModuleInsert,
+  CharacterRelationship, CharacterRelationshipInsert,
 } from '../lib/database.types';
 
 const defaultOverview: CampaignOverview = {
@@ -44,6 +46,7 @@ interface CampaignContextType {
   hooks: Hook[];
   lore: LoreEntry[];
   modules: Module[];
+  relationships: CharacterRelationship[];
 
   loading: boolean;
   error: string | null;
@@ -79,6 +82,10 @@ interface CampaignContextType {
   // Modules
   upsertModule: (m: ModuleInsert & { id?: string }) => Promise<void>;
   deleteModule: (id: string) => Promise<void>;
+
+  // Character relationships
+  upsertRelationship: (r: CharacterRelationshipInsert & { id?: string }) => Promise<void>;
+  deleteRelationship: (id: string) => Promise<void>;
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -94,6 +101,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [hooks, setHooks] = useState<Hook[]>([]);
   const [lore, setLore] = useState<LoreEntry[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
+  const [relationships, setRelationships] = useState<CharacterRelationship[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +110,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const [s, p, n, l, f, h, le, m] = await Promise.all([
+      const [s, p, n, l, f, h, le, m, r] = await Promise.all([
         SessionsDB.getAll(),
         PlayerCharactersDB.getAll(),
         NPCsDB.getAll(),
@@ -111,6 +119,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
         HooksDB.getAll(),
         LoreDB.getAll(),
         ModulesDB.getAll(),
+        RelationshipsDB.getAll(),
       ]);
       setSessions(s);
       setPCs(p);
@@ -120,6 +129,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       setHooks(h);
       setLore(le);
       setModules(m);
+      setRelationships(r);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
@@ -217,10 +227,21 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setModules(prev => prev.filter(r => r.id !== id));
   }, []);
 
+  // ---- Relationships ----
+  const upsertRelationship = useCallback(async (rel: CharacterRelationshipInsert & { id?: string }) => {
+    await RelationshipsDB.upsert(rel);
+    setRelationships(await RelationshipsDB.getAll());
+  }, []);
+
+  const deleteRelationship = useCallback(async (id: string) => {
+    await RelationshipsDB.delete(id);
+    setRelationships(prev => prev.filter(r => r.id !== id));
+  }, []);
+
   return (
     <CampaignContext.Provider value={{
       overview, setOverview,
-      sessions, pcs, npcs, locations, factions, hooks, lore, modules,
+      sessions, pcs, npcs, locations, factions, hooks, lore, modules, relationships,
       loading, error,
       upsertSession, deleteSession,
       upsertPC, deletePC,
@@ -230,6 +251,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       upsertHook, deleteHook,
       upsertLore, deleteLore,
       upsertModule, deleteModule,
+      upsertRelationship, deleteRelationship,
     }}>
       {children}
     </CampaignContext.Provider>

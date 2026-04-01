@@ -8,9 +8,10 @@ import NPCs from './components/tabs/NPCs';
 import LoreLocations from './components/tabs/LoreLocations';
 import Modules from './components/tabs/Modules';
 import HooksIdeas from './components/tabs/HooksIdeas';
+import CharacterWeb from './components/tabs/CharacterWeb';
 import { signInWithGitHub, signInWithEmail, signUpWithEmail, signOut, onAuthStateChange } from './lib/auth';
 
-type Tab = 'overview' | 'sessions' | 'pcs' | 'npcs' | 'lore' | 'modules' | 'hooks';
+type Tab = 'overview' | 'sessions' | 'pcs' | 'npcs' | 'lore' | 'modules' | 'hooks' | 'web';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',  label: 'Overview' },
@@ -20,6 +21,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'lore',      label: 'Lore & Locations' },
   { id: 'modules',   label: 'Modules' },
   { id: 'hooks',     label: 'Hooks & Ideas' },
+  { id: 'web',       label: 'Character Web' },
 ];
 
 function AppInner({ user }: { user: User }) {
@@ -29,7 +31,7 @@ function AppInner({ user }: { user: User }) {
   const campaignTitle = overview.title || 'Campaign Manager';
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}>
+    <div className="h-screen flex flex-col" style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}>
       {/* Header */}
       <header
         className="border-b px-6 py-4"
@@ -93,8 +95,8 @@ function AppInner({ user }: { user: User }) {
       </nav>
 
       {/* Content */}
-      <main className="flex-1 p-6">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 p-6 overflow-hidden flex flex-col min-h-0">
+        <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
           {error && (
             <div className="mb-4 px-4 py-3 rounded text-sm" style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
               Failed to load data: {error}
@@ -111,6 +113,7 @@ function AppInner({ user }: { user: User }) {
               {activeTab === 'lore'      && <LoreLocations />}
               {activeTab === 'modules'   && <Modules />}
               {activeTab === 'hooks'     && <HooksIdeas />}
+              {activeTab === 'web'       && <CharacterWeb />}
             </>
           )}
         </div>
