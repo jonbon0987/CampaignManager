@@ -221,7 +221,8 @@ export interface Submodule {
   content: string | null;
   dm_notes: string | null;
   sort_order: number;
-  linked_monster_ids: string | null;  // JSON array of MonsterStatblock UUIDs
+  linked_monster_ids: string | null;    // JSON array of MonsterStatblock UUIDs
+  linked_encounter_ids: string | null;  // JSON array of Encounter UUIDs
   created_at: string;
   updated_at: string;
 }
@@ -252,6 +253,39 @@ export interface ModuleSheet {
   updated_at: string;
 }
 export type MonsterStatblockInsert = Omit<MonsterStatblock, "id" | "user_id" | "created_at" | "updated_at">;
+
+// --------------- Encounter Builder ---------------
+
+export interface EncounterCombatant {
+  id: string;              // unique within the encounter
+  source: 'saved' | 'custom';
+  statblock_id: string | null;  // FK to monster_statblocks if source === 'saved'
+  name: string;
+  creature_type: string | null;
+  challenge_rating: string | null;
+  count: number;           // number of this creature in the encounter
+  notes: string | null;
+}
+
+export interface Encounter {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  name: string;
+  description: string | null;
+  environment: string | null;   // dungeon | forest | urban | cave | open | etc.
+  difficulty: string | null;    // easy | medium | hard | deadly
+  party_size: number | null;
+  party_level: number | null;
+  combatants: string | null;    // JSON: EncounterCombatant[]
+  dm_notes: string | null;
+  status: 'draft' | 'ready' | 'completed';
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EncounterInsert = Omit<Encounter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
 export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
 export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
@@ -355,6 +389,12 @@ export interface Database {
         Row: MonsterStatblock;
         Insert: Omit<MonsterStatblock, 'id' | 'created_at' | 'updated_at'> & { id?: string };
         Update: Partial<Omit<MonsterStatblock, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      encounters: {
+        Row: Encounter;
+        Insert: Omit<Encounter, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Encounter, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
     };

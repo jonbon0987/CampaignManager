@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import type { Module, Submodule, Scene, ModuleSheet, MonsterStatblock } from '../../lib/database.types';
+import type { Module, Submodule, Scene, ModuleSheet, MonsterStatblock, Encounter } from '../../lib/database.types';
 
 // --------------- Form types ---------------
 
@@ -136,6 +136,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     scenes, loadScenes, upsertScene, deleteScene,
     moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
     monsterStatblocks,
+    encounters,
   } = useCampaign();
 
   const [activeSection, setActiveSection] = useState<'submodules' | 'sheets' | 'overview'>('submodules');
@@ -173,6 +174,10 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     { kind: 'submodule'; item: Submodule } | { kind: 'scene'; item: Scene } | null
   >(null);
   const [viewingLinkedCreature, setViewingLinkedCreature] = useState<MonsterStatblock | null>(null);
+
+  // Encounter picker
+  const [encounterPickerSubId, setEncounterPickerSubId] = useState<string | null>(null);
+  const [viewingLinkedEncounter, setViewingLinkedEncounter] = useState<Encounter | null>(null);
 
   useEffect(() => {
     loadSubmodules(mod.id);
@@ -383,6 +388,23 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
       const ids = parseLinkedIds(scene.linked_monster_ids).filter(id => id !== creatureId);
       await upsertScene({ ...scene, linked_monster_ids: JSON.stringify(ids) });
     }
+  };
+
+  // ---- Encounter linking ----
+
+  const handleLinkEncounter = async (encounterId: string) => {
+    if (!encounterPickerSubId) return;
+    const sub = submodules.find(s => s.id === encounterPickerSubId);
+    if (!sub) return;
+    const ids = parseLinkedIds(sub.linked_encounter_ids);
+    if (ids.includes(encounterId)) { setEncounterPickerSubId(null); return; }
+    await upsertSubmodule({ ...sub, linked_encounter_ids: JSON.stringify([...ids, encounterId]) });
+    setEncounterPickerSubId(null);
+  };
+
+  const handleUnlinkEncounter = async (sub: Submodule, encounterId: string) => {
+    const ids = parseLinkedIds(sub.linked_encounter_ids).filter(id => id !== encounterId);
+    await upsertSubmodule({ ...sub, linked_encounter_ids: JSON.stringify(ids) });
   };
 
   // ----------------------------------------------------------------
@@ -614,6 +636,68 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                                         </button>
                                         <button
                                           onClick={() => handleUnlinkCreature({ kind: 'submodule', item: sub }, m.id)}
+                                          className="text-xs"
+                                          style={{ color: '#6a6490' }}
+                                          title="Unlink"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Linked Encounters */}
+                        {(() => {
+                          const linkedIds = parseLinkedIds(sub.linked_encounter_ids);
+                          const linked = linkedIds
+                            .map(id => encounters.find(e => e.id === id))
+                            .filter((e): e is Encounter => !!e);
+                          return (
+                            <div className="px-4 pt-1 pb-1">
+                              <div className="flex justify-between items-center mb-2">
+                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Encounters</span>
+                                <button
+                                  onClick={() => setEncounterPickerSubId(sub.id)}
+                                  className="text-xs px-2.5 py-1 rounded"
+                                  style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', border: '1px solid #2a4a7a' }}
+                                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#2a3a5a')}
+                                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1a2a3a')}
+                                >
+                                  + Link Encounter
+                                </button>
+                              </div>
+                              {linked.length === 0 ? (
+                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No encounters linked.</p>
+                              ) : (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {linked.map(enc => {
+                                    const diffColors: Record<string, { bg: string; text: string; border: string }> = {
+                                      easy:   { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
+                                      medium: { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
+                                      hard:   { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
+                                      deadly: { bg: '#3a1010', text: '#e04040', border: '#7a2020' },
+                                    };
+                                    const dc = diffColors[enc.difficulty ?? ''] ?? { bg: '#1a1828', text: '#9990b0', border: '#3a3660' };
+                                    return (
+                                      <div
+                                        key={enc.id}
+                                        className="flex items-center gap-1.5 rounded border px-2 py-1"
+                                        style={{ backgroundColor: dc.bg, borderColor: dc.border }}
+                                      >
+                                        <button
+                                          onClick={() => setViewingLinkedEncounter(enc)}
+                                          className="text-xs font-medium"
+                                          style={{ color: dc.text }}
+                                        >
+                                          {enc.name}{enc.difficulty ? ` (${enc.difficulty})` : ''}
+                                        </button>
+                                        <button
+                                          onClick={() => handleUnlinkEncounter(sub, enc.id)}
                                           className="text-xs"
                                           style={{ color: '#6a6490' }}
                                           title="Unlink"
@@ -1442,6 +1526,127 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                 Edit
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ================================================================
+          ENCOUNTER PICKER MODAL
+      ================================================================ */}
+      {encounterPickerSubId && (
+        <Modal
+          isOpen={!!encounterPickerSubId}
+          onClose={() => setEncounterPickerSubId(null)}
+          title="Link Encounter"
+        >
+          <div className="space-y-3">
+            <p className="text-xs" style={{ color: '#9990b0' }}>
+              Select an encounter to link to this submodule.
+              Linked encounters are shown inline when viewing it.
+            </p>
+            {encounters.length === 0 ? (
+              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
+                No encounters found. Create some in the Encounter Builder tab first.
+              </p>
+            ) : (
+              (() => {
+                const sub = submodules.find(s => s.id === encounterPickerSubId);
+                const existingIds = parseLinkedIds(sub?.linked_encounter_ids);
+                return encounters.map(enc => {
+                  const alreadyLinked = existingIds.includes(enc.id);
+                  const diffColors: Record<string, { bg: string; text: string; border: string }> = {
+                    easy:   { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
+                    medium: { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
+                    hard:   { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
+                    deadly: { bg: '#3a1010', text: '#e04040', border: '#7a2020' },
+                  };
+                  const dc = diffColors[enc.difficulty ?? ''] ?? { bg: '#1a1828', text: '#9990b0', border: '#3a3660' };
+                  return (
+                    <button
+                      key={enc.id}
+                      onClick={() => !alreadyLinked && handleLinkEncounter(enc.id)}
+                      disabled={alreadyLinked}
+                      className="w-full text-left rounded border p-3 flex items-center justify-between gap-3"
+                      style={{
+                        backgroundColor: alreadyLinked ? '#1a1828' : dc.bg,
+                        borderColor: alreadyLinked ? '#3a3660' : dc.border,
+                        opacity: alreadyLinked ? 0.5 : 1,
+                        cursor: alreadyLinked ? 'default' : 'pointer',
+                      }}
+                    >
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium block" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                          {enc.name}
+                        </span>
+                        {(enc.difficulty || enc.environment) && (
+                          <span className="text-xs" style={{ color: dc.text }}>
+                            {[enc.difficulty, enc.environment].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
+                      </div>
+                      {alreadyLinked && (
+                        <span className="text-xs shrink-0" style={{ color: '#6a6490' }}>linked</span>
+                      )}
+                    </button>
+                  );
+                });
+              })()
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ================================================================
+          LINKED ENCOUNTER VIEW MODAL
+      ================================================================ */}
+      {viewingLinkedEncounter && (
+        <Modal
+          isOpen={!!viewingLinkedEncounter}
+          onClose={() => setViewingLinkedEncounter(null)}
+          title={viewingLinkedEncounter.name}
+          wide
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              {viewingLinkedEncounter.difficulty && (
+                <span className="text-xs px-2 py-0.5 rounded border capitalize" style={{
+                  backgroundColor: { easy: '#1a2a1a', medium: '#2a2a1a', hard: '#3a2010', deadly: '#3a1010' }[viewingLinkedEncounter.difficulty] ?? '#1a1828',
+                  color: { easy: '#6ab87a', medium: '#d0c060', hard: '#e09050', deadly: '#e04040' }[viewingLinkedEncounter.difficulty] ?? '#9990b0',
+                  borderColor: { easy: '#2a5a2a', medium: '#6a6020', hard: '#7a4a20', deadly: '#7a2020' }[viewingLinkedEncounter.difficulty] ?? '#3a3660',
+                }}>
+                  {viewingLinkedEncounter.difficulty}
+                </span>
+              )}
+              {viewingLinkedEncounter.environment && (
+                <span className="text-xs px-2 py-0.5 rounded capitalize" style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}>
+                  {viewingLinkedEncounter.environment}
+                </span>
+              )}
+              {(viewingLinkedEncounter.party_size || viewingLinkedEncounter.party_level) && (
+                <span className="text-xs" style={{ color: '#6a6490' }}>
+                  {[
+                    viewingLinkedEncounter.party_size ? `${viewingLinkedEncounter.party_size} players` : null,
+                    viewingLinkedEncounter.party_level ? `level ${viewingLinkedEncounter.party_level}` : null,
+                  ].filter(Boolean).join(', ')}
+                </span>
+              )}
+            </div>
+            {viewingLinkedEncounter.description && (
+              <div>
+                <div style={sectionLabel}>Description</div>
+                <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }}>
+                  {viewingLinkedEncounter.description}
+                </p>
+              </div>
+            )}
+            {viewingLinkedEncounter.dm_notes && (
+              <div>
+                <div style={sectionLabel}>DM Notes</div>
+                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
+                  {viewingLinkedEncounter.dm_notes}
+                </p>
+              </div>
+            )}
           </div>
         </Modal>
       )}

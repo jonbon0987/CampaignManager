@@ -19,6 +19,7 @@ import {
   Scenes as ScenesDB,
   ModuleSheets as ModuleSheetsDB,
   MonsterStatblocks as MonsterStatblocksDB,
+  Encounters as EncountersDB,
 } from '../lib/db';
 import type {
   Campaign, CampaignInsert,
@@ -35,6 +36,7 @@ import type {
   Scene, SceneInsert,
   ModuleSheet, ModuleSheetInsert,
   MonsterStatblock, MonsterStatblockInsert,
+  Encounter, EncounterInsert,
 } from '../lib/database.types';
 
 interface CampaignContextType {
@@ -131,8 +133,13 @@ interface CampaignContextType {
 
   // Monster Statblocks
   monsterStatblocks: MonsterStatblock[];
-  upsertMonsterStatblock: (m: Omit<MonsterStatblockInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  upsertMonsterStatblock: (m: Omit<MonsterStatblockInsert, 'campaign_id'> & { id?: string }) => Promise<MonsterStatblock>;
   deleteMonsterStatblock: (id: string) => Promise<void>;
+
+  // Encounters
+  encounters: Encounter[];
+  upsertEncounter: (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  deleteEncounter: (id: string) => Promise<void>;
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -166,6 +173,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [moduleSheets, setModuleSheets] = useState<ModuleSheet[]>([]);
   const [monsterStatblocks, setMonsterStatblocks] = useState<MonsterStatblock[]>([]);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -261,9 +269,14 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       setLore(le);
       setModules(m);
       setRelationships(r);
-      // monster_statblocks requires the migration to be run first
+      // monster_statblocks and encounters require migrations to be run first
       try {
         setMonsterStatblocks(await MonsterStatblocksDB.getAll(campaignId));
+      } catch {
+        // table doesn't exist yet — silently ignore until migration is applied
+      }
+      try {
+        setEncounters(await EncountersDB.getAll(campaignId));
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
       }
@@ -560,11 +573,25 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setModuleSheets(await ModuleSheetsDB.getByModule(moduleId));
   }, []);
 
-  // ---- Monster Statblocks ----
-  const upsertMonsterStatblock = useCallback(async (m: Omit<MonsterStatblockInsert, 'campaign_id'> & { id?: string }) => {
+  // ---- Encounters ----
+  const upsertEncounter = useCallback(async (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => {
     if (!selectedCampaignId) return;
-    await MonsterStatblocksDB.upsert({ ...m, campaign_id: selectedCampaignId });
+    await EncountersDB.upsert({ ...e, campaign_id: selectedCampaignId });
+    setEncounters(await EncountersDB.getAll(selectedCampaignId));
+  }, [selectedCampaignId]);
+
+  const deleteEncounter = useCallback(async (id: string) => {
+    if (!selectedCampaignId) return;
+    await EncountersDB.delete(id);
+    setEncounters(prev => prev.filter(e => e.id !== id));
+  }, [selectedCampaignId]);
+
+  // ---- Monster Statblocks ----
+  const upsertMonsterStatblock = useCallback(async (m: Omit<MonsterStatblockInsert, 'campaign_id'> & { id?: string }): Promise<MonsterStatblock> => {
+    if (!selectedCampaignId) throw new Error('No campaign selected');
+    const sb = await MonsterStatblocksDB.upsert({ ...m, campaign_id: selectedCampaignId });
     setMonsterStatblocks(await MonsterStatblocksDB.getAll(selectedCampaignId));
+    return sb;
   }, [selectedCampaignId]);
 
   const deleteMonsterStatblock = useCallback(async (id: string) => {
@@ -595,6 +622,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       scenes, loadScenes, upsertScene, deleteScene,
       moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
       monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock,
+      encounters, upsertEncounter, deleteEncounter,
     }}>
       {children}
     </CampaignContext.Provider>
