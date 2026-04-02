@@ -30,15 +30,28 @@ const statusStyles: Record<NPC['status'], { bg: string; text: string }> = {
   unknown:  { bg: '#2a2a1a', text: '#c9a84c' },
 };
 
+type ViewMode = 'campaign' | 'global';
+
 export default function NPCs() {
-  const { npcs, upsertNPC, deleteNPC } = useCampaign();
+  const {
+    npcs, globalNPCs, linkedNPCIds,
+    upsertNPC, deleteNPC, linkNPCToCampaign, unlinkNPCFromCampaign,
+  } = useCampaign();
+
+  const [viewMode, setViewMode] = useState<ViewMode>('campaign');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingNPC, setEditingNPC] = useState<NPC | null>(null);
   const [form, setForm] = useState<NPCForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [linkSearch, setLinkSearch] = useState('');
 
-  const filtered = npcs.filter(npc => {
+  // In campaign view: show campaign-specific + linked globals (the merged npcs array)
+  // In global view: show all global NPCs
+  const displayList = viewMode === 'campaign' ? npcs : globalNPCs;
+
+  const filtered = displayList.filter(npc => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -47,6 +60,16 @@ export default function NPCs() {
       (npc.description ?? '').toLowerCase().includes(q)
     );
   });
+
+  // Global NPCs not yet linked to this campaign (for the link picker)
+  const unlinkableGlobals = globalNPCs.filter(n => linkedNPCIds.includes(n.id));
+  const linkableGlobals = globalNPCs.filter(
+    n => !linkedNPCIds.includes(n.id) &&
+    (linkSearch
+      ? n.name.toLowerCase().includes(linkSearch.toLowerCase()) ||
+        (n.role ?? '').toLowerCase().includes(linkSearch.toLowerCase())
+      : true)
+  );
 
   const openAdd = () => {
     setEditingNPC(null);
@@ -69,17 +92,22 @@ export default function NPCs() {
   };
 
   const handleSave = async () => {
+    // When editing an existing NPC, preserve its scope (global or campaign-specific)
+    const scope = editingNPC
+      ? (editingNPC.campaign_id === null ? 'global' : 'campaign')
+      : viewMode;
     await upsertNPC({
       ...(editingNPC ? { id: editingNPC.id } : {}),
       ...form,
       dm_notes: editingNPC?.dm_notes ?? null,
       location: editingNPC?.location ?? null,
       first_session: editingNPC?.first_session ?? null,
-    });
+    }, scope);
     setModalOpen(false);
   };
 
   const handleToggleMet = async (npc: NPC) => {
+    const scope = npc.campaign_id === null ? 'global' : 'campaign';
     await upsertNPC({
       id: npc.id,
       name: npc.name,
@@ -92,7 +120,7 @@ export default function NPCs() {
       location: npc.location,
       first_session: npc.first_session,
       met_by_pcs: !npc.met_by_pcs,
-    });
+    }, scope);
   };
 
   const handleDelete = async (id: string) => {
@@ -102,22 +130,73 @@ export default function NPCs() {
     }
   };
 
+  const handleLink = async (npcId: string) => {
+    await linkNPCToCampaign(npcId);
+  };
+
+  const handleUnlink = async (npcId: string) => {
+    if (confirm('Remove this NPC from the current campaign? It will remain in the Global Pool.')) {
+      await unlinkNPCFromCampaign(npcId);
+    }
+  };
+
+  const subtabStyle = (active: boolean) => ({
+    padding: '6px 16px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: active ? '600' : '400',
+    cursor: 'pointer',
+    border: 'none',
+    backgroundColor: active ? '#2a2840' : 'transparent',
+    color: active ? '#c9a84c' : '#9990b0',
+    transition: 'all 0.15s',
+  } as const);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
           Non-Player Characters
         </h2>
-        <button
-          onClick={openAdd}
-          className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-          style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-        >
-          + Add NPC
+        <div className="flex items-center gap-2">
+          {viewMode === 'campaign' && (
+            <button
+              onClick={() => setLinkPickerOpen(true)}
+              className="px-3 py-2 rounded text-sm transition-colors"
+              style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#c9a84c')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#9990b0')}
+            >
+              Link Global NPC
+            </button>
+          )}
+          <button
+            onClick={openAdd}
+            className="px-4 py-2 rounded text-sm font-semibold transition-colors"
+            style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
+          >
+            + Add NPC
+          </button>
+        </div>
+      </div>
+
+      {/* View toggle */}
+      <div className="flex items-center gap-1 mb-4 p-1 rounded-lg inline-flex" style={{ backgroundColor: '#12111e' }}>
+        <button style={subtabStyle(viewMode === 'campaign')} onClick={() => setViewMode('campaign')}>
+          This Campaign
+        </button>
+        <button style={subtabStyle(viewMode === 'global')} onClick={() => setViewMode('global')}>
+          Global Pool
         </button>
       </div>
+
+      {viewMode === 'global' && (
+        <p className="text-xs mb-4" style={{ color: '#6a6490' }}>
+          Global NPCs are world-level characters available across all campaigns. Use "Add to Campaign" to include one in the current campaign.
+        </p>
+      )}
 
       <div className="mb-4">
         <input
@@ -131,12 +210,18 @@ export default function NPCs() {
 
       {filtered.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#6a6490' }}>
-          {search ? 'No NPCs match your search.' : 'No NPCs yet. Add your first NPC!'}
+          {search
+            ? 'No NPCs match your search.'
+            : viewMode === 'campaign'
+              ? 'No NPCs in this campaign yet. Add one or link from the Global Pool.'
+              : 'No global NPCs yet. Add your first global NPC!'}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(npc => {
             const ss = statusStyles[npc.status];
+            const isGlobal = npc.campaign_id === null;
+            const isLinked = isGlobal && linkedNPCIds.includes(npc.id);
             return (
               <div
                 key={npc.id}
@@ -149,9 +234,19 @@ export default function NPCs() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0 pr-2">
-                      <h3 className="font-bold text-lg" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
-                        {npc.name || 'Unnamed NPC'}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-lg" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                          {npc.name || 'Unnamed NPC'}
+                        </h3>
+                        {isGlobal && (
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: '#1a2a3a', color: '#4ab8d4', border: '1px solid #2a4a6a', flexShrink: 0 }}
+                          >
+                            Global
+                          </span>
+                        )}
+                      </div>
                       {npc.role && (
                         <div className="text-sm mt-0.5" style={{ color: '#9990b0' }}>{npc.role}</div>
                       )}
@@ -210,13 +305,41 @@ export default function NPCs() {
                   >
                     Edit
                   </button>
-                  <button
-                    onClick={() => handleDelete(npc.id)}
-                    className="text-xs px-2 py-1 rounded transition-colors"
-                    style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                  >
-                    Delete
-                  </button>
+                  {/* Global NPCs in campaign view: show unlink instead of delete */}
+                  {viewMode === 'campaign' && isLinked ? (
+                    <button
+                      onClick={() => handleUnlink(npc.id)}
+                      className="text-xs px-2 py-1 rounded transition-colors"
+                      style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+                      title="Remove from this campaign (keeps in Global Pool)"
+                    >
+                      Unlink
+                    </button>
+                  ) : viewMode === 'global' && !isLinked ? (
+                    <button
+                      onClick={() => handleLink(npc.id)}
+                      className="text-xs px-2 py-1 rounded transition-colors"
+                      style={{ backgroundColor: '#1a2a1a', color: '#4caf7d', border: '1px solid #2a4a2a' }}
+                    >
+                      Add to Campaign
+                    </button>
+                  ) : viewMode === 'global' && isLinked ? (
+                    <button
+                      onClick={() => handleUnlink(npc.id)}
+                      className="text-xs px-2 py-1 rounded transition-colors"
+                      style={{ backgroundColor: '#1a2e3a', color: '#4ab8d4', border: '1px solid #2a4a6a' }}
+                    >
+                      In Campaign ✓
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleDelete(npc.id)}
+                      className="text-xs px-2 py-1 rounded transition-colors"
+                      style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -224,13 +347,75 @@ export default function NPCs() {
         </div>
       )}
 
+      {/* Link Global NPC picker modal */}
+      <Modal
+        isOpen={linkPickerOpen}
+        onClose={() => { setLinkPickerOpen(false); setLinkSearch(''); }}
+        title="Link Global NPC to Campaign"
+        onSave={undefined}
+        wide
+      >
+        <p className="text-sm mb-3" style={{ color: '#9990b0' }}>
+          Select global NPCs to add to this campaign.
+          {unlinkableGlobals.length > 0 && ` (${unlinkableGlobals.length} already linked)`}
+        </p>
+        <input
+          type="text"
+          value={linkSearch}
+          onChange={e => setLinkSearch(e.target.value)}
+          placeholder="Search global NPCs..."
+          style={{ ...inputStyle, marginBottom: '12px' }}
+        />
+        {linkableGlobals.length === 0 ? (
+          <div className="text-center py-8" style={{ color: '#6a6490' }}>
+            {linkSearch ? 'No matches.' : 'All global NPCs are already linked to this campaign.'}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2" style={{ maxHeight: '320px', overflowY: 'auto' }}>
+            {linkableGlobals.map(npc => {
+              const ss = statusStyles[npc.status];
+              return (
+                <div
+                  key={npc.id}
+                  className="flex items-center justify-between p-3 rounded-lg border"
+                  style={{ backgroundColor: '#12111e', borderColor: '#3a3660' }}
+                >
+                  <div>
+                    <span className="font-semibold text-sm" style={{ color: '#e8d5b0' }}>{npc.name}</span>
+                    {npc.role && <span className="text-xs ml-2" style={{ color: '#9990b0' }}>{npc.role}</span>}
+                    <span className="text-xs ml-2 px-1.5 py-0.5 rounded capitalize" style={{ backgroundColor: ss.bg, color: ss.text }}>
+                      {npc.status}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleLink(npc.id)}
+                    className="text-xs px-3 py-1 rounded transition-colors"
+                    style={{ backgroundColor: '#1a3a1a', color: '#4caf7d', border: '1px solid #2a4a2a' }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
+
+      {/* Add / Edit NPC modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingNPC ? 'Edit NPC' : 'New NPC'}
+        title={editingNPC ? 'Edit NPC' : (viewMode === 'global' ? 'New Global NPC' : 'New NPC')}
         onSave={handleSave}
         wide
       >
+        {!editingNPC && (
+          <p className="text-xs mb-4" style={{ color: '#6a6490' }}>
+            {viewMode === 'global'
+              ? 'Creating a Global NPC — available across all campaigns.'
+              : 'Creating a campaign-specific NPC — only visible in this campaign.'}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Name">
             <input

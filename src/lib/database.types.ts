@@ -8,11 +8,46 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
+// --------------- Campaign ---------------
+
+export interface Campaign {
+  id: string;
+  user_id: string;
+  name: string;            // Short display name for the campaign list
+  description: string | null;
+  // Overview fields (moved from localStorage)
+  title: string | null;
+  plot_summary: string | null;
+  major_characters: string | null;
+  world_info: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
+// Join tables for linking global NPCs/Locations to campaigns
+export interface CampaignNPC {
+  campaign_id: string;
+  npc_id: string;
+  user_id: string;
+  added_at: string;
+}
+
+export interface CampaignLocation {
+  campaign_id: string;
+  location_id: string;
+  user_id: string;
+  added_at: string;
+}
+
 // --------------- Row shapes (what comes back from SELECT) ---------------
 
 export interface Session {
   id: string;
   user_id: string;
+  campaign_id: string;
   session_number: number;
   session_date: string | null;       // ISO date string
   summary: string | null;
@@ -27,6 +62,7 @@ export interface Session {
 export interface PlayerCharacter {
   id: string;
   user_id: string;
+  campaign_id: string;
   character_name: string;
   player_name: string | null;
   race: string | null;
@@ -43,6 +79,7 @@ export interface PlayerCharacter {
 export interface NPC {
   id: string;
   user_id: string;
+  campaign_id: string | null;        // NULL = global pool, non-null = campaign-specific
   name: string;
   role: string | null;
   affiliation: string | null;
@@ -60,6 +97,7 @@ export interface NPC {
 export interface Location {
   id: string;
   user_id: string;
+  campaign_id: string | null;        // NULL = global pool, non-null = campaign-specific
   name: string;
   region: string | null;
   location_type: string | null;      // city | town | dungeon | faction_hq | landmark
@@ -75,6 +113,7 @@ export interface Location {
 export interface Faction {
   id: string;
   user_id: string;
+  campaign_id: string;
   name: string;
   faction_type: string | null;
   overview: string | null;
@@ -88,6 +127,7 @@ export interface Faction {
 export interface Hook {
   id: string;
   user_id: string;
+  campaign_id: string;
   title: string;
   category: string | null;           // main_plot | side_quest | character_arc | faction
   description: string | null;
@@ -112,6 +152,7 @@ export interface LoreEntry {
 export interface Module {
   id: string;
   user_id: string;
+  campaign_id: string;
   chapter: string | null;
   title: string;
   synopsis: string | null;
@@ -130,6 +171,7 @@ export type CharacterKind = 'pc' | 'npc';
 export interface CharacterRelationship {
   id: string;
   user_id: string;
+  campaign_id: string;
   from_id: string;                     // UUID of the source character
   from_kind: CharacterKind;            // 'pc' | 'npc'
   to_id: string;                       // UUID of the target character
@@ -157,6 +199,7 @@ export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updat
 export interface MonsterStatblock {
   id: string;
   user_id: string;
+  campaign_id: string;
   name: string;
   creature_type: string | null;
   challenge_rating: string | null;
@@ -212,87 +255,106 @@ export type MonsterStatblockInsert = Omit<MonsterStatblock, "id" | "user_id" | "
 export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
 export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
 export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
+
 // --------------- Supabase Database type (used by createClient<Database>) ---------------
 
 export interface Database {
   public: {
     Tables: {
+      campaigns: {
+        Row: Campaign;
+        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Campaign, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      campaign_npcs: {
+        Row: CampaignNPC;
+        Insert: Omit<CampaignNPC, 'added_at'> & { added_at?: string };
+        Update: Partial<CampaignNPC>;
+        Relationships: [];
+      };
+      campaign_locations: {
+        Row: CampaignLocation;
+        Insert: Omit<CampaignLocation, 'added_at'> & { added_at?: string };
+        Update: Partial<CampaignLocation>;
+        Relationships: [];
+      };
       sessions: {
         Row: Session;
-        Insert: SessionInsert & { user_id: string };
-        Update: Partial<SessionInsert>;
+        Insert: Omit<Session, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Session, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       player_characters: {
         Row: PlayerCharacter;
-        Insert: PlayerCharacterInsert & { user_id: string };
-        Update: Partial<PlayerCharacterInsert>;
+        Insert: Omit<PlayerCharacter, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<PlayerCharacter, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       npcs: {
         Row: NPC;
-        Insert: NPCInsert & { user_id: string };
-        Update: Partial<NPCInsert>;
+        Insert: Omit<NPC, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<NPC, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       locations: {
         Row: Location;
-        Insert: LocationInsert & { user_id: string };
-        Update: Partial<LocationInsert>;
+        Insert: Omit<Location, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Location, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       factions: {
         Row: Faction;
-        Insert: FactionInsert & { user_id: string };
-        Update: Partial<FactionInsert>;
+        Insert: Omit<Faction, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Faction, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       hooks: {
         Row: Hook;
-        Insert: HookInsert & { user_id: string };
-        Update: Partial<HookInsert>;
+        Insert: Omit<Hook, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Hook, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       lore_entries: {
         Row: LoreEntry;
-        Insert: LoreEntryInsert & { user_id: string };
-        Update: Partial<LoreEntryInsert>;
+        Insert: Omit<LoreEntry, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<LoreEntry, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       modules: {
         Row: Module;
-        Insert: ModuleInsert & { user_id: string };
-        Update: Partial<ModuleInsert>;
+        Insert: Omit<Module, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Module, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       character_relationships: {
         Row: CharacterRelationship;
-        Insert: CharacterRelationshipInsert & { user_id: string };
-        Update: Partial<CharacterRelationshipInsert>;
+        Insert: Omit<CharacterRelationship, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<CharacterRelationship, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       submodules: {
         Row: Submodule;
-        Insert: SubmoduleInsert & { user_id: string };
-        Update: Partial<SubmoduleInsert>;
+        Insert: Omit<Submodule, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Submodule, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       scenes: {
         Row: Scene;
-        Insert: SceneInsert & { user_id: string };
-        Update: Partial<SceneInsert>;
+        Insert: Omit<Scene, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Scene, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       module_sheets: {
         Row: ModuleSheet;
-        Insert: ModuleSheetInsert & { user_id: string };
-        Update: Partial<ModuleSheetInsert>;
+        Insert: Omit<ModuleSheet, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<ModuleSheet, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       monster_statblocks: {
         Row: MonsterStatblock;
-        Insert: MonsterStatblockInsert & { user_id: string };
-        Update: Partial<MonsterStatblockInsert>;
+        Insert: Omit<MonsterStatblock, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<MonsterStatblock, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
     };

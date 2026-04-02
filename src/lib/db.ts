@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase';
 import type {
+  Campaign, CampaignInsert,
   Session, SessionInsert,
   PlayerCharacter, PlayerCharacterInsert,
   NPC, NPCInsert,
@@ -31,23 +32,120 @@ async function getUserId(): Promise<string> {
 }
 
 // ============================================================
+// CAMPAIGNS
+// ============================================================
+
+export const Campaigns = {
+  async getAll(): Promise<Campaign[]> {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(campaign: CampaignInsert & { id?: string }): Promise<Campaign> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('campaigns')
+      .upsert({ ...campaign, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('campaigns').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// CAMPAIGN NPC LINKS (global NPC ↔ campaign join table)
+// ============================================================
+
+export const CampaignNPCs = {
+  async getLinkedNPCIds(campaignId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('campaign_npcs')
+      .select('npc_id')
+      .eq('campaign_id', campaignId);
+    if (error) throw error;
+    return (data ?? []).map(row => row.npc_id);
+  },
+
+  async link(campaignId: string, npcId: string): Promise<void> {
+    const user_id = await getUserId();
+    const { error } = await supabase
+      .from('campaign_npcs')
+      .upsert({ campaign_id: campaignId, npc_id: npcId, user_id });
+    if (error) throw error;
+  },
+
+  async unlink(campaignId: string, npcId: string): Promise<void> {
+    const { error } = await supabase
+      .from('campaign_npcs')
+      .delete()
+      .eq('campaign_id', campaignId)
+      .eq('npc_id', npcId);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// CAMPAIGN LOCATION LINKS (global Location ↔ campaign join table)
+// ============================================================
+
+export const CampaignLocations = {
+  async getLinkedLocationIds(campaignId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('campaign_locations')
+      .select('location_id')
+      .eq('campaign_id', campaignId);
+    if (error) throw error;
+    return (data ?? []).map(row => row.location_id);
+  },
+
+  async link(campaignId: string, locationId: string): Promise<void> {
+    const user_id = await getUserId();
+    const { error } = await supabase
+      .from('campaign_locations')
+      .upsert({ campaign_id: campaignId, location_id: locationId, user_id });
+    if (error) throw error;
+  },
+
+  async unlink(campaignId: string, locationId: string): Promise<void> {
+    const { error } = await supabase
+      .from('campaign_locations')
+      .delete()
+      .eq('campaign_id', campaignId)
+      .eq('location_id', locationId);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
 // SESSIONS
 // ============================================================
 
 export const Sessions = {
-  async getAll(): Promise<Session[]> {
+  async getAll(campaignId: string): Promise<Session[]> {
     const { data, error } = await supabase
       .from('sessions')
       .select('*')
+      .eq('campaign_id', campaignId)
       .order('session_number', { ascending: true });
     if (error) throw error;
     return data;
   },
 
-  async getByNumber(sessionNumber: number): Promise<Session | null> {
+  async getByNumber(sessionNumber: number, campaignId: string): Promise<Session | null> {
     const { data, error } = await supabase
       .from('sessions')
       .select('*')
+      .eq('campaign_id', campaignId)
       .eq('session_number', sessionNumber)
       .maybeSingle();
     if (error) throw error;
@@ -58,7 +156,7 @@ export const Sessions = {
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('sessions')
-      .upsert({ ...session, user_id }, { onConflict: 'user_id,session_number' })
+      .upsert({ ...session, user_id }, { onConflict: 'campaign_id,session_number' })
       .select()
       .single();
     if (error) throw error;
@@ -76,19 +174,21 @@ export const Sessions = {
 // ============================================================
 
 export const PlayerCharacters = {
-  async getAll(): Promise<PlayerCharacter[]> {
+  async getAll(campaignId: string): Promise<PlayerCharacter[]> {
     const { data, error } = await supabase
       .from('player_characters')
       .select('*')
+      .eq('campaign_id', campaignId)
       .order('character_name');
     if (error) throw error;
     return data;
   },
 
-  async getActive(): Promise<PlayerCharacter[]> {
+  async getActive(campaignId: string): Promise<PlayerCharacter[]> {
     const { data, error } = await supabase
       .from('player_characters')
       .select('*')
+      .eq('campaign_id', campaignId)
       .eq('is_active', true)
       .order('character_name');
     if (error) throw error;
@@ -117,10 +217,23 @@ export const PlayerCharacters = {
 // ============================================================
 
 export const NPCs = {
-  async getAll(): Promise<NPC[]> {
+  // Global NPCs (not tied to any campaign)
+  async getGlobal(): Promise<NPC[]> {
     const { data, error } = await supabase
       .from('npcs')
       .select('*')
+      .is('campaign_id', null)
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  // Campaign-specific NPCs (created directly in a campaign)
+  async getByCampaign(campaignId: string): Promise<NPC[]> {
+    const { data, error } = await supabase
+      .from('npcs')
+      .select('*')
+      .eq('campaign_id', campaignId)
       .order('name');
     if (error) throw error;
     return data;
@@ -158,10 +271,23 @@ export const NPCs = {
 // ============================================================
 
 export const Locations = {
-  async getAll(): Promise<Location[]> {
+  // Global locations (not tied to any campaign)
+  async getGlobal(): Promise<Location[]> {
     const { data, error } = await supabase
       .from('locations')
       .select('*')
+      .is('campaign_id', null)
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  // Campaign-specific locations
+  async getByCampaign(campaignId: string): Promise<Location[]> {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('*')
+      .eq('campaign_id', campaignId)
       .order('name');
     if (error) throw error;
     return data;
@@ -189,10 +315,11 @@ export const Locations = {
 // ============================================================
 
 export const Factions = {
-  async getAll(): Promise<Faction[]> {
+  async getAll(campaignId: string): Promise<Faction[]> {
     const { data, error } = await supabase
       .from('factions')
       .select('*')
+      .eq('campaign_id', campaignId)
       .order('name');
     if (error) throw error;
     return data;
@@ -220,19 +347,21 @@ export const Factions = {
 // ============================================================
 
 export const Hooks = {
-  async getAll(): Promise<Hook[]> {
+  async getAll(campaignId: string): Promise<Hook[]> {
     const { data, error } = await supabase
       .from('hooks')
       .select('*')
+      .eq('campaign_id', campaignId)
       .order('last_updated_session', { ascending: false, nullsFirst: false });
     if (error) throw error;
     return data;
   },
 
-  async getActive(): Promise<Hook[]> {
+  async getActive(campaignId: string): Promise<Hook[]> {
     const { data, error } = await supabase
       .from('hooks')
       .select('*')
+      .eq('campaign_id', campaignId)
       .eq('is_active', true)
       .order('last_updated_session', { ascending: false, nullsFirst: false });
     if (error) throw error;
@@ -257,7 +386,7 @@ export const Hooks = {
 };
 
 // ============================================================
-// LORE ENTRIES
+// LORE ENTRIES (global — not campaign-scoped)
 // ============================================================
 
 export const Lore = {
@@ -302,19 +431,21 @@ export const Lore = {
 // ============================================================
 
 export const Modules = {
-  async getAll(): Promise<Module[]> {
+  async getAll(campaignId: string): Promise<Module[]> {
     const { data, error } = await supabase
       .from('modules')
       .select('*')
+      .eq('campaign_id', campaignId)
       .order('chapter');
     if (error) throw error;
     return data;
   },
 
-  async getByStatus(status: Module['status']): Promise<Module[]> {
+  async getByStatus(status: Module['status'], campaignId: string): Promise<Module[]> {
     const { data, error } = await supabase
       .from('modules')
       .select('*')
+      .eq('campaign_id', campaignId)
       .eq('status', status)
       .order('chapter');
     if (error) throw error;
@@ -343,10 +474,11 @@ export const Modules = {
 // ============================================================
 
 export const Relationships = {
-  async getAll(): Promise<CharacterRelationship[]> {
+  async getAll(campaignId: string): Promise<CharacterRelationship[]> {
     const { data, error } = await supabase
       .from('character_relationships')
       .select('*')
+      .eq('campaign_id', campaignId)
       .order('created_at');
     if (error) throw error;
     return data;
@@ -383,7 +515,7 @@ export const Submodules = {
     if (error) throw error;
     return data;
   },
-    
+
   async upsert(sub: SubmoduleInsert & { id?: string }): Promise<Submodule> {
     const user_id = await getUserId();
     const { data, error } = await supabase
@@ -438,10 +570,11 @@ export const Scenes = {
 // ============================================================
 
 export const MonsterStatblocks = {
-  async getAll(): Promise<MonsterStatblock[]> {
+  async getAll(campaignId: string): Promise<MonsterStatblock[]> {
     const { data, error } = await supabase
       .from('monster_statblocks')
       .select('*')
+      .eq('campaign_id', campaignId)
       .order('name');
     if (error) throw error;
     return data;

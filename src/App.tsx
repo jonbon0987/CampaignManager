@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
+import CampaignSelector from './components/CampaignSelector';
 import Overview from './components/tabs/Overview';
 import SessionNotes from './components/tabs/SessionNotes';
 import Characters from './components/tabs/Characters';
@@ -26,9 +27,7 @@ const TABS: { id: Tab; label: string }[] = [
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [aiOpen, setAiOpen] = useState(false);
-  const { overview, loading, error } = useCampaign();
-
-  const campaignTitle = overview.title || 'Campaign Manager';
+  const { loading, error } = useCampaign();
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}>
@@ -39,15 +38,7 @@ function AppInner({ user }: { user: User }) {
       >
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           <div className="text-2xl select-none">⚔️</div>
-          <div className="flex-1">
-            <h1
-              className="text-xl font-bold leading-tight"
-              style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
-            >
-              {campaignTitle}
-            </h1>
-            <p className="text-xs" style={{ color: '#6a6490' }}>D&D Campaign Manager</p>
-          </div>
+          <CampaignSelector />
           <div className="flex items-center gap-3">
             <span className="text-xs" style={{ color: '#6a6490' }}>{user.email}</span>
             <button
