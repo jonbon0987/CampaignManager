@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { Button } from './ui/Button';
 
 interface ModalProps {
   isOpen: boolean;
@@ -38,10 +39,7 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
           </h2>
           <button
             onClick={onClose}
-            className="text-2xl leading-none w-8 h-8 flex items-center justify-center rounded transition-colors"
-            style={{ color: '#9990b0' }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#9990b0')}
+            className="text-2xl leading-none w-8 h-8 flex items-center justify-center rounded transition-colors text-muted hover:text-parchment"
           >
             ×
           </button>
@@ -51,24 +49,8 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
         </div>
         {onSave && (
           <div className="flex justify-end gap-2 p-4 border-t shrink-0" style={{ borderColor: '#3a3660' }}>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 rounded text-sm transition-colors"
-              style={{ backgroundColor: '#22203a', color: '#e8d5b0', border: '1px solid #3a3660' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#2e2b4a')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#22203a')}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onSave}
-              className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-              style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-            >
-              {saveLabel}
-            </button>
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={onSave}>{saveLabel}</Button>
           </div>
         )}
       </div>

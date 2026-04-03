@@ -1,7 +1,13 @@
 import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { SectionHeader } from '../ui/SectionHeader';
+import { InlineEditCard } from '../ui/InlineEditCard';
+import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
+import { EmptyState } from '../ui/EmptyState';
 import type { Hook } from '../../lib/database.types';
 
 const CATEGORIES = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
@@ -20,6 +26,13 @@ const emptyForm = (): HookForm => ({
   description: '',
   is_active: true,
 });
+
+const categoryBadgeColor: Record<Category, 'red' | 'gold' | 'green' | 'blue'> = {
+  main_plot:     'red',
+  side_quest:    'gold',
+  character_arc: 'green',
+  faction:       'blue',
+};
 
 const categoryStyles: Record<Category, { border: string; badge: string; badgeBg: string }> = {
   main_plot:     { border: '#6a2a2a', badge: '#e05c5c', badgeBg: '#3a1a1a' },
@@ -42,10 +55,13 @@ function formatCategory(cat: string | null) {
 export default function HooksIdeas() {
   const { hooks, upsertHook, deleteHook } = useCampaign();
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingHook, setEditingHook] = useState<Hook | null>(null);
   const [form, setForm] = useState<HookForm>(emptyForm());
   const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
   const [showInactive, setShowInactive] = useState(false);
+  // Inline editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<HookForm | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const filtered = hooks.filter(h => {
     if (!showInactive && !h.is_active) return false;
@@ -54,25 +70,42 @@ export default function HooksIdeas() {
   });
 
   const openAdd = () => {
-    setEditingHook(null);
     setForm(emptyForm());
     setModalOpen(true);
   };
 
-  const openEdit = (hook: Hook) => {
-    setEditingHook(hook);
-    setForm({ title: hook.title, category: hook.category, description: hook.description, is_active: hook.is_active });
-    setModalOpen(true);
-  };
-
-  const handleSave = async () => {
+  const handleCreate = async () => {
     await upsertHook({
-      ...(editingHook ? { id: editingHook.id } : {}),
       ...form,
-      last_updated_session: editingHook?.last_updated_session ?? null,
-      dm_only_notes: editingHook?.dm_only_notes ?? null,
+      last_updated_session: null,
+      dm_only_notes: null,
     });
     setModalOpen(false);
+  };
+
+  const startEdit = (hook: Hook) => {
+    setEditingId(hook.id);
+    setEditForm({ title: hook.title, category: hook.category, description: hook.description, is_active: hook.is_active });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editForm || !editingId) return;
+    const hook = hooks.find(h => h.id === editingId);
+    if (!hook) return;
+    setSaving(true);
+    await upsertHook({
+      id: editingId,
+      ...editForm,
+      last_updated_session: hook.last_updated_session,
+      dm_only_notes: hook.dm_only_notes,
+    });
+    setSaving(false);
+    cancelEdit();
   };
 
   const toggleActive = async (hook: Hook) => {
@@ -90,6 +123,7 @@ export default function HooksIdeas() {
   const handleDelete = async (id: string) => {
     if (confirm('Delete this idea?')) {
       await deleteHook(id);
+      if (editingId === id) cancelEdit();
     }
   };
 
@@ -97,128 +131,149 @@ export default function HooksIdeas() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-2xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
-            Hooks & Ideas
-          </h2>
-          <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>
-            {activeCount} active · {hooks.length} total
-          </p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-          style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-        >
-          + Add Idea
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-3 mb-6 items-center">
-        <div className="flex gap-1 flex-wrap">
-          {(['all', ...CATEGORIES] as const).map(c => (
-            <button
-              key={c}
-              onClick={() => setFilterCategory(c)}
-              className="text-xs px-3 py-1.5 rounded transition-colors"
-              style={{
-                backgroundColor: filterCategory === c ? '#3a3660' : '#22203a',
-                color: filterCategory === c ? '#e8d5b0' : '#9990b0',
-                border: '1px solid #3a3660',
-              }}
-            >
-              {c === 'all' ? 'All' : formatCategory(c)}
-            </button>
-          ))}
-        </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer select-none" style={{ color: '#9990b0' }}>
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={e => setShowInactive(e.target.checked)}
-            style={{ accentColor: '#c9a84c' }}
-          />
-          Show resolved
-        </label>
-      </div>
+      <SectionHeader
+        title="Hooks & Ideas"
+        subtitle={`${activeCount} active · ${hooks.length} total`}
+        onAdd={openAdd}
+        addLabel="Add Idea"
+        extra={
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex gap-1 flex-wrap">
+              {(['all', ...CATEGORIES] as const).map(c => (
+                <button
+                  key={c}
+                  onClick={() => setFilterCategory(c)}
+                  className="text-xs px-3 py-1.5 rounded transition-colors"
+                  style={{
+                    backgroundColor: filterCategory === c ? '#3a3660' : '#22203a',
+                    color: filterCategory === c ? '#e8d5b0' : '#9990b0',
+                    border: '1px solid #3a3660',
+                  }}
+                >
+                  {c === 'all' ? 'All' : formatCategory(c)}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#9990b0' }}>
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={e => setShowInactive(e.target.checked)}
+                style={{ accentColor: '#c9a84c' }}
+              />
+              Show resolved
+            </label>
+          </div>
+        }
+      />
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16" style={{ color: '#6a6490' }}>
-          {hooks.length === 0
-            ? 'No ideas yet. Start your DM scratchpad!'
-            : 'No ideas match the current filters.'}
-        </div>
+        <EmptyState
+          message={hooks.length === 0 ? 'No ideas yet. Start your DM scratchpad!' : 'No ideas match the current filters.'}
+          onAdd={hooks.length === 0 ? openAdd : undefined}
+          addLabel="Add Idea"
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(hook => {
+            const isEditing = editingId === hook.id;
             const ps = getStyle(hook.category);
+            const badgeColor = categoryBadgeColor[hook.category as Category] ?? 'muted';
+
             return (
-              <div
+              <InlineEditCard
                 key={hook.id}
-                className="rounded-lg border p-4 flex flex-col"
-                style={{
-                  backgroundColor: '#1a1828',
-                  borderColor: hook.is_active ? ps.border : '#2a2a3a',
-                  opacity: hook.is_active ? 1 : 0.55,
-                }}
+                isEditing={isEditing}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+                onDelete={() => handleDelete(hook.id)}
+                saving={saving}
               >
-                <div className="flex items-start justify-between mb-2 gap-2">
-                  <h3 className="font-bold flex-1" style={{ color: hook.is_active ? '#e8d5b0' : '#6a6490', fontFamily: 'Georgia, serif' }}>
-                    {hook.title || 'Untitled Idea'}
-                  </h3>
-                  <span
-                    className="text-xs px-2 py-0.5 rounded shrink-0"
-                    style={{ backgroundColor: ps.badgeBg, color: ps.badge }}
+                {isEditing && editForm ? (
+                  /* Edit mode */
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type="text"
+                      value={editForm.title}
+                      onChange={e => setEditForm(prev => prev ? { ...prev, title: e.target.value } : prev)}
+                      placeholder="Title"
+                      autoFocus
+                      className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                      style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+                    />
+                    <div className="flex gap-1 flex-wrap">
+                      {CATEGORIES.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setEditForm(prev => prev ? { ...prev, category: c } : prev)}
+                          className="text-xs px-3 py-1 rounded transition-colors"
+                          style={{
+                            backgroundColor: editForm.category === c ? categoryStyles[c].badgeBg : '#22203a',
+                            color: categoryStyles[c].badge,
+                            border: `1px solid ${categoryStyles[c].border}`,
+                            fontWeight: editForm.category === c ? 600 : 400,
+                          }}
+                        >
+                          {formatCategory(c)}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={editForm.description ?? ''}
+                      onChange={e => setEditForm(prev => prev ? { ...prev, description: e.target.value } : prev)}
+                      placeholder="Describe the idea..."
+                      rows={4}
+                      className="w-full px-2 py-1.5 rounded text-sm outline-none resize-y"
+                      style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif', minHeight: '100px' }}
+                    />
+                  </div>
+                ) : (
+                  /* View mode */
+                  <div
+                    className="flex flex-col"
+                    style={{ opacity: hook.is_active ? 1 : 0.55 }}
                   >
-                    {formatCategory(hook.category)}
-                  </span>
-                </div>
+                    <div className="flex items-start justify-between mb-2 gap-2">
+                      <h3 className="font-bold flex-1 text-sm" style={{ color: hook.is_active ? '#e8d5b0' : '#6a6490', fontFamily: 'Georgia, Cambria, serif' }}>
+                        {hook.title || 'Untitled Idea'}
+                      </h3>
+                      <Badge label={formatCategory(hook.category)} color={badgeColor} size="xs" />
+                    </div>
 
-                <p className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }}>
-                  {hook.description || <span style={{ fontStyle: 'italic', color: '#4a4460' }}>No details written.</span>}
-                </p>
+                    <p className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }}>
+                      {hook.description || <span style={{ fontStyle: 'italic', color: '#4a4460' }}>No details written.</span>}
+                    </p>
 
-                <div className="flex gap-2 mt-auto">
-                  <button
-                    onClick={() => toggleActive(hook)}
-                    className="text-xs px-2 py-1 rounded flex-1 transition-colors"
-                    style={{
-                      backgroundColor: '#22203a',
-                      color: hook.is_active ? '#9990b0' : '#4caf7d',
-                      border: '1px solid #3a3660',
-                    }}
-                  >
-                    {hook.is_active ? '✓ Resolve' : '↩ Reopen'}
-                  </button>
-                  <button
-                    onClick={() => openEdit(hook)}
-                    className="text-xs px-2 py-1 rounded transition-colors"
-                    style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(hook.id)}
-                    className="text-xs px-2 py-1 rounded transition-colors"
-                    style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
+                    <div className="flex gap-2 mt-auto">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => toggleActive(hook)}
+                      >
+                        {hook.is_active ? '✓ Resolve' : '↩ Reopen'}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => startEdit(hook)} title="Edit">
+                        <Pencil size={12} strokeWidth={1.5} />
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(hook.id)}>
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </InlineEditCard>
             );
           })}
         </div>
       )}
 
+      {/* Create-only modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingHook ? 'Edit Idea' : 'New Hook / Idea'}
-        onSave={handleSave}
+        title="New Hook / Idea"
+        onSave={handleCreate}
       >
         <FormField label="Title">
           <input

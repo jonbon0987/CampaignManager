@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { Button } from '../ui/Button';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
 // ================================================================
@@ -547,28 +548,21 @@ For each combatant: if it matches a creature in the saved library (same name), s
     <div style={{ maxWidth: '900px' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
-          Encounter Builder
-        </h2>
+        <div>
+          <h2 className="text-xl font-bold leading-tight" style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}>
+            Encounter Builder
+          </h2>
+          {encounters.length > 0 && (
+            <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>
+              {encounters.length} encounter{encounters.length !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
         <div className="flex gap-2">
-          <button
-            onClick={openGenModal}
-            className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-            style={{ backgroundColor: '#2a1a3a', color: '#c060d0', border: '1px solid #5a2a7a' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#3a2050')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#2a1a3a')}
-          >
+          <Button variant="secondary" onClick={openGenModal} style={{ color: '#c060d0', borderColor: '#5a2a7a' }}>
             ✦ Build Encounter
-          </button>
-          <button
-            onClick={openAdd}
-            className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-            style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-          >
-            + Manual
-          </button>
+          </Button>
+          <Button variant="primary" onClick={openAdd}>+ Manual</Button>
         </div>
       </div>
 
@@ -944,10 +938,8 @@ For each combatant: if it matches a creature in the saved library (same name), s
                     <button
                       key={m.id}
                       onClick={() => addSavedCombatant(m.id)}
-                      className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
+                      className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2 transition-colors hover:bg-surface-high"
                       style={{ backgroundColor: '#1a1828', color: '#e8d5b0', border: '1px solid #2a2850' }}
-                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#22203a')}
-                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1a1828')}
                     >
                       <span className="flex-1">{m.name}</span>
                       {m.challenge_rating && <span style={{ color: '#c08060' }}>CR {m.challenge_rating}</span>}

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
-import CampaignSelector from './components/CampaignSelector';
+import Sidebar from './components/Sidebar';
+import Topbar from './components/Topbar';
 import Overview from './components/tabs/Overview';
 import SessionNotes from './components/tabs/SessionNotes';
 import Characters from './components/tabs/Characters';
@@ -11,92 +12,53 @@ import HooksIdeas from './components/tabs/HooksIdeas';
 import CreatureStatblocks from './components/tabs/CreatureStatblocks';
 import EncounterBuilder from './components/tabs/EncounterBuilder';
 import AIAssistant from './components/AIAssistant';
-import { signInWithGitHub, signInWithEmail, signUpWithEmail, signOut, onAuthStateChange } from './lib/auth';
+import { signInWithGitHub, signInWithEmail, signUpWithEmail, onAuthStateChange } from './lib/auth';
+import useLocalStorage from './hooks/useLocalStorage';
 
-type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'encounters' | 'hooks';
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'overview',    label: 'Overview' },
-  { id: 'sessions',    label: 'Session Notes' },
-  { id: 'characters',  label: 'Characters' },
-  { id: 'lore',        label: 'Lore & Locations' },
-  { id: 'modules',     label: 'Modules' },
-  { id: 'creatures',   label: 'Creature Sheets' },
-  { id: 'encounters',  label: 'Encounters' },
-  { id: 'hooks',       label: 'Hooks & Ideas' },
-];
+export type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'encounters' | 'hooks';
 
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [aiOpen, setAiOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { loading, error } = useCampaign();
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+      if (e.matches) setMobileMenuOpen(false);
+    };
+    setIsMobile(mq.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const showSidebar = isMobile ? mobileMenuOpen : sidebarOpen;
+
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}>
-      {/* Header */}
-      <header
-        className="border-b px-6 py-4"
-        style={{ backgroundColor: '#0a0918', borderColor: '#3a3660' }}
-      >
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <div className="text-2xl select-none">⚔️</div>
-          <CampaignSelector />
-          <div className="flex items-center gap-3">
-            <span className="text-xs" style={{ color: '#6a6490' }}>{user.email}</span>
-            <button
-              onClick={() => setAiOpen(true)}
-              className="text-xs px-3 py-1 rounded transition-colors font-medium"
-              style={{ backgroundColor: '#c9a84c', color: '#0f0e17', border: 'none' }}
-            >
-              ✦ Assistant
-            </button>
-            <button
-              onClick={signOut}
-              className="text-xs px-3 py-1 rounded transition-colors"
-              style={{ color: '#9990b0', border: '1px solid #3a3660' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#e8d5b0'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#9990b0'; }}
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="h-screen flex flex-row overflow-hidden" style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}>
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isOpen={showSidebar}
+        onToggle={() => setSidebarOpen(prev => !prev)}
+        onOpenAI={() => setAiOpen(true)}
+        isMobile={isMobile}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
 
-      {/* Tab Nav */}
-      <nav
-        className="border-b px-6 overflow-x-auto"
-        style={{ backgroundColor: '#0f0e17', borderColor: '#3a3660' }}
-      >
-        <div className="max-w-7xl mx-auto flex gap-1">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="px-4 py-3 text-sm whitespace-nowrap transition-colors relative"
-              style={{
-                color: activeTab === tab.id ? '#c9a84c' : '#9990b0',
-                fontFamily: 'Georgia, Cambria, serif',
-                borderBottom: activeTab === tab.id ? '2px solid #c9a84c' : '2px solid transparent',
-                marginBottom: '-1px',
-                backgroundColor: 'transparent',
-              }}
-              onMouseEnter={e => {
-                if (activeTab !== tab.id) e.currentTarget.style.color = '#e8d5b0';
-              }}
-              onMouseLeave={e => {
-                if (activeTab !== tab.id) e.currentTarget.style.color = '#9990b0';
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
+      {/* Main column */}
+      <div className="flex flex-col flex-1 min-w-0">
+        <Topbar
+          user={user}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          isMobile={isMobile}
+        />
 
-      {/* Content */}
-      <main className="flex-1 p-6 overflow-y-auto flex flex-col">
-        <div className="max-w-7xl mx-auto w-full flex flex-col">
+        <main className="flex-1 overflow-y-auto p-6">
           {error && (
             <div className="mb-4 px-4 py-3 rounded text-sm" style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
               Failed to load data: {error}
@@ -116,8 +78,8 @@ function AppInner({ user }: { user: User }) {
               {activeTab === 'hooks'       && <HooksIdeas />}
             </>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
 
       <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
@@ -177,7 +139,6 @@ function LoginScreen() {
       </div>
 
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
-        {/* Email form */}
         <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3">
           <input
             type="email"
@@ -220,14 +181,12 @@ function LoginScreen() {
           </button>
         </p>
 
-        {/* Divider */}
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px" style={{ backgroundColor: '#3a3660' }} />
           <span className="text-xs" style={{ color: '#6a6490' }}>or</span>
           <div className="flex-1 h-px" style={{ backgroundColor: '#3a3660' }} />
         </div>
 
-        {/* GitHub */}
         <button
           onClick={handleGitHub}
           disabled={loading}

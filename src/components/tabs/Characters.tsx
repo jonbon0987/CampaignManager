@@ -14,31 +14,28 @@ const SUB_TABS: { id: SubTab; label: string }[] = [
 export default function Characters() {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('pcs');
 
+  const pillStyle = (active: boolean): React.CSSProperties => ({
+    padding: '6px 16px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: active ? 600 : 400,
+    cursor: 'pointer',
+    border: 'none',
+    backgroundColor: active ? '#2a2840' : 'transparent',
+    color: active ? '#c9a84c' : '#9990b0',
+    transition: 'all 0.15s',
+    fontFamily: 'Georgia, Cambria, serif',
+  });
+
   return (
     <div className="flex flex-col">
-      {/* Sub-tab bar */}
-      <div
-        className="flex gap-1 border-b mb-4"
-        style={{ borderColor: '#3a3660' }}
-      >
+      {/* Pill-style sub-tab bar */}
+      <div className="flex gap-1 p-1 rounded-lg mb-5 self-start" style={{ backgroundColor: '#12111e' }}>
         {SUB_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
-            className="px-4 py-2 text-sm whitespace-nowrap transition-colors relative"
-            style={{
-              color: activeSubTab === tab.id ? '#c9a84c' : '#9990b0',
-              fontFamily: 'Georgia, Cambria, serif',
-              borderBottom: activeSubTab === tab.id ? '2px solid #c9a84c' : '2px solid transparent',
-              marginBottom: '-1px',
-              backgroundColor: 'transparent',
-            }}
-            onMouseEnter={e => {
-              if (activeSubTab !== tab.id) e.currentTarget.style.color = '#e8d5b0';
-            }}
-            onMouseLeave={e => {
-              if (activeSubTab !== tab.id) e.currentTarget.style.color = '#9990b0';
-            }}
+            style={pillStyle(activeSubTab === tab.id)}
           >
             {tab.label}
           </button>

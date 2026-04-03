@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
+import { colors } from '../../lib/theme';
 import type { RelationshipType, CharacterKind } from '../../lib/database.types';
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -29,10 +30,10 @@ interface Edge {
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const EDGE_COLOR: Record<RelationshipType, string> = {
-  ally:    '#4caf7d',
-  rival:   '#c9a84c',
-  foe:     '#e05c5c',
-  neutral: '#6a6490',
+  ally:    colors.green,
+  rival:   colors.gold,
+  foe:     colors.red,
+  neutral: colors.textDim,
 };
 
 const EDGE_LABEL: Record<RelationshipType, string> = {
@@ -43,7 +44,7 @@ const EDGE_LABEL: Record<RelationshipType, string> = {
 };
 
 const NODE_RADIUS = 28;
-const PC_COLOR    = '#c9a84c';
+const PC_COLOR    = colors.gold;
 const NPC_COLOR   = '#7a8fbf';
 
 // ─── force simulation helpers ─────────────────────────────────────────────────

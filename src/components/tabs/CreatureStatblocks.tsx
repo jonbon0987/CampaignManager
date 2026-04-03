@@ -252,30 +252,28 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
   return (
     <div style={{ maxWidth: '900px' }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
-          Creature Stat Sheets
-        </h2>
-        <div className="flex gap-2">
-          <button
-            onClick={openGenModal}
-            className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-            style={{ backgroundColor: '#2a1a3a', color: '#c060d0', border: '1px solid #5a2a7a' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#3a2050')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#2a1a3a')}
-          >
-            ✦ Generate
-          </button>
-          <button
-            onClick={openAdd}
-            className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-            style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-          >
-            + Add Creature
-          </button>
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold leading-tight" style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}>
+            Creature Stat Sheets
+          </h2>
+          <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{monsterStatblocks.length} creature{monsterStatblocks.length !== 1 ? 's' : ''}</p>
         </div>
+        <div className="flex-1" />
+        <button
+          onClick={openGenModal}
+          className="px-3 py-1.5 rounded text-sm font-medium transition-colors"
+          style={{ backgroundColor: '#2a1a3a', color: '#c060d0', border: '1px solid #5a2a7a' }}
+        >
+          ✦ Generate
+        </button>
+        <button
+          onClick={openAdd}
+          className="inline-flex items-center justify-center gap-1.5 rounded border font-medium transition-colors duration-150 px-3 py-1.5 text-sm"
+          style={{ backgroundColor: '#c9a84c', color: '#0f0e17', borderColor: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+        >
+          + Add Creature
+        </button>
       </div>
 
       {/* Filter bar */}

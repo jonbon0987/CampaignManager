@@ -192,14 +192,28 @@ export default function AIAssistant({ open, onClose }: Props) {
         content: m.content,
       }));
 
-      const response = await client.messages.create({
+      // Add a placeholder assistant message for streaming
+      const streamingIdx = nextMessages.length;
+      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+      const stream = client.messages.stream({
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         system: systemPrompt,
         messages: apiMessages,
       });
 
-      const rawText = response.content
+      // Stream tokens as they arrive
+      stream.on('text', (text) => {
+        setMessages(prev => prev.map((m, i) =>
+          i === streamingIdx ? { ...m, content: m.content + text } : m
+        ));
+      });
+
+      // Wait for the stream to complete
+      const finalMessage = await stream.finalMessage();
+
+      const rawText = finalMessage.content
         .filter(b => b.type === 'text')
         .map(b => (b as Anthropic.TextBlock).text)
         .join('');
@@ -209,16 +223,24 @@ export default function AIAssistant({ open, onClose }: Props) {
       // Strip the raw JSON block from displayed text
       const displayText = rawText.replace(/```json[\s\S]*?```/g, '').trim();
 
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: displayText, pendingActions: pendingActions.length > 0 ? pendingActions : undefined },
-      ]);
+      // Replace the streaming message with the final version (with actions parsed)
+      setMessages(prev => prev.map((m, i) =>
+        i === streamingIdx
+          ? { role: 'assistant', content: displayText, pendingActions: pendingActions.length > 0 ? pendingActions : undefined }
+          : m
+      ));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: `Error: ${msg}` },
-      ]);
+      const msg = err instanceof Anthropic.APIError
+        ? `API Error (${err.status}): ${err.message}`
+        : err instanceof Error ? err.message : 'Unknown error';
+      setMessages(prev => {
+        // If we already added a streaming placeholder, replace it with the error
+        const last = prev[prev.length - 1];
+        if (last && last.role === 'assistant' && !last.content) {
+          return [...prev.slice(0, -1), { role: 'assistant' as const, content: `Error: ${msg}` }];
+        }
+        return [...prev, { role: 'assistant' as const, content: `Error: ${msg}` }];
+      });
     } finally {
       setLoading(false);
     }
@@ -414,7 +436,7 @@ export default function AIAssistant({ open, onClose }: Props) {
 
           {messages.map((msg, idx) => (
             <div key={idx} style={msg.role === 'user' ? s.userBubble : s.assistantBubble}>
-              {msg.content}
+              {msg.content || (loading && msg.role === 'assistant' ? <span style={{ color: '#6a6490' }}>Thinking…</span> : msg.content)}
 
               {/* Pending actions confirmation */}
               {msg.role === 'assistant' && msg.pendingActions && msg.pendingActions.length > 0 && (
@@ -478,12 +500,6 @@ export default function AIAssistant({ open, onClose }: Props) {
               )}
             </div>
           ))}
-
-          {loading && (
-            <div style={{ ...s.assistantBubble, color: '#6a6490' }}>
-              Thinking…
-            </div>
-          )}
 
           {apiError && (
             <div style={{ color: '#e05c5c', fontSize: '13px', padding: '8px 12px', backgroundColor: '#2a0f0f', borderRadius: '8px', border: '1px solid #6a2a2a' }}>

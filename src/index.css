@@ -36,3 +36,8 @@ body {
 textarea, input[type="text"], input[type="number"], input[type="date"], select {
   font-family: Georgia, Cambria, serif;
 }
+
+input:focus, textarea:focus, select:focus {
+  border-color: #c9a84c !important;
+  outline: none;
+}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { Button } from '../ui/Button';
 import type { Module, Submodule, Scene, ModuleSheet, MonsterStatblock, Encounter } from '../../lib/database.types';
 
 // --------------- Form types ---------------
@@ -415,20 +416,12 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     <div style={{ maxWidth: '900px' }}>
       {/* Back button + header */}
       <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={onBack}
-          className="text-sm px-3 py-1.5 rounded flex items-center gap-1"
-          style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#2e2b50')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#22203a')}
-        >
-          ← Modules
-        </button>
+        <Button variant="secondary" size="sm" onClick={onBack}>← Modules</Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h2
-              className="text-2xl font-bold"
-              style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}
+              className="text-xl font-bold leading-tight"
+              style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
             >
               {mod.chapter ? `${mod.chapter}: ` : ''}{mod.title}
             </h2>
@@ -446,24 +439,8 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           )}
         </div>
         <div className="flex gap-2 shrink-0">
-          <button
-            onClick={openEditModule}
-            className="text-xs px-3 py-1.5 rounded"
-            style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#2e2b50')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#22203a')}
-          >
-            Edit
-          </button>
-          <button
-            onClick={handleDeleteModule}
-            className="text-xs px-3 py-1.5 rounded"
-            style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#2e2b50')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#22203a')}
-          >
-            Delete
-          </button>
+          <Button variant="secondary" size="sm" onClick={openEditModule}>Edit</Button>
+          <Button variant="danger" size="sm" onClick={handleDeleteModule}>Delete</Button>
         </div>
       </div>
 
@@ -494,15 +471,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         <div>
           <div className="flex justify-between items-center mb-4">
             <span style={sectionLabel}>Submodules</span>
-            <button
-              onClick={openAddSubmodule}
-              className="text-sm px-4 py-1.5 rounded font-semibold"
-              style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-            >
-              + Add Submodule
-            </button>
+            <Button variant="primary" size="sm" onClick={openAddSubmodule}>+ Add Submodule</Button>
           </div>
 
           {modSubmodules.length === 0 ? (
@@ -605,15 +574,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                             <div className="px-4 pt-3 pb-1">
                               <div className="flex justify-between items-center mb-2">
                                 <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Creatures</span>
-                                <button
-                                  onClick={() => setCreaturePickerTarget({ kind: 'submodule', item: sub })}
-                                  className="text-xs px-2.5 py-1 rounded"
-                                  style={{ backgroundColor: '#3a1a1a', color: '#e07070', border: '1px solid #7a2a2a' }}
-                                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#5a2a2a')}
-                                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#3a1a1a')}
-                                >
+                                <Button variant="danger" size="sm" onClick={() => setCreaturePickerTarget({ kind: 'submodule', item: sub })} style={{ backgroundColor: '#3a1a1a', borderColor: '#7a2a2a' }}>
                                   + Link Creature
-                                </button>
+                                </Button>
                               </div>
                               {linked.length === 0 ? (
                                 <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No creatures linked.</p>
@@ -661,15 +624,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                             <div className="px-4 pt-1 pb-1">
                               <div className="flex justify-between items-center mb-2">
                                 <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Encounters</span>
-                                <button
-                                  onClick={() => setEncounterPickerSubId(sub.id)}
-                                  className="text-xs px-2.5 py-1 rounded"
-                                  style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', border: '1px solid #2a4a7a' }}
-                                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#2a3a5a')}
-                                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1a2a3a')}
-                                >
+                                <Button variant="secondary" size="sm" onClick={() => setEncounterPickerSubId(sub.id)} style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', borderColor: '#2a4a7a' }}>
                                   + Link Encounter
-                                </button>
+                                </Button>
                               </div>
                               {linked.length === 0 ? (
                                 <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No encounters linked.</p>
@@ -715,15 +672,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
 
                         <div className="flex justify-between items-center px-4 py-3">
                           <span style={{ ...sectionLabel, marginBottom: 0 }}>Scenes</span>
-                          <button
-                            onClick={() => openAddScene(sub.id)}
-                            className="text-xs px-3 py-1 rounded font-semibold"
-                            style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-                          >
-                            + Add Scene
-                          </button>
+                          <Button variant="primary" size="sm" onClick={() => openAddScene(sub.id)}>+ Add Scene</Button>
                         </div>
                         {subScenes.length === 0 ? (
                           <p className="text-xs px-4 pb-4" style={{ color: '#6a6490', fontStyle: 'italic' }}>
@@ -848,15 +797,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         <div>
           <div className="flex justify-between items-center mb-4">
             <span style={sectionLabel}>Stat Sheets</span>
-            <button
-              onClick={openAddSheet}
-              className="text-sm px-4 py-1.5 rounded font-semibold"
-              style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-            >
-              + Add Sheet
-            </button>
+            <Button variant="primary" size="sm" onClick={openAddSheet}>+ Add Sheet</Button>
           </div>
 
           {modSheets.length === 0 ? (

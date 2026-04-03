@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { Modal } from './Modal';
 import { FormField, inputStyle, textareaStyle } from './FormField';
+import { Button } from './ui/Button';
 
 export default function CampaignSelector() {
   const { campaigns, selectedCampaignId, selectedCampaign, createCampaign, updateCampaign, deleteCampaign, switchCampaign } = useCampaign();
@@ -144,10 +145,8 @@ export default function CampaignSelector() {
           {/* New Campaign button */}
           <button
             onClick={() => { setDropdownOpen(false); setCreateModalOpen(true); }}
-            className="w-full text-left text-sm px-3 py-2 transition-colors"
-            style={{ color: '#9990b0', background: 'none', border: 'none', cursor: 'pointer' }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#c9a84c')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#9990b0')}
+            className="w-full text-left text-sm px-3 py-2 transition-colors text-muted hover:text-gold"
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
           >
             + New Campaign
           </button>
@@ -223,24 +222,8 @@ export default function CampaignSelector() {
           This will permanently delete all sessions, characters, modules, hooks, and factions belonging to this campaign. This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
-          <button
-            onClick={() => setDeleteTarget(null)}
-            className="px-4 py-2 rounded text-sm transition-colors"
-            style={{ backgroundColor: '#22203a', color: '#e8d5b0', border: '1px solid #3a3660' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#2e2b4a')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#22203a')}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleDeleteConfirm}
-            className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-            style={{ backgroundColor: '#7a2020', color: '#e8d5b0' }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#a03030')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#7a2020')}
-          >
-            Delete Campaign
-          </button>
+          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="danger" onClick={handleDeleteConfirm} style={{ backgroundColor: '#7a2020', borderColor: '#7a2020', color: '#e8d5b0' }}>Delete Campaign</Button>
         </div>
       </Modal>
     </div>

@@ -1,7 +1,13 @@
 import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { SectionHeader } from '../ui/SectionHeader';
+import { SearchBar } from '../ui/SearchBar';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { EmptyState } from '../ui/EmptyState';
 import type { Session } from '../../lib/database.types';
 
 type SessionForm = {
@@ -20,9 +26,12 @@ export default function SessionNotes() {
   const { sessions, upsertSession, deleteSession } = useCampaign();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [form, setForm] = useState<SessionForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Inline edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<SessionForm | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const filtered = sessions
     .filter(s => {
@@ -40,126 +49,209 @@ export default function SessionNotes() {
     const nextNumber = sessions.length > 0
       ? Math.max(...sessions.map(s => s.session_number)) + 1
       : 1;
-    setEditingSession(null);
     setForm({ ...emptyForm(), session_number: nextNumber });
     setModalOpen(true);
   };
 
-  const openEdit = (s: Session) => {
-    setEditingSession(s);
-    setForm({ session_number: s.session_number, session_date: s.session_date, summary: s.summary });
-    setModalOpen(true);
-  };
-
-  const handleSave = async () => {
+  const handleCreate = async () => {
     await upsertSession({
       session_number: form.session_number,
       session_date: form.session_date,
       summary: form.summary,
-      combats: editingSession?.combats ?? null,
-      loot_rewards: editingSession?.loot_rewards ?? null,
-      hooks_notes: editingSession?.hooks_notes ?? null,
-      dm_notes: editingSession?.dm_notes ?? null,
+      combats: null,
+      loot_rewards: null,
+      hooks_notes: null,
+      dm_notes: null,
     });
     setModalOpen(false);
+  };
+
+  const startEdit = (s: Session) => {
+    setEditingId(s.id);
+    setEditForm({ session_number: s.session_number, session_date: s.session_date, summary: s.summary });
+    setExpandedId(s.id);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editForm || !editingId) return;
+    const session = sessions.find(s => s.id === editingId);
+    if (!session) return;
+    setSaving(true);
+    await upsertSession({
+      session_number: editForm.session_number,
+      session_date: editForm.session_date,
+      summary: editForm.summary,
+      // Preserve hidden fields
+      combats: session.combats,
+      loot_rewards: session.loot_rewards,
+      hooks_notes: session.hooks_notes,
+      dm_notes: session.dm_notes,
+    });
+    setSaving(false);
+    cancelEdit();
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Delete this session?')) {
       await deleteSession(id);
       if (expandedId === id) setExpandedId(null);
+      if (editingId === id) cancelEdit();
     }
   };
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
-          Session Notes
-        </h2>
-        <button
-          onClick={openAdd}
-          className="px-4 py-2 rounded text-sm font-semibold transition-colors"
-          style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
-        >
-          + Add Session
-        </button>
-      </div>
-
-      <div className="mb-4">
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search sessions by summary or date..."
-          style={{ ...inputStyle, maxWidth: '420px' }}
-        />
-      </div>
+      <SectionHeader
+        title="Session Notes"
+        subtitle={`${sessions.length} session${sessions.length !== 1 ? 's' : ''}`}
+        onAdd={openAdd}
+        addLabel="Add Session"
+        extra={
+          <div style={{ width: '240px' }}>
+            <SearchBar value={search} onChange={setSearch} placeholder="Search sessions…" />
+          </div>
+        }
+      />
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16" style={{ color: '#6a6490' }}>
-          {search ? 'No sessions match your search.' : 'No sessions yet. Add your first session!'}
-        </div>
+        <EmptyState
+          message={search ? 'No sessions match your search.' : 'No sessions yet. Add your first session!'}
+          onAdd={sessions.length === 0 ? openAdd : undefined}
+          addLabel="Add Session"
+        />
       ) : (
         <div className="space-y-3">
-          {filtered.map(session => (
-            <div key={session.id} className="rounded-lg border overflow-hidden" style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}>
+          {filtered.map(session => {
+            const isExpanded = expandedId === session.id;
+            const isEditing = editingId === session.id;
+
+            return (
               <div
-                className="flex items-center justify-between p-4 cursor-pointer"
-                style={{ borderBottom: expandedId === session.id ? '1px solid #3a3660' : 'none' }}
-                onClick={() => setExpandedId(expandedId === session.id ? null : session.id)}
+                key={session.id}
+                className="rounded-lg border overflow-hidden transition-colors duration-150"
+                style={{
+                  backgroundColor: '#1a1828',
+                  borderColor: isEditing ? '#c9a84c' : '#2e2c4a',
+                }}
               >
-                <div>
+                {/* Header row */}
+                <div
+                  className="flex items-center justify-between p-4 cursor-pointer"
+                  style={{ borderBottom: isExpanded ? '1px solid #3a3660' : 'none' }}
+                  onClick={() => {
+                    if (!isEditing) setExpandedId(isExpanded ? null : session.id);
+                  }}
+                >
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold px-2 py-1 rounded" style={{ backgroundColor: '#22203a', color: '#c9a84c' }}>
-                      Session {session.session_number}
+                    <Badge label={`Session ${session.session_number}`} color="gold" size="sm" />
+                    <span className="text-xs" style={{ color: '#6a6490' }}>{session.session_date ?? '—'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!isEditing && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={e => { e.stopPropagation(); startEdit(session); }}
+                        title="Edit"
+                      >
+                        <Pencil size={12} strokeWidth={1.5} />
+                      </Button>
+                    )}
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={e => { e.stopPropagation(); handleDelete(session.id); }}
+                    >
+                      ×
+                    </Button>
+                    <span className="text-xs ml-1" style={{ color: '#6a6490' }}>
+                      {isExpanded ? '▲' : '▼'}
                     </span>
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6a6490' }}>{session.session_date ?? '—'}</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={e => { e.stopPropagation(); openEdit(session); }}
-                    className="text-xs px-2 py-1 rounded transition-colors"
-                    style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); handleDelete(session.id); }}
-                    className="text-xs px-2 py-1 rounded transition-colors"
-                    style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                  >
-                    Delete
-                  </button>
-                  <span className="text-xs ml-1" style={{ color: '#6a6490' }}>
-                    {expandedId === session.id ? '▲' : '▼'}
-                  </span>
-                </div>
+
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div className="p-4">
+                    {isEditing && editForm ? (
+                      <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                              Session #
+                            </label>
+                            <input
+                              type="number"
+                              value={editForm.session_number}
+                              onChange={e => setEditForm(prev => prev ? { ...prev, session_number: parseInt(e.target.value) || 1 } : prev)}
+                              min={1}
+                              className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                              style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                              Date
+                            </label>
+                            <input
+                              type="date"
+                              value={editForm.session_date ?? ''}
+                              onChange={e => setEditForm(prev => prev ? { ...prev, session_date: e.target.value || null } : prev)}
+                              className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                              style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                            Session Notes
+                          </label>
+                          <textarea
+                            value={editForm.summary ?? ''}
+                            onChange={e => setEditForm(prev => prev ? { ...prev, summary: e.target.value || null } : prev)}
+                            placeholder="What happened this session..."
+                            rows={10}
+                            className="w-full px-2 py-1.5 rounded text-sm outline-none resize-y"
+                            style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif', minHeight: '200px' }}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
+                            {saving ? 'Saving…' : 'Save'}
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={cancelEdit} disabled={saving}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      session.summary ? (
+                        <pre className="whitespace-pre-wrap text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }}>
+                          {session.summary}
+                        </pre>
+                      ) : (
+                        <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No notes recorded for this session.</p>
+                      )
+                    )}
+                  </div>
+                )}
               </div>
-              {expandedId === session.id && (
-                <div className="p-4">
-                  {session.summary ? (
-                    <pre className="whitespace-pre-wrap text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif', lineHeight: '1.7' }}>
-                      {session.summary}
-                    </pre>
-                  ) : (
-                    <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No notes recorded for this session.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
+      {/* Create-only modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingSession ? 'Edit Session' : 'New Session'}
-        onSave={handleSave}
+        title="New Session"
+        onSave={handleCreate}
         wide
       >
         <div className="grid grid-cols-2 gap-4">
