@@ -3,7 +3,8 @@ import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { Button } from '../ui/Button';
-import type { Module, Submodule, Scene, ModuleSheet, MonsterStatblock, Encounter } from '../../lib/database.types';
+import type { Module, Submodule, Scene, ModuleSheet, MonsterStatblock, Encounter, ModuleDependency, SubmoduleDependency } from '../../lib/database.types';
+import { wouldCreateModuleCycle, wouldCreateSubmoduleCycle } from '../../lib/moduleUtils';
 
 // --------------- Form types ---------------
 
@@ -138,9 +139,13 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
     monsterStatblocks,
     encounters,
+    modules,
+    selectedCampaignId,
+    moduleDeps, upsertModuleDep, deleteModuleDep,
+    submoduleDeps, loadSubmoduleDeps, upsertSubmoduleDep, deleteSubmoduleDep,
   } = useCampaign();
 
-  const [activeSection, setActiveSection] = useState<'submodules' | 'sheets' | 'overview'>('submodules');
+  const [activeSection, setActiveSection] = useState<'submodules' | 'sheets' | 'overview' | 'dependencies'>('submodules');
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
 
   // Module edit modal
@@ -180,10 +185,31 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   const [encounterPickerSubId, setEncounterPickerSubId] = useState<string | null>(null);
   const [viewingLinkedEncounter, setViewingLinkedEncounter] = useState<Encounter | null>(null);
 
+  // Module dependency modal
+  const [modDepModalOpen, setModDepModalOpen] = useState(false);
+  const [modDepForm, setModDepForm] = useState<{
+    prerequisite_id: string;
+    dependency_type: 'required' | 'optional';
+    group_id: string; // '' = new group
+    label: string;
+  }>({ prerequisite_id: '', dependency_type: 'required', group_id: '', label: '' });
+  const [modDepError, setModDepError] = useState<string | null>(null);
+
+  // Submodule dependency modal
+  const [subDepModalSubId, setSubDepModalSubId] = useState<string | null>(null);
+  const [subDepForm, setSubDepForm] = useState<{
+    prerequisite_id: string;
+    dependency_type: 'required' | 'optional';
+    group_id: string;
+    label: string;
+  }>({ prerequisite_id: '', dependency_type: 'required', group_id: '', label: '' });
+  const [subDepError, setSubDepError] = useState<string | null>(null);
+
   useEffect(() => {
     loadSubmodules(mod.id);
     loadModuleSheets(mod.id);
-  }, [mod.id, loadSubmodules, loadModuleSheets]);
+    loadSubmoduleDeps(mod.id);
+  }, [mod.id, loadSubmodules, loadModuleSheets, loadSubmoduleDeps]);
 
   useEffect(() => {
     if (expandedSubId) loadScenes(expandedSubId);
@@ -391,6 +417,72 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     }
   };
 
+  // ---- Module dependency handlers ----
+
+  const prereqs = moduleDeps.filter(d => d.dependent_id === mod.id);
+  const dependents = moduleDeps.filter(d => d.prerequisite_id === mod.id);
+
+  const openAddModDep = () => {
+    setModDepForm({ prerequisite_id: '', dependency_type: 'required', group_id: '', label: '' });
+    setModDepError(null);
+    setModDepModalOpen(true);
+  };
+
+  const handleSaveModDep = async () => {
+    if (!modDepForm.prerequisite_id || !selectedCampaignId) return;
+    if (wouldCreateModuleCycle(moduleDeps, mod.id, modDepForm.prerequisite_id)) {
+      setModDepError('This would create a circular dependency.');
+      return;
+    }
+    const group_id = modDepForm.dependency_type === 'optional'
+      ? (modDepForm.group_id || crypto.randomUUID())
+      : null;
+    await upsertModuleDep({
+      campaign_id: selectedCampaignId,
+      dependent_id: mod.id,
+      prerequisite_id: modDepForm.prerequisite_id,
+      dependency_type: modDepForm.dependency_type,
+      group_id,
+      label: modDepForm.label || null,
+    });
+    setModDepModalOpen(false);
+  };
+
+  // OR groups: unique group_ids among optional prereqs for this module
+  const optionalPrereqs = prereqs.filter(d => d.dependency_type === 'optional');
+  const orGroups = Array.from(new Set(optionalPrereqs.map(d => d.group_id).filter(Boolean) as string[]));
+
+  // Modules available to add as prerequisites (exclude self and already-added)
+  const existingPrereqIds = new Set(prereqs.map(d => d.prerequisite_id));
+  const availableModules = modules.filter(m => m.id !== mod.id && !existingPrereqIds.has(m.id));
+
+  // ---- Submodule dependency handlers ----
+
+  const openAddSubDep = (subId: string) => {
+    setSubDepModalSubId(subId);
+    setSubDepForm({ prerequisite_id: '', dependency_type: 'required', group_id: '', label: '' });
+    setSubDepError(null);
+  };
+
+  const handleSaveSubDep = async () => {
+    if (!subDepModalSubId || !subDepForm.prerequisite_id) return;
+    if (wouldCreateSubmoduleCycle(submoduleDeps, subDepModalSubId, subDepForm.prerequisite_id)) {
+      setSubDepError('This would create a circular dependency.');
+      return;
+    }
+    const group_id = subDepForm.dependency_type === 'optional'
+      ? (subDepForm.group_id || crypto.randomUUID())
+      : null;
+    await upsertSubmoduleDep({
+      dependent_id: subDepModalSubId,
+      prerequisite_id: subDepForm.prerequisite_id,
+      dependency_type: subDepForm.dependency_type,
+      group_id,
+      label: subDepForm.label || null,
+    });
+    setSubDepModalSubId(null);
+  };
+
   // ---- Encounter linking ----
 
   const handleLinkEncounter = async (encounterId: string) => {
@@ -446,7 +538,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
 
       {/* Section tab bar */}
       <div className="flex border-b mb-5" style={{ borderColor: '#3a3660' }}>
-        {(['submodules', 'sheets', 'overview'] as const).map(t => (
+        {(['submodules', 'sheets', 'overview', 'dependencies'] as const).map(t => (
           <button
             key={t}
             onClick={() => setActiveSection(t)}
@@ -461,6 +553,8 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
               ? `Submodules${modSubmodules.length ? ` (${modSubmodules.length})` : ''}`
               : t === 'sheets'
               ? `Stat Sheets${modSheets.length ? ` (${modSheets.length})` : ''}`
+              : t === 'dependencies'
+              ? `Dependencies${prereqs.length + dependents.length ? ` (${prereqs.length + dependents.length})` : ''}`
               : 'Overview'}
           </button>
         ))}
@@ -665,6 +759,124 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                                     );
                                   })}
                                 </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Submodule Dependencies */}
+                        {(() => {
+                          const subPrereqs = submoduleDeps.filter(d => d.dependent_id === sub.id);
+                          const subDependents = submoduleDeps.filter(d => d.prerequisite_id === sub.id);
+                          const availableSubs = modSubmodules.filter(
+                            s => s.id !== sub.id && !subPrereqs.find(d => d.prerequisite_id === s.id),
+                          );
+                          return (
+                            <div className="px-4 pt-1 pb-1">
+                              <div className="flex justify-between items-center mb-2">
+                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Submodule Dependencies</span>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => openAddSubDep(sub.id)}
+                                  style={{ backgroundColor: '#1a1a3a', color: '#9090d0', borderColor: '#3a3a7a' }}
+                                >
+                                  + Add Dep
+                                </Button>
+                              </div>
+                              {subPrereqs.length === 0 && subDependents.length === 0 ? (
+                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No dependencies.</p>
+                              ) : (
+                                <div className="space-y-1 mb-2">
+                                  {subPrereqs.map(dep => {
+                                    const prereqSub = modSubmodules.find(s => s.id === dep.prerequisite_id);
+                                    if (!prereqSub) return null;
+                                    return (
+                                      <div key={dep.id} className="flex items-center gap-2 text-xs">
+                                        <span style={{ color: '#6a6490' }}>Needs:</span>
+                                        <span
+                                          className="px-1.5 py-0.5 rounded font-bold"
+                                          style={{
+                                            backgroundColor: dep.dependency_type === 'required' ? '#1a2a1a' : '#1a1530',
+                                            color: dep.dependency_type === 'required' ? '#4caf7d' : '#b080e0',
+                                          }}
+                                        >
+                                          {dep.dependency_type === 'required' ? 'AND' : 'OR'}
+                                        </span>
+                                        <span style={{ color: '#e8d5b0' }}>{prereqSub.title}</span>
+                                        <button
+                                          onClick={() => deleteSubmoduleDep(dep.id)}
+                                          style={{ color: '#e05c5c' }}
+                                          title="Remove"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                  {subDependents.map(dep => {
+                                    const depSub = modSubmodules.find(s => s.id === dep.dependent_id);
+                                    if (!depSub) return null;
+                                    return (
+                                      <div key={dep.id} className="flex items-center gap-2 text-xs">
+                                        <span style={{ color: '#6a6490' }}>Blocks:</span>
+                                        <span style={{ color: '#e8d5b0' }}>{depSub.title}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {/* Submodule dep modal */}
+                              {subDepModalSubId === sub.id && (
+                                <Modal
+                                  isOpen
+                                  onClose={() => setSubDepModalSubId(null)}
+                                  title="Add Submodule Dependency"
+                                  onSave={handleSaveSubDep}
+                                >
+                                  <FormField label="This submodule needs...">
+                                    <select
+                                      value={subDepForm.prerequisite_id}
+                                      onChange={e => setSubDepForm(prev => ({ ...prev, prerequisite_id: e.target.value }))}
+                                      style={inputStyle}
+                                    >
+                                      <option value="">Select a submodule…</option>
+                                      {availableSubs.map(s => (
+                                        <option key={s.id} value={s.id}>{s.title}</option>
+                                      ))}
+                                    </select>
+                                  </FormField>
+                                  <FormField label="Dependency Type">
+                                    <div className="flex gap-4 mt-1">
+                                      {(['required', 'optional'] as const).map(t => (
+                                        <label key={t} className="flex items-center gap-2 cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            name="subDepType"
+                                            value={t}
+                                            checked={subDepForm.dependency_type === t}
+                                            onChange={() => setSubDepForm(prev => ({ ...prev, dependency_type: t, group_id: '' }))}
+                                          />
+                                          <span className="text-sm capitalize" style={{ color: '#e8d5b0' }}>
+                                            {t === 'required' ? 'Required (AND)' : 'Optional (OR)'}
+                                          </span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </FormField>
+                                  <FormField label="Label (optional)">
+                                    <input
+                                      type="text"
+                                      value={subDepForm.label}
+                                      onChange={e => setSubDepForm(prev => ({ ...prev, label: e.target.value }))}
+                                      placeholder="e.g., Must finish before this location opens"
+                                      style={inputStyle}
+                                    />
+                                  </FormField>
+                                  {subDepError && (
+                                    <p className="text-sm mt-2" style={{ color: '#e05c5c' }}>{subDepError}</p>
+                                  )}
+                                </Modal>
                               )}
                             </div>
                           );
@@ -901,6 +1113,253 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         </div>
       )}
 
+      {/* ===== DEPENDENCIES SECTION ===== */}
+      {activeSection === 'dependencies' && (
+        <div className="space-y-6">
+
+          {/* Depends On (prerequisites) */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <span style={sectionLabel}>Depends On (Prerequisites)</span>
+              <Button variant="primary" size="sm" onClick={openAddModDep}>+ Add Dependency</Button>
+            </div>
+
+            {prereqs.length === 0 ? (
+              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
+                No prerequisites. This module can start at any time.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {/* Required (AND) deps */}
+                {prereqs.filter(d => d.dependency_type === 'required').map(dep => {
+                  const prereqMod = modules.find(m => m.id === dep.prerequisite_id);
+                  if (!prereqMod) return null;
+                  const ps = statusStyles[prereqMod.status];
+                  return (
+                    <div
+                      key={dep.id}
+                      className="rounded border p-3 flex items-center gap-3"
+                      style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
+                    >
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0"
+                        style={{ backgroundColor: '#1a2a1a', color: '#4caf7d', border: '1px solid #2a6a2a' }}
+                      >
+                        AND
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                          {prereqMod.chapter ? `${prereqMod.chapter}: ` : ''}{prereqMod.title}
+                        </span>
+                        {dep.label && (
+                          <span className="ml-2 text-xs" style={{ color: '#9990b0' }}>{dep.label}</span>
+                        )}
+                      </div>
+                      <span
+                        className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
+                        style={{ backgroundColor: ps.bg, color: ps.text, borderColor: ps.border }}
+                      >
+                        {prereqMod.status}
+                      </span>
+                      <button
+                        onClick={() => deleteModuleDep(dep.id)}
+                        className="text-xs px-2 py-1 rounded shrink-0"
+                        style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
+                        title="Remove dependency"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* Optional (OR) deps grouped by group_id */}
+                {orGroups.map((gid, gi) => {
+                  const group = optionalPrereqs.filter(d => d.group_id === gid);
+                  return (
+                    <div
+                      key={gid}
+                      className="rounded border overflow-hidden"
+                      style={{ borderColor: '#3a3060', backgroundColor: '#1a1828' }}
+                    >
+                      <div
+                        className="px-3 py-1.5 text-xs font-bold"
+                        style={{ backgroundColor: '#1a1530', color: '#b080e0', borderBottom: '1px solid #3a3060' }}
+                      >
+                        OR Group {gi + 1} — any one of these satisfies the requirement:
+                      </div>
+                      <div className="space-y-1 p-2">
+                        {group.map(dep => {
+                          const prereqMod = modules.find(m => m.id === dep.prerequisite_id);
+                          if (!prereqMod) return null;
+                          const ps = statusStyles[prereqMod.status];
+                          return (
+                            <div key={dep.id} className="flex items-center gap-3 px-1">
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0"
+                                style={{ backgroundColor: '#1a1530', color: '#b080e0', border: '1px solid #5a3080' }}
+                              >
+                                OR
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                                  {prereqMod.chapter ? `${prereqMod.chapter}: ` : ''}{prereqMod.title}
+                                </span>
+                                {dep.label && (
+                                  <span className="ml-2 text-xs" style={{ color: '#9990b0' }}>{dep.label}</span>
+                                )}
+                              </div>
+                              <span
+                                className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
+                                style={{ backgroundColor: ps.bg, color: ps.text, borderColor: ps.border }}
+                              >
+                                {prereqMod.status}
+                              </span>
+                              <button
+                                onClick={() => deleteModuleDep(dep.id)}
+                                className="text-xs px-2 py-1 rounded shrink-0"
+                                style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
+                                title="Remove"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Required By (reverse view, read-only) */}
+          <div>
+            <div className="mb-3">
+              <span style={sectionLabel}>Required By (Blocks These Modules)</span>
+            </div>
+            {dependents.length === 0 ? (
+              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
+                No modules depend on this one yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {dependents.map(dep => {
+                  const depMod = modules.find(m => m.id === dep.dependent_id);
+                  if (!depMod) return null;
+                  const ds = statusStyles[depMod.status];
+                  return (
+                    <div
+                      key={dep.id}
+                      className="rounded border p-3 flex items-center gap-3"
+                      style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
+                    >
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0"
+                        style={{
+                          backgroundColor: dep.dependency_type === 'required' ? '#1a2a1a' : '#1a1530',
+                          color: dep.dependency_type === 'required' ? '#4caf7d' : '#b080e0',
+                          border: `1px solid ${dep.dependency_type === 'required' ? '#2a6a2a' : '#5a3080'}`,
+                        }}
+                      >
+                        {dep.dependency_type === 'required' ? 'AND' : 'OR'}
+                      </span>
+                      <span className="flex-1 text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                        {depMod.chapter ? `${depMod.chapter}: ` : ''}{depMod.title}
+                      </span>
+                      <span
+                        className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
+                        style={{ backgroundColor: ds.bg, color: ds.text, borderColor: ds.border }}
+                      >
+                        {depMod.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          ADD MODULE DEPENDENCY MODAL
+      ================================================================ */}
+      <Modal
+        isOpen={modDepModalOpen}
+        onClose={() => setModDepModalOpen(false)}
+        title="Add Module Dependency"
+        onSave={handleSaveModDep}
+      >
+        <FormField label="This module depends on...">
+          <select
+            value={modDepForm.prerequisite_id}
+            onChange={e => setModDepForm(prev => ({ ...prev, prerequisite_id: e.target.value }))}
+            style={inputStyle}
+          >
+            <option value="">Select a module…</option>
+            {availableModules.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.chapter ? `${m.chapter}: ` : ''}{m.title}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Dependency Type">
+          <div className="flex gap-6 mt-1">
+            {(['required', 'optional'] as const).map(t => (
+              <label key={t} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="modDepType"
+                  value={t}
+                  checked={modDepForm.dependency_type === t}
+                  onChange={() => setModDepForm(prev => ({ ...prev, dependency_type: t, group_id: '' }))}
+                />
+                <span className="text-sm" style={{ color: '#e8d5b0' }}>
+                  {t === 'required' ? 'Required (AND) — must be completed' : 'Optional (OR) — any one in group satisfies'}
+                </span>
+              </label>
+            ))}
+          </div>
+        </FormField>
+        {modDepForm.dependency_type === 'optional' && orGroups.length > 0 && (
+          <FormField label="OR Group">
+            <select
+              value={modDepForm.group_id}
+              onChange={e => setModDepForm(prev => ({ ...prev, group_id: e.target.value }))}
+              style={inputStyle}
+            >
+              <option value="">New OR group</option>
+              {orGroups.map((gid, i) => {
+                const members = optionalPrereqs
+                  .filter(d => d.group_id === gid)
+                  .map(d => modules.find(m => m.id === d.prerequisite_id)?.title ?? '?')
+                  .join(', ');
+                return (
+                  <option key={gid} value={gid}>
+                    OR Group {i + 1}: {members}
+                  </option>
+                );
+              })}
+            </select>
+          </FormField>
+        )}
+        <FormField label="Label (optional)">
+          <input
+            type="text"
+            value={modDepForm.label}
+            onChange={e => setModDepForm(prev => ({ ...prev, label: e.target.value }))}
+            placeholder="e.g., Complete before the heist"
+            style={inputStyle}
+          />
+        </FormField>
+        {modDepError && (
+          <p className="text-sm mt-2" style={{ color: '#e05c5c' }}>{modDepError}</p>
+        )}
+      </Modal>
+
       {/* ================================================================
           MODULE EDIT MODAL
       ================================================================ */}
@@ -912,9 +1371,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         wide
       >
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Chapter">
+          <FormField label="Module ID">
             <input
-              type="text"
+              type="number"
               value={moduleForm.chapter ?? ''}
               onChange={e => setModuleForm(prev => ({ ...prev, chapter: e.target.value }))}
               placeholder="e.g., 1"
@@ -933,7 +1392,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             </select>
           </FormField>
         </div>
-        <FormField label="Title">
+        <FormField label="Name">
           <input
             type="text"
             value={moduleForm.title}

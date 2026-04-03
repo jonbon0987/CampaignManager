@@ -22,6 +22,8 @@ import type {
   ModuleSheet, ModuleSheetInsert,
   MonsterStatblock, MonsterStatblockInsert,
   Encounter, EncounterInsert,
+  ModuleDependency, ModuleDependencyInsert,
+  SubmoduleDependency, SubmoduleDependencyInsert,
 } from './database.types';
 
 // --------------- Helper ---------------
@@ -658,6 +660,79 @@ export const ModuleSheets = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('module_sheets').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// MODULE DEPENDENCIES
+// ============================================================
+
+export const ModuleDeps = {
+  async getByCampaign(campaignId: string): Promise<ModuleDependency[]> {
+    const { data, error } = await supabase
+      .from('module_dependencies')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('created_at');
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(dep: ModuleDependencyInsert & { id?: string }): Promise<ModuleDependency> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('module_dependencies')
+      .upsert({ ...dep, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('module_dependencies').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// SUBMODULE DEPENDENCIES
+// ============================================================
+
+export const SubmoduleDeps = {
+  async getByModule(moduleId: string): Promise<SubmoduleDependency[]> {
+    // Two-query approach: get submodule IDs first, then filter deps by dependent_id
+    const { data: subs, error: subsError } = await supabase
+      .from('submodules')
+      .select('id')
+      .eq('module_id', moduleId);
+    if (subsError) throw subsError;
+    const subIds = (subs ?? []).map((s: { id: string }) => s.id);
+    if (subIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('submodule_dependencies')
+      .select('*')
+      .in('dependent_id', subIds)
+      .order('created_at');
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(dep: SubmoduleDependencyInsert & { id?: string }): Promise<SubmoduleDependency> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('submodule_dependencies')
+      .upsert({ ...dep, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('submodule_dependencies').delete().eq('id', id);
     if (error) throw error;
   },
 };

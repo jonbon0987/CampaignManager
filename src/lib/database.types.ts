@@ -184,6 +184,39 @@ export interface CharacterRelationship {
 
 export type CharacterRelationshipInsert = Omit<CharacterRelationship, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+// --------------- Module / Submodule Dependencies ---------------
+
+export type DependencyType = 'required' | 'optional';
+
+export interface ModuleDependency {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  dependent_id: string;     // the module that requires something done first
+  prerequisite_id: string;  // the module that must be completed first
+  dependency_type: DependencyType;
+  group_id: string | null;  // shared UUID for OR groups; null for required rows
+  label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ModuleDependencyInsert = Omit<ModuleDependency, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
+export interface SubmoduleDependency {
+  id: string;
+  user_id: string;
+  dependent_id: string;
+  prerequisite_id: string;
+  dependency_type: DependencyType;
+  group_id: string | null;
+  label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 // --------------- Insert shapes (omit server-set fields) ---------------
 
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at'>;

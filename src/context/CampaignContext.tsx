@@ -20,6 +20,8 @@ import {
   ModuleSheets as ModuleSheetsDB,
   MonsterStatblocks as MonsterStatblocksDB,
   Encounters as EncountersDB,
+  ModuleDeps as ModuleDepsDB,
+  SubmoduleDeps as SubmoduleDepsDB,
 } from '../lib/db';
 import type {
   Campaign, CampaignInsert,
@@ -37,6 +39,8 @@ import type {
   ModuleSheet, ModuleSheetInsert,
   MonsterStatblock, MonsterStatblockInsert,
   Encounter, EncounterInsert,
+  ModuleDependency, ModuleDependencyInsert,
+  SubmoduleDependency, SubmoduleDependencyInsert,
 } from '../lib/database.types';
 
 interface CampaignContextType {
@@ -106,7 +110,7 @@ interface CampaignContextType {
   deleteLore: (id: string) => Promise<void>;
 
   // Modules
-  upsertModule: (m: Omit<ModuleInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  upsertModule: (m: Omit<ModuleInsert, 'campaign_id'> & { id?: string }) => Promise<Module | undefined>;
   deleteModule: (id: string) => Promise<void>;
 
   // Character relationships
@@ -140,6 +144,18 @@ interface CampaignContextType {
   encounters: Encounter[];
   upsertEncounter: (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
   deleteEncounter: (id: string) => Promise<void>;
+
+  // Module Dependencies
+  moduleDeps: ModuleDependency[];
+  loadModuleDeps: (campaignId: string) => Promise<void>;
+  upsertModuleDep: (dep: ModuleDependencyInsert & { id?: string }) => Promise<void>;
+  deleteModuleDep: (id: string) => Promise<void>;
+
+  // Submodule Dependencies
+  submoduleDeps: SubmoduleDependency[];
+  loadSubmoduleDeps: (moduleId: string) => Promise<void>;
+  upsertSubmoduleDep: (dep: SubmoduleDependencyInsert & { id?: string }) => Promise<void>;
+  deleteSubmoduleDep: (id: string) => Promise<void>;
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -174,6 +190,8 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [moduleSheets, setModuleSheets] = useState<ModuleSheet[]>([]);
   const [monsterStatblocks, setMonsterStatblocks] = useState<MonsterStatblock[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [moduleDeps, setModuleDeps] = useState<ModuleDependency[]>([]);
+  const [submoduleDeps, setSubmoduleDeps] = useState<SubmoduleDependency[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -277,6 +295,11 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       }
       try {
         setEncounters(await EncountersDB.getAll(campaignId));
+      } catch {
+        // table doesn't exist yet — silently ignore until migration is applied
+      }
+      try {
+        setModuleDeps(await ModuleDepsDB.getByCampaign(campaignId));
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
       }
@@ -504,9 +527,10 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
   // ---- Modules ----
   const upsertModule = useCallback(async (m: Omit<ModuleInsert, 'campaign_id'> & { id?: string }) => {
-    if (!selectedCampaignId) return;
-    await ModulesDB.upsert({ ...m, campaign_id: selectedCampaignId });
+    if (!selectedCampaignId) return undefined;
+    const mod = await ModulesDB.upsert({ ...m, campaign_id: selectedCampaignId });
     setModules(await ModulesDB.getAll(selectedCampaignId));
+    return mod;
   }, [selectedCampaignId]);
 
   const deleteModule = useCallback(async (id: string) => {
@@ -586,6 +610,38 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setEncounters(prev => prev.filter(e => e.id !== id));
   }, [selectedCampaignId]);
 
+  // ---- Module Dependencies ----
+  const loadModuleDeps = useCallback(async (campaignId: string) => {
+    setModuleDeps(await ModuleDepsDB.getByCampaign(campaignId));
+  }, []);
+
+  const upsertModuleDep = useCallback(async (dep: ModuleDependencyInsert & { id?: string }) => {
+    await ModuleDepsDB.upsert(dep);
+    setModuleDeps(await ModuleDepsDB.getByCampaign(dep.campaign_id));
+  }, []);
+
+  const deleteModuleDep = useCallback(async (id: string) => {
+    await ModuleDepsDB.delete(id);
+    setModuleDeps(prev => prev.filter(d => d.id !== id));
+  }, []);
+
+  // ---- Submodule Dependencies ----
+  const loadSubmoduleDeps = useCallback(async (moduleId: string) => {
+    setSubmoduleDeps(await SubmoduleDepsDB.getByModule(moduleId));
+  }, []);
+
+  const upsertSubmoduleDep = useCallback(async (dep: SubmoduleDependencyInsert & { id?: string }) => {
+    await SubmoduleDepsDB.upsert(dep);
+    // Reload for the module that owns this submodule
+    const sub = submodules.find(s => s.id === dep.dependent_id);
+    if (sub) setSubmoduleDeps(await SubmoduleDepsDB.getByModule(sub.module_id));
+  }, [submodules]);
+
+  const deleteSubmoduleDep = useCallback(async (id: string) => {
+    await SubmoduleDepsDB.delete(id);
+    setSubmoduleDeps(prev => prev.filter(d => d.id !== id));
+  }, []);
+
   // ---- Monster Statblocks ----
   const upsertMonsterStatblock = useCallback(async (m: Omit<MonsterStatblockInsert, 'campaign_id'> & { id?: string }): Promise<MonsterStatblock> => {
     if (!selectedCampaignId) throw new Error('No campaign selected');
@@ -623,6 +679,8 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
       monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock,
       encounters, upsertEncounter, deleteEncounter,
+      moduleDeps, loadModuleDeps, upsertModuleDep, deleteModuleDep,
+      submoduleDeps, loadSubmoduleDeps, upsertSubmoduleDep, deleteSubmoduleDep,
     }}>
       {children}
     </CampaignContext.Provider>

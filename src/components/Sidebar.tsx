@@ -180,10 +180,10 @@ export default function Sidebar({
               fontFamily: 'Georgia, Cambria, serif',
               justifyContent: isOpen ? 'flex-start' : 'center',
             }}
-            title={!isOpen ? 'AI Assistant' : undefined}
+            title={!isOpen ? 'DM Assistant' : undefined}
           >
             <Sparkles size={16} strokeWidth={1.5} />
-            {isOpen && <span>AI Assistant</span>}
+            {isOpen && <span>DM Assistant</span>}
           </button>
 
           {/* Collapse toggle (desktop only) */}
