@@ -161,11 +161,48 @@ function CombatantRow({
 }
 
 // ================================================================
+// Campaign context helper
+// ================================================================
+
+type CampaignContextData = {
+  overview: { title: string; plotSummary: string };
+  sessions: Array<{ session_number: number | null; session_date: string | null; summary: string | null }>;
+  lore: Array<{ title: string; category: string | null; content: string | null }>;
+  locations: Array<{ name: string; region: string | null; location_type: string | null; description: string | null }>;
+};
+
+function buildCampaignContextBlock(data: CampaignContextData): string {
+  const parts: string[] = ['\n\n== CAMPAIGN CONTEXT ==', `Campaign: ${data.overview.title || 'Unnamed'}`];
+  if (data.overview.plotSummary) parts.push(`Plot: ${data.overview.plotSummary}`);
+  if (data.sessions.length > 0) {
+    parts.push('\nRecent Sessions:');
+    data.sessions.slice(-5).forEach(s => {
+      if (s.summary) parts.push(`  Session #${s.session_number ?? '?'}: ${s.summary}`);
+    });
+  }
+  if (data.lore.length > 0) {
+    parts.push('\nLore:');
+    data.lore.slice(0, 10).forEach(l => {
+      const snippet = l.content ? l.content.substring(0, 120) + (l.content.length > 120 ? '…' : '') : '';
+      parts.push(`  [${l.category ?? 'lore'}] ${l.title}${snippet ? ': ' + snippet : ''}`);
+    });
+  }
+  if (data.locations.length > 0) {
+    parts.push('\nLocations:');
+    data.locations.slice(0, 10).forEach(l => {
+      parts.push(`  ${l.name} (${l.location_type ?? '?'})${l.region ? ` in ${l.region}` : ''}${l.description ? ': ' + l.description.substring(0, 80) + '…' : ''}`);
+    });
+  }
+  parts.push('\nUse this campaign context to make the generated content feel native to this world — reference appropriate locations, lore, and ongoing story threads where fitting.\n');
+  return parts.join('\n');
+}
+
+// ================================================================
 // Main component
 // ================================================================
 
 export default function EncounterBuilder() {
-  const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, upsertMonsterStatblock, pcs } = useCampaign();
+  const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, upsertMonsterStatblock, pcs, sessions, lore, locations, overview } = useCampaign();
 
   // List state
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -190,6 +227,8 @@ export default function EncounterBuilder() {
   const [genTheme, setGenTheme] = useState('');
   const [genDifficulty, setGenDifficulty] = useState('hard');
   const [genEnvironment, setGenEnvironment] = useState('');
+  const [genUseCampaignContext, setGenUseCampaignContext] = useState(false);
+  const [genAdditionalContext, setGenAdditionalContext] = useState('');
   const [genError, setGenError] = useState('');
   const [genLoading, setGenLoading] = useState(false);
 
@@ -392,6 +431,8 @@ Respond with a JSON object (no markdown, raw JSON only):
       setGenPartySize(String(activePCs.length));
     }
     setGenMode('ai');
+    setGenUseCampaignContext(false);
+    setGenAdditionalContext('');
     setGenError('');
     setGenLoading(false);
     setGenModalOpen(true);
@@ -432,6 +473,12 @@ Respond with a JSON object (no markdown, raw JSON only):
 
     const themeClause = genTheme ? ` The encounter theme/concept: "${genTheme}".` : '';
     const envClause = genEnvironment ? ` Environment: ${genEnvironment}.` : '';
+    const campaignContextBlock = genUseCampaignContext
+      ? buildCampaignContextBlock({ overview, sessions, lore, locations })
+      : '';
+    const additionalContextClause = genAdditionalContext.trim()
+      ? `\n\nAdditional DM instructions: ${genAdditionalContext.trim()}`
+      : '';
 
     setGenError('');
     setGenLoading(true);
@@ -442,7 +489,7 @@ Respond with a JSON object (no markdown, raw JSON only):
         max_tokens: 1024,
         messages: [{
           role: 'user',
-          content: `Design a D&D 5e encounter for a party of ${size} players at average level ${level}. Difficulty: ${genDifficulty}.${themeClause}${envClause}${savedCreaturesList}
+          content: `Design a D&D 5e encounter for a party of ${size} players at average level ${level}. Difficulty: ${genDifficulty}.${themeClause}${envClause}${savedCreaturesList}${campaignContextBlock}${additionalContextClause}
 
 Return a JSON object with this exact structure (no markdown, raw JSON only):
 {
@@ -762,7 +809,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
                   </select>
                 </FormField>
               </div>
-              <FormField label="Theme / Concept (optional)">
+              <FormField label="Encounter Concept (optional)" hint="What is this encounter — its setting, enemies, or story beat?">
                 <input
                   type="text"
                   value={genTheme}
@@ -772,6 +819,39 @@ For each combatant: if it matches a creature in the saved library (same name), s
                   disabled={genLoading}
                 />
               </FormField>
+              {/* Campaign context toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setGenUseCampaignContext(v => !v)}
+                  disabled={genLoading}
+                  className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
+                  style={{
+                    backgroundColor: genUseCampaignContext ? '#2a2050' : '#1a1828',
+                    color: genUseCampaignContext ? '#c9a84c' : '#9990b0',
+                    border: `1px solid ${genUseCampaignContext ? '#5a4090' : '#3a3660'}`,
+                  }}
+                >
+                  {genUseCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
+                </button>
+              </div>
+              {genUseCampaignContext && (
+                <p className="text-xs" style={{ color: '#4a4470' }}>
+                  Will include the last 5 session summaries, lore entries, and locations from your campaign.
+                </p>
+              )}
+
+              {/* Additional context */}
+              <FormField label="DM Instructions (optional)" hint="Specific rules or narrative constraints the AI must follow.">
+                <textarea
+                  rows={3}
+                  value={genAdditionalContext}
+                  onChange={e => setGenAdditionalContext(e.target.value)}
+                  placeholder="e.g. The villain escapes at the end. No more than 2 creature types. Include a puzzle element."
+                  style={textareaStyle}
+                  disabled={genLoading}
+                />
+              </FormField>
+
               {monsterStatblocks.length > 0 && (
                 <p className="text-xs" style={{ color: '#4a4470' }}>
                   The AI will consider your {monsterStatblocks.length} saved creature{monsterStatblocks.length !== 1 ? 's' : ''} when building the encounter.

@@ -75,8 +75,49 @@ const VALID_CRS = new Set([
 // MAIN COMPONENT
 // ================================================================
 
+// ================================================================
+// Campaign context helper
+// ================================================================
+
+type CampaignContextData = {
+  overview: { title: string; plotSummary: string };
+  sessions: Array<{ session_number: number | null; session_date: string | null; summary: string | null }>;
+  lore: Array<{ title: string; category: string | null; content: string | null }>;
+  locations: Array<{ name: string; region: string | null; location_type: string | null; description: string | null }>;
+};
+
+function buildCampaignContextBlock(data: CampaignContextData): string {
+  const parts: string[] = ['\n\n== CAMPAIGN CONTEXT ==', `Campaign: ${data.overview.title || 'Unnamed'}`];
+  if (data.overview.plotSummary) parts.push(`Plot: ${data.overview.plotSummary}`);
+  if (data.sessions.length > 0) {
+    parts.push('\nRecent Sessions:');
+    data.sessions.slice(-5).forEach(s => {
+      if (s.summary) parts.push(`  Session #${s.session_number ?? '?'}: ${s.summary}`);
+    });
+  }
+  if (data.lore.length > 0) {
+    parts.push('\nLore:');
+    data.lore.slice(0, 10).forEach(l => {
+      const snippet = l.content ? l.content.substring(0, 120) + (l.content.length > 120 ? '…' : '') : '';
+      parts.push(`  [${l.category ?? 'lore'}] ${l.title}${snippet ? ': ' + snippet : ''}`);
+    });
+  }
+  if (data.locations.length > 0) {
+    parts.push('\nLocations:');
+    data.locations.slice(0, 10).forEach(l => {
+      parts.push(`  ${l.name} (${l.location_type ?? '?'})${l.region ? ` in ${l.region}` : ''}${l.description ? ': ' + l.description.substring(0, 80) + '…' : ''}`);
+    });
+  }
+  parts.push('\nUse this campaign context to make the generated content feel native to this world — reference appropriate locations, lore, and ongoing story threads where fitting.\n');
+  return parts.join('\n');
+}
+
+// ================================================================
+// MAIN COMPONENT
+// ================================================================
+
 export default function CreatureStatblocks() {
-  const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock } = useCampaign();
+  const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, sessions, lore, locations, overview } = useCampaign();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonsterStatblock | null>(null);
@@ -91,6 +132,8 @@ export default function CreatureStatblocks() {
   const [genCR, setGenCR] = useState('');
   const [genPartySize, setGenPartySize] = useState('');
   const [genPartyLevel, setGenPartyLevel] = useState('');
+  const [genUseCampaignContext, setGenUseCampaignContext] = useState(false);
+  const [genAdditionalContext, setGenAdditionalContext] = useState('');
   const [genError, setGenError] = useState('');
   const [genLoading, setGenLoading] = useState(false);
 
@@ -139,6 +182,8 @@ export default function CreatureStatblocks() {
     setGenCR('');
     setGenPartySize('');
     setGenPartyLevel('');
+    setGenUseCampaignContext(false);
+    setGenAdditionalContext('');
     setGenError('');
     setGenModalOpen(true);
   };
@@ -179,6 +224,13 @@ export default function CreatureStatblocks() {
       return;
     }
 
+    const campaignContextBlock = genUseCampaignContext
+      ? buildCampaignContextBlock({ overview, sessions, lore, locations })
+      : '';
+    const additionalContextClause = genAdditionalContext.trim()
+      ? `\n\nAdditional DM instructions: ${genAdditionalContext.trim()}`
+      : '';
+
     setGenError('');
     setGenLoading(true);
     try {
@@ -188,7 +240,7 @@ export default function CreatureStatblocks() {
         max_tokens: 2048,
         messages: [{
           role: 'user',
-          content: `Generate a complete D&D 5e creature stat block for ${difficultyPrompt}. Be creative with the name and flavor. Follow official D&D 5e stat block format exactly.
+          content: `Generate a complete D&D 5e creature stat block for ${difficultyPrompt}. Be creative with the name and flavor. Follow official D&D 5e stat block format exactly.${campaignContextBlock}${additionalContextClause}
 
 Respond with a JSON object using this exact structure (no markdown, just raw JSON):
 {
@@ -474,6 +526,39 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               </div>
             </>
           )}
+
+          {/* Campaign context toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setGenUseCampaignContext(v => !v)}
+              disabled={genLoading}
+              className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
+              style={{
+                backgroundColor: genUseCampaignContext ? '#2a2050' : '#1a1828',
+                color: genUseCampaignContext ? '#c9a84c' : '#9990b0',
+                border: `1px solid ${genUseCampaignContext ? '#5a4090' : '#3a3660'}`,
+              }}
+            >
+              {genUseCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
+            </button>
+          </div>
+          {genUseCampaignContext && (
+            <p className="text-xs" style={{ color: '#4a4470' }}>
+              Will include the last 5 session summaries, lore entries, and locations from your campaign.
+            </p>
+          )}
+
+          {/* Additional context */}
+          <FormField label="Additional Context (optional)">
+            <textarea
+              rows={3}
+              value={genAdditionalContext}
+              onChange={e => setGenAdditionalContext(e.target.value)}
+              placeholder="e.g. This creature has multiple stages and legendary actions, he transforms mid-fight, etc"
+              style={textareaStyle}
+              disabled={genLoading}
+            />
+          </FormField>
 
           {genError && (
             <p className="text-sm" style={{ color: '#e05c5c' }}>{genError}</p>

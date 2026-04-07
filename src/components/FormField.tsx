@@ -4,14 +4,18 @@ interface FormFieldProps {
   label: string;
   children: ReactNode;
   className?: string;
+  hint?: string;
 }
 
-export function FormField({ label, children, className = '' }: FormFieldProps) {
+export function FormField({ label, children, className = '', hint }: FormFieldProps) {
   return (
     <div className={`mb-4 ${className}`}>
       <label className="block text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#c9a84c' }}>
         {label}
       </label>
+      {hint && (
+        <p className="text-xs mb-1.5" style={{ color: '#6a6490' }}>{hint}</p>
+      )}
       {children}
     </div>
   );
