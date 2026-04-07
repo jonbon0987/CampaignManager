@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
@@ -8,6 +8,9 @@ import { SearchBar } from '../ui/SearchBar';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
+import { StatBlockText } from '../ui/StatBlockText';
+import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
 import type { Session } from '../../lib/database.types';
 
 type SessionForm = {
@@ -32,6 +35,8 @@ export default function SessionNotes() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<SessionForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const editSummaryRef = useRef<HTMLTextAreaElement>(null);
+  const newSummaryRef = useRef<HTMLTextAreaElement>(null);
 
   const filtered = sessions
     .filter(s => {
@@ -212,6 +217,7 @@ export default function SessionNotes() {
                             Session Notes
                           </label>
                           <textarea
+                            ref={editSummaryRef}
                             value={editForm.summary ?? ''}
                             onChange={e => setEditForm(prev => prev ? { ...prev, summary: e.target.value || null } : prev)}
                             placeholder="What happened this session..."
@@ -219,6 +225,7 @@ export default function SessionNotes() {
                             className="w-full px-2 py-1.5 rounded text-sm outline-none resize-y"
                             style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif', minHeight: '200px' }}
                           />
+                          <CreatureLinkToolbar textareaRef={editSummaryRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, summary: insertAtCursor(editSummaryRef, prev.summary ?? '', markup) } : prev)} />
                         </div>
                         <div className="flex gap-2">
                           <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
@@ -231,9 +238,7 @@ export default function SessionNotes() {
                       </div>
                     ) : (
                       session.summary ? (
-                        <pre className="whitespace-pre-wrap text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }}>
-                          {session.summary}
-                        </pre>
+                        <StatBlockText text={session.summary} as="pre" className="whitespace-pre-wrap text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
                       ) : (
                         <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No notes recorded for this session.</p>
                       )
@@ -275,11 +280,13 @@ export default function SessionNotes() {
         </div>
         <FormField label="Session Notes">
           <textarea
+            ref={newSummaryRef}
             value={form.summary ?? ''}
             onChange={e => setForm(prev => ({ ...prev, summary: e.target.value || null }))}
             placeholder="What happened this session..."
             style={{ ...textareaStyle, minHeight: '320px' }}
           />
+          <CreatureLinkToolbar textareaRef={newSummaryRef} onInsert={markup => setForm(prev => ({ ...prev, summary: insertAtCursor(newSummaryRef, prev.summary ?? '', markup) }))} />
         </FormField>
       </Modal>
     </div>

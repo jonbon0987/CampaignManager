@@ -12,6 +12,8 @@ import HooksIdeas from './components/tabs/HooksIdeas';
 import CreatureStatblocks from './components/tabs/CreatureStatblocks';
 import EncounterBuilder from './components/tabs/EncounterBuilder';
 import AIAssistant from './components/AIAssistant';
+import StatBlockPanel from './components/StatBlockPanel';
+import { StatBlockPanelProvider } from './context/StatBlockPanelContext';
 import { signInWithEmail, onAuthStateChange } from './lib/auth';
 import useLocalStorage from './hooks/useLocalStorage';
 
@@ -84,6 +86,7 @@ function AppInner({ user }: { user: User }) {
       </div>
 
       <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
+      <StatBlockPanel />
     </div>
   );
 }
@@ -186,7 +189,9 @@ export default function App() {
 
   return (
     <CampaignProvider>
-      <AppInner user={user} />
+      <StatBlockPanelProvider>
+        <AppInner user={user} />
+      </StatBlockPanelProvider>
     </CampaignProvider>
   );
 }

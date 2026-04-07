@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { Button } from '../ui/Button';
-import type { Module, Submodule, Scene, ModuleSheet, MonsterStatblock, Encounter, ModuleDependency, SubmoduleDependency } from '../../lib/database.types';
+import { StatBlockText } from '../ui/StatBlockText';
+import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
+import type { Module, Submodule, Scene, MonsterStatblock, Encounter, ModuleDependency, SubmoduleDependency } from '../../lib/database.types';
 import { wouldCreateModuleCycle, wouldCreateSubmoduleCycle } from '../../lib/moduleUtils';
 
 // --------------- Form types ---------------
@@ -36,20 +39,6 @@ const emptySceneForm = (): SceneForm => ({
   title: '',
   scene_type: 'encounter',
   summary: '',
-  content: '',
-  dm_notes: '',
-});
-
-type SheetForm = {
-  title: string;
-  sheet_type: string;
-  content: string;
-  dm_notes: string;
-};
-
-const emptySheetForm = (): SheetForm => ({
-  title: '',
-  sheet_type: 'creature',
   content: '',
   dm_notes: '',
 });
@@ -136,7 +125,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     upsertModule, deleteModule,
     submodules, loadSubmodules, upsertSubmodule, deleteSubmodule,
     scenes, loadScenes, upsertScene, deleteScene,
-    moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
+    loadModuleSheets,
     monsterStatblocks,
     encounters,
     modules,
@@ -145,7 +134,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     submoduleDeps, loadSubmoduleDeps, upsertSubmoduleDep, deleteSubmoduleDep,
   } = useCampaign();
 
-  const [activeSection, setActiveSection] = useState<'submodules' | 'sheets' | 'overview' | 'dependencies'>('submodules');
+  const [activeSection, setActiveSection] = useState<'submodules' | 'overview' | 'dependencies'>('submodules');
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
 
   // Module edit modal
@@ -164,16 +153,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   const [sceneForm, setSceneForm] = useState<SceneForm>(emptySceneForm());
   const [sceneParentSubId, setSceneParentSubId] = useState<string | null>(null);
 
-  // Sheet modal
-  const [sheetModalOpen, setSheetModalOpen] = useState(false);
-  const [editingSheet, setEditingSheet] = useState<ModuleSheet | null>(null);
-  const [sheetForm, setSheetForm] = useState<SheetForm>(emptySheetForm());
-  const [sheetParentId, setSheetParentId] = useState<string | null>(null);
-
   // Detail views
   const [viewingSubmodule, setViewingSubmodule] = useState<Submodule | null>(null);
   const [viewingScene, setViewingScene] = useState<Scene | null>(null);
-  const [viewingSheet, setViewingSheet] = useState<ModuleSheet | null>(null);
 
   // Creature picker
   const [creaturePickerTarget, setCreaturePickerTarget] = useState<
@@ -205,6 +187,18 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   }>({ prerequisite_id: '', dependency_type: 'required', group_id: '', label: '' });
   const [subDepError, setSubDepError] = useState<string | null>(null);
 
+  // Textarea refs for creature link insertion
+  const modSynopsisRef = useRef<HTMLTextAreaElement>(null);
+  const modEncountersRef = useRef<HTMLTextAreaElement>(null);
+  const modRewardsRef = useRef<HTMLTextAreaElement>(null);
+  const modDmNotesRef = useRef<HTMLTextAreaElement>(null);
+  const subSummaryRef = useRef<HTMLTextAreaElement>(null);
+  const subContentRef = useRef<HTMLTextAreaElement>(null);
+  const subDmNotesRef = useRef<HTMLTextAreaElement>(null);
+  const sceneSummaryRef = useRef<HTMLTextAreaElement>(null);
+  const sceneContentRef = useRef<HTMLTextAreaElement>(null);
+  const sceneDmNotesRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
     loadSubmodules(mod.id);
     loadModuleSheets(mod.id);
@@ -216,7 +210,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   }, [expandedSubId, loadScenes]);
 
   const modSubmodules = submodules.filter(s => s.module_id === mod.id);
-  const modSheets = moduleSheets.filter(s => s.module_id === mod.id);
   const ss = statusStyles[mod.status];
 
   // ---- Module CRUD ----
@@ -338,49 +331,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     if (confirm(`Delete "${scene.title}"?`)) {
       await deleteScene(scene.id, scene.submodule_id);
       if (viewingScene?.id === scene.id) setViewingScene(null);
-    }
-  };
-
-  // ---- Sheet CRUD ----
-
-  const openAddSheet = () => {
-    setSheetParentId(mod.id);
-    setEditingSheet(null);
-    setSheetForm(emptySheetForm());
-    setSheetModalOpen(true);
-  };
-
-  const openEditSheet = (sheet: ModuleSheet) => {
-    setSheetParentId(sheet.module_id);
-    setEditingSheet(sheet);
-    setSheetForm({
-      title: sheet.title,
-      sheet_type: sheet.sheet_type ?? 'creature',
-      content: sheet.content ?? '',
-      dm_notes: sheet.dm_notes ?? '',
-    });
-    setSheetModalOpen(true);
-  };
-
-  const handleSaveSheet = async () => {
-    if (!sheetParentId) return;
-    const existing = moduleSheets.filter(s => s.module_id === sheetParentId);
-    await upsertModuleSheet({
-      ...(editingSheet ? { id: editingSheet.id } : {}),
-      module_id: sheetParentId,
-      title: sheetForm.title,
-      sheet_type: sheetForm.sheet_type || null,
-      content: sheetForm.content || null,
-      dm_notes: sheetForm.dm_notes || null,
-      sort_order: editingSheet?.sort_order ?? existing.length,
-    });
-    setSheetModalOpen(false);
-  };
-
-  const handleDeleteSheet = async (sheet: ModuleSheet) => {
-    if (confirm(`Delete "${sheet.title}"?`)) {
-      await deleteModuleSheet(sheet.id, sheet.module_id);
-      if (viewingSheet?.id === sheet.id) setViewingSheet(null);
     }
   };
 
@@ -538,7 +488,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
 
       {/* Section tab bar */}
       <div className="flex border-b mb-5" style={{ borderColor: '#3a3660' }}>
-        {(['submodules', 'sheets', 'overview', 'dependencies'] as const).map(t => (
+        {(['submodules', 'overview', 'dependencies'] as const).map(t => (
           <button
             key={t}
             onClick={() => setActiveSection(t)}
@@ -551,8 +501,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           >
             {t === 'submodules'
               ? `Submodules${modSubmodules.length ? ` (${modSubmodules.length})` : ''}`
-              : t === 'sheets'
-              ? `Stat Sheets${modSheets.length ? ` (${modSheets.length})` : ''}`
               : t === 'dependencies'
               ? `Dependencies${prereqs.length + dependents.length ? ` (${prereqs.length + dependents.length})` : ''}`
               : 'Overview'}
@@ -1004,105 +952,31 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         </div>
       )}
 
-      {/* ===== SHEETS SECTION ===== */}
-      {activeSection === 'sheets' && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <span style={sectionLabel}>Stat Sheets</span>
-            <Button variant="primary" size="sm" onClick={openAddSheet}>+ Add Sheet</Button>
-          </div>
-
-          {modSheets.length === 0 ? (
-            <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-              No sheets yet. Add a creature stat block or character sheet.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {modSheets.map(sheet => {
-                const ts = getTypeStyle(sheet.sheet_type);
-                return (
-                  <div
-                    key={sheet.id}
-                    className="rounded-lg border p-4"
-                    style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
-                          style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border }}
-                        >
-                          {sheet.sheet_type ?? 'other'}
-                        </span>
-                        <span
-                          className="font-semibold text-sm"
-                          style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}
-                        >
-                          {sheet.title}
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 shrink-0">
-                        <button
-                          onClick={() => setViewingSheet(sheet)}
-                          className="text-xs px-2.5 py-1 rounded"
-                          style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => openEditSheet(sheet)}
-                          className="text-xs px-2.5 py-1 rounded"
-                          style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSheet(sheet)}
-                          className="text-xs px-2.5 py-1 rounded"
-                          style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ===== OVERVIEW SECTION ===== */}
       {activeSection === 'overview' && (
         <div className="space-y-5">
           {mod.synopsis && (
             <div>
               <div style={sectionLabel}>Synopsis</div>
-              <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }}>{mod.synopsis}</p>
+              <StatBlockText text={mod.synopsis} as="p" className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
             </div>
           )}
           {mod.encounters && (
             <div>
               <div style={sectionLabel}>Encounters & Story Beats</div>
-              <pre
-                className="text-sm whitespace-pre-wrap"
-                style={{ color: '#e8d5b0', lineHeight: '1.7', fontFamily: 'Georgia, serif' }}
-              >
-                {mod.encounters}
-              </pre>
+              <StatBlockText text={mod.encounters} as="pre" className="text-sm whitespace-pre-wrap" style={{ color: '#e8d5b0', lineHeight: '1.7', fontFamily: 'Georgia, serif' }} />
             </div>
           )}
           {mod.rewards && (
             <div>
               <div style={sectionLabel}>Rewards</div>
-              <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }}>{mod.rewards}</p>
+              <StatBlockText text={mod.rewards} as="p" className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
             </div>
           )}
           {mod.dm_notes && (
             <div>
               <div style={sectionLabel}>DM Notes</div>
-              <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.7', fontStyle: 'italic' }}>{mod.dm_notes}</p>
+              <StatBlockText text={mod.dm_notes} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.7', fontStyle: 'italic' }} />
             </div>
           )}
           {!mod.synopsis && !mod.encounters && !mod.rewards && !mod.dm_notes && (
@@ -1403,35 +1277,43 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         </FormField>
         <FormField label="Synopsis">
           <textarea
+            ref={modSynopsisRef}
             value={moduleForm.synopsis ?? ''}
             onChange={e => setModuleForm(prev => ({ ...prev, synopsis: e.target.value }))}
             placeholder="Overview of this chapter's events, goals, and themes..."
             style={{ ...textareaStyle, minHeight: '80px' }}
           />
+          <CreatureLinkToolbar textareaRef={modSynopsisRef} onInsert={markup => setModuleForm(prev => ({ ...prev, synopsis: insertAtCursor(modSynopsisRef, prev.synopsis ?? '', markup) }))} />
         </FormField>
         <FormField label="Encounters & Story Beats">
           <textarea
+            ref={modEncountersRef}
             value={moduleForm.encounters ?? ''}
             onChange={e => setModuleForm(prev => ({ ...prev, encounters: e.target.value }))}
             placeholder="Key scenes, encounters, revelations, branching paths..."
             style={{ ...textareaStyle, minHeight: '120px' }}
           />
+          <CreatureLinkToolbar textareaRef={modEncountersRef} onInsert={markup => setModuleForm(prev => ({ ...prev, encounters: insertAtCursor(modEncountersRef, prev.encounters ?? '', markup) }))} />
         </FormField>
         <FormField label="Rewards">
           <textarea
+            ref={modRewardsRef}
             value={moduleForm.rewards ?? ''}
             onChange={e => setModuleForm(prev => ({ ...prev, rewards: e.target.value }))}
             placeholder="Loot, level-ups, plot rewards..."
             style={{ ...textareaStyle, minHeight: '60px' }}
           />
+          <CreatureLinkToolbar textareaRef={modRewardsRef} onInsert={markup => setModuleForm(prev => ({ ...prev, rewards: insertAtCursor(modRewardsRef, prev.rewards ?? '', markup) }))} />
         </FormField>
         <FormField label="DM Notes">
           <textarea
+            ref={modDmNotesRef}
             value={moduleForm.dm_notes ?? ''}
             onChange={e => setModuleForm(prev => ({ ...prev, dm_notes: e.target.value }))}
             placeholder="Hidden information, fallbacks, secret motives..."
             style={{ ...textareaStyle, minHeight: '60px' }}
           />
+          <CreatureLinkToolbar textareaRef={modDmNotesRef} onInsert={markup => setModuleForm(prev => ({ ...prev, dm_notes: insertAtCursor(modDmNotesRef, prev.dm_notes ?? '', markup) }))} />
         </FormField>
       </Modal>
 
@@ -1472,27 +1354,33 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         </div>
         <FormField label="Summary">
           <textarea
+            ref={subSummaryRef}
             value={subForm.summary}
             onChange={e => setSubForm(prev => ({ ...prev, summary: e.target.value }))}
             placeholder="Short description shown in the list view..."
             style={{ ...textareaStyle, minHeight: '60px' }}
           />
+          <CreatureLinkToolbar textareaRef={subSummaryRef} onInsert={markup => setSubForm(prev => ({ ...prev, summary: insertAtCursor(subSummaryRef, prev.summary, markup) }))} />
         </FormField>
         <FormField label="Full Write-Up">
           <textarea
+            ref={subContentRef}
             value={subForm.content}
             onChange={e => setSubForm(prev => ({ ...prev, content: e.target.value }))}
             placeholder="Full description of this location or story beat — history, atmosphere, key details, DM guidance..."
             style={{ ...textareaStyle, minHeight: '320px', fontFamily: 'Georgia, serif', lineHeight: '1.7' }}
           />
+          <CreatureLinkToolbar textareaRef={subContentRef} onInsert={markup => setSubForm(prev => ({ ...prev, content: insertAtCursor(subContentRef, prev.content, markup) }))} />
         </FormField>
         <FormField label="DM Notes">
           <textarea
+            ref={subDmNotesRef}
             value={subForm.dm_notes}
             onChange={e => setSubForm(prev => ({ ...prev, dm_notes: e.target.value }))}
             placeholder="Hidden info, contingencies, secrets..."
             style={{ ...textareaStyle, minHeight: '60px' }}
           />
+          <CreatureLinkToolbar textareaRef={subDmNotesRef} onInsert={markup => setSubForm(prev => ({ ...prev, dm_notes: insertAtCursor(subDmNotesRef, prev.dm_notes, markup) }))} />
         </FormField>
       </Modal>
 
@@ -1533,79 +1421,33 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         </div>
         <FormField label="Summary">
           <textarea
+            ref={sceneSummaryRef}
             value={sceneForm.summary}
             onChange={e => setSceneForm(prev => ({ ...prev, summary: e.target.value }))}
             placeholder="Short description shown in the list view..."
             style={{ ...textareaStyle, minHeight: '60px' }}
           />
+          <CreatureLinkToolbar textareaRef={sceneSummaryRef} onInsert={markup => setSceneForm(prev => ({ ...prev, summary: insertAtCursor(sceneSummaryRef, prev.summary, markup) }))} />
         </FormField>
         <FormField label="Full Write-Up">
           <textarea
+            ref={sceneContentRef}
             value={sceneForm.content}
             onChange={e => setSceneForm(prev => ({ ...prev, content: e.target.value }))}
             placeholder="Full scene details — read-aloud text, tactics, trigger conditions, outcomes, branching paths..."
             style={{ ...textareaStyle, minHeight: '320px', fontFamily: 'Georgia, serif', lineHeight: '1.7' }}
           />
+          <CreatureLinkToolbar textareaRef={sceneContentRef} onInsert={markup => setSceneForm(prev => ({ ...prev, content: insertAtCursor(sceneContentRef, prev.content, markup) }))} />
         </FormField>
         <FormField label="DM Notes">
           <textarea
+            ref={sceneDmNotesRef}
             value={sceneForm.dm_notes}
             onChange={e => setSceneForm(prev => ({ ...prev, dm_notes: e.target.value }))}
             placeholder="Hidden info, contingencies, secrets..."
             style={{ ...textareaStyle, minHeight: '60px' }}
           />
-        </FormField>
-      </Modal>
-
-      {/* ================================================================
-          SHEET MODAL
-      ================================================================ */}
-      <Modal
-        isOpen={sheetModalOpen}
-        onClose={() => setSheetModalOpen(false)}
-        title={editingSheet ? 'Edit Sheet' : 'New Stat Sheet'}
-        onSave={handleSaveSheet}
-        wide
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Type">
-            <select
-              value={sheetForm.sheet_type}
-              onChange={e => setSheetForm(prev => ({ ...prev, sheet_type: e.target.value }))}
-              style={inputStyle}
-            >
-              <option value="creature">Creature</option>
-              <option value="npc">NPC</option>
-              <option value="pc">Player Character</option>
-              <option value="vehicle">Vehicle</option>
-              <option value="other">Other</option>
-            </select>
-          </FormField>
-          <FormField label="Name">
-            <input
-              type="text"
-              value={sheetForm.title}
-              onChange={e => setSheetForm(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="e.g., Cave Troll, Mira the Fence"
-              style={inputStyle}
-            />
-          </FormField>
-        </div>
-        <FormField label="Stat Block / Sheet Content">
-          <textarea
-            value={sheetForm.content}
-            onChange={e => setSheetForm(prev => ({ ...prev, content: e.target.value }))}
-            placeholder={`Paste or write the full stat block or character sheet here.\n\nExamples:\n— Creature: AC, HP, Speed, ability scores, saves, skills, actions, legendary actions\n— NPC: appearance, personality, motivations, secrets, stats if needed\n— PC: class, race, ability scores, HP, features, equipment, backstory notes`}
-            style={{ ...textareaStyle, minHeight: '360px', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: '1.6' }}
-          />
-        </FormField>
-        <FormField label="DM Notes">
-          <textarea
-            value={sheetForm.dm_notes}
-            onChange={e => setSheetForm(prev => ({ ...prev, dm_notes: e.target.value }))}
-            placeholder="Tactics, role in the encounter, hidden motivations..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
+          <CreatureLinkToolbar textareaRef={sceneDmNotesRef} onInsert={markup => setSceneForm(prev => ({ ...prev, dm_notes: insertAtCursor(sceneDmNotesRef, prev.dm_notes, markup) }))} />
         </FormField>
       </Modal>
 
@@ -1636,28 +1478,19 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingSubmodule.summary && (
               <div>
                 <div style={sectionLabel}>Summary</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingSubmodule.summary}
-                </p>
+                <StatBlockText text={viewingSubmodule.summary} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             {viewingSubmodule.content && (
               <div>
                 <div style={sectionLabel}>Full Write-Up</div>
-                <pre
-                  className="text-sm whitespace-pre-wrap"
-                  style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }}
-                >
-                  {viewingSubmodule.content}
-                </pre>
+                <StatBlockText text={viewingSubmodule.content} as="pre" className="text-sm whitespace-pre-wrap" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
               </div>
             )}
             {viewingSubmodule.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingSubmodule.dm_notes}
-                </p>
+                <StatBlockText text={viewingSubmodule.dm_notes} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             <div className="flex gap-2 pt-2">
@@ -1700,28 +1533,19 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingScene.summary && (
               <div>
                 <div style={sectionLabel}>Summary</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingScene.summary}
-                </p>
+                <StatBlockText text={viewingScene.summary} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             {viewingScene.content && (
               <div>
                 <div style={sectionLabel}>Full Write-Up</div>
-                <pre
-                  className="text-sm whitespace-pre-wrap"
-                  style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }}
-                >
-                  {viewingScene.content}
-                </pre>
+                <StatBlockText text={viewingScene.content} as="pre" className="text-sm whitespace-pre-wrap" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
               </div>
             )}
             {viewingScene.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingScene.dm_notes}
-                </p>
+                <StatBlockText text={viewingScene.dm_notes} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             <div className="flex gap-2 pt-2">
@@ -1867,68 +1691,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         </Modal>
       )}
 
-      {/* ================================================================
-          SHEET DETAIL VIEW
-      ================================================================ */}
-      {viewingSheet && (
-        <Modal
-          isOpen={!!viewingSheet}
-          onClose={() => setViewingSheet(null)}
-          title={viewingSheet.title}
-          wide
-        >
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              {(() => {
-                const ts = getTypeStyle(viewingSheet.sheet_type);
-                return (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded border capitalize"
-                    style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border }}
-                  >
-                    {viewingSheet.sheet_type ?? 'other'}
-                  </span>
-                );
-              })()}
-            </div>
-            {viewingSheet.content && (
-              <div>
-                <div style={sectionLabel}>Stat Block / Sheet</div>
-                <pre
-                  className="text-sm whitespace-pre-wrap rounded p-3"
-                  style={{
-                    color: '#e8d5b0',
-                    lineHeight: '1.7',
-                    fontFamily: 'monospace',
-                    fontSize: '0.8rem',
-                    backgroundColor: '#0f0e17',
-                    border: '1px solid #3a3660',
-                  }}
-                >
-                  {viewingSheet.content}
-                </pre>
-              </div>
-            )}
-            {viewingSheet.dm_notes && (
-              <div>
-                <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingSheet.dm_notes}
-                </p>
-              </div>
-            )}
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => { setViewingSheet(null); openEditSheet(viewingSheet); }}
-                className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
 
       {/* ================================================================
           ENCOUNTER PICKER MODAL

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
@@ -8,6 +8,9 @@ import { InlineEditCard } from '../ui/InlineEditCard';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
+import { StatBlockText } from '../ui/StatBlockText';
+import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
 import type { Hook } from '../../lib/database.types';
 
 const CATEGORIES = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
@@ -62,6 +65,8 @@ export default function HooksIdeas() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<HookForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const editDescRef = useRef<HTMLTextAreaElement>(null);
+  const newDescRef = useRef<HTMLTextAreaElement>(null);
 
   const filtered = hooks.filter(h => {
     if (!showInactive && !h.is_active) return false;
@@ -219,6 +224,7 @@ export default function HooksIdeas() {
                       ))}
                     </div>
                     <textarea
+                      ref={editDescRef}
                       value={editForm.description ?? ''}
                       onChange={e => setEditForm(prev => prev ? { ...prev, description: e.target.value } : prev)}
                       placeholder="Describe the idea..."
@@ -226,6 +232,7 @@ export default function HooksIdeas() {
                       className="w-full px-2 py-1.5 rounded text-sm outline-none resize-y"
                       style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif', minHeight: '100px' }}
                     />
+                    <CreatureLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
                   </div>
                 ) : (
                   /* View mode */
@@ -240,9 +247,11 @@ export default function HooksIdeas() {
                       <Badge label={formatCategory(hook.category)} color={badgeColor} size="xs" />
                     </div>
 
-                    <p className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }}>
-                      {hook.description || <span style={{ fontStyle: 'italic', color: '#4a4460' }}>No details written.</span>}
-                    </p>
+                    {hook.description ? (
+                      <StatBlockText text={hook.description} as="p" className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }} />
+                    ) : (
+                      <p className="text-sm flex-1 mb-4" style={{ color: '#5a5470', lineHeight: '1.6', fontStyle: 'italic' }}>No details written.</p>
+                    )}
 
                     <div className="flex gap-2 mt-auto">
                       <Button
@@ -306,11 +315,13 @@ export default function HooksIdeas() {
         </FormField>
         <FormField label="Details / Notes">
           <textarea
+            ref={newDescRef}
             value={form.description ?? ''}
             onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
             placeholder="Describe the idea, how it could play out, related characters or locations..."
             style={{ ...textareaStyle, minHeight: '220px' }}
           />
+          <CreatureLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
         </FormField>
       </Modal>
     </div>

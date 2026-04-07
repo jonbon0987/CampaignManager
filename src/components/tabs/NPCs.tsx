@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
@@ -9,6 +9,9 @@ import { SearchBar } from '../ui/SearchBar';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
+import { StatBlockText } from '../ui/StatBlockText';
+import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
 import type { NPC } from '../../lib/database.types';
 
 type NPCForm = {
@@ -73,6 +76,10 @@ export default function NPCs() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<NPCForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const editDescRef = useRef<HTMLTextAreaElement>(null);
+  const editHooksRef = useRef<HTMLTextAreaElement>(null);
+  const newDescRef = useRef<HTMLTextAreaElement>(null);
+  const newHooksRef = useRef<HTMLTextAreaElement>(null);
 
   const displayList = viewMode === 'campaign' ? npcs : globalNPCs;
 
@@ -227,11 +234,13 @@ export default function NPCs() {
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Description</label>
-                      <textarea value={editForm.description ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, description: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
+                      <textarea ref={editDescRef} value={editForm.description ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, description: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
+                      <CreatureLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Hooks & Motivations</label>
-                      <textarea value={editForm.hooks_motivations ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, hooks_motivations: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
+                      <textarea ref={editHooksRef} value={editForm.hooks_motivations ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, hooks_motivations: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
+                      <CreatureLinkToolbar textareaRef={editHooksRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, hooks_motivations: insertAtCursor(editHooksRef, prev.hooks_motivations ?? '', markup) } : prev)} />
                     </div>
                   </div>
                 ) : (
@@ -267,15 +276,18 @@ export default function NPCs() {
                       </div>
 
                       {npc.description && (
-                        <p className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }}>
-                          {isExpanded ? npc.description : npc.description.substring(0, 100) + (npc.description.length > 100 ? '…' : '')}
-                        </p>
+                        <StatBlockText
+                          text={isExpanded ? npc.description : npc.description.substring(0, 100) + (npc.description.length > 100 ? '…' : '')}
+                          as="p"
+                          className="text-sm mt-2"
+                          style={{ color: '#c9b88a', lineHeight: '1.5' }}
+                        />
                       )}
 
                       {isExpanded && npc.hooks_motivations && (
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
                           <div className="mb-1" style={labelStyle}>Hooks & Motivations</div>
-                          <p className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }}>{npc.hooks_motivations}</p>
+                          <StatBlockText text={npc.hooks_motivations} as="p" className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
                         </div>
                       )}
                     </div>
@@ -350,8 +362,14 @@ export default function NPCs() {
             </select>
           </FormField>
         </div>
-        <FormField label="Description"><textarea value={form.description ?? ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="Physical appearance, personality..." style={{ ...textareaStyle, minHeight: '80px' }} /></FormField>
-        <FormField label="Hooks & Motivations"><textarea value={form.hooks_motivations ?? ''} onChange={e => setForm(prev => ({ ...prev, hooks_motivations: e.target.value }))} placeholder="Personal goals, secrets..." style={{ ...textareaStyle, minHeight: '100px' }} /></FormField>
+        <FormField label="Description">
+          <textarea ref={newDescRef} value={form.description ?? ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="Physical appearance, personality..." style={{ ...textareaStyle, minHeight: '80px' }} />
+          <CreatureLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
+        </FormField>
+        <FormField label="Hooks & Motivations">
+          <textarea ref={newHooksRef} value={form.hooks_motivations ?? ''} onChange={e => setForm(prev => ({ ...prev, hooks_motivations: e.target.value }))} placeholder="Personal goals, secrets..." style={{ ...textareaStyle, minHeight: '100px' }} />
+          <CreatureLinkToolbar textareaRef={newHooksRef} onInsert={markup => setForm(prev => ({ ...prev, hooks_motivations: insertAtCursor(newHooksRef, prev.hooks_motivations ?? '', markup) }))} />
+        </FormField>
       </Modal>
     </div>
   );
