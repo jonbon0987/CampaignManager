@@ -34,22 +34,35 @@ export default function StatBlockPanel() {
   const ts = statblock ? getTypeStyle(statblock.creature_type) : getTypeStyle(null);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: open ? 0 : '-440px',
-        width: '440px',
-        height: '100vh',
-        backgroundColor: '#0a0918',
-        borderLeft: '1px solid #3a3660',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'right 0.3s ease',
-        zIndex: 998,
-        boxShadow: open ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',
-      }}
-    >
+    <>
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 sm:hidden"
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 997 }}
+          onClick={closeStatBlock}
+        />
+      )}
+      <div
+        className="stat-block-panel"
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          height: '100vh',
+          backgroundColor: '#0a0918',
+          borderLeft: '1px solid #3a3660',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 998,
+          boxShadow: open ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',
+          // Mobile: full width, slide from right via transform
+          // Desktop: fixed 440px, slide via right offset
+          width: 'min(440px, 100vw)',
+          transform: open ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s ease',
+        }}
+      >
       {/* Header */}
       <div
         style={{
@@ -232,5 +245,6 @@ export default function StatBlockPanel() {
         </div>
       )}
     </div>
+    </>
   );
 }

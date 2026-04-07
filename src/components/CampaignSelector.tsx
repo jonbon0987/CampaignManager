@@ -98,13 +98,13 @@ export default function CampaignSelector() {
           ✎
         </button>
       </div>
-      <p className="text-xs" style={{ color: '#6a6490' }}>D&D Campaign Manager</p>
+      <p className="text-xs hidden sm:block" style={{ color: '#6a6490' }}>D&D Campaign Manager</p>
 
       {/* Dropdown */}
       {dropdownOpen && (
         <div
-          className="absolute left-0 top-full mt-1 rounded-lg border z-50 py-1 min-w-56"
-          style={{ backgroundColor: '#1a1828', borderColor: '#3a3660', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}
+          className="absolute left-0 top-full mt-1 rounded-lg border z-50 py-1"
+          style={{ backgroundColor: '#1a1828', borderColor: '#3a3660', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: '200px', maxWidth: 'calc(100vw - 2rem)' }}
         >
           {campaigns.map(campaign => (
             <div

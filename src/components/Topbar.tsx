@@ -26,8 +26,8 @@ export default function Topbar({ user, onOpenMobileMenu, isMobile }: TopbarProps
         </button>
       )}
 
-      {/* Campaign selector — constrained, not flex-1 */}
-      <div className="min-w-0" style={{ maxWidth: '300px' }}>
+      {/* Campaign selector — grows to fill space, constrained on desktop */}
+      <div className="flex-1 min-w-0" style={{ maxWidth: '300px' }}>
         <CampaignSelector />
       </div>
 

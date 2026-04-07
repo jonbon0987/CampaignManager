@@ -60,7 +60,7 @@ function AppInner({ user }: { user: User }) {
           isMobile={isMobile}
         />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-3 py-4 sm:p-6">
           <div className="mx-auto w-full" style={{ maxWidth: '900px' }}>
             {error && (
               <div className="mb-4 px-4 py-3 rounded text-sm" style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
