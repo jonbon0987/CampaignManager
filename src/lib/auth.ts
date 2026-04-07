@@ -1,7 +1,6 @@
 // src/lib/auth.ts
 // -----------------------------------------------------------
-// GitHub OAuth helpers. Call signInWithGitHub() on button click.
-// Listen for auth state changes anywhere via onAuthStateChange().
+// Auth helpers. Listen for auth state changes via onAuthStateChange().
 // -----------------------------------------------------------
 
 import { supabase } from './supabase';
@@ -23,22 +22,6 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   const { error } = await supabase.auth.signUp({ email, password });
   if (error) 
     throw error;
-}
-
-/**
- * Redirect the user to GitHub for OAuth.
- * Supabase handles the callback automatically.
- */
-export async function signInWithGitHub(): Promise<void> {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'github',
-    options: {
-      // After GitHub auth, Supabase will redirect here.
-      // Change to your prod URL when deploying.
-      redirectTo: window.location.origin,
-    },
-  });
-  if (error) throw error;
 }
 
 /**
