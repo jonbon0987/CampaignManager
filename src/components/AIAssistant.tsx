@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import Anthropic from '@anthropic-ai/sdk';
 import { useCampaign } from '../context/CampaignContext';
 import type {
   Session, PlayerCharacter, NPC, Location,
@@ -162,14 +161,8 @@ export default function AIAssistant({ open, onClose }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-
   async function sendMessage() {
     if (!input.trim() || loading) return;
-    if (!apiKey) {
-      setApiError('VITE_ANTHROPIC_API_KEY is not set in your .env file.');
-      return;
-    }
     setApiError('');
 
     const userMsg: ChatMessage = { role: 'user', content: input.trim() };
@@ -178,63 +171,68 @@ export default function AIAssistant({ open, onClose }: Props) {
     setInput('');
     setLoading(true);
 
+    const systemPrompt = buildSystemPrompt({
+      sessions, pcs, npcs, locations, factions, hooks, lore, modules,
+      overviewTitle: overview.title,
+      overviewPlot: overview.plotSummary,
+    });
+
+    const apiMessages = nextMessages.map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+    // Add a placeholder assistant message for streaming
+    const streamingIdx = nextMessages.length;
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+    let fullText = '';
+
     try {
-      const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-
-      const systemPrompt = buildSystemPrompt({
-        sessions, pcs, npcs, locations, factions, hooks, lore, modules,
-        overviewTitle: overview.title,
-        overviewPlot: overview.plotSummary,
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages, system: systemPrompt }),
       });
 
-      const apiMessages = nextMessages.map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }));
+      if (!response.ok || !response.body) {
+        throw new Error(`Server error: ${response.status}`);
+      }
 
-      // Add a placeholder assistant message for streaming
-      const streamingIdx = nextMessages.length;
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      const stream = client.messages.stream({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: apiMessages,
-      });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      // Stream tokens as they arrive
-      stream.on('text', (text) => {
-        setMessages(prev => prev.map((m, i) =>
-          i === streamingIdx ? { ...m, content: m.content + text } : m
-        ));
-      });
-
-      // Wait for the stream to complete
-      const finalMessage = await stream.finalMessage();
-
-      const rawText = finalMessage.content
-        .filter(b => b.type === 'text')
-        .map(b => (b as Anthropic.TextBlock).text)
-        .join('');
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const event = JSON.parse(line.slice(6)) as { type: string; text?: string; message?: string };
+          if (event.type === 'text' && event.text) {
+            fullText += event.text;
+            setMessages(prev => prev.map((m, i) =>
+              i === streamingIdx ? { ...m, content: fullText } : m
+            ));
+          } else if (event.type === 'error') {
+            throw new Error(event.message ?? 'Stream error');
+          }
+        }
+      }
 
       // Extract pending actions from JSON block
-      const pendingActions = parseActions(rawText);
-      // Strip the raw JSON block from displayed text
-      const displayText = rawText.replace(/```json[\s\S]*?```/g, '').trim();
+      const pendingActions = parseActions(fullText);
+      const displayText = fullText.replace(/```json[\s\S]*?```/g, '').trim();
 
-      // Replace the streaming message with the final version (with actions parsed)
       setMessages(prev => prev.map((m, i) =>
         i === streamingIdx
           ? { role: 'assistant', content: displayText, pendingActions: pendingActions.length > 0 ? pendingActions : undefined }
           : m
       ));
     } catch (err) {
-      const msg = err instanceof Anthropic.APIError
-        ? `API Error (${err.status}): ${err.message}`
-        : err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       setMessages(prev => {
-        // If we already added a streaming placeholder, replace it with the error
         const last = prev[prev.length - 1];
         if (last && last.role === 'assistant' && !last.content) {
           return [...prev.slice(0, -1), { role: 'assistant' as const, content: `Error: ${msg}` }];

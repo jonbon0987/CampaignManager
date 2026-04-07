@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Anthropic from '@anthropic-ai/sdk';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
@@ -218,12 +217,6 @@ export default function CreatureStatblocks() {
       difficultyPrompt = `a difficulty appropriate for a party of ${size} players at average level ${level}. Use the D&D 5e encounter building guidelines to determine an appropriate CR for a hard or deadly solo boss fight against this party, then build the creature at that CR. The creature should feel like a memorable BBEG — give it legendary actions, legendary resistances if appropriate, and interesting abilities`;
     }
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-    if (!apiKey) {
-      setGenError('VITE_ANTHROPIC_API_KEY is not set in your .env file.');
-      return;
-    }
-
     const campaignContextBlock = genUseCampaignContext
       ? buildCampaignContextBlock({ overview, sessions, lore, locations })
       : '';
@@ -231,16 +224,7 @@ export default function CreatureStatblocks() {
       ? `\n\nAdditional DM instructions: ${genAdditionalContext.trim()}`
       : '';
 
-    setGenError('');
-    setGenLoading(true);
-    try {
-      const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: `Generate a complete D&D 5e creature stat block for ${difficultyPrompt}. Be creative with the name and flavor. Follow official D&D 5e stat block format exactly.${campaignContextBlock}${additionalContextClause}
+    const prompt = `Generate a complete D&D 5e creature stat block for ${difficultyPrompt}. Be creative with the name and flavor. Follow official D&D 5e stat block format exactly.${campaignContextBlock}${additionalContextClause}
 
 Respond with a JSON object using this exact structure (no markdown, just raw JSON):
 {
@@ -250,17 +234,20 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
   "tags": "comma-separated flavor tags (e.g. undead, boss, ranged)",
   "content": "full stat block as plain text, formatted like an official D&D 5e stat block with all sections",
   "dm_notes": "2-3 sentences of DM tactics and encounter tips"
-}`,
-        }],
+}`;
+
+    setGenError('');
+    setGenLoading(true);
+    try {
+      const res = await fetch('/api/generate-creature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
       });
+      const data = await res.json() as { text?: string; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? `Server error: ${res.status}`);
 
-      const raw = response.content
-        .filter(b => b.type === 'text')
-        .map(b => (b as Anthropic.TextBlock).text)
-        .join('');
-
-      // Strip markdown code fences if present
-      const jsonText = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const jsonText = (data.text ?? '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       const parsed = JSON.parse(jsonText) as {
         name: string;
         creature_type: string;

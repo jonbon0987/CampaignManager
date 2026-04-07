@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Anthropic from '@anthropic-ai/sdk';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
@@ -272,7 +271,6 @@ export default function EncounterBuilder() {
     if (!form.name.trim()) return;
 
     const newCustomCombatants = combatants.filter(c => c.source === 'custom' && !c.statblock_id);
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
 
     setSaving(true);
     try {
@@ -287,37 +285,31 @@ export default function EncounterBuilder() {
       let dm_notes: string | null = null;
       let tags: string | null = null;
 
-      if (apiKey) {
-        try {
-          setSaveStatus(`Generating stat block for ${c.name}…`);
-          const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-          const response = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 2048,
-            messages: [{
-              role: 'user',
-              content: `Generate a complete D&D 5e stat block for a creature named "${c.name}"${c.creature_type ? ` (${c.creature_type})` : ''}${c.challenge_rating ? `, CR ${c.challenge_rating}` : ''}. Follow official D&D 5e stat block format exactly.
+      try {
+        setSaveStatus(`Generating stat block for ${c.name}…`);
+        const prompt = `Generate a complete D&D 5e stat block for a creature named "${c.name}"${c.creature_type ? ` (${c.creature_type})` : ''}${c.challenge_rating ? `, CR ${c.challenge_rating}` : ''}. Follow official D&D 5e stat block format exactly.
 
 Respond with a JSON object (no markdown, raw JSON only):
 {
   "tags": "comma-separated flavor tags",
   "content": "full stat block as plain text in official D&D 5e format",
   "dm_notes": "2-3 sentences of DM tactics and encounter tips"
-}`,
-            }],
-          });
-          const raw = response.content
-            .filter(b => b.type === 'text')
-            .map(b => (b as Anthropic.TextBlock).text)
-            .join('');
-          const jsonText = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+}`;
+        const res = await fetch('/api/generate-creature', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+        const data = await res.json() as { text?: string; error?: string };
+        if (res.ok && data.text) {
+          const jsonText = data.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
           const parsed = JSON.parse(jsonText) as { tags: string; content: string; dm_notes: string };
           content = parsed.content ?? null;
           dm_notes = parsed.dm_notes ?? null;
           tags = parsed.tags ?? null;
-        } catch {
-          // If AI fails, save with empty content — user can fill it in later
         }
+      } catch {
+        // If AI fails, save with empty content — user can fill it in later
       }
 
       const sb = await upsertMonsterStatblock({
@@ -461,12 +453,6 @@ Respond with a JSON object (no markdown, raw JSON only):
       return;
     }
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-    if (!apiKey) {
-      setGenError('VITE_ANTHROPIC_API_KEY is not set in your .env file.');
-      return;
-    }
-
     const savedCreaturesList = monsterStatblocks.length > 0
       ? `\n\nThe DM already has these creatures in their library (use them when appropriate by referencing their exact names):\n${monsterStatblocks.map(m => `- ${m.name} (${m.creature_type ?? 'unknown'}, CR ${m.challenge_rating ?? '?'})`).join('\n')}`
       : '';
@@ -480,16 +466,7 @@ Respond with a JSON object (no markdown, raw JSON only):
       ? `\n\nAdditional DM instructions: ${genAdditionalContext.trim()}`
       : '';
 
-    setGenError('');
-    setGenLoading(true);
-    try {
-      const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: `Design a D&D 5e encounter for a party of ${size} players at average level ${level}. Difficulty: ${genDifficulty}.${themeClause}${envClause}${savedCreaturesList}${campaignContextBlock}${additionalContextClause}
+    const prompt = `Design a D&D 5e encounter for a party of ${size} players at average level ${level}. Difficulty: ${genDifficulty}.${themeClause}${envClause}${savedCreaturesList}${campaignContextBlock}${additionalContextClause}
 
 Return a JSON object with this exact structure (no markdown, raw JSON only):
 {
@@ -510,16 +487,20 @@ Return a JSON object with this exact structure (no markdown, raw JSON only):
   ]
 }
 
-For each combatant: if it matches a creature in the saved library (same name), set source to "saved", otherwise "custom". Use appropriate CRs for the party level and difficulty. Include 2-4 distinct combatant types for variety.`,
-        }],
+For each combatant: if it matches a creature in the saved library (same name), set source to "saved", otherwise "custom". Use appropriate CRs for the party level and difficulty. Include 2-4 distinct combatant types for variety.`;
+
+    setGenError('');
+    setGenLoading(true);
+    try {
+      const res = await fetch('/api/generate-encounter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
       });
+      const data = await res.json() as { text?: string; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? `Server error: ${res.status}`);
 
-      const raw = response.content
-        .filter(b => b.type === 'text')
-        .map(b => (b as Anthropic.TextBlock).text)
-        .join('');
-
-      const jsonText = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const jsonText = (data.text ?? '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       const parsed = JSON.parse(jsonText) as {
         name: string;
         description: string;
