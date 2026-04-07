@@ -2,12 +2,14 @@ import { useState } from 'react';
 import PCs from './PCs';
 import NPCs from './NPCs';
 import CharacterWeb from './CharacterWeb';
+import Lore from './Lore';
 
-type SubTab = 'pcs' | 'npcs' | 'web';
+type SubTab = 'pcs' | 'npcs' | 'web' | 'lore';
 
 const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: 'pcs', label: 'Player Characters' },
   { id: 'npcs', label: 'NPCs' },
+  { id: 'lore', label: 'Lore' },
   { id: 'web', label: 'Character Web' },
 ];
 
@@ -46,6 +48,7 @@ export default function Characters() {
       <div>
         {activeSubTab === 'pcs' && <PCs />}
         {activeSubTab === 'npcs' && <NPCs />}
+        {activeSubTab === 'lore' && <Lore />}
         {activeSubTab === 'web' && <CharacterWeb />}
       </div>
     </div>

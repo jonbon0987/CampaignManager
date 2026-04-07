@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField, inputStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
 import { InlineEditCard } from '../ui/InlineEditCard';
 import { SearchBar } from '../ui/SearchBar';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
+import { AutoGrowTextarea } from '../ui/AutoGrowTextarea';
 import type { Location } from '../../lib/database.types';
 
 const LOCATION_TYPES = ['city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
@@ -132,7 +133,7 @@ export default function LoreLocations() {
   return (
     <div>
       <SectionHeader
-        title="Lore & Locations"
+        title="Locations"
         onAdd={openAdd}
         addLabel="Add Location"
         extra={
@@ -210,11 +211,23 @@ export default function LoreLocations() {
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Description</label>
-                      <textarea value={editForm.description ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, description: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
+                      <AutoGrowTextarea
+                        value={editForm.description ?? ''}
+                        onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)}
+                        placeholder="What does this place look like?"
+                        style={inputEditStyle}
+                        minRows={3}
+                      />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Lore & History</label>
-                      <textarea value={editForm.history ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, history: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
+                      <AutoGrowTextarea
+                        value={editForm.history ?? ''}
+                        onChange={v => setEditForm(prev => prev ? { ...prev, history: v } : prev)}
+                        placeholder="Historical events, ancient secrets…"
+                        style={inputEditStyle}
+                        minRows={4}
+                      />
                     </div>
                   </div>
                 ) : (
@@ -304,8 +317,24 @@ export default function LoreLocations() {
           </FormField>
         </div>
         <FormField label="Region"><input type="text" value={form.region ?? ''} onChange={e => setForm(prev => ({ ...prev, region: e.target.value }))} placeholder="e.g., The Northern Reaches" style={inputStyle} /></FormField>
-        <FormField label="Description"><textarea value={form.description ?? ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="What does this place look like?" style={{ ...textareaStyle, minHeight: '80px' }} /></FormField>
-        <FormField label="Lore & History"><textarea value={form.history ?? ''} onChange={e => setForm(prev => ({ ...prev, history: e.target.value }))} placeholder="Historical events, ancient secrets…" style={{ ...textareaStyle, minHeight: '120px' }} /></FormField>
+        <FormField label="Description">
+          <AutoGrowTextarea
+            value={form.description ?? ''}
+            onChange={v => setForm(prev => ({ ...prev, description: v }))}
+            placeholder="What does this place look like?"
+            style={{ ...inputStyle, lineHeight: '1.65' }}
+            minRows={3}
+          />
+        </FormField>
+        <FormField label="Lore & History">
+          <AutoGrowTextarea
+            value={form.history ?? ''}
+            onChange={v => setForm(prev => ({ ...prev, history: v }))}
+            placeholder="Historical events, ancient secrets…"
+            style={{ ...inputStyle, lineHeight: '1.65' }}
+            minRows={4}
+          />
+        </FormField>
       </Modal>
     </div>
   );

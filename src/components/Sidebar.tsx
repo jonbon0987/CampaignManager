@@ -39,7 +39,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'World',
     items: [
       { id: 'characters', label: 'Characters',      icon: Users },
-      { id: 'lore',       label: 'Lore & Locations',icon: Map },
+      { id: 'lore',       label: 'Locations',        icon: Map },
     ],
   },
   {
