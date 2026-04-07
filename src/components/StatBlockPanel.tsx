@@ -1,5 +1,6 @@
 import { useCampaign } from '../context/CampaignContext';
 import { useStatBlockPanel } from '../context/StatBlockPanelContext';
+import { StatBlockBody } from './tabs/CreatureStatblocks';
 
 const creatureTypeColors: Record<string, { bg: string; text: string; border: string }> = {
   beast:        { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
@@ -31,7 +32,7 @@ export default function StatBlockPanel() {
     ? (monsterStatblocks.find(m => m.id === activeStatBlockId) ?? null)
     : null;
 
-  const ts = statblock ? getTypeStyle(statblock.creature_type) : getTypeStyle(null);
+  const ts = getTypeStyle(statblock?.creature_type ?? null);
 
   return (
     <>
@@ -159,66 +160,8 @@ export default function StatBlockPanel() {
       >
         {statblock ? (
           <>
-            {statblock.content && (
-              <div>
-                <div
-                  style={{
-                    color: '#c9a84c',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    marginBottom: '0.4rem',
-                  }}
-                >
-                  Stat Block
-                </div>
-                <pre
-                  style={{
-                    color: '#e8d5b0',
-                    lineHeight: '1.7',
-                    fontFamily: 'monospace',
-                    fontSize: '0.8rem',
-                    backgroundColor: '#0f0e17',
-                    border: '1px solid #3a3660',
-                    borderRadius: '6px',
-                    padding: '12px',
-                    whiteSpace: 'pre-wrap',
-                    margin: 0,
-                  }}
-                >
-                  {statblock.content}
-                </pre>
-              </div>
-            )}
-            {statblock.dm_notes && (
-              <div>
-                <div
-                  style={{
-                    color: '#c9a84c',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    marginBottom: '0.4rem',
-                  }}
-                >
-                  DM Notes
-                </div>
-                <p
-                  style={{
-                    color: '#9990b0',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.6',
-                    fontStyle: 'italic',
-                    margin: 0,
-                  }}
-                >
-                  {statblock.dm_notes}
-                </p>
-              </div>
-            )}
-            {!statblock.content && !statblock.dm_notes && (
+            <StatBlockBody m={statblock} />
+            {!statblock.content && !statblock.dm_notes && statblock.armor_class == null && statblock.hit_points == null && !statblock.speed && (
               <p style={{ color: '#6a6490', fontSize: '0.875rem', fontStyle: 'italic' }}>
                 No content for this creature yet.
               </p>
