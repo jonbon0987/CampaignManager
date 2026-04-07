@@ -59,25 +59,27 @@ function AppInner({ user }: { user: User }) {
         />
 
         <main className="flex-1 overflow-y-auto p-6">
-          {error && (
-            <div className="mb-4 px-4 py-3 rounded text-sm" style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
-              Failed to load data: {error}
-            </div>
-          )}
-          {loading ? (
-            <div className="text-center py-24" style={{ color: '#6a6490' }}>Loading campaign data…</div>
-          ) : (
-            <>
-              {activeTab === 'overview'    && <Overview />}
-              {activeTab === 'sessions'    && <SessionNotes />}
-              {activeTab === 'characters'  && <Characters />}
-              {activeTab === 'lore'        && <LoreLocations />}
-              {activeTab === 'modules'     && <Modules />}
-              {activeTab === 'creatures'   && <CreatureStatblocks />}
-              {activeTab === 'encounters'  && <EncounterBuilder />}
-              {activeTab === 'hooks'       && <HooksIdeas />}
-            </>
-          )}
+          <div className="mx-auto w-full" style={{ maxWidth: '900px' }}>
+            {error && (
+              <div className="mb-4 px-4 py-3 rounded text-sm" style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
+                Failed to load data: {error}
+              </div>
+            )}
+            {loading ? (
+              <div className="text-center py-24" style={{ color: '#6a6490' }}>Loading campaign data…</div>
+            ) : (
+              <>
+                {activeTab === 'overview'    && <Overview />}
+                {activeTab === 'sessions'    && <SessionNotes />}
+                {activeTab === 'characters'  && <Characters />}
+                {activeTab === 'lore'        && <LoreLocations />}
+                {activeTab === 'modules'     && <Modules />}
+                {activeTab === 'creatures'   && <CreatureStatblocks />}
+                {activeTab === 'encounters'  && <EncounterBuilder />}
+                {activeTab === 'hooks'       && <HooksIdeas />}
+              </>
+            )}
+          </div>
         </main>
       </div>
 
