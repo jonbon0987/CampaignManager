@@ -12,7 +12,7 @@ import HooksIdeas from './components/tabs/HooksIdeas';
 import CreatureStatblocks from './components/tabs/CreatureStatblocks';
 import EncounterBuilder from './components/tabs/EncounterBuilder';
 import AIAssistant from './components/AIAssistant';
-import { signInWithEmail, signUpWithEmail, onAuthStateChange } from './lib/auth';
+import { signInWithEmail, onAuthStateChange } from './lib/auth';
 import useLocalStorage from './hooks/useLocalStorage';
 
 export type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'encounters' | 'hooks';
@@ -89,25 +89,17 @@ function AppInner({ user }: { user: User }) {
 }
 
 function LoginScreen() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleEmailSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     setError('');
-    setMessage('');
     setLoading(true);
     try {
-      if (mode === 'signin') {
-        await signInWithEmail(email, password);
-      } else {
-        await signUpWithEmail(email, password);
-        setMessage('Check your email to confirm your account.');
-      }
+      await signInWithEmail(email, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -152,27 +144,15 @@ function LoginScreen() {
             style={{ backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660' }}
           />
           {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
-          {message && <p className="text-xs" style={{ color: '#6ab87a' }}>{message}</p>}
           <button
             type="submit"
             disabled={loading}
             className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
             style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
           >
-            {loading ? '…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
+            {loading ? '…' : 'Sign in'}
           </button>
         </form>
-
-        <p className="text-xs text-center" style={{ color: '#6a6490' }}>
-          {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-          <button
-            onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setMessage(''); }}
-            className="underline"
-            style={{ color: '#9990b0' }}
-          >
-            {mode === 'signin' ? 'Sign up' : 'Sign in'}
-          </button>
-        </p>
 
       </div>
     </div>
