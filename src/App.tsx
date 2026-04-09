@@ -11,13 +11,18 @@ import Modules from './components/tabs/Modules';
 import HooksIdeas from './components/tabs/HooksIdeas';
 import CreatureStatblocks from './components/tabs/CreatureStatblocks';
 import EncounterBuilder from './components/tabs/EncounterBuilder';
+import Factions from './components/tabs/Factions';
 import AIAssistant from './components/AIAssistant';
 import StatBlockPanel from './components/StatBlockPanel';
+import SearchOverlay from './components/SearchOverlay';
+import DiceRoller from './components/DiceRoller';
 import { StatBlockPanelProvider } from './context/StatBlockPanelContext';
 import { signInWithEmail, onAuthStateChange } from './lib/auth';
+import { ConfirmProvider } from './context/ConfirmContext';
+import { ToastProvider } from './context/ToastContext';
 import useLocalStorage from './hooks/useLocalStorage';
 
-export type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'encounters' | 'hooks';
+export type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'encounters' | 'hooks' | 'factions';
 
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -25,6 +30,8 @@ function AppInner({ user }: { user: User }) {
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [diceOpen, setDiceOpen] = useState(false);
   const { loading, error } = useCampaign();
 
   useEffect(() => {
@@ -36,6 +43,18 @@ function AppInner({ user }: { user: User }) {
     setIsMobile(mq.matches);
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Cmd+K / Ctrl+K to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const showSidebar = isMobile ? mobileMenuOpen : sidebarOpen;
@@ -57,6 +76,8 @@ function AppInner({ user }: { user: User }) {
         <Topbar
           user={user}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
+          onToggleDice={() => setDiceOpen(prev => !prev)}
           isMobile={isMobile}
         />
 
@@ -71,7 +92,7 @@ function AppInner({ user }: { user: User }) {
               <div className="text-center py-24" style={{ color: '#6a6490' }}>Loading campaign data…</div>
             ) : (
               <>
-                {activeTab === 'overview'    && <Overview />}
+                {activeTab === 'overview'    && <Overview onNavigate={setActiveTab} />}
                 {activeTab === 'sessions'    && <SessionNotes />}
                 {activeTab === 'characters'  && <Characters />}
                 {activeTab === 'lore'        && <LoreLocations />}
@@ -79,6 +100,7 @@ function AppInner({ user }: { user: User }) {
                 {activeTab === 'creatures'   && <CreatureStatblocks />}
                 {activeTab === 'encounters'  && <EncounterBuilder />}
                 {activeTab === 'hooks'       && <HooksIdeas />}
+                {activeTab === 'factions'    && <Factions />}
               </>
             )}
           </div>
@@ -87,6 +109,15 @@ function AppInner({ user }: { user: User }) {
 
       <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
       <StatBlockPanel />
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={setActiveTab}
+      />
+      <DiceRoller
+        open={diceOpen}
+        onClose={() => setDiceOpen(false)}
+      />
     </div>
   );
 }
@@ -188,10 +219,14 @@ export default function App() {
   if (!user) return <LoginScreen />;
 
   return (
-    <CampaignProvider>
-      <StatBlockPanelProvider>
-        <AppInner user={user} />
-      </StatBlockPanelProvider>
-    </CampaignProvider>
+    <ToastProvider>
+      <ConfirmProvider>
+        <CampaignProvider>
+          <StatBlockPanelProvider>
+            <AppInner user={user} />
+          </StatBlockPanelProvider>
+        </CampaignProvider>
+      </ConfirmProvider>
+    </ToastProvider>
   );
 }

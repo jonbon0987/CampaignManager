@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
@@ -10,7 +11,9 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { StatBlockText } from '../ui/StatBlockText';
-import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { MarkdownContent } from '../ui/MarkdownContent';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
 import type { NPC } from '../../lib/database.types';
 
@@ -64,6 +67,7 @@ export default function NPCs() {
     npcs, globalNPCs, linkedNPCIds,
     upsertNPC, deleteNPC, linkNPCToCampaign, unlinkNPCFromCampaign,
   } = useCampaign();
+  const confirm = useConfirm();
 
   const [viewMode, setViewMode] = useState<ViewMode>('campaign');
   const [modalOpen, setModalOpen] = useState(false);
@@ -135,7 +139,7 @@ export default function NPCs() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this NPC?')) {
+    if (await confirm('Delete this NPC?')) {
       await deleteNPC(id);
       if (expandedId === id) setExpandedId(null);
       if (editingId === id) cancelEdit();
@@ -234,13 +238,13 @@ export default function NPCs() {
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Description</label>
-                      <textarea ref={editDescRef} value={editForm.description ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, description: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
-                      <CreatureLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
+                      <MarkdownEditor value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Physical appearance, personality..." minHeight="60px" textareaRef={editDescRef} />
+                      <EntityLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Hooks & Motivations</label>
-                      <textarea ref={editHooksRef} value={editForm.hooks_motivations ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, hooks_motivations: e.target.value } : prev)} rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
-                      <CreatureLinkToolbar textareaRef={editHooksRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, hooks_motivations: insertAtCursor(editHooksRef, prev.hooks_motivations ?? '', markup) } : prev)} />
+                      <MarkdownEditor value={editForm.hooks_motivations ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, hooks_motivations: v } : prev)} placeholder="Personal goals, secrets..." minHeight="60px" textareaRef={editHooksRef} />
+                      <EntityLinkToolbar textareaRef={editHooksRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, hooks_motivations: insertAtCursor(editHooksRef, prev.hooks_motivations ?? '', markup) } : prev)} />
                     </div>
                   </div>
                 ) : (
@@ -276,18 +280,19 @@ export default function NPCs() {
                       </div>
 
                       {npc.description && (
-                        <StatBlockText
-                          text={isExpanded ? npc.description : npc.description.substring(0, 100) + (npc.description.length > 100 ? '…' : '')}
-                          as="p"
-                          className="text-sm mt-2"
-                          style={{ color: '#c9b88a', lineHeight: '1.5' }}
-                        />
+                        isExpanded ? (
+                          <MarkdownContent text={npc.description} className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }} />
+                        ) : (
+                          <p className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }}>
+                            {npc.description.substring(0, 100)}{npc.description.length > 100 ? '…' : ''}
+                          </p>
+                        )
                       )}
 
                       {isExpanded && npc.hooks_motivations && (
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
                           <div className="mb-1" style={labelStyle}>Hooks & Motivations</div>
-                          <StatBlockText text={npc.hooks_motivations} as="p" className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
+                          <MarkdownContent text={npc.hooks_motivations} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
                         </div>
                       )}
                     </div>
@@ -298,11 +303,11 @@ export default function NPCs() {
                         <Pencil size={12} strokeWidth={1.5} />
                       </Button>
                       {viewMode === 'campaign' && isLinked ? (
-                        <Button variant="secondary" size="sm" onClick={() => { if (confirm('Remove from this campaign?')) unlinkNPCFromCampaign(npc.id); }}>Unlink</Button>
+                        <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from this campaign?')) unlinkNPCFromCampaign(npc.id); }}>Unlink</Button>
                       ) : viewMode === 'global' && !isLinked ? (
                         <Button variant="secondary" size="sm" onClick={() => linkNPCToCampaign(npc.id)} style={{ color: '#4caf7d' }}>Add to Campaign</Button>
                       ) : viewMode === 'global' && isLinked ? (
-                        <Button variant="secondary" size="sm" onClick={() => { if (confirm('Remove from campaign?')) unlinkNPCFromCampaign(npc.id); }} style={{ color: '#4ab8d4' }}>In Campaign ✓</Button>
+                        <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from campaign?')) unlinkNPCFromCampaign(npc.id); }} style={{ color: '#4ab8d4' }}>In Campaign ✓</Button>
                       ) : (
                         <Button variant="danger" size="sm" onClick={() => handleDelete(npc.id)}>Delete</Button>
                       )}
@@ -363,12 +368,12 @@ export default function NPCs() {
           </FormField>
         </div>
         <FormField label="Description">
-          <textarea ref={newDescRef} value={form.description ?? ''} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} placeholder="Physical appearance, personality..." style={{ ...textareaStyle, minHeight: '80px' }} />
-          <CreatureLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
+          <MarkdownEditor value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Physical appearance, personality..." minHeight="80px" textareaRef={newDescRef} />
+          <EntityLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
         </FormField>
         <FormField label="Hooks & Motivations">
-          <textarea ref={newHooksRef} value={form.hooks_motivations ?? ''} onChange={e => setForm(prev => ({ ...prev, hooks_motivations: e.target.value }))} placeholder="Personal goals, secrets..." style={{ ...textareaStyle, minHeight: '100px' }} />
-          <CreatureLinkToolbar textareaRef={newHooksRef} onInsert={markup => setForm(prev => ({ ...prev, hooks_motivations: insertAtCursor(newHooksRef, prev.hooks_motivations ?? '', markup) }))} />
+          <MarkdownEditor value={form.hooks_motivations ?? ''} onChange={v => setForm(prev => ({ ...prev, hooks_motivations: v }))} placeholder="Personal goals, secrets..." minHeight="100px" textareaRef={newHooksRef} />
+          <EntityLinkToolbar textareaRef={newHooksRef} onInsert={markup => setForm(prev => ({ ...prev, hooks_motivations: insertAtCursor(newHooksRef, prev.hooks_motivations ?? '', markup) }))} />
         </FormField>
       </Modal>
     </div>

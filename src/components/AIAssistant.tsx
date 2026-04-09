@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
+import useLocalStorage from '../hooks/useLocalStorage';
 import type {
   Session, PlayerCharacter, NPC, Location,
   Faction, Hook, LoreEntry, Module,
@@ -142,11 +143,19 @@ export default function AIAssistant({ open, onClose }: Props) {
   const campaign = useCampaign();
   const { sessions, pcs, npcs, locations, factions, hooks, lore, modules, overview } = campaign;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useLocalStorage<ChatMessage[]>('ai-chat-messages', []);
+  const [appliedIdxsArr, setAppliedIdxsArr] = useLocalStorage<number[]>('ai-chat-applied', []);
+  const appliedIdxs = new Set(appliedIdxsArr);
+  const setAppliedIdxs = (update: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    setAppliedIdxsArr(prev => {
+      const prevSet = new Set(prev);
+      const next = update instanceof Function ? update(prevSet) : update;
+      return [...next];
+    });
+  };
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [applyingIdx, setApplyingIdx] = useState<number | null>(null);
-  const [appliedIdxs, setAppliedIdxs] = useState<Set<number>>(new Set());
   const [apiError, setApiError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -410,6 +419,14 @@ export default function AIAssistant({ open, onClose }: Props) {
             </div>
             <div style={{ color: '#6a6490', fontSize: '11px' }}>Ask anything about your campaign</div>
           </div>
+          {messages.length > 0 && (
+            <button
+              onClick={() => { setMessages([]); setAppliedIdxsArr([]); }}
+              style={{ background: 'none', border: '1px solid #3a3660', borderRadius: '6px', color: '#6a6490', fontSize: '11px', cursor: 'pointer', padding: '4px 10px' }}
+            >
+              Clear
+            </button>
+          )}
           <button
             onClick={onClose}
             style={{ background: 'none', border: 'none', color: '#6a6490', fontSize: '18px', cursor: 'pointer', padding: '2px 6px' }}

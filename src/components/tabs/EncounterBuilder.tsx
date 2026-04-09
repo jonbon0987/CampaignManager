@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { Button } from '../ui/Button';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { MarkdownContent } from '../ui/MarkdownContent';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
+import { InitiativeTracker } from '../InitiativeTracker';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
 // ================================================================
@@ -202,6 +208,7 @@ function buildCampaignContextBlock(data: CampaignContextData): string {
 
 export default function EncounterBuilder() {
   const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, upsertMonsterStatblock, pcs, sessions, lore, locations, overview } = useCampaign();
+  const confirm = useConfirm();
 
   // List state
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -214,6 +221,8 @@ export default function EncounterBuilder() {
   const [combatants, setCombatants] = useState<EncounterCombatant[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
+  const descRef = useRef<HTMLTextAreaElement>(null);
+  const dmNotesRef = useRef<HTMLTextAreaElement>(null);
 
   // View detail panel
   const [viewing, setViewing] = useState<Encounter | null>(null);
@@ -231,6 +240,9 @@ export default function EncounterBuilder() {
   const [genError, setGenError] = useState('');
   const [genLoading, setGenLoading] = useState(false);
 
+  // Initiative tracker
+  const [runningEncounter, setRunningEncounter] = useState<Encounter | null>(null);
+
   // Creature sheet viewer
   const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
 
@@ -239,6 +251,9 @@ export default function EncounterBuilder() {
   const [customCreatureName, setCustomCreatureName] = useState('');
   const [customCreatureType, setCustomCreatureType] = useState('');
   const [customCreatureCR, setCustomCreatureCR] = useState('');
+
+  // Active PC names for initiative tracker
+  const activePCNames = pcs.filter(p => p.is_active).map(p => p.character_name);
 
   // ---- helpers ----
 
@@ -353,7 +368,7 @@ Respond with a JSON object (no markdown, raw JSON only):
   };
 
   const handleDelete = async (enc: Encounter) => {
-    if (confirm(`Delete encounter "${enc.name}"?`)) {
+    if (await confirm(`Delete encounter "${enc.name}"?`)) {
       await deleteEncounter(enc.id);
       if (viewing?.id === enc.id) setViewing(null);
     }
@@ -678,6 +693,15 @@ For each combatant: if it matches a creature in the saved library (same name), s
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
+                  {enc.status !== 'completed' && parseCombatants(enc.combatants).length > 0 && (
+                    <button
+                      onClick={() => setRunningEncounter(enc)}
+                      className="text-xs px-2.5 py-1 rounded font-semibold"
+                      style={{ backgroundColor: '#1a2a1a', color: '#6ab87a', border: '1px solid #2a5a2a' }}
+                    >
+                      ▶ Run
+                    </button>
+                  )}
                   <button
                     onClick={() => setViewing(enc)}
                     className="text-xs px-2.5 py-1 rounded"
@@ -938,12 +962,8 @@ For each combatant: if it matches a creature in the saved library (same name), s
           </div>
 
           <FormField label="Description">
-            <textarea
-              value={form.description}
-              onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Scene-setting description for the encounter…"
-              style={{ ...textareaStyle, minHeight: '72px' }}
-            />
+            <MarkdownEditor value={form.description} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Scene-setting description for the encounter…" minHeight="72px" textareaRef={descRef} />
+            <EntityLinkToolbar textareaRef={descRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(descRef, prev.description, markup) }))} />
           </FormField>
 
           {/* Combatants */}
@@ -1069,12 +1089,8 @@ For each combatant: if it matches a creature in the saved library (same name), s
           </div>
 
           <FormField label="DM Notes">
-            <textarea
-              value={form.dm_notes}
-              onChange={e => setForm(prev => ({ ...prev, dm_notes: e.target.value }))}
-              placeholder="Tactics, pacing tips, dramatic moments…"
-              style={{ ...textareaStyle, minHeight: '72px' }}
-            />
+            <MarkdownEditor value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, pacing tips, dramatic moments…" minHeight="72px" textareaRef={dmNotesRef} />
+            <EntityLinkToolbar textareaRef={dmNotesRef} onInsert={markup => setForm(prev => ({ ...prev, dm_notes: insertAtCursor(dmNotesRef, prev.dm_notes, markup) }))} />
           </FormField>
 
           {saving && saveStatus && (
@@ -1128,7 +1144,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
             {viewing.description && (
               <div>
                 <div style={sectionLabel}>Description</div>
-                <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }}>{viewing.description}</p>
+                <MarkdownContent text={viewing.description} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
               </div>
             )}
 
@@ -1172,13 +1188,20 @@ For each combatant: if it matches a creature in the saved library (same name), s
             {viewing.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewing.dm_notes}
-                </p>
+                <MarkdownContent text={viewing.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
 
             <div className="flex gap-2 pt-2">
+              {viewing.status !== 'completed' && parseCombatants(viewing.combatants).length > 0 && (
+                <button
+                  onClick={() => { setViewing(null); setRunningEncounter(viewing); }}
+                  className="text-xs px-3 py-1 rounded font-semibold"
+                  style={{ backgroundColor: '#1a2a1a', color: '#6ab87a', border: '1px solid #2a5a2a' }}
+                >
+                  ▶ Run Encounter
+                </button>
+              )}
               <button
                 onClick={() => { setViewing(null); openEdit(viewing); }}
                 className="text-xs px-3 py-1 rounded"
@@ -1244,6 +1267,23 @@ For each combatant: if it matches a creature in the saved library (same name), s
             )}
           </div>
         </Modal>
+      )}
+
+      {/* ================================================================
+          INITIATIVE TRACKER
+      ================================================================ */}
+      {runningEncounter && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ backgroundColor: '#0f0e17' }}
+        >
+          <InitiativeTracker
+            encounter={runningEncounter}
+            statblocks={monsterStatblocks}
+            pcNames={activePCNames}
+            onClose={() => setRunningEncounter(null)}
+          />
+        </div>
       )}
     </div>
   );

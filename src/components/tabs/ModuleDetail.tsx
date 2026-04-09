@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
-import { StatBlockText } from '../ui/StatBlockText';
-import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { Breadcrumb } from '../ui/Breadcrumb';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { MarkdownContent } from '../ui/MarkdownContent';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
 import type { Module, Submodule, Scene, MonsterStatblock, Encounter, ModuleDependency, SubmoduleDependency } from '../../lib/database.types';
 import { wouldCreateModuleCycle, wouldCreateSubmoduleCycle } from '../../lib/moduleUtils';
@@ -133,6 +136,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     moduleDeps, upsertModuleDep, deleteModuleDep,
     submoduleDeps, loadSubmoduleDeps, upsertSubmoduleDep, deleteSubmoduleDep,
   } = useCampaign();
+  const confirm = useConfirm();
 
   const [activeSection, setActiveSection] = useState<'submodules' | 'overview' | 'dependencies'>('submodules');
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
@@ -211,6 +215,13 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
 
   const modSubmodules = submodules.filter(s => s.module_id === mod.id);
   const ss = statusStyles[mod.status];
+  const expandedSub = expandedSubId ? modSubmodules.find(s => s.id === expandedSubId) : null;
+
+  const breadcrumbSegments = [
+    { label: 'Modules', onClick: onBack },
+    { label: mod.chapter ? `${mod.chapter}: ${mod.title}` : mod.title },
+    ...(expandedSub ? [{ label: expandedSub.title }] : []),
+  ];
 
   // ---- Module CRUD ----
 
@@ -237,7 +248,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   };
 
   const handleDeleteModule = async () => {
-    if (confirm('Delete this module and all its submodules and sheets?')) {
+    if (await confirm('Delete this module and all its submodules and sheets?')) {
       await deleteModule(mod.id);
       onModuleDeleted();
     }
@@ -282,7 +293,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   };
 
   const handleDeleteSubmodule = async (sub: Submodule) => {
-    if (confirm(`Delete "${sub.title}" and all its scenes?`)) {
+    if (await confirm(`Delete "${sub.title}" and all its scenes?`)) {
       await deleteSubmodule(sub.id, sub.module_id);
       if (viewingSubmodule?.id === sub.id) setViewingSubmodule(null);
       if (expandedSubId === sub.id) setExpandedSubId(null);
@@ -328,7 +339,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   };
 
   const handleDeleteScene = async (scene: Scene) => {
-    if (confirm(`Delete "${scene.title}"?`)) {
+    if (await confirm(`Delete "${scene.title}"?`)) {
       await deleteScene(scene.id, scene.submodule_id);
       if (viewingScene?.id === scene.id) setViewingScene(null);
     }
@@ -456,33 +467,37 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
 
   return (
     <div style={{ maxWidth: '900px' }}>
-      {/* Back button + header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Button variant="secondary" size="sm" onClick={onBack}>← Modules</Button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h2
-              className="text-xl font-bold leading-tight"
-              style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
-            >
-              {mod.chapter ? `${mod.chapter}: ` : ''}{mod.title}
-            </h2>
-            <span
-              className="text-xs px-2 py-1 rounded border capitalize"
-              style={{ backgroundColor: ss.bg, color: ss.text, borderColor: ss.border }}
-            >
-              {mod.status}
-            </span>
-          </div>
-          {mod.synopsis && (
-            <p className="text-sm mt-0.5" style={{ color: '#9990b0' }}>
-              {mod.synopsis}
-            </p>
-          )}
+      {/* Breadcrumb + header */}
+      <div className="mb-6">
+        <div className="mb-3">
+          <Breadcrumb segments={breadcrumbSegments} />
         </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="secondary" size="sm" onClick={openEditModule}>Edit</Button>
-          <Button variant="danger" size="sm" onClick={handleDeleteModule}>Delete</Button>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2
+                className="text-xl font-bold leading-tight"
+                style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+              >
+                {mod.chapter ? `${mod.chapter}: ` : ''}{mod.title}
+              </h2>
+              <span
+                className="text-xs px-2 py-1 rounded border capitalize"
+                style={{ backgroundColor: ss.bg, color: ss.text, borderColor: ss.border }}
+              >
+                {mod.status}
+              </span>
+            </div>
+            {mod.synopsis && (
+              <p className="text-sm mt-0.5" style={{ color: '#9990b0' }}>
+                {mod.synopsis}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="secondary" size="sm" onClick={openEditModule}>Edit</Button>
+            <Button variant="danger" size="sm" onClick={handleDeleteModule}>Delete</Button>
+          </div>
         </div>
       </div>
 
@@ -958,25 +973,25 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           {mod.synopsis && (
             <div>
               <div style={sectionLabel}>Synopsis</div>
-              <StatBlockText text={mod.synopsis} as="p" className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
+              <MarkdownContent text={mod.synopsis} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
             </div>
           )}
           {mod.encounters && (
             <div>
               <div style={sectionLabel}>Encounters & Story Beats</div>
-              <StatBlockText text={mod.encounters} as="pre" className="text-sm whitespace-pre-wrap" style={{ color: '#e8d5b0', lineHeight: '1.7', fontFamily: 'Georgia, serif' }} />
+              <MarkdownContent text={mod.encounters} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7', fontFamily: 'Georgia, serif' }} />
             </div>
           )}
           {mod.rewards && (
             <div>
               <div style={sectionLabel}>Rewards</div>
-              <StatBlockText text={mod.rewards} as="p" className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
+              <MarkdownContent text={mod.rewards} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
             </div>
           )}
           {mod.dm_notes && (
             <div>
               <div style={sectionLabel}>DM Notes</div>
-              <StatBlockText text={mod.dm_notes} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.7', fontStyle: 'italic' }} />
+              <MarkdownContent text={mod.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.7', fontStyle: 'italic' }} />
             </div>
           )}
           {!mod.synopsis && !mod.encounters && !mod.rewards && !mod.dm_notes && (
@@ -1276,44 +1291,20 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           />
         </FormField>
         <FormField label="Synopsis">
-          <textarea
-            ref={modSynopsisRef}
-            value={moduleForm.synopsis ?? ''}
-            onChange={e => setModuleForm(prev => ({ ...prev, synopsis: e.target.value }))}
-            placeholder="Overview of this chapter's events, goals, and themes..."
-            style={{ ...textareaStyle, minHeight: '80px' }}
-          />
-          <CreatureLinkToolbar textareaRef={modSynopsisRef} onInsert={markup => setModuleForm(prev => ({ ...prev, synopsis: insertAtCursor(modSynopsisRef, prev.synopsis ?? '', markup) }))} />
+          <MarkdownEditor value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, synopsis: v }))} placeholder="Overview of this chapter's events, goals, and themes..." minHeight="80px" textareaRef={modSynopsisRef} />
+          <EntityLinkToolbar textareaRef={modSynopsisRef} onInsert={markup => setModuleForm(prev => ({ ...prev, synopsis: insertAtCursor(modSynopsisRef, prev.synopsis ?? '', markup) }))} />
         </FormField>
         <FormField label="Encounters & Story Beats">
-          <textarea
-            ref={modEncountersRef}
-            value={moduleForm.encounters ?? ''}
-            onChange={e => setModuleForm(prev => ({ ...prev, encounters: e.target.value }))}
-            placeholder="Key scenes, encounters, revelations, branching paths..."
-            style={{ ...textareaStyle, minHeight: '120px' }}
-          />
-          <CreatureLinkToolbar textareaRef={modEncountersRef} onInsert={markup => setModuleForm(prev => ({ ...prev, encounters: insertAtCursor(modEncountersRef, prev.encounters ?? '', markup) }))} />
+          <MarkdownEditor value={moduleForm.encounters ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, encounters: v }))} placeholder="Key scenes, encounters, revelations, branching paths..." minHeight="120px" textareaRef={modEncountersRef} />
+          <EntityLinkToolbar textareaRef={modEncountersRef} onInsert={markup => setModuleForm(prev => ({ ...prev, encounters: insertAtCursor(modEncountersRef, prev.encounters ?? '', markup) }))} />
         </FormField>
         <FormField label="Rewards">
-          <textarea
-            ref={modRewardsRef}
-            value={moduleForm.rewards ?? ''}
-            onChange={e => setModuleForm(prev => ({ ...prev, rewards: e.target.value }))}
-            placeholder="Loot, level-ups, plot rewards..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
-          <CreatureLinkToolbar textareaRef={modRewardsRef} onInsert={markup => setModuleForm(prev => ({ ...prev, rewards: insertAtCursor(modRewardsRef, prev.rewards ?? '', markup) }))} />
+          <MarkdownEditor value={moduleForm.rewards ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, rewards: v }))} placeholder="Loot, level-ups, plot rewards..." minHeight="60px" textareaRef={modRewardsRef} />
+          <EntityLinkToolbar textareaRef={modRewardsRef} onInsert={markup => setModuleForm(prev => ({ ...prev, rewards: insertAtCursor(modRewardsRef, prev.rewards ?? '', markup) }))} />
         </FormField>
         <FormField label="DM Notes">
-          <textarea
-            ref={modDmNotesRef}
-            value={moduleForm.dm_notes ?? ''}
-            onChange={e => setModuleForm(prev => ({ ...prev, dm_notes: e.target.value }))}
-            placeholder="Hidden information, fallbacks, secret motives..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
-          <CreatureLinkToolbar textareaRef={modDmNotesRef} onInsert={markup => setModuleForm(prev => ({ ...prev, dm_notes: insertAtCursor(modDmNotesRef, prev.dm_notes ?? '', markup) }))} />
+          <MarkdownEditor value={moduleForm.dm_notes ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden information, fallbacks, secret motives..." minHeight="60px" textareaRef={modDmNotesRef} />
+          <EntityLinkToolbar textareaRef={modDmNotesRef} onInsert={markup => setModuleForm(prev => ({ ...prev, dm_notes: insertAtCursor(modDmNotesRef, prev.dm_notes ?? '', markup) }))} />
         </FormField>
       </Modal>
 
@@ -1353,34 +1344,16 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           </FormField>
         </div>
         <FormField label="Summary">
-          <textarea
-            ref={subSummaryRef}
-            value={subForm.summary}
-            onChange={e => setSubForm(prev => ({ ...prev, summary: e.target.value }))}
-            placeholder="Short description shown in the list view..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
-          <CreatureLinkToolbar textareaRef={subSummaryRef} onInsert={markup => setSubForm(prev => ({ ...prev, summary: insertAtCursor(subSummaryRef, prev.summary, markup) }))} />
+          <MarkdownEditor value={subForm.summary} onChange={v => setSubForm(prev => ({ ...prev, summary: v }))} placeholder="Short description shown in the list view..." minHeight="60px" textareaRef={subSummaryRef} />
+          <EntityLinkToolbar textareaRef={subSummaryRef} onInsert={markup => setSubForm(prev => ({ ...prev, summary: insertAtCursor(subSummaryRef, prev.summary, markup) }))} />
         </FormField>
         <FormField label="Full Write-Up">
-          <textarea
-            ref={subContentRef}
-            value={subForm.content}
-            onChange={e => setSubForm(prev => ({ ...prev, content: e.target.value }))}
-            placeholder="Full description of this location or story beat — history, atmosphere, key details, DM guidance..."
-            style={{ ...textareaStyle, minHeight: '320px', fontFamily: 'Georgia, serif', lineHeight: '1.7' }}
-          />
-          <CreatureLinkToolbar textareaRef={subContentRef} onInsert={markup => setSubForm(prev => ({ ...prev, content: insertAtCursor(subContentRef, prev.content, markup) }))} />
+          <MarkdownEditor value={subForm.content} onChange={v => setSubForm(prev => ({ ...prev, content: v }))} placeholder="Full description of this location or story beat — history, atmosphere, key details, DM guidance..." minHeight="320px" textareaRef={subContentRef} />
+          <EntityLinkToolbar textareaRef={subContentRef} onInsert={markup => setSubForm(prev => ({ ...prev, content: insertAtCursor(subContentRef, prev.content, markup) }))} />
         </FormField>
         <FormField label="DM Notes">
-          <textarea
-            ref={subDmNotesRef}
-            value={subForm.dm_notes}
-            onChange={e => setSubForm(prev => ({ ...prev, dm_notes: e.target.value }))}
-            placeholder="Hidden info, contingencies, secrets..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
-          <CreatureLinkToolbar textareaRef={subDmNotesRef} onInsert={markup => setSubForm(prev => ({ ...prev, dm_notes: insertAtCursor(subDmNotesRef, prev.dm_notes, markup) }))} />
+          <MarkdownEditor value={subForm.dm_notes} onChange={v => setSubForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden info, contingencies, secrets..." minHeight="60px" textareaRef={subDmNotesRef} />
+          <EntityLinkToolbar textareaRef={subDmNotesRef} onInsert={markup => setSubForm(prev => ({ ...prev, dm_notes: insertAtCursor(subDmNotesRef, prev.dm_notes, markup) }))} />
         </FormField>
       </Modal>
 
@@ -1420,34 +1393,16 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           </FormField>
         </div>
         <FormField label="Summary">
-          <textarea
-            ref={sceneSummaryRef}
-            value={sceneForm.summary}
-            onChange={e => setSceneForm(prev => ({ ...prev, summary: e.target.value }))}
-            placeholder="Short description shown in the list view..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
-          <CreatureLinkToolbar textareaRef={sceneSummaryRef} onInsert={markup => setSceneForm(prev => ({ ...prev, summary: insertAtCursor(sceneSummaryRef, prev.summary, markup) }))} />
+          <MarkdownEditor value={sceneForm.summary} onChange={v => setSceneForm(prev => ({ ...prev, summary: v }))} placeholder="Short description shown in the list view..." minHeight="60px" textareaRef={sceneSummaryRef} />
+          <EntityLinkToolbar textareaRef={sceneSummaryRef} onInsert={markup => setSceneForm(prev => ({ ...prev, summary: insertAtCursor(sceneSummaryRef, prev.summary, markup) }))} />
         </FormField>
         <FormField label="Full Write-Up">
-          <textarea
-            ref={sceneContentRef}
-            value={sceneForm.content}
-            onChange={e => setSceneForm(prev => ({ ...prev, content: e.target.value }))}
-            placeholder="Full scene details — read-aloud text, tactics, trigger conditions, outcomes, branching paths..."
-            style={{ ...textareaStyle, minHeight: '320px', fontFamily: 'Georgia, serif', lineHeight: '1.7' }}
-          />
-          <CreatureLinkToolbar textareaRef={sceneContentRef} onInsert={markup => setSceneForm(prev => ({ ...prev, content: insertAtCursor(sceneContentRef, prev.content, markup) }))} />
+          <MarkdownEditor value={sceneForm.content} onChange={v => setSceneForm(prev => ({ ...prev, content: v }))} placeholder="Full scene details — read-aloud text, tactics, trigger conditions, outcomes, branching paths..." minHeight="320px" textareaRef={sceneContentRef} />
+          <EntityLinkToolbar textareaRef={sceneContentRef} onInsert={markup => setSceneForm(prev => ({ ...prev, content: insertAtCursor(sceneContentRef, prev.content, markup) }))} />
         </FormField>
         <FormField label="DM Notes">
-          <textarea
-            ref={sceneDmNotesRef}
-            value={sceneForm.dm_notes}
-            onChange={e => setSceneForm(prev => ({ ...prev, dm_notes: e.target.value }))}
-            placeholder="Hidden info, contingencies, secrets..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
-          <CreatureLinkToolbar textareaRef={sceneDmNotesRef} onInsert={markup => setSceneForm(prev => ({ ...prev, dm_notes: insertAtCursor(sceneDmNotesRef, prev.dm_notes, markup) }))} />
+          <MarkdownEditor value={sceneForm.dm_notes} onChange={v => setSceneForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden info, contingencies, secrets..." minHeight="60px" textareaRef={sceneDmNotesRef} />
+          <EntityLinkToolbar textareaRef={sceneDmNotesRef} onInsert={markup => setSceneForm(prev => ({ ...prev, dm_notes: insertAtCursor(sceneDmNotesRef, prev.dm_notes, markup) }))} />
         </FormField>
       </Modal>
 
@@ -1478,19 +1433,19 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingSubmodule.summary && (
               <div>
                 <div style={sectionLabel}>Summary</div>
-                <StatBlockText text={viewingSubmodule.summary} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingSubmodule.summary} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             {viewingSubmodule.content && (
               <div>
                 <div style={sectionLabel}>Full Write-Up</div>
-                <StatBlockText text={viewingSubmodule.content} as="pre" className="text-sm whitespace-pre-wrap" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
+                <MarkdownContent text={viewingSubmodule.content} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
               </div>
             )}
             {viewingSubmodule.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <StatBlockText text={viewingSubmodule.dm_notes} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingSubmodule.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             <div className="flex gap-2 pt-2">
@@ -1533,19 +1488,19 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingScene.summary && (
               <div>
                 <div style={sectionLabel}>Summary</div>
-                <StatBlockText text={viewingScene.summary} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingScene.summary} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             {viewingScene.content && (
               <div>
                 <div style={sectionLabel}>Full Write-Up</div>
-                <StatBlockText text={viewingScene.content} as="pre" className="text-sm whitespace-pre-wrap" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
+                <MarkdownContent text={viewingScene.content} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
               </div>
             )}
             {viewingScene.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <StatBlockText text={viewingScene.dm_notes} as="p" className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingScene.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             <div className="flex gap-2 pt-2">

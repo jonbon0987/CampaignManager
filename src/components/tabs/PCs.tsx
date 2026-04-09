@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField, inputStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
 import { InlineEditCard } from '../ui/InlineEditCard';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { MarkdownContent } from '../ui/MarkdownContent';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
 import type { PlayerCharacter } from '../../lib/database.types';
 
 type PCForm = {
@@ -53,6 +58,7 @@ const labelStyle: React.CSSProperties = {
 
 export default function PCs() {
   const { pcs, upsertPC, deletePC } = useCampaign();
+  const confirm = useConfirm();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<PCForm>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -60,6 +66,13 @@ export default function PCs() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<PCForm | null>(null);
   const [saving, setSaving] = useState(false);
+  // Textarea refs for entity link toolbar
+  const editBgRef = useRef<HTMLTextAreaElement>(null);
+  const editHooksRef = useRef<HTMLTextAreaElement>(null);
+  const editNpcsRef = useRef<HTMLTextAreaElement>(null);
+  const newBgRef = useRef<HTMLTextAreaElement>(null);
+  const newHooksRef = useRef<HTMLTextAreaElement>(null);
+  const newNpcsRef = useRef<HTMLTextAreaElement>(null);
 
   const openAdd = () => {
     setForm(emptyForm());
@@ -106,7 +119,7 @@ export default function PCs() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this character?')) {
+    if (await confirm('Delete this character?')) {
       await deletePC(id);
       if (expandedId === id) setExpandedId(null);
       if (editingId === id) cancelEdit();
@@ -164,15 +177,18 @@ export default function PCs() {
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Background</label>
-                      <textarea value={editForm.background ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, background: e.target.value } : prev)} placeholder="Background and history..." rows={3} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '60px' }} />
+                      <MarkdownEditor value={editForm.background ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, background: v } : prev)} placeholder="Background and history..." minHeight="60px" textareaRef={editBgRef} />
+                      <EntityLinkToolbar textareaRef={editBgRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, background: insertAtCursor(editBgRef, prev.background ?? '', markup) } : prev)} />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Story Hooks</label>
-                      <textarea value={editForm.story_hooks ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, story_hooks: e.target.value } : prev)} placeholder="Personal quests, motivations..." rows={2} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '50px' }} />
+                      <MarkdownEditor value={editForm.story_hooks ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, story_hooks: v } : prev)} placeholder="Personal quests, motivations..." minHeight="50px" textareaRef={editHooksRef} />
+                      <EntityLinkToolbar textareaRef={editHooksRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, story_hooks: insertAtCursor(editHooksRef, prev.story_hooks ?? '', markup) } : prev)} />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Key NPCs</label>
-                      <textarea value={editForm.key_npcs ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, key_npcs: e.target.value } : prev)} placeholder="Relationships..." rows={2} className="w-full resize-y outline-none" style={{ ...inputEditStyle, minHeight: '50px' }} />
+                      <MarkdownEditor value={editForm.key_npcs ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, key_npcs: v } : prev)} placeholder="Relationships..." minHeight="50px" textareaRef={editNpcsRef} />
+                      <EntityLinkToolbar textareaRef={editNpcsRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, key_npcs: insertAtCursor(editNpcsRef, prev.key_npcs ?? '', markup) } : prev)} />
                     </div>
                   </div>
                 ) : (
@@ -210,19 +226,19 @@ export default function PCs() {
                           {pc.background && (
                             <div className="mb-3">
                               <div className="mb-1" style={labelStyle}>Background</div>
-                              <p className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }}>{pc.background}</p>
+                              <MarkdownContent text={pc.background} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
                             </div>
                           )}
                           {pc.story_hooks && (
                             <div className="mb-3">
                               <div className="mb-1" style={labelStyle}>Story Hooks</div>
-                              <p className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }}>{pc.story_hooks}</p>
+                              <MarkdownContent text={pc.story_hooks} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
                             </div>
                           )}
                           {pc.key_npcs && (
                             <div className="mb-3">
                               <div className="mb-1" style={labelStyle}>Key NPCs</div>
-                              <p className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }}>{pc.key_npcs}</p>
+                              <MarkdownContent text={pc.key_npcs} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
                             </div>
                           )}
                           {!pc.background && !pc.story_hooks && !pc.key_npcs && (
@@ -262,13 +278,16 @@ export default function PCs() {
           </FormField>
         </div>
         <FormField label="Background">
-          <textarea value={form.background ?? ''} onChange={e => setForm(prev => ({ ...prev, background: e.target.value }))} placeholder="Character background and history..." style={{ ...textareaStyle, minHeight: '100px' }} />
+          <MarkdownEditor value={form.background ?? ''} onChange={v => setForm(prev => ({ ...prev, background: v }))} placeholder="Character background and history..." minHeight="100px" textareaRef={newBgRef} />
+          <EntityLinkToolbar textareaRef={newBgRef} onInsert={markup => setForm(prev => ({ ...prev, background: insertAtCursor(newBgRef, prev.background ?? '', markup) }))} />
         </FormField>
         <FormField label="Story Hooks">
-          <textarea value={form.story_hooks ?? ''} onChange={e => setForm(prev => ({ ...prev, story_hooks: e.target.value }))} placeholder="Personal quests, unresolved story threads, motivations..." style={{ ...textareaStyle, minHeight: '80px' }} />
+          <MarkdownEditor value={form.story_hooks ?? ''} onChange={v => setForm(prev => ({ ...prev, story_hooks: v }))} placeholder="Personal quests, unresolved story threads, motivations..." minHeight="80px" textareaRef={newHooksRef} />
+          <EntityLinkToolbar textareaRef={newHooksRef} onInsert={markup => setForm(prev => ({ ...prev, story_hooks: insertAtCursor(newHooksRef, prev.story_hooks ?? '', markup) }))} />
         </FormField>
         <FormField label="Key NPCs">
-          <textarea value={form.key_npcs ?? ''} onChange={e => setForm(prev => ({ ...prev, key_npcs: e.target.value }))} placeholder="Relationships with NPCs, other PCs, factions..." style={{ ...textareaStyle, minHeight: '80px' }} />
+          <MarkdownEditor value={form.key_npcs ?? ''} onChange={v => setForm(prev => ({ ...prev, key_npcs: v }))} placeholder="Relationships with NPCs, other PCs, factions..." minHeight="80px" textareaRef={newNpcsRef} />
+          <EntityLinkToolbar textareaRef={newNpcsRef} onInsert={markup => setForm(prev => ({ ...prev, key_npcs: insertAtCursor(newNpcsRef, prev.key_npcs ?? '', markup) }))} />
         </FormField>
       </Modal>
     </div>

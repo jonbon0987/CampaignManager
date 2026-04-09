@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
+import { useToast } from './ToastContext';
 import type { CampaignOverview } from '../types';
 import {
   Campaigns as CampaignsDB,
@@ -161,6 +162,26 @@ interface CampaignContextType {
 const CampaignContext = createContext<CampaignContextType | null>(null);
 
 export function CampaignProvider({ children }: { children: ReactNode }) {
+  const toast = useToast();
+
+  /** Wrap an async mutation with error toast. Re-throws so callers can still catch. */
+  const withToast = useCallback(<T extends unknown[], R>(
+    fn: (...args: T) => Promise<R>,
+    successMsg?: string,
+  ) => {
+    return async (...args: T): Promise<R> => {
+      try {
+        const result = await fn(...args);
+        if (successMsg) toast(successMsg, 'success');
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Something went wrong';
+        toast(msg, 'error');
+        throw err;
+      }
+    };
+  }, [toast]);
+
   // Campaign list + selected campaign (persisted in localStorage)
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useLocalStorage<string | null>('dnd-selected-campaign-id', null);
@@ -665,22 +686,49 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       locations, globalLocations, linkedLocationIds,
       factions, hooks, lore, modules, relationships,
       loading, error,
-      upsertSession, deleteSession,
-      upsertPC, deletePC,
-      upsertNPC, deleteNPC, linkNPCToCampaign, unlinkNPCFromCampaign,
-      upsertLocation, deleteLocation, linkLocationToCampaign, unlinkLocationFromCampaign,
-      upsertFaction, deleteFaction,
-      upsertHook, deleteHook,
-      upsertLore, deleteLore,
-      upsertModule, deleteModule,
-      upsertRelationship, deleteRelationship,
-      submodules, loadSubmodules, upsertSubmodule, deleteSubmodule,
-      scenes, loadScenes, upsertScene, deleteScene,
-      moduleSheets, loadModuleSheets, upsertModuleSheet, deleteModuleSheet,
-      monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock,
-      encounters, upsertEncounter, deleteEncounter,
-      moduleDeps, loadModuleDeps, upsertModuleDep, deleteModuleDep,
-      submoduleDeps, loadSubmoduleDeps, upsertSubmoduleDep, deleteSubmoduleDep,
+      upsertSession: withToast(upsertSession, 'Session saved'),
+      deleteSession: withToast(deleteSession, 'Session deleted'),
+      upsertPC: withToast(upsertPC, 'Character saved'),
+      deletePC: withToast(deletePC, 'Character deleted'),
+      upsertNPC: withToast(upsertNPC, 'NPC saved'),
+      deleteNPC: withToast(deleteNPC, 'NPC deleted'),
+      linkNPCToCampaign: withToast(linkNPCToCampaign),
+      unlinkNPCFromCampaign: withToast(unlinkNPCFromCampaign),
+      upsertLocation: withToast(upsertLocation, 'Location saved'),
+      deleteLocation: withToast(deleteLocation, 'Location deleted'),
+      linkLocationToCampaign: withToast(linkLocationToCampaign),
+      unlinkLocationFromCampaign: withToast(unlinkLocationFromCampaign),
+      upsertFaction: withToast(upsertFaction, 'Faction saved'),
+      deleteFaction: withToast(deleteFaction, 'Faction deleted'),
+      upsertHook: withToast(upsertHook, 'Hook saved'),
+      deleteHook: withToast(deleteHook, 'Hook deleted'),
+      upsertLore: withToast(upsertLore, 'Lore saved'),
+      deleteLore: withToast(deleteLore, 'Lore deleted'),
+      upsertModule: withToast(upsertModule, 'Module saved'),
+      deleteModule: withToast(deleteModule, 'Module deleted'),
+      upsertRelationship: withToast(upsertRelationship),
+      deleteRelationship: withToast(deleteRelationship),
+      submodules, loadSubmodules,
+      upsertSubmodule: withToast(upsertSubmodule, 'Submodule saved'),
+      deleteSubmodule: withToast(deleteSubmodule, 'Submodule deleted'),
+      scenes, loadScenes,
+      upsertScene: withToast(upsertScene, 'Scene saved'),
+      deleteScene: withToast(deleteScene, 'Scene deleted'),
+      moduleSheets, loadModuleSheets,
+      upsertModuleSheet: withToast(upsertModuleSheet),
+      deleteModuleSheet: withToast(deleteModuleSheet),
+      monsterStatblocks,
+      upsertMonsterStatblock: withToast(upsertMonsterStatblock, 'Creature saved'),
+      deleteMonsterStatblock: withToast(deleteMonsterStatblock, 'Creature deleted'),
+      encounters,
+      upsertEncounter: withToast(upsertEncounter, 'Encounter saved'),
+      deleteEncounter: withToast(deleteEncounter, 'Encounter deleted'),
+      moduleDeps, loadModuleDeps,
+      upsertModuleDep: withToast(upsertModuleDep),
+      deleteModuleDep: withToast(deleteModuleDep),
+      submoduleDeps, loadSubmoduleDeps,
+      upsertSubmoduleDep: withToast(upsertSubmoduleDep),
+      deleteSubmoduleDep: withToast(deleteSubmoduleDep),
     }}>
       {children}
     </CampaignContext.Provider>

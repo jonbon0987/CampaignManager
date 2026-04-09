@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
@@ -57,6 +58,7 @@ export default function LoreLocations() {
     locations, globalLocations, linkedLocationIds,
     upsertLocation, deleteLocation, linkLocationToCampaign, unlinkLocationFromCampaign,
   } = useCampaign();
+  const confirm = useConfirm();
 
   const [viewMode, setViewMode] = useState<ViewMode>('campaign');
   const [modalOpen, setModalOpen] = useState(false);
@@ -116,7 +118,7 @@ export default function LoreLocations() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this location?')) {
+    if (await confirm('Delete this location?')) {
       await deleteLocation(id);
       if (expandedId === id) setExpandedId(null);
       if (editingId === id) cancelEdit();
@@ -261,11 +263,11 @@ export default function LoreLocations() {
                     <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #2e2c4a' }}>
                       <Button variant="ghost" size="sm" onClick={() => startEdit(loc)} title="Edit"><Pencil size={12} strokeWidth={1.5} /></Button>
                       {viewMode === 'campaign' && isLinked ? (
-                        <Button variant="secondary" size="sm" onClick={() => { if (confirm('Remove from campaign?')) unlinkLocationFromCampaign(loc.id); }}>Unlink</Button>
+                        <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from campaign?')) unlinkLocationFromCampaign(loc.id); }}>Unlink</Button>
                       ) : viewMode === 'global' && !isLinked ? (
                         <Button variant="secondary" size="sm" onClick={() => linkLocationToCampaign(loc.id)} style={{ color: '#4caf7d' }}>Add to Campaign</Button>
                       ) : viewMode === 'global' && isLinked ? (
-                        <Button variant="secondary" size="sm" onClick={() => { if (confirm('Remove from campaign?')) unlinkLocationFromCampaign(loc.id); }} style={{ color: '#4ab8d4' }}>In Campaign ✓</Button>
+                        <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from campaign?')) unlinkLocationFromCampaign(loc.id); }} style={{ color: '#4ab8d4' }}>In Campaign ✓</Button>
                       ) : (
                         <Button variant="danger" size="sm" onClick={() => handleDelete(loc.id)}>Delete</Button>
                       )}

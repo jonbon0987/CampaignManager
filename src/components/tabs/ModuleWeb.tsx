@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { wouldCreateModuleCycle } from '../../lib/moduleUtils';
@@ -177,7 +178,9 @@ function draw(
     if (!a || !b) continue;
 
     const isFocusEdge = focusId !== null && (e.from === focusId || e.to === focusId);
-    const color = e.depType === 'optional' ? OPTIONAL_EDGE_COLOR : REQUIRED_EDGE_COLOR;
+    const isCompleted = a.status === 'completed';
+    const color = isCompleted ? STATUS_COLOR.completed
+      : e.depType === 'optional' ? OPTIONAL_EDGE_COLOR : REQUIRED_EDGE_COLOR;
     const ang   = Math.atan2(b.y - a.y, b.x - a.x);
     const x1    = a.x + NODE_RADIUS * Math.cos(ang);
     const y1    = a.y + NODE_RADIUS * Math.sin(ang);
@@ -186,7 +189,7 @@ function draw(
 
     ctx.strokeStyle = color;
     ctx.lineWidth   = isFocusEdge ? 2.5 : 1.5;
-    ctx.globalAlpha = isFocusEdge ? 0.95 : (focusId ? 0.2 : 0.5);
+    ctx.globalAlpha = isFocusEdge ? 0.95 : (focusId ? 0.2 : (isCompleted ? 0.85 : 0.5));
 
     if (e.depType === 'optional') {
       ctx.setLineDash([8, 4]);
@@ -289,6 +292,7 @@ export default function ModuleWeb() {
   const {
     modules, moduleDeps, upsertModuleDep, deleteModuleDep, selectedCampaignId,
   } = useCampaign();
+  const confirm = useConfirm();
 
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -586,7 +590,7 @@ export default function ModuleWeb() {
   }
 
   async function handleDeleteDep(id: string) {
-    if (confirm('Remove this dependency?')) {
+    if (await confirm('Remove this dependency?')) {
       await deleteModuleDep(id);
     }
   }

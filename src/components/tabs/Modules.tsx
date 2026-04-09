@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField, inputStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
 import type { DependencyType, Module } from '../../lib/database.types';
 import ModuleDetail from './ModuleDetail';
 import ModuleWeb from './ModuleWeb';
@@ -78,6 +81,12 @@ function ModuleList() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ chapter: string; title: string; status: Module['status'] } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Textarea refs for entity link toolbar
+  const newSynopsisRef = useRef<HTMLTextAreaElement>(null);
+  const newEncountersRef = useRef<HTMLTextAreaElement>(null);
+  const newRewardsRef = useRef<HTMLTextAreaElement>(null);
+  const newDmNotesRef = useRef<HTMLTextAreaElement>(null);
 
   // pending dependencies for the create modal
   const [pendingDeps, setPendingDeps] = useState<PendingDep[]>([]);
@@ -274,10 +283,22 @@ function ModuleList() {
           </FormField>
         </div>
         <FormField label="Name"><input type="text" value={moduleForm.title} onChange={e => setModuleForm(prev => ({ ...prev, title: e.target.value }))} placeholder="e.g., The Train Heist" style={inputStyle} /></FormField>
-        <FormField label="Synopsis"><textarea value={moduleForm.synopsis ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, synopsis: e.target.value }))} placeholder="Overview of this chapter's events…" style={{ ...textareaStyle, minHeight: '80px' }} /></FormField>
-        <FormField label="Encounters"><textarea value={moduleForm.encounters ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, encounters: e.target.value }))} placeholder="Key scenes, encounters…" style={{ ...textareaStyle, minHeight: '120px' }} /></FormField>
-        <FormField label="Rewards"><textarea value={moduleForm.rewards ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, rewards: e.target.value }))} placeholder="Loot, level-ups…" style={{ ...textareaStyle, minHeight: '60px' }} /></FormField>
-        <FormField label="DM Notes"><textarea value={moduleForm.dm_notes ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, dm_notes: e.target.value }))} placeholder="Hidden info, fallbacks…" style={{ ...textareaStyle, minHeight: '60px' }} /></FormField>
+        <FormField label="Synopsis">
+          <MarkdownEditor value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, synopsis: v }))} placeholder="Overview of this chapter's events…" minHeight="80px" textareaRef={newSynopsisRef} />
+          <EntityLinkToolbar textareaRef={newSynopsisRef} onInsert={markup => setModuleForm(prev => ({ ...prev, synopsis: insertAtCursor(newSynopsisRef, prev.synopsis ?? '', markup) }))} />
+        </FormField>
+        <FormField label="Encounters">
+          <MarkdownEditor value={moduleForm.encounters ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, encounters: v }))} placeholder="Key scenes, encounters…" minHeight="120px" textareaRef={newEncountersRef} />
+          <EntityLinkToolbar textareaRef={newEncountersRef} onInsert={markup => setModuleForm(prev => ({ ...prev, encounters: insertAtCursor(newEncountersRef, prev.encounters ?? '', markup) }))} />
+        </FormField>
+        <FormField label="Rewards">
+          <MarkdownEditor value={moduleForm.rewards ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, rewards: v }))} placeholder="Loot, level-ups…" minHeight="60px" textareaRef={newRewardsRef} />
+          <EntityLinkToolbar textareaRef={newRewardsRef} onInsert={markup => setModuleForm(prev => ({ ...prev, rewards: insertAtCursor(newRewardsRef, prev.rewards ?? '', markup) }))} />
+        </FormField>
+        <FormField label="DM Notes">
+          <MarkdownEditor value={moduleForm.dm_notes ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden info, fallbacks…" minHeight="60px" textareaRef={newDmNotesRef} />
+          <EntityLinkToolbar textareaRef={newDmNotesRef} onInsert={markup => setModuleForm(prev => ({ ...prev, dm_notes: insertAtCursor(newDmNotesRef, prev.dm_notes ?? '', markup) }))} />
+        </FormField>
 
         {/* prerequisites section */}
         {modules.length > 0 && (

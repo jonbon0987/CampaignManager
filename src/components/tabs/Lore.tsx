@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
@@ -62,6 +63,7 @@ const labelStyle: React.CSSProperties = {
 
 export default function Lore() {
   const { lore, upsertLore, deleteLore } = useCampaign();
+  const confirm = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<LoreForm>(emptyForm());
@@ -111,7 +113,7 @@ export default function Lore() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this lore entry?')) {
+    if (await confirm('Delete this lore entry?')) {
       await deleteLore(id);
       if (expandedId === id) setExpandedId(null);
       if (editingId === id) cancelEdit();

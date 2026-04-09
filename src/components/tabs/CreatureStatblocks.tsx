@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { getTypeStyle } from '../../lib/theme';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
+import { insertAtCursor } from '../../lib/textUtils';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -68,27 +73,6 @@ function abilityMod(score: number): string {
 }
 
 // --------------- Styles ---------------
-
-const creatureTypeColors: Record<string, { bg: string; text: string; border: string }> = {
-  beast:        { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
-  undead:       { bg: '#2a1a3a', text: '#9060c0', border: '#5a2a7a' },
-  humanoid:     { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
-  dragon:       { bg: '#3a1a1a', text: '#e07040', border: '#7a3a2a' },
-  fiend:        { bg: '#3a1010', text: '#e04040', border: '#7a2020' },
-  celestial:    { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
-  construct:    { bg: '#2a2a2a', text: '#a0a0a0', border: '#505050' },
-  elemental:    { bg: '#1a3a3a', text: '#60c0c0', border: '#2a6a6a' },
-  fey:          { bg: '#2a1a3a', text: '#c060d0', border: '#6a2a7a' },
-  giant:        { bg: '#3a2a1a', text: '#c09060', border: '#7a5a2a' },
-  monstrosity:  { bg: '#3a1a1a', text: '#e07070', border: '#7a2a2a' },
-  ooze:         { bg: '#1a2a1a', text: '#60c070', border: '#2a5a2a' },
-  plant:        { bg: '#1a2a1a', text: '#50b050', border: '#2a5a2a' },
-  aberration:   { bg: '#1a1a3a', text: '#7070e0', border: '#2a2a7a' },
-  other:        { bg: '#1a1a1a', text: '#808080', border: '#404040' },
-};
-
-const getTypeStyle = (t: string | null) =>
-  creatureTypeColors[t ?? 'other'] ?? creatureTypeColors['other'];
 
 const sectionLabel = {
   color: '#c9a84c',
@@ -283,10 +267,13 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 
 export default function CreatureStatblocks() {
   const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, sessions, lore, locations, overview } = useCampaign();
+  const confirm = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonsterStatblock | null>(null);
   const [form, setForm] = useState<MonsterForm>(emptyMonsterForm());
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const dmNotesRef = useRef<HTMLTextAreaElement>(null);
   const [viewing, setViewing] = useState<MonsterStatblock | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -380,7 +367,7 @@ export default function CreatureStatblocks() {
   };
 
   const handleDelete = async (m: MonsterStatblock) => {
-    if (confirm(`Delete "${m.name}"?`)) {
+    if (await confirm(`Delete "${m.name}"?`)) {
       await deleteMonsterStatblock(m.id);
       if (viewing?.id === m.id) setViewing(null);
     }
@@ -943,20 +930,12 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
         {/* Actions & Traits free-form */}
         <FormField label="Actions & Traits">
-          <textarea
-            value={form.content}
-            onChange={field('content')}
-            placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`}
-            style={{ ...textareaStyle, minHeight: '280px', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: '1.6' }}
-          />
+          <MarkdownEditor value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" textareaRef={contentRef} />
+          <EntityLinkToolbar textareaRef={contentRef} onInsert={markup => setForm(prev => ({ ...prev, content: insertAtCursor(contentRef, prev.content, markup) }))} />
         </FormField>
         <FormField label="DM Notes">
-          <textarea
-            value={form.dm_notes}
-            onChange={field('dm_notes')}
-            placeholder="Tactics, encounter context, flavor notes..."
-            style={{ ...textareaStyle, minHeight: '60px' }}
-          />
+          <MarkdownEditor value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" textareaRef={dmNotesRef} />
+          <EntityLinkToolbar textareaRef={dmNotesRef} onInsert={markup => setForm(prev => ({ ...prev, dm_notes: insertAtCursor(dmNotesRef, prev.dm_notes, markup) }))} />
         </FormField>
       </Modal>
 

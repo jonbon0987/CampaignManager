@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
@@ -8,8 +9,9 @@ import { InlineEditCard } from '../ui/InlineEditCard';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
-import { StatBlockText } from '../ui/StatBlockText';
-import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { MarkdownContent } from '../ui/MarkdownContent';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
 import type { Hook } from '../../lib/database.types';
 
@@ -57,6 +59,7 @@ function formatCategory(cat: string | null) {
 
 export default function HooksIdeas() {
   const { hooks, upsertHook, deleteHook } = useCampaign();
+  const confirm = useConfirm();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<HookForm>(emptyForm());
   const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
@@ -126,7 +129,7 @@ export default function HooksIdeas() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this idea?')) {
+    if (await confirm('Delete this idea?')) {
       await deleteHook(id);
       if (editingId === id) cancelEdit();
     }
@@ -223,16 +226,8 @@ export default function HooksIdeas() {
                         </button>
                       ))}
                     </div>
-                    <textarea
-                      ref={editDescRef}
-                      value={editForm.description ?? ''}
-                      onChange={e => setEditForm(prev => prev ? { ...prev, description: e.target.value } : prev)}
-                      placeholder="Describe the idea..."
-                      rows={4}
-                      className="w-full px-2 py-1.5 rounded text-sm outline-none resize-y"
-                      style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif', minHeight: '100px' }}
-                    />
-                    <CreatureLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
+                    <MarkdownEditor value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Describe the idea..." minHeight="100px" textareaRef={editDescRef} />
+                    <EntityLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
                   </div>
                 ) : (
                   /* View mode */
@@ -248,7 +243,7 @@ export default function HooksIdeas() {
                     </div>
 
                     {hook.description ? (
-                      <StatBlockText text={hook.description} as="p" className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }} />
+                      <MarkdownContent text={hook.description} className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }} />
                     ) : (
                       <p className="text-sm flex-1 mb-4" style={{ color: '#5a5470', lineHeight: '1.6', fontStyle: 'italic' }}>No details written.</p>
                     )}
@@ -314,14 +309,8 @@ export default function HooksIdeas() {
           </div>
         </FormField>
         <FormField label="Details / Notes">
-          <textarea
-            ref={newDescRef}
-            value={form.description ?? ''}
-            onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Describe the idea, how it could play out, related characters or locations..."
-            style={{ ...textareaStyle, minHeight: '220px' }}
-          />
-          <CreatureLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
+          <MarkdownEditor value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Describe the idea, how it could play out, related characters or locations..." minHeight="220px" textareaRef={newDescRef} />
+          <EntityLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
         </FormField>
       </Modal>
     </div>

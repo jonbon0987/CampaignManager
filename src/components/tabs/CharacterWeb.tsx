@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { colors } from '../../lib/theme';
@@ -251,6 +252,7 @@ const REL_TYPES: RelationshipType[] = ['ally', 'rival', 'foe', 'neutral'];
 
 export default function CharacterWeb() {
   const { pcs, npcs, relationships, upsertRelationship, deleteRelationship } = useCampaign();
+  const confirm = useConfirm();
 
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -621,7 +623,7 @@ export default function CharacterWeb() {
   }
 
   async function handleDelete(id: string) {
-    if (confirm('Remove this relationship?')) {
+    if (await confirm('Remove this relationship?')) {
       await deleteRelationship(id);
     }
   }

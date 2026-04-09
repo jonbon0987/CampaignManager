@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Swords, Gift, Lightbulb, Eye, ChevronDown, ChevronRight } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
@@ -9,7 +10,9 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { StatBlockText } from '../ui/StatBlockText';
-import { CreatureLinkToolbar } from '../ui/CreatureLinkToolbar';
+import { MarkdownContent } from '../ui/MarkdownContent';
+import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
+import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { insertAtCursor } from '../../lib/textUtils';
 import type { Session } from '../../lib/database.types';
 
@@ -17,16 +20,70 @@ type SessionForm = {
   session_number: number;
   session_date: string | null;
   summary: string | null;
+  combats: string | null;
+  loot_rewards: string | null;
+  hooks_notes: string | null;
+  dm_notes: string | null;
 };
 
 const emptyForm = (): SessionForm => ({
   session_number: 1,
   session_date: new Date().toISOString().split('T')[0],
   summary: '',
+  combats: null,
+  loot_rewards: null,
+  hooks_notes: null,
+  dm_notes: null,
 });
+
+/* Collapsible section for structured session fields */
+function SessionSection({
+  icon: Icon,
+  label,
+  dmOnly,
+  children,
+}: {
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  label: string;
+  dmOnly?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="rounded border overflow-hidden"
+      style={{ borderColor: '#2e2c4a', backgroundColor: '#15132a' }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs font-medium transition-colors duration-150"
+        style={{ color: '#c9a84c', letterSpacing: '0.06em' }}
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <Icon size={12} strokeWidth={1.8} />
+        <span style={{ textTransform: 'uppercase', fontSize: '0.65rem' }}>{label}</span>
+        {dmOnly && (
+          <span
+            className="ml-auto text-[9px] px-1.5 py-0.5 rounded"
+            style={{ backgroundColor: '#2a1a2a', color: '#b070b0', border: '1px solid #5a3060' }}
+          >
+            DM Only
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="px-3 pb-3" style={{ borderTop: '1px solid #2e2c4a' }}>
+          <div className="pt-2">{children}</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SessionNotes() {
   const { sessions, upsertSession, deleteSession } = useCampaign();
+  const confirm = useConfirm();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<SessionForm>(emptyForm());
@@ -45,7 +102,11 @@ export default function SessionNotes() {
       return (
         (s.summary ?? '').toLowerCase().includes(q) ||
         (s.session_date ?? '').includes(q) ||
-        String(s.session_number).includes(q)
+        String(s.session_number).includes(q) ||
+        (s.combats ?? '').toLowerCase().includes(q) ||
+        (s.loot_rewards ?? '').toLowerCase().includes(q) ||
+        (s.hooks_notes ?? '').toLowerCase().includes(q) ||
+        (s.dm_notes ?? '').toLowerCase().includes(q)
       );
     })
     .sort((a, b) => b.session_number - a.session_number);
@@ -63,17 +124,25 @@ export default function SessionNotes() {
       session_number: form.session_number,
       session_date: form.session_date,
       summary: form.summary,
-      combats: null,
-      loot_rewards: null,
-      hooks_notes: null,
-      dm_notes: null,
+      combats: form.combats,
+      loot_rewards: form.loot_rewards,
+      hooks_notes: form.hooks_notes,
+      dm_notes: form.dm_notes,
     });
     setModalOpen(false);
   };
 
   const startEdit = (s: Session) => {
     setEditingId(s.id);
-    setEditForm({ session_number: s.session_number, session_date: s.session_date, summary: s.summary });
+    setEditForm({
+      session_number: s.session_number,
+      session_date: s.session_date,
+      summary: s.summary,
+      combats: s.combats,
+      loot_rewards: s.loot_rewards,
+      hooks_notes: s.hooks_notes,
+      dm_notes: s.dm_notes,
+    });
     setExpandedId(s.id);
   };
 
@@ -84,25 +153,22 @@ export default function SessionNotes() {
 
   const saveEdit = async () => {
     if (!editForm || !editingId) return;
-    const session = sessions.find(s => s.id === editingId);
-    if (!session) return;
     setSaving(true);
     await upsertSession({
       session_number: editForm.session_number,
       session_date: editForm.session_date,
       summary: editForm.summary,
-      // Preserve hidden fields
-      combats: session.combats,
-      loot_rewards: session.loot_rewards,
-      hooks_notes: session.hooks_notes,
-      dm_notes: session.dm_notes,
+      combats: editForm.combats,
+      loot_rewards: editForm.loot_rewards,
+      hooks_notes: editForm.hooks_notes,
+      dm_notes: editForm.dm_notes,
     });
     setSaving(false);
     cancelEdit();
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this session?')) {
+    if (await confirm('Delete this session?')) {
       await deleteSession(id);
       if (expandedId === id) setExpandedId(null);
       if (editingId === id) cancelEdit();
@@ -216,17 +282,50 @@ export default function SessionNotes() {
                           <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Session Notes
                           </label>
-                          <textarea
-                            ref={editSummaryRef}
+                          <MarkdownEditor
                             value={editForm.summary ?? ''}
-                            onChange={e => setEditForm(prev => prev ? { ...prev, summary: e.target.value || null } : prev)}
+                            onChange={v => setEditForm(prev => prev ? { ...prev, summary: v || null } : prev)}
                             placeholder="What happened this session..."
-                            rows={10}
-                            className="w-full px-2 py-1.5 rounded text-sm outline-none resize-y"
-                            style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif', minHeight: '200px' }}
+                            minHeight="200px"
+                            textareaRef={editSummaryRef}
                           />
-                          <CreatureLinkToolbar textareaRef={editSummaryRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, summary: insertAtCursor(editSummaryRef, prev.summary ?? '', markup) } : prev)} />
+                          <EntityLinkToolbar textareaRef={editSummaryRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, summary: insertAtCursor(editSummaryRef, prev.summary ?? '', markup) } : prev)} />
                         </div>
+
+                        {/* Structured session fields */}
+                        <SessionSection icon={Swords} label="Combat Summary">
+                          <MarkdownEditor
+                            value={editForm.combats ?? ''}
+                            onChange={v => setEditForm(prev => prev ? { ...prev, combats: v || null } : prev)}
+                            placeholder="Describe combats that took place…"
+                            minHeight="80px"
+                          />
+                        </SessionSection>
+                        <SessionSection icon={Gift} label="Loot &amp; Rewards">
+                          <MarkdownEditor
+                            value={editForm.loot_rewards ?? ''}
+                            onChange={v => setEditForm(prev => prev ? { ...prev, loot_rewards: v || null } : prev)}
+                            placeholder="Items, gold, or rewards gained…"
+                            minHeight="60px"
+                          />
+                        </SessionSection>
+                        <SessionSection icon={Lightbulb} label="Hook Follow-ups">
+                          <MarkdownEditor
+                            value={editForm.hooks_notes ?? ''}
+                            onChange={v => setEditForm(prev => prev ? { ...prev, hooks_notes: v || null } : prev)}
+                            placeholder="Which hooks were advanced or introduced…"
+                            minHeight="60px"
+                          />
+                        </SessionSection>
+                        <SessionSection icon={Eye} label="DM Notes" dmOnly>
+                          <MarkdownEditor
+                            value={editForm.dm_notes ?? ''}
+                            onChange={v => setEditForm(prev => prev ? { ...prev, dm_notes: v || null } : prev)}
+                            placeholder="Private notes, reminders, secrets…"
+                            minHeight="60px"
+                          />
+                        </SessionSection>
+
                         <div className="flex gap-2">
                           <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
                             {saving ? 'Saving…' : 'Save'}
@@ -237,11 +336,35 @@ export default function SessionNotes() {
                         </div>
                       </div>
                     ) : (
-                      session.summary ? (
-                        <StatBlockText text={session.summary} as="pre" className="whitespace-pre-wrap text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
-                      ) : (
-                        <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No notes recorded for this session.</p>
-                      )
+                      <div className="flex flex-col gap-3">
+                        {session.summary ? (
+                          <MarkdownContent text={session.summary} className="text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                        ) : (
+                          <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No notes recorded for this session.</p>
+                        )}
+
+                        {/* Show structured fields when they have content */}
+                        {session.combats && (
+                          <SessionSection icon={Swords} label="Combat Summary">
+                            <MarkdownContent text={session.combats} className="text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                          </SessionSection>
+                        )}
+                        {session.loot_rewards && (
+                          <SessionSection icon={Gift} label="Loot &amp; Rewards">
+                            <MarkdownContent text={session.loot_rewards} className="text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                          </SessionSection>
+                        )}
+                        {session.hooks_notes && (
+                          <SessionSection icon={Lightbulb} label="Hook Follow-ups">
+                            <MarkdownContent text={session.hooks_notes} className="text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                          </SessionSection>
+                        )}
+                        {session.dm_notes && (
+                          <SessionSection icon={Eye} label="DM Notes" dmOnly>
+                            <MarkdownContent text={session.dm_notes} className="text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                          </SessionSection>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -279,15 +402,49 @@ export default function SessionNotes() {
           </FormField>
         </div>
         <FormField label="Session Notes">
-          <textarea
-            ref={newSummaryRef}
+          <MarkdownEditor
             value={form.summary ?? ''}
-            onChange={e => setForm(prev => ({ ...prev, summary: e.target.value || null }))}
+            onChange={v => setForm(prev => ({ ...prev, summary: v || null }))}
             placeholder="What happened this session..."
-            style={{ ...textareaStyle, minHeight: '320px' }}
+            minHeight="200px"
+            textareaRef={newSummaryRef}
           />
-          <CreatureLinkToolbar textareaRef={newSummaryRef} onInsert={markup => setForm(prev => ({ ...prev, summary: insertAtCursor(newSummaryRef, prev.summary ?? '', markup) }))} />
+          <EntityLinkToolbar textareaRef={newSummaryRef} onInsert={markup => setForm(prev => ({ ...prev, summary: insertAtCursor(newSummaryRef, prev.summary ?? '', markup) }))} />
         </FormField>
+        <div className="flex flex-col gap-2 mt-1">
+          <SessionSection icon={Swords} label="Combat Summary">
+            <MarkdownEditor
+              value={form.combats ?? ''}
+              onChange={v => setForm(prev => ({ ...prev, combats: v || null }))}
+              placeholder="Describe combats that took place…"
+              minHeight="80px"
+            />
+          </SessionSection>
+          <SessionSection icon={Gift} label="Loot &amp; Rewards">
+            <MarkdownEditor
+              value={form.loot_rewards ?? ''}
+              onChange={v => setForm(prev => ({ ...prev, loot_rewards: v || null }))}
+              placeholder="Items, gold, or rewards gained…"
+              minHeight="60px"
+            />
+          </SessionSection>
+          <SessionSection icon={Lightbulb} label="Hook Follow-ups">
+            <MarkdownEditor
+              value={form.hooks_notes ?? ''}
+              onChange={v => setForm(prev => ({ ...prev, hooks_notes: v || null }))}
+              placeholder="Which hooks were advanced or introduced…"
+              minHeight="60px"
+            />
+          </SessionSection>
+          <SessionSection icon={Eye} label="DM Notes" dmOnly>
+            <MarkdownEditor
+              value={form.dm_notes ?? ''}
+              onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))}
+              placeholder="Private notes, reminders, secrets…"
+              minHeight="60px"
+            />
+          </SessionSection>
+        </div>
       </Modal>
     </div>
   );

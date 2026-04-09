@@ -2,24 +2,32 @@ import type { CSSProperties } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 
-// Matches [[creature:uuid]] or [[creature:uuid:Display Name]]
-const CREATURE_LINK_RE = /\[\[creature:([a-f0-9-]{36})(?::([^\]]*))?\]\]/g;
+// Matches [[type:uuid]] or [[type:uuid:Display Name]]
+// Supported types: creature, npc, location, session, faction, hook
+const ENTITY_LINK_RE = /\[\[(creature|npc|location|session|faction|hook):([a-f0-9-]{36})(?::([^\]]*))?\]\]/g;
+
+type EntityType = 'creature' | 'npc' | 'location' | 'session' | 'faction' | 'hook';
 
 type Segment =
   | { type: 'text'; value: string }
-  | { type: 'creature'; id: string; displayName: string };
+  | { type: 'entity'; entityType: EntityType; id: string; displayName: string };
 
 function parseSegments(text: string): Segment[] {
   const segments: Segment[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  CREATURE_LINK_RE.lastIndex = 0;
-  while ((match = CREATURE_LINK_RE.exec(text)) !== null) {
+  ENTITY_LINK_RE.lastIndex = 0;
+  while ((match = ENTITY_LINK_RE.exec(text)) !== null) {
     if (match.index > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, match.index) });
     }
-    segments.push({ type: 'creature', id: match[1], displayName: match[2] ?? '' });
+    segments.push({
+      type: 'entity',
+      entityType: match[1] as EntityType,
+      id: match[2],
+      displayName: match[3] ?? '',
+    });
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) {
@@ -28,33 +36,85 @@ function parseSegments(text: string): Segment[] {
   return segments;
 }
 
-function CreatureChip({ id, displayName }: { id: string; displayName: string }) {
-  const { monsterStatblocks } = useCampaign();
+const entityStyles: Record<EntityType, { bg: string; color: string; border: string; icon: string }> = {
+  creature: { bg: '#2a1a3a', color: '#c060d0', border: '#5a2a7a', icon: '⚔' },
+  npc:      { bg: '#1a2a3a', color: '#70a0e0', border: '#2a4a7a', icon: '👤' },
+  location: { bg: '#1a3a2a', color: '#60c080', border: '#2a6a4a', icon: '📍' },
+  session:  { bg: '#2a2a1a', color: '#c9a84c', border: '#5a5a2a', icon: '📜' },
+  faction:  { bg: '#2a1a2a', color: '#b070b0', border: '#5a3060', icon: '🛡' },
+  hook:     { bg: '#3a2a1a', color: '#e0a060', border: '#7a5a2a', icon: '💡' },
+};
+
+function EntityChip({ entityType, id, displayName }: { entityType: EntityType; id: string; displayName: string }) {
+  const { monsterStatblocks, npcs, locations, sessions, factions, hooks } = useCampaign();
   const { openStatBlock } = useStatBlockPanel();
-  const creature = monsterStatblocks.find(m => m.id === id);
-  const label = (creature?.name ?? displayName) || 'Unknown Creature';
-  const missing = !creature;
+
+  let label = displayName || 'Unknown';
+  let missing = true;
+
+  switch (entityType) {
+    case 'creature': {
+      const c = monsterStatblocks.find(m => m.id === id);
+      if (c) { label = c.name; missing = false; }
+      break;
+    }
+    case 'npc': {
+      const n = npcs.find(n => n.id === id);
+      if (n) { label = n.name; missing = false; }
+      break;
+    }
+    case 'location': {
+      const l = locations.find(l => l.id === id);
+      if (l) { label = l.name; missing = false; }
+      break;
+    }
+    case 'session': {
+      const s = sessions.find(s => s.id === id);
+      if (s) { label = `Session #${s.session_number}`; missing = false; }
+      break;
+    }
+    case 'faction': {
+      const f = factions.find(f => f.id === id);
+      if (f) { label = f.name; missing = false; }
+      break;
+    }
+    case 'hook': {
+      const h = hooks.find(h => h.id === id);
+      if (h) { label = h.title; missing = false; }
+      break;
+    }
+  }
+
+  const style = entityStyles[entityType];
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (entityType === 'creature') {
+      openStatBlock(id);
+    }
+    // Other entity types: no navigation yet (could be extended to navigate to tab + highlight)
+  };
 
   return (
     <button
-      onClick={e => { e.stopPropagation(); openStatBlock(id); }}
-      title={missing ? 'Creature not found' : `View stat block: ${label}`}
+      onClick={handleClick}
+      title={missing ? `${entityType} not found` : `${entityType}: ${label}`}
       style={{
         display: 'inline',
         fontSize: '0.8em',
         padding: '1px 7px',
         borderRadius: '4px',
-        backgroundColor: missing ? '#2a1a1a' : '#2a1a3a',
-        color: missing ? '#e05c5c' : '#c060d0',
-        border: `1px solid ${missing ? '#5a2a2a' : '#5a2a7a'}`,
-        cursor: 'pointer',
+        backgroundColor: missing ? '#2a1a1a' : style.bg,
+        color: missing ? '#e05c5c' : style.color,
+        border: `1px solid ${missing ? '#5a2a2a' : style.border}`,
+        cursor: entityType === 'creature' ? 'pointer' : 'default',
         fontFamily: 'inherit',
         lineHeight: '1.4',
         verticalAlign: 'baseline',
         whiteSpace: 'nowrap',
       }}
     >
-      {missing ? `⚠ ${label}` : `⚔ ${label}`}
+      {missing ? `⚠ ${label}` : `${style.icon} ${label}`}
     </button>
   );
 }
@@ -71,8 +131,8 @@ export function StatBlockText({ text, as: Tag = 'p', style, className }: StatBlo
 
   const segments = parseSegments(text);
 
-  // If no creature links, render the simple element to avoid any overhead
-  const hasLinks = segments.some(s => s.type === 'creature');
+  // If no entity links, render the simple element to avoid any overhead
+  const hasLinks = segments.some(s => s.type === 'entity');
   if (!hasLinks) {
     return <Tag style={style} className={className}>{text}</Tag>;
   }
@@ -83,9 +143,13 @@ export function StatBlockText({ text, as: Tag = 'p', style, className }: StatBlo
         seg.type === 'text' ? (
           <span key={i}>{seg.value}</span>
         ) : (
-          <CreatureChip key={i} id={seg.id} displayName={seg.displayName} />
+          <EntityChip key={i} entityType={seg.entityType} id={seg.id} displayName={seg.displayName} />
         ),
       )}
     </Tag>
   );
 }
+
+// Export for use in MarkdownContent
+export { ENTITY_LINK_RE, EntityChip, parseSegments };
+export type { EntityType };

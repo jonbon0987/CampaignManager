@@ -5,6 +5,7 @@ import {
   BookOpen,
   Users,
   Map,
+  Shield,
   Skull,
   Swords,
   ChevronLeft,
@@ -40,6 +41,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'characters', label: 'Characters',      icon: Users },
       { id: 'lore',       label: 'Locations',        icon: Map },
+      { id: 'factions',   label: 'Factions',         icon: Shield },
     ],
   },
   {
