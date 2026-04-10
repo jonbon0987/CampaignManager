@@ -31,9 +31,13 @@ export function isModuleUnlocked(
     arr.push(dep);
     groups.set(gid, arr);
   }
-  const optionalSatisfied = [...groups.values()].every(group =>
-    group.some(d => modules.find(m => m.id === d.prerequisite_id)?.status === 'completed'),
-  );
+  const optionalSatisfied = [...groups.values()].every(group => {
+    const threshold = group[0]?.threshold ?? 1;
+    const completedCount = group.filter(d =>
+      modules.find(m => m.id === d.prerequisite_id)?.status === 'completed',
+    ).length;
+    return completedCount >= threshold;
+  });
 
   return requiredSatisfied && optionalSatisfied;
 }

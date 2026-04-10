@@ -31,6 +31,8 @@ type ModuleForm = {
   rewards: string | null;
   dm_notes: string | null;
   status: Module['status'];
+  faction_id: string | null;
+  node_role: 'start' | 'boss' | null;
 };
 
 type PendingDep = {
@@ -42,10 +44,17 @@ type PendingDep = {
 
 const emptyModuleForm = (): ModuleForm => ({
   chapter: '', title: '', synopsis: '', encounters: '', rewards: '', dm_notes: '', status: 'planned',
+  faction_id: null, node_role: null,
 });
 
 const statusBadgeColor: Record<Module['status'], 'blue' | 'green' | 'muted'> = {
   planned: 'blue', active: 'green', completed: 'muted',
+};
+
+const FACTION_TYPE_COLORS: Record<string, string> = {
+  guild: '#c9a84c', government: '#70a0e0', religious: '#d0c060',
+  criminal: '#e05c5c', military: '#60b0a0', arcane: '#b080e0',
+  merchant: '#e09050', other: '#9990b0',
 };
 
 const inputEditStyle: React.CSSProperties = {
@@ -70,7 +79,7 @@ const selectStyle: React.CSSProperties = {
 function ModuleList() {
   const {
     modules, upsertModule, submodules, moduleSheets, moduleDeps,
-    upsertModuleDep, selectedCampaignId,
+    upsertModuleDep, selectedCampaignId, factions,
   } = useCampaign();
 
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
@@ -79,7 +88,7 @@ function ModuleList() {
 
   // inline edit state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ chapter: string; title: string; status: Module['status'] } | null>(null);
+  const [editForm, setEditForm] = useState<{ chapter: string; title: string; status: Module['status']; faction_id: string | null; node_role: 'start' | 'boss' | null } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Textarea refs for entity link toolbar
@@ -132,7 +141,7 @@ function ModuleList() {
 
   const startEdit = (mod: Module) => {
     setEditingId(mod.id);
-    setEditForm({ chapter: mod.chapter ?? '', title: mod.title, status: mod.status });
+    setEditForm({ chapter: mod.chapter ?? '', title: mod.title, status: mod.status, faction_id: mod.faction_id, node_role: mod.node_role });
   };
 
   const cancelEdit = () => { setEditingId(null); setEditForm(null); };
@@ -147,6 +156,8 @@ function ModuleList() {
       chapter: editForm.chapter || null,
       title: editForm.title,
       status: editForm.status,
+      faction_id: editForm.faction_id,
+      node_role: editForm.node_role,
       synopsis: mod.synopsis,
       encounters: mod.encounters,
       rewards: mod.rewards,
@@ -225,6 +236,23 @@ function ModuleList() {
                         </select>
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block mb-1" style={labelStyle}>Faction / Storyline</label>
+                        <select value={editForm.faction_id ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, faction_id: e.target.value || null } : prev)} style={inputEditStyle}>
+                          <option value="">-- No Faction --</option>
+                          {factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block mb-1" style={labelStyle}>Node Role</label>
+                        <select value={editForm.node_role ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, node_role: (e.target.value || null) as 'start' | 'boss' | null } : prev)} style={inputEditStyle}>
+                          <option value="">Normal</option>
+                          <option value="start">Starting Mission</option>
+                          <option value="boss">Final Boss</option>
+                        </select>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
                         {saving ? 'Saving…' : 'Save'}
@@ -250,6 +278,20 @@ function ModuleList() {
                       )}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <Badge label={mod.status} color={statusBadgeColor[mod.status]} size="xs" />
+                        {(() => {
+                          const faction = mod.faction_id ? factions.find(f => f.id === mod.faction_id) : null;
+                          if (!faction) return null;
+                          const fColor = FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? '#9990b0';
+                          return (
+                            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: fColor + '1a', color: fColor, border: `1px solid ${fColor}33` }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: fColor, display: 'inline-block' }} />
+                              {faction.name}
+                            </span>
+                          );
+                        })()}
+                        {mod.node_role && (
+                          <Badge label={mod.node_role === 'start' ? 'Start' : 'Boss'} color={mod.node_role === 'start' ? 'gold' : 'red'} size="xs" />
+                        )}
                         {modSubmodules.length > 0 && <Badge label={`${modSubmodules.length} submodule${modSubmodules.length !== 1 ? 's' : ''}`} color="gold" size="xs" />}
                         {modSheets.length > 0 && <Badge label={`${modSheets.length} sheet${modSheets.length !== 1 ? 's' : ''}`} color="muted" size="xs" />}
                         {prereqCount > 0 && <Badge label={`${prereqCount} prereq${prereqCount !== 1 ? 's' : ''}`} color="blue" size="xs" />}
@@ -283,6 +325,21 @@ function ModuleList() {
           </FormField>
         </div>
         <FormField label="Name"><input type="text" value={moduleForm.title} onChange={e => setModuleForm(prev => ({ ...prev, title: e.target.value }))} placeholder="e.g., The Train Heist" style={inputStyle} /></FormField>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Faction / Storyline">
+            <select value={moduleForm.faction_id ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, faction_id: e.target.value || null }))} style={selectStyle}>
+              <option value="">-- No Faction --</option>
+              {factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Node Role">
+            <select value={moduleForm.node_role ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, node_role: (e.target.value || null) as 'start' | 'boss' | null }))} style={selectStyle}>
+              <option value="">Normal</option>
+              <option value="start">Starting Mission</option>
+              <option value="boss">Final Boss</option>
+            </select>
+          </FormField>
+        </div>
         <FormField label="Synopsis">
           <MarkdownEditor value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, synopsis: v }))} placeholder="Overview of this chapter's events…" minHeight="80px" textareaRef={newSynopsisRef} />
           <EntityLinkToolbar textareaRef={newSynopsisRef} onInsert={markup => setModuleForm(prev => ({ ...prev, synopsis: insertAtCursor(newSynopsisRef, prev.synopsis ?? '', markup) }))} />

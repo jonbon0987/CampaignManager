@@ -161,6 +161,8 @@ export interface Module {
   encounters: string | null;
   rewards: string | null;
   dm_notes: string | null;
+  faction_id: string | null;            // FK to factions — colors nodes in the story web
+  node_role: 'start' | 'boss' | null;   // start = opening mission, boss = final encounter
   created_at: string;
   updated_at: string;
 }
@@ -197,6 +199,7 @@ export interface ModuleDependency {
   dependency_type: DependencyType;
   group_id: string | null;  // shared UUID for OR groups; null for required rows
   label: string | null;
+  threshold: number | null; // for OR groups: require at least N prereqs completed (null/1 = any 1)
   created_at: string;
   updated_at: string;
 }

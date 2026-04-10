@@ -54,6 +54,8 @@ type ModuleForm = {
   rewards: string | null;
   dm_notes: string | null;
   status: Module['status'];
+  faction_id: string | null;
+  node_role: 'start' | 'boss' | null;
 };
 
 const emptyModuleForm = (): ModuleForm => ({
@@ -64,7 +66,15 @@ const emptyModuleForm = (): ModuleForm => ({
   rewards: '',
   dm_notes: '',
   status: 'planned',
+  faction_id: null,
+  node_role: null,
 });
+
+const FACTION_TYPE_COLORS: Record<string, string> = {
+  guild: '#c9a84c', government: '#70a0e0', religious: '#d0c060',
+  criminal: '#e05c5c', military: '#60b0a0', arcane: '#b080e0',
+  merchant: '#e09050', other: '#9990b0',
+};
 
 // --------------- Styles ---------------
 
@@ -131,7 +141,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     loadModuleSheets,
     monsterStatblocks,
     encounters,
-    modules,
+    modules, factions,
     selectedCampaignId,
     moduleDeps, upsertModuleDep, deleteModuleDep,
     submoduleDeps, loadSubmoduleDeps, upsertSubmoduleDep, deleteSubmoduleDep,
@@ -234,6 +244,8 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
       rewards: mod.rewards,
       dm_notes: mod.dm_notes,
       status: mod.status,
+      faction_id: mod.faction_id,
+      node_role: mod.node_role,
     });
     setModuleModalOpen(true);
   };
@@ -487,6 +499,26 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
               >
                 {mod.status}
               </span>
+              {(() => {
+                const faction = mod.faction_id ? factions.find(f => f.id === mod.faction_id) : null;
+                if (!faction) return null;
+                const fColor = FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? '#9990b0';
+                return (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border" style={{ backgroundColor: fColor + '1a', color: fColor, borderColor: fColor + '33' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: fColor, display: 'inline-block' }} />
+                    {faction.name}
+                  </span>
+                );
+              })()}
+              {mod.node_role && (
+                <span className="text-xs px-2 py-1 rounded border" style={{
+                  backgroundColor: mod.node_role === 'start' ? '#2a2418' : '#3a1a1a',
+                  color: mod.node_role === 'start' ? '#c9a84c' : '#e05c5c',
+                  borderColor: mod.node_role === 'start' ? '#5a4a20' : '#6a2a2a',
+                }}>
+                  {mod.node_role === 'start' ? 'Starting Mission' : 'Final Boss'}
+                </span>
+              )}
             </div>
             {mod.synopsis && (
               <p className="text-sm mt-0.5" style={{ color: '#9990b0' }}>
@@ -1290,6 +1322,21 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             style={inputStyle}
           />
         </FormField>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Faction / Storyline">
+            <select value={moduleForm.faction_id ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, faction_id: e.target.value || null }))} style={inputStyle}>
+              <option value="">-- No Faction --</option>
+              {factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Node Role">
+            <select value={moduleForm.node_role ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, node_role: (e.target.value || null) as 'start' | 'boss' | null }))} style={inputStyle}>
+              <option value="">Normal</option>
+              <option value="start">Starting Mission</option>
+              <option value="boss">Final Boss</option>
+            </select>
+          </FormField>
+        </div>
         <FormField label="Synopsis">
           <MarkdownEditor value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, synopsis: v }))} placeholder="Overview of this chapter's events, goals, and themes..." minHeight="80px" textareaRef={modSynopsisRef} />
           <EntityLinkToolbar textareaRef={modSynopsisRef} onInsert={markup => setModuleForm(prev => ({ ...prev, synopsis: insertAtCursor(modSynopsisRef, prev.synopsis ?? '', markup) }))} />
