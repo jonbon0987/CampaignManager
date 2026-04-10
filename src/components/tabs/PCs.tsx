@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
@@ -12,7 +13,9 @@ import { EmptyState } from '../ui/EmptyState';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
+import { FactionPillSelector } from '../ui/FactionPillSelector';
 import { insertAtCursor } from '../../lib/textUtils';
+import { getFactionTypeStyle } from '../../lib/theme';
 import type { PlayerCharacter } from '../../lib/database.types';
 
 type PCForm = {
@@ -24,6 +27,8 @@ type PCForm = {
   story_hooks: string | null;
   key_npcs: string | null;
   is_active: boolean;
+  faction_ids: string[];
+  statblock_id: string | null;
 };
 
 const emptyForm = (): PCForm => ({
@@ -35,6 +40,8 @@ const emptyForm = (): PCForm => ({
   story_hooks: '',
   key_npcs: '',
   is_active: true,
+  faction_ids: [],
+  statblock_id: null,
 });
 
 const inputEditStyle: React.CSSProperties = {
@@ -57,7 +64,8 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function PCs() {
-  const { pcs, upsertPC, deletePC } = useCampaign();
+  const { pcs, upsertPC, deletePC, factions, monsterStatblocks } = useCampaign();
+  const { openStatBlock } = useStatBlockPanel();
   const confirm = useConfirm();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<PCForm>(emptyForm());
@@ -95,6 +103,8 @@ export default function PCs() {
       story_hooks: pc.story_hooks,
       key_npcs: pc.key_npcs,
       is_active: pc.is_active,
+      faction_ids: pc.faction_ids ?? [],
+      statblock_id: pc.statblock_id ?? null,
     });
     setExpandedId(pc.id);
   };
@@ -190,6 +200,27 @@ export default function PCs() {
                       <MarkdownEditor value={editForm.key_npcs ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, key_npcs: v } : prev)} placeholder="Relationships..." minHeight="50px" textareaRef={editNpcsRef} />
                       <EntityLinkToolbar textareaRef={editNpcsRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, key_npcs: insertAtCursor(editNpcsRef, prev.key_npcs ?? '', markup) } : prev)} />
                     </div>
+                    <div>
+                      <label className="block mb-1" style={labelStyle}>Factions</label>
+                      <FactionPillSelector
+                        selectedIds={editForm.faction_ids}
+                        onChange={ids => setEditForm(prev => prev ? { ...prev, faction_ids: ids } : prev)}
+                        factions={factions}
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1" style={labelStyle}>Linked Stat Sheet</label>
+                      <select
+                        value={editForm.statblock_id ?? ''}
+                        onChange={e => setEditForm(prev => prev ? { ...prev, statblock_id: e.target.value || null } : prev)}
+                        style={inputEditStyle}
+                      >
+                        <option value="">None</option>
+                        {monsterStatblocks.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 ) : (
                   /* View mode */
@@ -199,7 +230,7 @@ export default function PCs() {
                       onClick={() => setExpandedId(isExpanded ? null : pc.id)}
                     >
                       <div className="flex items-start justify-between group">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <h3 className="font-bold" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif' }}>
                             {pc.character_name || 'Unnamed'}
                           </h3>
@@ -209,6 +240,48 @@ export default function PCs() {
                           <div className="text-xs mt-1" style={{ color: '#9990b0' }}>
                             Player: {pc.player_name || '—'}
                           </div>
+                          {pc.faction_ids && pc.faction_ids.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {pc.faction_ids.map(fid => {
+                                const f = factions.find(x => x.id === fid);
+                                if (!f) return null;
+                                const style = getFactionTypeStyle(f.faction_type);
+                                return (
+                                  <span
+                                    key={fid}
+                                    style={{
+                                      backgroundColor: style.bg,
+                                      color: style.text,
+                                      border: `1px solid ${style.border}`,
+                                      borderRadius: 3,
+                                      padding: '1px 5px',
+                                      fontSize: 10,
+                                      lineHeight: 1.3,
+                                    }}
+                                  >
+                                    {f.name}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {pc.statblock_id && (() => {
+                            const sb = monsterStatblocks.find(m => m.id === pc.statblock_id);
+                            if (!sb) return null;
+                            return (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={e => { e.stopPropagation(); openStatBlock(sb.id); }}
+                                  className="text-xs underline"
+                                  style={{ color: '#70a0e0', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                  title="Open stat sheet"
+                                >
+                                  {sb.name}
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="flex items-center gap-1">
                           {!pc.is_active && <Badge label="Inactive" color="muted" size="xs" />}
@@ -288,6 +361,25 @@ export default function PCs() {
         <FormField label="Key NPCs">
           <MarkdownEditor value={form.key_npcs ?? ''} onChange={v => setForm(prev => ({ ...prev, key_npcs: v }))} placeholder="Relationships with NPCs, other PCs, factions..." minHeight="80px" textareaRef={newNpcsRef} />
           <EntityLinkToolbar textareaRef={newNpcsRef} onInsert={markup => setForm(prev => ({ ...prev, key_npcs: insertAtCursor(newNpcsRef, prev.key_npcs ?? '', markup) }))} />
+        </FormField>
+        <FormField label="Factions">
+          <FactionPillSelector
+            selectedIds={form.faction_ids}
+            onChange={ids => setForm(prev => ({ ...prev, faction_ids: ids }))}
+            factions={factions}
+          />
+        </FormField>
+        <FormField label="Linked Stat Sheet">
+          <select
+            value={form.statblock_id ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, statblock_id: e.target.value || null }))}
+            style={inputStyle}
+          >
+            <option value="">None</option>
+            {monsterStatblocks.map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
         </FormField>
       </Modal>
     </div>

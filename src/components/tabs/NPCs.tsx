@@ -2,19 +2,21 @@ import { useState, useRef } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField, inputStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
 import { InlineEditCard } from '../ui/InlineEditCard';
 import { SearchBar } from '../ui/SearchBar';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
-import { StatBlockText } from '../ui/StatBlockText';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
+import { FactionPillSelector } from '../ui/FactionPillSelector';
 import { insertAtCursor } from '../../lib/textUtils';
+import { getFactionTypeStyle } from '../../lib/theme';
 import type { NPC } from '../../lib/database.types';
 
 type NPCForm = {
@@ -25,6 +27,8 @@ type NPCForm = {
   description: string | null;
   hooks_motivations: string | null;
   met_by_pcs: boolean;
+  faction_ids: string[];
+  statblock_id: string | null;
 };
 
 const emptyForm = (): NPCForm => ({
@@ -35,6 +39,8 @@ const emptyForm = (): NPCForm => ({
   description: '',
   hooks_motivations: '',
   met_by_pcs: false,
+  faction_ids: [],
+  statblock_id: null,
 });
 
 const statusBadgeColor: Record<NPC['status'], 'green' | 'red' | 'gold'> = {
@@ -66,7 +72,9 @@ export default function NPCs() {
   const {
     npcs, globalNPCs, linkedNPCIds,
     upsertNPC, deleteNPC, linkNPCToCampaign, unlinkNPCFromCampaign,
+    factions, monsterStatblocks,
   } = useCampaign();
+  const { openStatBlock } = useStatBlockPanel();
   const confirm = useConfirm();
 
   const [viewMode, setViewMode] = useState<ViewMode>('campaign');
@@ -108,7 +116,12 @@ export default function NPCs() {
 
   const startEdit = (npc: NPC) => {
     setEditingId(npc.id);
-    setEditForm({ name: npc.name, role: npc.role, affiliation: npc.affiliation, status: npc.status, description: npc.description, hooks_motivations: npc.hooks_motivations, met_by_pcs: npc.met_by_pcs });
+    setEditForm({
+      name: npc.name, role: npc.role, affiliation: npc.affiliation, status: npc.status,
+      description: npc.description, hooks_motivations: npc.hooks_motivations, met_by_pcs: npc.met_by_pcs,
+      faction_ids: npc.faction_ids ?? [],
+      statblock_id: npc.statblock_id ?? null,
+    });
     setExpandedId(npc.id);
   };
 
@@ -135,6 +148,8 @@ export default function NPCs() {
       description: npc.description, hooks_motivations: npc.hooks_motivations,
       dm_notes: npc.dm_notes, location: npc.location, first_session: npc.first_session,
       met_by_pcs: !npc.met_by_pcs,
+      faction_ids: npc.faction_ids ?? [],
+      statblock_id: npc.statblock_id ?? null,
     }, scope);
   };
 
@@ -246,6 +261,27 @@ export default function NPCs() {
                       <MarkdownEditor value={editForm.hooks_motivations ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, hooks_motivations: v } : prev)} placeholder="Personal goals, secrets..." minHeight="60px" textareaRef={editHooksRef} />
                       <EntityLinkToolbar textareaRef={editHooksRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, hooks_motivations: insertAtCursor(editHooksRef, prev.hooks_motivations ?? '', markup) } : prev)} />
                     </div>
+                    <div>
+                      <label className="block mb-1" style={labelStyle}>Factions</label>
+                      <FactionPillSelector
+                        selectedIds={editForm.faction_ids}
+                        onChange={ids => setEditForm(prev => prev ? { ...prev, faction_ids: ids } : prev)}
+                        factions={factions}
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1" style={labelStyle}>Linked Stat Sheet</label>
+                      <select
+                        value={editForm.statblock_id ?? ''}
+                        onChange={e => setEditForm(prev => prev ? { ...prev, statblock_id: e.target.value || null } : prev)}
+                        style={inputEditStyle}
+                      >
+                        <option value="">None</option>
+                        {monsterStatblocks.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 ) : (
                   <div>
@@ -260,6 +296,48 @@ export default function NPCs() {
                           </div>
                           {npc.role && <div className="text-sm mt-0.5" style={{ color: '#9990b0' }}>{npc.role}</div>}
                           {npc.affiliation && <div className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{npc.affiliation}</div>}
+                          {npc.faction_ids && npc.faction_ids.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {npc.faction_ids.map(fid => {
+                                const f = factions.find(x => x.id === fid);
+                                if (!f) return null;
+                                const style = getFactionTypeStyle(f.faction_type);
+                                return (
+                                  <span
+                                    key={fid}
+                                    style={{
+                                      backgroundColor: style.bg,
+                                      color: style.text,
+                                      border: `1px solid ${style.border}`,
+                                      borderRadius: 3,
+                                      padding: '1px 5px',
+                                      fontSize: 10,
+                                      lineHeight: 1.3,
+                                    }}
+                                  >
+                                    {f.name}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {npc.statblock_id && (() => {
+                            const sb = monsterStatblocks.find(m => m.id === npc.statblock_id);
+                            if (!sb) return null;
+                            return (
+                              <div className="mt-1">
+                                <button
+                                  type="button"
+                                  onClick={e => { e.stopPropagation(); openStatBlock(sb.id); }}
+                                  className="text-xs underline"
+                                  style={{ color: '#70a0e0', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                  title="Open stat sheet"
+                                >
+                                  {sb.name}
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <Badge label={npc.status} color={statusBadgeColor[npc.status]} size="xs" />
@@ -374,6 +452,25 @@ export default function NPCs() {
         <FormField label="Hooks & Motivations">
           <MarkdownEditor value={form.hooks_motivations ?? ''} onChange={v => setForm(prev => ({ ...prev, hooks_motivations: v }))} placeholder="Personal goals, secrets..." minHeight="100px" textareaRef={newHooksRef} />
           <EntityLinkToolbar textareaRef={newHooksRef} onInsert={markup => setForm(prev => ({ ...prev, hooks_motivations: insertAtCursor(newHooksRef, prev.hooks_motivations ?? '', markup) }))} />
+        </FormField>
+        <FormField label="Factions">
+          <FactionPillSelector
+            selectedIds={form.faction_ids}
+            onChange={ids => setForm(prev => ({ ...prev, faction_ids: ids }))}
+            factions={factions}
+          />
+        </FormField>
+        <FormField label="Linked Stat Sheet">
+          <select
+            value={form.statblock_id ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, statblock_id: e.target.value || null }))}
+            style={inputStyle}
+          >
+            <option value="">None</option>
+            {monsterStatblocks.map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
         </FormField>
       </Modal>
     </div>

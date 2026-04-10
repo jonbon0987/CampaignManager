@@ -5,7 +5,7 @@ import { Modal } from '../Modal';
 import type { EntityType } from './StatBlockText';
 
 const entityConfig: Record<EntityType, { icon: string; label: string; color: string; bg: string; border: string }> = {
-  creature: { icon: '⚔', label: 'Creature', color: '#c060d0', bg: '#2a1a3a', border: '#5a2a7a' },
+  creature: { icon: '⚔', label: 'Stat Sheet', color: '#c060d0', bg: '#2a1a3a', border: '#5a2a7a' },
   npc:      { icon: '👤', label: 'NPC',      color: '#70a0e0', bg: '#1a2a3a', border: '#2a4a7a' },
   location: { icon: '📍', label: 'Location', color: '#60c080', bg: '#1a3a2a', border: '#2a6a4a' },
   session:  { icon: '📜', label: 'Session',  color: '#c9a84c', bg: '#2a2a1a', border: '#5a5a2a' },

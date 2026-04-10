@@ -7,6 +7,7 @@ import { getTypeStyle } from '../../lib/theme';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
+import { StatBlockText } from '../ui/StatBlockText';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -70,6 +71,32 @@ const emptyMonsterForm = (): MonsterForm => ({
 function abilityMod(score: number): string {
   const mod = Math.floor((score - 10) / 2);
   return mod >= 0 ? `+${mod}` : `${mod}`;
+}
+
+// Standard 5e CR → proficiency bonus table
+function profBonus(cr: string | null): string | null {
+  if (!cr) return null;
+  const crNum = cr === '1/8' ? 0.125 : cr === '1/4' ? 0.25 : cr === '1/2' ? 0.5 : Number(cr);
+  if (Number.isNaN(crNum)) return null;
+  if (crNum <= 4) return '+2';
+  if (crNum <= 8) return '+3';
+  if (crNum <= 12) return '+4';
+  if (crNum <= 16) return '+5';
+  if (crNum <= 20) return '+6';
+  if (crNum <= 24) return '+7';
+  if (crNum <= 28) return '+8';
+  return '+9';
+}
+
+// Shared empty-state predicate used by the StatBlockPanel and view modal.
+export function isStatBlockEmpty(m: MonsterStatblock): boolean {
+  return !m.content && !m.dm_notes
+    && m.armor_class == null && m.hit_points == null && !m.speed
+    && m.str == null && m.dex == null && m.con == null
+    && m.int == null && m.wis == null && m.cha == null
+    && !m.saving_throws && !m.skills
+    && !m.damage_resistances && !m.damage_immunities && !m.condition_immunities
+    && !m.senses && !m.languages;
 }
 
 // --------------- Styles ---------------
@@ -150,7 +177,11 @@ function buildCampaignContextBlock(data: CampaignContextData): string {
 export function StatBlockBody({ m }: { m: MonsterStatblock }) {
   const hasAbilityScores = m.str != null || m.dex != null || m.con != null || m.int != null || m.wis != null || m.cha != null;
   const hasDefenses = m.armor_class != null || m.hit_points != null || m.speed;
-  const hasTraits = m.saving_throws || m.skills || m.damage_resistances || m.damage_immunities || m.condition_immunities || m.senses || m.languages;
+  const initiative = m.dex != null ? abilityMod(m.dex) : null;
+  const proficiency = profBonus(m.challenge_rating);
+  const hasTraits =
+    initiative || proficiency ||
+    m.saving_throws || m.skills || m.damage_resistances || m.damage_immunities || m.condition_immunities || m.senses || m.languages;
 
   const traitRow = (label: string, value: string | null) =>
     value ? (
@@ -215,6 +246,8 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
       {/* Trait rows */}
       {hasTraits && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {traitRow('Initiative', initiative)}
+          {traitRow('Proficiency Bonus', proficiency)}
           {traitRow('Saving Throws', m.saving_throws)}
           {traitRow('Skills', m.skills)}
           {traitRow('Damage Resistances', m.damage_resistances)}
@@ -229,12 +262,14 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
       {m.content && (
         <div>
           <div style={sectionLabel}>Actions &amp; Traits</div>
-          <pre
+          <StatBlockText
+            as="pre"
+            text={m.content}
             style={{
               color: '#e8d5b0',
               lineHeight: '1.7',
-              fontFamily: 'monospace',
-              fontSize: '0.8rem',
+              fontFamily: 'Georgia, serif',
+              fontSize: '0.85rem',
               backgroundColor: '#0f0e17',
               border: '1px solid #3a3660',
               borderRadius: '6px',
@@ -242,9 +277,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
               whiteSpace: 'pre-wrap',
               margin: 0,
             }}
-          >
-            {m.content}
-          </pre>
+          />
         </div>
       )}
 
@@ -252,9 +285,18 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
       {m.dm_notes && (
         <div>
           <div style={sectionLabel}>DM Notes</div>
-          <p style={{ color: '#9990b0', fontSize: '0.875rem', lineHeight: '1.6', fontStyle: 'italic', margin: 0 }}>
-            {m.dm_notes}
-          </p>
+          <StatBlockText
+            as="p"
+            text={m.dm_notes}
+            style={{
+              color: '#9990b0',
+              fontSize: '0.875rem',
+              lineHeight: '1.6',
+              fontStyle: 'italic',
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+            }}
+          />
         </div>
       )}
     </div>
@@ -544,9 +586,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="min-w-0">
           <h2 className="text-xl font-bold leading-tight" style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}>
-            Creature Stat Sheets
+            Stat Sheets
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{monsterStatblocks.length} creature{monsterStatblocks.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{monsterStatblocks.length} stat sheet{monsterStatblocks.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex-1" />
         <button
@@ -561,7 +603,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           className="inline-flex items-center justify-center gap-1.5 rounded border font-medium transition-colors duration-150 px-3 py-1.5 text-sm"
           style={{ backgroundColor: '#c9a84c', color: '#0f0e17', borderColor: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
         >
-          + Add Creature
+          + Add Stat Sheet
         </button>
       </div>
 
@@ -613,11 +655,11 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       {/* List */}
       {monsterStatblocks.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#6a6490' }}>
-          No creature stat sheets yet. Add your first creature!
+          No stat sheets yet. Add your first one!
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-10" style={{ color: '#6a6490' }}>
-          No creatures match your filter.
+          No stat sheets match your filter.
         </div>
       ) : (
         <div className="space-y-2">
@@ -695,7 +737,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       <Modal
         isOpen={genModalOpen}
         onClose={() => { if (!genLoading) setGenModalOpen(false); }}
-        title="Generate Creature Stat Sheet"
+        title="Generate Stat Sheet"
         onSave={genLoading ? undefined : handleGenerate}
         saveLabel="Generate"
       >
@@ -742,7 +784,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           ) : (
             <>
               <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6' }}>
-                Enter your party details and the DM Assistant will build a boss creature scaled to challenge them.
+                Enter your party details and the DM Assistant will build a boss stat sheet scaled to challenge them.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Number of Players">
@@ -801,7 +843,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               rows={3}
               value={genAdditionalContext}
               onChange={e => setGenAdditionalContext(e.target.value)}
-              placeholder="e.g. This creature has multiple stages and legendary actions, he transforms mid-fight, etc"
+              placeholder="e.g. This stat sheet has multiple stages and legendary actions, transforms mid-fight, etc"
               style={textareaStyle}
               disabled={genLoading}
             />
@@ -824,7 +866,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? `Edit: ${editing.name}` : 'New Creature Stat Sheet'}
+        title={editing ? `Edit: ${editing.name}` : 'New Stat Sheet'}
         onSave={handleSave}
         wide
       >

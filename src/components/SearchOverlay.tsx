@@ -143,7 +143,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: c.id, label: c.name,
           detail: [c.creature_type, c.challenge_rating ? `CR ${c.challenge_rating}` : null].filter(Boolean).join(' · ') || undefined,
-          tab: 'creatures', icon: Skull, group: 'Creatures',
+          tab: 'creatures', icon: Skull, group: 'Stat Sheets',
         });
       }
     }
@@ -248,7 +248,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search sessions, NPCs, locations, creatures..."
+            placeholder="Search sessions, NPCs, locations, stat sheets..."
             style={{
               flex: 1,
               background: 'none',

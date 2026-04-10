@@ -42,3 +42,17 @@ export const creatureTypeColors: Record<string, { bg: string; text: string; bord
 
 export const getTypeStyle = (t: string | null) =>
   creatureTypeColors[t ?? 'other'] ?? creatureTypeColors['other'];
+
+export const factionTypeColors: Record<string, { bg: string; text: string; border: string }> = {
+  guild:      { bg: '#2a2418', text: '#c9a84c', border: '#5a4a20' },
+  government: { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
+  religious:  { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
+  criminal:   { bg: '#3a1a1a', text: '#e05c5c', border: '#6a2a2a' },
+  military:   { bg: '#1a2a2a', text: '#60b0a0', border: '#2a5a5a' },
+  arcane:     { bg: '#2a1a3a', text: '#b080e0', border: '#5a3070' },
+  merchant:   { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
+  other:      { bg: '#1a1828', text: '#9990b0', border: '#3a3660' },
+};
+
+export const getFactionTypeStyle = (t: string | null) =>
+  factionTypeColors[t ?? 'other'] ?? factionTypeColors['other'];

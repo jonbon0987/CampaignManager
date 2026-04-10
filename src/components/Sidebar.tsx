@@ -47,7 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Combat',
     items: [
-      { id: 'creatures',  label: 'Creature Sheets', icon: Skull },
+      { id: 'creatures',  label: 'Stat Sheets',     icon: Skull },
       { id: 'encounters', label: 'Encounters',      icon: Swords },
     ],
   },

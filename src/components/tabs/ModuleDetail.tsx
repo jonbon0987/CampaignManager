@@ -662,13 +662,13 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                           return (
                             <div className="px-4 pt-3 pb-1">
                               <div className="flex justify-between items-center mb-2">
-                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Creatures</span>
+                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Stat Sheets</span>
                                 <Button variant="danger" size="sm" onClick={() => setCreaturePickerTarget({ kind: 'submodule', item: sub })} style={{ backgroundColor: '#3a1a1a', borderColor: '#7a2a2a' }}>
-                                  + Link Creature
+                                  + Link Stat Sheet
                                 </Button>
                               </div>
                               {linked.length === 0 ? (
-                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No creatures linked.</p>
+                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No stat sheets linked.</p>
                               ) : (
                                 <div className="flex flex-wrap gap-2 mb-2">
                                   {linked.map(m => {
@@ -958,9 +958,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                                       onClick={() => setCreaturePickerTarget({ kind: 'scene', item: scene })}
                                       className="text-xs px-2 py-1 rounded"
                                       style={{ backgroundColor: '#3a1a1a', color: '#e07070', border: '1px solid #7a2a2a' }}
-                                      title="Link creature"
+                                      title="Link stat sheet"
                                     >
-                                      + Creature
+                                      + Stat Sheet
                                     </button>
                                     <button
                                       onClick={() => setViewingScene(scene)}
@@ -1570,19 +1570,19 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         <Modal
           isOpen={!!creaturePickerTarget}
           onClose={() => setCreaturePickerTarget(null)}
-          title="Link Creature Stat Sheet"
+          title="Link Stat Sheet"
           wide
         >
           <div className="space-y-3">
             {monsterStatblocks.length === 0 ? (
               <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-                No creature stat sheets yet. Add some from the Creature Sheets tab first.
+                No stat sheets yet. Add some from the Stat Sheets tab first.
               </p>
             ) : (
               <>
                 <p className="text-xs" style={{ color: '#9990b0' }}>
-                  Select a creature to link to this {creaturePickerTarget.kind}.
-                  Linked creatures are shown inline when viewing it.
+                  Select a stat sheet to link to this {creaturePickerTarget.kind}.
+                  Linked stat sheets are shown inline when viewing it.
                 </p>
                 {(() => {
                   const existingIds = parseLinkedIds(creaturePickerTarget.item.linked_monster_ids);

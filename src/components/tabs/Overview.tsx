@@ -62,7 +62,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
     { label: 'Hooks', count: hooks.length, tab: 'hooks' as Tab, icon: Lightbulb },
     { label: 'Lore', count: lore.length, tab: 'lore' as Tab, icon: BookOpen },
     { label: 'Modules', count: modules.length, tab: 'modules' as Tab, icon: BookOpen },
-    { label: 'Creatures', count: monsterStatblocks.length, tab: 'creatures' as Tab, icon: Skull },
+    { label: 'Stat Sheets', count: monsterStatblocks.length, tab: 'creatures' as Tab, icon: Skull },
     { label: 'Encounters', count: encounters.length, tab: 'encounters' as Tab, icon: Swords },
   ];
 

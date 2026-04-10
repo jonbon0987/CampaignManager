@@ -688,7 +688,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
                       <span>{enc.party_size}p / lvl {enc.party_level}</span>
                     )}
                     {totalCreatures > 0 && (
-                      <span>{totalCreatures} creature{totalCreatures !== 1 ? 's' : ''} ({combatantList.length} type{combatantList.length !== 1 ? 's' : ''})</span>
+                      <span>{totalCreatures} combatant{totalCreatures !== 1 ? 's' : ''} ({combatantList.length} type{combatantList.length !== 1 ? 's' : ''})</span>
                     )}
                   </div>
                 </div>
@@ -762,7 +762,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
           {genMode === 'ai' ? (
             <>
               <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6' }}>
-                Describe your encounter and the AI will populate creatures, difficulty, and DM notes.
+                Describe your encounter and the AI will populate combatants, difficulty, and DM notes.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Number of Players">
@@ -851,7 +851,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
                   rows={3}
                   value={genAdditionalContext}
                   onChange={e => setGenAdditionalContext(e.target.value)}
-                  placeholder="e.g. The villain escapes at the end. No more than 2 creature types. Include a puzzle element."
+                  placeholder="e.g. The villain escapes at the end. No more than 2 stat sheet types. Include a puzzle element."
                   style={textareaStyle}
                   disabled={genLoading}
                 />
@@ -859,13 +859,13 @@ For each combatant: if it matches a creature in the saved library (same name), s
 
               {monsterStatblocks.length > 0 && (
                 <p className="text-xs" style={{ color: '#4a4470' }}>
-                  The AI will consider your {monsterStatblocks.length} saved creature{monsterStatblocks.length !== 1 ? 's' : ''} when building the encounter.
+                  The AI will consider your {monsterStatblocks.length} saved stat sheet{monsterStatblocks.length !== 1 ? 's' : ''} when building the encounter.
                 </p>
               )}
             </>
           ) : (
             <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6' }}>
-              Open a blank encounter form and add creatures manually from your library or by name.
+              Open a blank encounter form and add stat sheets manually from your library or by name.
             </p>
           )}
 
@@ -971,7 +971,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
             <div style={sectionLabel}>Combatants</div>
             <div className="space-y-2 mb-3">
               {combatants.length === 0 && (
-                <p className="text-xs" style={{ color: '#4a4470' }}>No creatures added yet.</p>
+                <p className="text-xs" style={{ color: '#4a4470' }}>No combatants added yet.</p>
               )}
               {combatants.map(c => {
                 const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;

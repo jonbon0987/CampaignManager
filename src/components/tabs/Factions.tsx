@@ -14,6 +14,7 @@ import { MarkdownContent } from '../ui/MarkdownContent';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
+import { factionTypeColors } from '../../lib/theme';
 import type { Faction } from '../../lib/database.types';
 
 const FACTION_TYPES = ['guild', 'government', 'religious', 'criminal', 'military', 'arcane', 'merchant', 'other'] as const;
@@ -37,16 +38,7 @@ const emptyForm = (): FactionForm => ({
   dm_notes: null,
 });
 
-const typeColors: Record<FactionType, { bg: string; text: string; border: string }> = {
-  guild:      { bg: '#2a2418', text: '#c9a84c', border: '#5a4a20' },
-  government: { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
-  religious:  { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
-  criminal:   { bg: '#3a1a1a', text: '#e05c5c', border: '#6a2a2a' },
-  military:   { bg: '#1a2a2a', text: '#60b0a0', border: '#2a5a5a' },
-  arcane:     { bg: '#2a1a3a', text: '#b080e0', border: '#5a3070' },
-  merchant:   { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
-  other:      { bg: '#1a1828', text: '#9990b0', border: '#3a3660' },
-};
+const typeColors = factionTypeColors as Record<FactionType, { bg: string; text: string; border: string }>;
 
 const typeBadgeColor: Record<FactionType, 'gold' | 'blue' | 'yellow' | 'red' | 'green' | 'orange' | 'muted'> = {
   guild:      'gold',

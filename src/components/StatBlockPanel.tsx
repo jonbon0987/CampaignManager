@@ -1,6 +1,6 @@
 import { useCampaign } from '../context/CampaignContext';
 import { useStatBlockPanel } from '../context/StatBlockPanelContext';
-import { StatBlockBody } from './tabs/CreatureStatblocks';
+import { StatBlockBody, isStatBlockEmpty } from './tabs/CreatureStatblocks';
 import { getTypeStyle } from '../lib/theme';
 
 export default function StatBlockPanel() {
@@ -70,7 +70,7 @@ export default function StatBlockPanel() {
               >
                 {statblock.name}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
                 <span
                   style={{
                     fontSize: '0.7rem',
@@ -99,12 +99,12 @@ export default function StatBlockPanel() {
                   </span>
                 )}
                 {statblock.tags && (
-                  <span style={{ fontSize: '0.7rem', color: '#6a6490' }}>{statblock.tags}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#6a6490', width: '100%' }}>{statblock.tags}</span>
                 )}
               </div>
             </>
           ) : open ? (
-            <div style={{ color: '#e05c5c', fontSize: '0.9rem' }}>Creature not found</div>
+            <div style={{ color: '#e05c5c', fontSize: '0.9rem' }}>Stat sheet not found</div>
           ) : (
             <div style={{ color: '#6a6490', fontSize: '0.9rem' }}>Stat Block</div>
           )}
@@ -141,15 +141,15 @@ export default function StatBlockPanel() {
         {statblock ? (
           <>
             <StatBlockBody m={statblock} />
-            {!statblock.content && !statblock.dm_notes && statblock.armor_class == null && statblock.hit_points == null && !statblock.speed && (
+            {isStatBlockEmpty(statblock) && (
               <p style={{ color: '#6a6490', fontSize: '0.875rem', fontStyle: 'italic' }}>
-                No content for this creature yet.
+                No content for this stat sheet yet.
               </p>
             )}
           </>
         ) : open ? (
           <p style={{ color: '#e05c5c', fontSize: '0.875rem' }}>
-            This creature no longer exists. It may have been deleted.
+            This stat sheet no longer exists. It may have been deleted.
           </p>
         ) : null}
       </div>
@@ -164,7 +164,7 @@ export default function StatBlockPanel() {
             color: '#4a4470',
           }}
         >
-          Edit this creature in the Creature Stat Sheets tab.
+          Edit this stat sheet in the Stat Sheets tab.
         </div>
       )}
     </div>

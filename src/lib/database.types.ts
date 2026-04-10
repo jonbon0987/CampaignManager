@@ -72,6 +72,8 @@ export interface PlayerCharacter {
   key_npcs: string | null;
   dm_notes: string | null;           // DM-only secrets
   is_active: boolean;
+  faction_ids: string[];
+  statblock_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +92,8 @@ export interface NPC {
   location: string | null;
   first_session: number | null;
   met_by_pcs: boolean;
+  faction_ids: string[];
+  statblock_id: string | null;
   created_at: string;
   updated_at: string;
 }
