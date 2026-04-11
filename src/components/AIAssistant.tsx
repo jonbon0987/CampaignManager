@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
+import { useToast } from '../context/ToastContext';
 import useLocalStorage from '../hooks/useLocalStorage';
 import type {
   Session, PlayerCharacter, NPC, Location,
@@ -7,6 +8,10 @@ import type {
   SessionInsert, PlayerCharacterInsert, NPCInsert, LocationInsert,
   FactionInsert, HookInsert, LoreEntryInsert, ModuleInsert,
 } from '../lib/database.types';
+import { submitDocument, type ImportAction, type DocumentInput } from '../lib/documentImport';
+import { formatCampaignContext } from '../lib/campaignContext';
+import DocumentImportReview from './DocumentImportReview';
+import DocumentUploadButton from './DocumentUploadButton';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -28,9 +33,21 @@ type PendingAction =
   | { type: 'deleteLore';      id: string; label: string }
   | { type: 'deleteModule';    id: string; label: string };
 
+interface ImportApplyState {
+  phase: 'idle' | 'applying' | 'done';
+  appliedActionIds: string[];
+  failedActionIds: string[];
+}
+
 type ChatMessage =
   | { role: 'user'; content: string }
-  | { role: 'assistant'; content: string; pendingActions?: PendingAction[] };
+  | {
+      role: 'assistant';
+      content: string;
+      pendingActions?: PendingAction[];
+      importActions?: ImportAction[];
+      importApplyState?: ImportApplyState;
+    };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -77,34 +94,7 @@ function buildSystemPrompt(data: {
 }): string {
   return `You are a D&D campaign assistant for the Dungeon Master. Your job is to help organize campaign data, write NPC/location/session entries, flesh out story modules, and update any campaign records.
 
-Campaign: ${data.overviewTitle || 'Unnamed Campaign'}
-Plot summary: ${data.overviewPlot || '(none)'}
-
-== CURRENT CAMPAIGN DATA ==
-
-SESSIONS (${data.sessions.length}):
-${data.sessions.map(s => `  #${s.session_number} (${s.session_date ?? 'no date'}): ${s.summary ?? '(no summary)'}`).join('\n') || '  (none)'}
-
-PLAYER CHARACTERS (${data.pcs.length}):
-${data.pcs.map(p => `  ${p.character_name} — ${p.race ?? '?'} ${p.class ?? '?'}, played by ${p.player_name ?? '?'} [id:${p.id}]`).join('\n') || '  (none)'}
-
-NPCS (${data.npcs.length}):
-${data.npcs.map(n => `  ${n.name} (${n.role ?? '?'}, ${n.affiliation ?? '?'}, ${n.status}) [id:${n.id}]`).join('\n') || '  (none)'}
-
-LOCATIONS (${data.locations.length}):
-${data.locations.map(l => `  ${l.name} — ${l.location_type ?? '?'} in ${l.region ?? '?'} [id:${l.id}]`).join('\n') || '  (none)'}
-
-FACTIONS (${data.factions.length}):
-${data.factions.map(f => `  ${f.name} (${f.faction_type ?? '?'}) [id:${f.id}]`).join('\n') || '  (none)'}
-
-HOOKS & IDEAS (${data.hooks.length}):
-${data.hooks.map(h => `  [${h.is_active ? 'active' : 'resolved'}] ${h.title} (${h.category ?? '?'}) [id:${h.id}]`).join('\n') || '  (none)'}
-
-LORE ENTRIES (${data.lore.length}):
-${data.lore.map(l => `  ${l.title} (${l.category ?? '?'}) [id:${l.id}]`).join('\n') || '  (none)'}
-
-MODULES (${data.modules.length}):
-${data.modules.map(m => `  Ch.${m.chapter ?? '?'}: ${m.title} [${m.status}] [id:${m.id}]`).join('\n') || '  (none)'}
+${formatCampaignContext(data)}
 
 == INSTRUCTIONS ==
 
@@ -142,6 +132,7 @@ interface Props {
 export default function AIAssistant({ open, onClose }: Props) {
   const campaign = useCampaign();
   const { sessions, pcs, npcs, locations, factions, hooks, lore, modules, overview } = campaign;
+  const toast = useToast();
 
   const [messages, setMessages] = useLocalStorage<ChatMessage[]>('ai-chat-messages', []);
   const [appliedIdxsArr, setAppliedIdxsArr] = useLocalStorage<number[]>('ai-chat-applied', []);
@@ -294,6 +285,160 @@ export default function AIAssistant({ open, onClose }: Props) {
     } finally {
       setApplyingIdx(null);
     }
+  }
+
+  // ── Document import ──────────────────────────────────────────────────────
+
+  async function handleDocumentImport(input: DocumentInput) {
+    setApiError('');
+
+    const label = input.kind === 'gdocs-url'
+      ? 'Imported Google Doc'
+      : `Uploaded ${input.filename ?? 'document'}`;
+    const userMsg: ChatMessage = { role: 'user', content: `📄 ${label}` };
+    const placeholderIdx = messages.length + 1;
+    setMessages(prev => [...prev, userMsg, { role: 'assistant', content: 'Reading document…' }]);
+    setLoading(true);
+
+    try {
+      const ctx = formatCampaignContext({
+        sessions, pcs, npcs, locations, factions, hooks, lore, modules,
+        overviewTitle: overview.title,
+        overviewPlot: overview.plotSummary,
+      });
+      const { summary, actions } = await submitDocument(input, ctx);
+
+      setMessages(prev => prev.map((m, i) => {
+        if (i !== placeholderIdx) return m;
+        const displayText = summary || (actions.length > 0
+          ? `Found ${actions.length} proposed change${actions.length === 1 ? '' : 's'}.`
+          : 'No campaign updates found in that document.');
+        return {
+          role: 'assistant',
+          content: displayText,
+          importActions: actions.length > 0 ? actions : undefined,
+          importApplyState: actions.length > 0
+            ? { phase: 'idle', appliedActionIds: [], failedActionIds: [] }
+            : undefined,
+        };
+      }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setMessages(prev => prev.map((m, i) =>
+        i === placeholderIdx
+          ? { role: 'assistant' as const, content: `Error importing document: ${msg}` }
+          : m,
+      ));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleApplyImport(msgIdx: number, selected: ImportAction[]) {
+    // Mark as applying
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx || m.role !== 'assistant') return m;
+      return {
+        ...m,
+        importApplyState: { phase: 'applying', appliedActionIds: [], failedActionIds: [] },
+      };
+    }));
+
+    const applied: string[] = [];
+    const failed: string[] = [];
+
+    for (const action of selected) {
+      try {
+        // Merge matched_id → payload.id for updates
+        const payload = { ...(action.payload as Record<string, unknown>) };
+        if (action.matched_id) payload.id = action.matched_id;
+
+        switch (action.type) {
+          case 'upsertSession':
+            await campaign.upsertSession(payload as Parameters<typeof campaign.upsertSession>[0]);
+            break;
+          case 'upsertPC':
+            await campaign.upsertPC(payload as Parameters<typeof campaign.upsertPC>[0]);
+            break;
+          case 'upsertNPC':
+            await campaign.upsertNPC(payload as Parameters<typeof campaign.upsertNPC>[0]);
+            break;
+          case 'upsertLocation':
+            await campaign.upsertLocation(payload as Parameters<typeof campaign.upsertLocation>[0]);
+            break;
+          case 'upsertFaction':
+            await campaign.upsertFaction(payload as Parameters<typeof campaign.upsertFaction>[0]);
+            break;
+          case 'upsertHook':
+            await campaign.upsertHook(payload as Parameters<typeof campaign.upsertHook>[0]);
+            break;
+          case 'upsertLore':
+            await campaign.upsertLore(payload as Parameters<typeof campaign.upsertLore>[0]);
+            break;
+          case 'upsertModule':
+            await campaign.upsertModule(payload as Parameters<typeof campaign.upsertModule>[0]);
+            break;
+          case 'upsertSubmodule':
+            await campaign.upsertSubmodule(payload as Parameters<typeof campaign.upsertSubmodule>[0]);
+            break;
+          case 'upsertScene':
+            await campaign.upsertScene(payload as Parameters<typeof campaign.upsertScene>[0]);
+            break;
+          case 'upsertRelationship':
+            await campaign.upsertRelationship(payload as Parameters<typeof campaign.upsertRelationship>[0]);
+            break;
+          default: {
+            const _exhaustive: never = action;
+            void _exhaustive;
+          }
+        }
+        applied.push(action.action_id);
+      } catch (err) {
+        failed.push(action.action_id);
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        toast(`Failed: ${msg}`, 'error');
+        // Keep going — user can retry individual failures later.
+      }
+
+      // Stream progress into the message as we go
+      setMessages(prev => prev.map((m, i) => {
+        if (i !== msgIdx || m.role !== 'assistant') return m;
+        return {
+          ...m,
+          importApplyState: {
+            phase: 'applying',
+            appliedActionIds: [...applied],
+            failedActionIds: [...failed],
+          },
+        };
+      }));
+    }
+
+    // Final state
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx || m.role !== 'assistant') return m;
+      return {
+        ...m,
+        importApplyState: {
+          phase: 'done',
+          appliedActionIds: [...applied],
+          failedActionIds: [...failed],
+        },
+      };
+    }));
+
+    if (failed.length === 0 && applied.length > 0) {
+      toast(`Imported ${applied.length} change${applied.length === 1 ? '' : 's'}`, 'success');
+    } else if (failed.length > 0 && applied.length > 0) {
+      toast(`Applied ${applied.length}, ${failed.length} failed`, 'error');
+    }
+  }
+
+  function dismissImportActions(msgIdx: number) {
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx || m.role !== 'assistant') return m;
+      return { ...m, importActions: undefined, importApplyState: undefined };
+    }));
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -514,6 +659,20 @@ export default function AIAssistant({ open, onClose }: Props) {
                   )}
                 </div>
               )}
+
+              {/* Document import review */}
+              {msg.role === 'assistant' && msg.importActions && msg.importActions.length > 0 && (
+                <DocumentImportReview
+                  actions={msg.importActions}
+                  applyState={{
+                    phase: msg.importApplyState?.phase ?? 'idle',
+                    appliedActionIds: new Set(msg.importApplyState?.appliedActionIds ?? []),
+                    failedActionIds: new Set(msg.importApplyState?.failedActionIds ?? []),
+                  }}
+                  onApply={selected => handleApplyImport(idx, selected)}
+                  onDismiss={() => dismissImportActions(idx)}
+                />
+              )}
             </div>
           ))}
 
@@ -528,6 +687,11 @@ export default function AIAssistant({ open, onClose }: Props) {
 
         {/* Input */}
         <div style={s.inputArea}>
+          <DocumentUploadButton
+            disabled={loading}
+            onSubmit={handleDocumentImport}
+            onError={msg => setApiError(msg)}
+          />
           <textarea
             ref={textareaRef}
             rows={2}
