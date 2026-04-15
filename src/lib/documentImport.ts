@@ -142,14 +142,21 @@ export interface ParseDocumentResponse {
 export async function submitDocument(
   input: DocumentInput,
   campaignContext: string,
+  userInstructions?: string,
+  onText?: (chunk: string) => void,
+  onExtracting?: () => void,
+  onPass?: (pass: { index: number; total: number; label: string }) => void,
 ): Promise<ParseDocumentResponse> {
-  const res = await fetch('/api/parse-document', {
+  const endpoint = import.meta.env.VITE_MOCK_PARSE === 'true'
+    ? '/api/parse-document-mock'
+    : '/api/parse-document';
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...input, campaignContext }),
+    body: JSON.stringify({ ...input, campaignContext, userInstructions }),
   });
 
-  if (!res.ok) {
+  if (!res.ok || !res.body) {
     let detail = `HTTP ${res.status}`;
     try {
       const body = await res.json() as { error?: string };
@@ -160,12 +167,84 @@ export async function submitDocument(
     throw new Error(detail);
   }
 
-  const data = await res.json() as { summary?: string; actions?: Omit<ImportAction, 'action_id'>[] };
-  const actions = (data.actions ?? []).map((a, i) => ({
-    ...a,
-    action_id: `imp-${Date.now()}-${i}`,
-  })) as ImportAction[];
-  return { summary: data.summary ?? '', actions };
+  // Consume SSE stream — buffer partial lines across chunks
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let summary = '';
+  let actions: ImportAction[] = [];
+  let buffer = '';
+
+  let actionCounter = 0;
+
+  function processLine(line: string) {
+    if (!line.startsWith('data: ')) return;
+    let event: {
+      type: string;
+      text?: string;
+      action?: Omit<ImportAction, 'action_id'>;
+      // Legacy: full actions array in done event (backwards compat)
+      actions?: Omit<ImportAction, 'action_id'>[];
+      count?: number;
+      message?: string;
+      // Pass progress fields
+      index?: number;
+      total?: number;
+      label?: string;
+    };
+    try {
+      event = JSON.parse(line.slice(6));
+    } catch {
+      return; // malformed line, skip
+    }
+
+    if (event.type === 'text' && event.text) {
+      summary += event.text;
+      onText?.(event.text);
+    } else if (event.type === 'extracting') {
+      onExtracting?.();
+    } else if (event.type === 'pass' && event.index != null && event.total != null && event.label) {
+      onPass?.({ index: event.index, total: event.total, label: event.label });
+    } else if (event.type === 'action' && event.action) {
+      // Individual action event
+      actions.push({
+        ...event.action,
+        action_id: `imp-${Date.now()}-${actionCounter++}`,
+      } as ImportAction);
+    } else if (event.type === 'done') {
+      // Legacy: if done event includes actions array, use it
+      if (event.actions && event.actions.length > 0) {
+        actions = event.actions.map((a, i) => ({
+          ...a,
+          action_id: `imp-${Date.now()}-${i}`,
+        })) as ImportAction[];
+      }
+    } else if (event.type === 'error') {
+      throw new Error(event.message ?? 'Unknown error from parse-document');
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    // Keep the last element — it may be incomplete
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      processLine(line);
+    }
+  }
+
+  // Flush any remaining data left in the buffer after stream ends
+  if (buffer.trim()) {
+    for (const line of buffer.split('\n')) {
+      processLine(line);
+    }
+  }
+
+  return { summary: summary.trim(), actions };
 }
 
 // ── Fuzzy name match utility ───────────────────────────────────────────────

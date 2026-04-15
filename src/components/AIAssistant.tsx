@@ -8,7 +8,7 @@ import type {
   SessionInsert, PlayerCharacterInsert, NPCInsert, LocationInsert,
   FactionInsert, HookInsert, LoreEntryInsert, ModuleInsert,
 } from '../lib/database.types';
-import { submitDocument, type ImportAction, type DocumentInput } from '../lib/documentImport';
+import { submitDocument, type ImportAction, type DocumentInput, entityMeta, describeAction } from '../lib/documentImport';
 import { formatCampaignContext } from '../lib/campaignContext';
 import DocumentImportReview from './DocumentImportReview';
 import DocumentUploadButton from './DocumentUploadButton';
@@ -34,7 +34,7 @@ type PendingAction =
   | { type: 'deleteModule';    id: string; label: string };
 
 interface ImportApplyState {
-  phase: 'idle' | 'applying' | 'done';
+  phase: 'idle' | 'pending_confirmation' | 'applying' | 'done';
   appliedActionIds: string[];
   failedActionIds: string[];
 }
@@ -44,39 +44,35 @@ type ChatMessage =
   | {
       role: 'assistant';
       content: string;
+      isExtracting?: boolean;
+      extractingLabel?: string; // e.g. "Extracting characters (1/4)..."
       pendingActions?: PendingAction[];
       importActions?: ImportAction[];
       importApplyState?: ImportApplyState;
+      autoApplied?: boolean; // true when actions were auto-applied (user gave instructions)
     };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function actionLabel(action: PendingAction): string {
-  switch (action.type) {
-    case 'upsertSession':
-      return `${action.payload.id ? 'Update' : 'Create'} session #${action.payload.session_number}`;
-    case 'upsertNPC':
-      return `${action.payload.id ? 'Update' : 'Add'} NPC: ${action.payload.name}`;
-    case 'upsertPC':
-      return `${action.payload.id ? 'Update' : 'Add'} PC: ${action.payload.character_name}`;
-    case 'upsertLocation':
-      return `${action.payload.id ? 'Update' : 'Add'} location: ${action.payload.name}`;
-    case 'upsertFaction':
-      return `${action.payload.id ? 'Update' : 'Add'} faction: ${action.payload.name}`;
-    case 'upsertHook':
-      return `${action.payload.id ? 'Update' : 'Add'} hook: ${action.payload.title}`;
-    case 'upsertLore':
-      return `${action.payload.id ? 'Update' : 'Add'} lore: ${action.payload.title}`;
-    case 'upsertModule':
-      return `${action.payload.id ? 'Update' : 'Add'} module: ${action.payload.title}`;
-    case 'deleteSession':   return `Delete session: ${action.label}`;
-    case 'deleteNPC':       return `Delete NPC: ${action.label}`;
-    case 'deletePC':        return `Delete PC: ${action.label}`;
-    case 'deleteLocation':  return `Delete location: ${action.label}`;
-    case 'deleteFaction':   return `Delete faction: ${action.label}`;
-    case 'deleteHook':      return `Delete hook: ${action.label}`;
-    case 'deleteLore':      return `Delete lore: ${action.label}`;
-    case 'deleteModule':    return `Delete module: ${action.label}`;
+function pendingActionToImportType(a: PendingAction): ImportAction['type'] {
+  switch (a.type) {
+    case 'upsertSession':   return 'upsertSession';
+    case 'upsertNPC':       return 'upsertNPC';
+    case 'upsertPC':        return 'upsertPC';
+    case 'upsertLocation':  return 'upsertLocation';
+    case 'upsertFaction':   return 'upsertFaction';
+    case 'upsertHook':      return 'upsertHook';
+    case 'upsertLore':      return 'upsertLore';
+    case 'upsertModule':    return 'upsertModule';
+    // Delete actions don't have ImportAction equivalents — map to closest upsert for display
+    case 'deleteSession':   return 'upsertSession';
+    case 'deleteNPC':       return 'upsertNPC';
+    case 'deletePC':        return 'upsertPC';
+    case 'deleteLocation':  return 'upsertLocation';
+    case 'deleteFaction':   return 'upsertFaction';
+    case 'deleteHook':      return 'upsertHook';
+    case 'deleteLore':      return 'upsertLore';
+    case 'deleteModule':    return 'upsertModule';
   }
 }
 
@@ -92,34 +88,163 @@ function buildSystemPrompt(data: {
   overviewTitle: string;
   overviewPlot: string;
 }): string {
-  return `You are a D&D campaign assistant for the Dungeon Master. Your job is to help organize campaign data, write NPC/location/session entries, flesh out story modules, and update any campaign records.
+  return `You are a D&D campaign assistant. You help the DM organize campaign data by creating/updating/deleting records.
 
 ${formatCampaignContext(data)}
 
-== INSTRUCTIONS ==
+== CRITICAL RULES ==
 
-When the DM asks you to create or modify campaign data, respond in two parts:
-1. A natural language response explaining what you're doing/proposing.
-2. A JSON block (wrapped in \`\`\`json ... \`\`\`) containing an array of actions to apply.
+1. When the DM asks you to create, update, or change campaign data, you MUST respond with:
+   - 1-2 SHORT sentences saying what you're doing
+   - IMMEDIATELY followed by a \`\`\`json code block with an array of actions
+   This is MANDATORY. Never skip the JSON block when changes are requested.
 
-Each action has a "type" field and a "payload" or "id"+"label" field:
+2. Your JSON actions ARE automatically applied to the database. You CAN and DO make changes. NEVER say "I can't execute", "you'll need to manually", "copy/paste", or "let me do that now". Just output the JSON block and it happens.
 
-Upsert actions (include "id" to update an existing record, omit to create new):
-  { "type": "upsertNPC", "payload": { "id": "<existing-id-or-omit>", "name": "...", "role": "...", "affiliation": "...", "status": "active"|"deceased"|"unknown", "description": "...", "hooks_motivations": "...", "dm_notes": "...", "location": "...", "first_session": null } }
-  { "type": "upsertSession", "payload": { "id": "...(omit for new)", "session_number": 1, "session_date": "2024-01-01", "summary": "...", "combats": "...", "loot_rewards": "...", "hooks_notes": "...", "dm_notes": "..." } }
-  { "type": "upsertPC", "payload": { "id": "...(omit for new)", "character_name": "...", "player_name": "...", "race": "...", "class": "...", "background": "...", "story_hooks": "...", "key_npcs": "...", "dm_notes": "...", "is_active": true } }
-  { "type": "upsertLocation", "payload": { "id": "...(omit for new)", "name": "...", "region": "...", "location_type": "city|town|dungeon|faction_hq|landmark", "population": "...", "status": "...", "history": "...", "description": "...", "dm_notes": "..." } }
-  { "type": "upsertFaction", "payload": { "id": "...(omit for new)", "name": "...", "faction_type": "...", "overview": "...", "key_figures": "...", "agenda": "...", "dm_notes": "..." } }
-  { "type": "upsertHook", "payload": { "id": "...(omit for new)", "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "..." } }
-  { "type": "upsertLore", "payload": { "id": "...(omit for new)", "title": "...", "category": "history|artifact|creature|magic|religion", "content": "...", "dm_only": false } }
-  { "type": "upsertModule", "payload": { "id": "...(omit for new)", "chapter": "1", "title": "...", "synopsis": "...", "status": "planned|active|completed", "played_session": null, "encounters": "...", "rewards": "...", "dm_notes": "..." } }
+3. Do NOT ask follow-up questions before making changes. Do NOT ask what to prioritize. Just do everything the DM asked for in one response.
 
-Delete actions:
-  { "type": "deleteNPC", "id": "<id>", "label": "<name>" }
-  { "type": "deleteSession", "id": "<id>", "label": "Session #N" }
-  (same pattern for deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule)
+4. Do NOT write long summaries, bullet lists, or explanations. The user sees a preview table. Keep text minimal.
 
-Only include the JSON block when you actually want to make changes. If the DM is just asking a question or chatting, respond normally without a JSON block. Always use the existing record IDs (shown above in brackets) when updating existing records.`;
+5. You can ONLY work with data from the conversation and the campaign data above. If the DM references an uploaded document, the document import system handles that separately — do not pretend to parse a document you cannot see.
+
+6. If the DM is just asking a question (not requesting changes), respond normally without JSON.
+
+== ACTION FORMAT ==
+
+Upsert (include "id" to update existing, omit for new):
+  { "type": "upsertNPC", "payload": { "name": "...", "role": "...", "affiliation": "...", "status": "active|deceased|unknown", "description": "...", "hooks_motivations": "...", "dm_notes": "...", "location": "...", "first_session": null } }
+  { "type": "upsertSession", "payload": { "session_number": 1, "session_date": "2024-01-01", "summary": "...", "combats": "...", "loot_rewards": "...", "hooks_notes": "...", "dm_notes": "..." } }
+  { "type": "upsertPC", "payload": { "character_name": "...", "player_name": "...", "race": "...", "class": "...", "background": "...", "story_hooks": "...", "key_npcs": "...", "dm_notes": "...", "is_active": true } }
+  { "type": "upsertLocation", "payload": { "name": "...", "region": "...", "location_type": "city|town|dungeon|faction_hq|landmark", "population": "...", "status": "...", "history": "...", "description": "...", "dm_notes": "..." } }
+  { "type": "upsertFaction", "payload": { "name": "...", "faction_type": "...", "overview": "...", "key_figures": "...", "agenda": "...", "dm_notes": "..." } }
+  { "type": "upsertHook", "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "..." } }
+  { "type": "upsertLore", "payload": { "title": "...", "category": "history|artifact|creature|magic|religion", "content": "...", "dm_only": false } }
+  { "type": "upsertModule", "payload": { "chapter": "1", "title": "...", "synopsis": "...", "status": "planned|active|completed", "played_session": null, "encounters": "...", "rewards": "...", "dm_notes": "..." } }
+
+Delete: { "type": "deleteNPC", "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule)
+
+Always use existing record IDs when updating. Only include fields you want to set.`;
+}
+
+// ── Compact progress table for auto-applied imports ──────────────────────
+
+const badgeColors: Record<string, { bg: string; text: string; border: string }> = {
+  gold:   { bg: '#2a2418', text: '#c9a84c', border: '#5a4a20' },
+  green:  { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
+  red:    { bg: '#3a1a1a', text: '#e05c5c', border: '#6a2a2a' },
+  blue:   { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
+  muted:  { bg: '#1a1828', text: '#9990b0', border: '#3a3660' },
+  yellow: { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
+  orange: { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
+};
+
+function ImportProgressTable({ actions, appliedIds, failedIds, phase, onApply, onDismiss }: {
+  actions: ImportAction[];
+  appliedIds: Set<string>;
+  failedIds: Set<string>;
+  phase: 'pending_confirmation' | 'applying' | 'done';
+  onApply?: () => void;
+  onDismiss?: () => void;
+}) {
+  const doneCount = appliedIds.size + failedIds.size;
+  return (
+    <div style={{ marginTop: '12px', borderTop: '1px solid #3a3660', paddingTop: '10px' }}>
+      <div style={{ fontSize: '11px', color: '#9990b0', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {phase === 'pending_confirmation' ? (
+          <>Proposed {actions.length} change{actions.length === 1 ? '' : 's'}:</>
+        ) : phase === 'applying' ? (
+          <>Applying changes ({doneCount}/{actions.length})…</>
+        ) : (
+          <>Applied {appliedIds.size} of {actions.length} changes
+            {failedIds.size > 0 && <span style={{ color: '#e05c5c' }}> ({failedIds.size} failed)</span>}
+          </>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {actions.map(action => {
+          const meta = entityMeta[action.type];
+          const bc = badgeColors[meta.badgeColor] ?? badgeColors.muted;
+          const applied = appliedIds.has(action.action_id);
+          const failed = failedIds.has(action.action_id);
+          const pending = !applied && !failed;
+          return (
+            <div
+              key={action.action_id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12px',
+                opacity: pending && phase === 'applying' ? 0.5 : 1,
+              }}
+            >
+              <span style={{ width: '16px', textAlign: 'center', fontSize: '11px', flexShrink: 0 }}>
+                {applied ? '✓' : failed ? '✕' : '·'}
+              </span>
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  backgroundColor: bc.bg,
+                  color: bc.text,
+                  border: `1px solid ${bc.border}`,
+                  flexShrink: 0,
+                }}
+              >
+                {meta.label}
+              </span>
+              <span style={{
+                color: applied ? '#6ab87a' : failed ? '#e05c5c' : '#e8d5b0',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {describeAction(action)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {phase === 'pending_confirmation' && onApply && (
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+          <button
+            onClick={onApply}
+            style={{
+              backgroundColor: '#c9a84c',
+              color: '#0f0e17',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 14px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Apply changes
+          </button>
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              style={{
+                background: 'none',
+                border: '1px solid #3a3660',
+                borderRadius: '6px',
+                padding: '6px 14px',
+                fontSize: '12px',
+                color: '#9990b0',
+                cursor: 'pointer',
+              }}
+            >
+              Dismiss
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -135,19 +260,11 @@ export default function AIAssistant({ open, onClose }: Props) {
   const toast = useToast();
 
   const [messages, setMessages] = useLocalStorage<ChatMessage[]>('ai-chat-messages', []);
-  const [appliedIdxsArr, setAppliedIdxsArr] = useLocalStorage<number[]>('ai-chat-applied', []);
-  const appliedIdxs = new Set(appliedIdxsArr);
-  const setAppliedIdxs = (update: Set<number> | ((prev: Set<number>) => Set<number>)) => {
-    setAppliedIdxsArr(prev => {
-      const prevSet = new Set(prev);
-      const next = update instanceof Function ? update(prevSet) : update;
-      return [...next];
-    });
-  };
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [applyingIdx, setApplyingIdx] = useState<number | null>(null);
   const [apiError, setApiError] = useState('');
+  const [pendingDocument, setPendingDocument] = useState<DocumentInput | null>(null);
+  const importPlaceholderRef = useRef<number>(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -162,8 +279,20 @@ export default function AIAssistant({ open, onClose }: Props) {
   }, [messages, loading]);
 
   async function sendMessage() {
-    if (!input.trim() || loading) return;
+    const hasText = !!input.trim();
+    const hasDoc = !!pendingDocument;
+    if ((!hasText && !hasDoc) || loading) return;
     setApiError('');
+
+    // If a document is attached, route to the document import flow
+    if (hasDoc) {
+      const doc = pendingDocument;
+      const instructions = input.trim();
+      setPendingDocument(null);
+      setInput('');
+      handleDocumentImport(doc, instructions);
+      return;
+    }
 
     const userMsg: ChatMessage = { role: 'user', content: input.trim() };
     const nextMessages = [...messages, userMsg];
@@ -188,6 +317,15 @@ export default function AIAssistant({ open, onClose }: Props) {
 
     let fullText = '';
 
+    // Strip JSON code blocks from displayed text in real-time
+    function stripJsonBlocks(text: string): string {
+      // Remove complete ```json...``` blocks
+      let result = text.replace(/```json[\s\S]*?```/g, '');
+      // Also remove an in-progress ```json block at the end (partial, no closing ```)
+      result = result.replace(/```json[\s\S]*$/, '');
+      return result.trim();
+    }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -201,19 +339,26 @@ export default function AIAssistant({ open, onClose }: Props) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let sseBuffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() ?? '';
+
+        for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
-          const event = JSON.parse(line.slice(6)) as { type: string; text?: string; message?: string };
+          let event: { type: string; text?: string; message?: string };
+          try { event = JSON.parse(line.slice(6)); } catch { continue; }
           if (event.type === 'text' && event.text) {
             fullText += event.text;
+            // Show text with JSON blocks stripped in real-time
+            const displayText = stripJsonBlocks(fullText);
             setMessages(prev => prev.map((m, i) =>
-              i === streamingIdx ? { ...m, content: fullText } : m
+              i === streamingIdx ? { ...m, content: displayText } : m
             ));
           } else if (event.type === 'error') {
             throw new Error(event.message ?? 'Stream error');
@@ -221,15 +366,49 @@ export default function AIAssistant({ open, onClose }: Props) {
         }
       }
 
-      // Extract pending actions from JSON block
-      const pendingActions = parseActions(fullText);
-      const displayText = fullText.replace(/```json[\s\S]*?```/g, '').trim();
+      // Extract and auto-apply actions from JSON block
+      const parsedActions = parseActions(fullText);
+      const displayText = stripJsonBlocks(fullText);
 
-      setMessages(prev => prev.map((m, i) =>
-        i === streamingIdx
-          ? { role: 'assistant', content: displayText, pendingActions: pendingActions.length > 0 ? pendingActions : undefined }
-          : m
-      ));
+      if (parsedActions.length > 0) {
+        // Convert PendingActions to ImportAction-like format for the progress table
+        const importActions: ImportAction[] = parsedActions.map((a, i) => {
+          const isDelete = a.type.startsWith('delete');
+          const payload = isDelete
+            ? { name: (a as { label?: string }).label ?? '(unknown)' }
+            : (a as { payload: Record<string, unknown> }).payload;
+          const matchedId = isDelete
+            ? (a as { id?: string }).id ?? null
+            : ((payload as Record<string, unknown>).id as string) ?? null;
+          return {
+            action_id: `chat-${Date.now()}-${i}`,
+            type: pendingActionToImportType(a),
+            matched_id: matchedId,
+            reasoning: '',
+            payload,
+          };
+        }) as ImportAction[];
+
+        // Show preview table and wait for user confirmation
+        setMessages(prev => prev.map((m, i) =>
+          i === streamingIdx
+            ? {
+                role: 'assistant' as const,
+                content: displayText || `I'd like to make ${parsedActions.length} change${parsedActions.length === 1 ? '' : 's'} to your campaign:`,
+                autoApplied: true,
+                pendingActions: parsedActions,
+                importActions,
+                importApplyState: { phase: 'pending_confirmation', appliedActionIds: [], failedActionIds: [] },
+              }
+            : m
+        ));
+      } else {
+        setMessages(prev => prev.map((m, i) =>
+          i === streamingIdx
+            ? { role: 'assistant' as const, content: displayText }
+            : m
+        ));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setMessages(prev => {
@@ -256,49 +435,126 @@ export default function AIAssistant({ open, onClose }: Props) {
     }
   }
 
-  async function applyActions(msgIdx: number, actions: PendingAction[]) {
-    setApplyingIdx(msgIdx);
-    try {
-      for (const action of actions) {
-        switch (action.type) {
-          case 'upsertSession':   await campaign.upsertSession(action.payload); break;
-          case 'upsertNPC':       await campaign.upsertNPC(action.payload); break;
-          case 'upsertPC':        await campaign.upsertPC(action.payload); break;
-          case 'upsertLocation':  await campaign.upsertLocation(action.payload); break;
-          case 'upsertFaction':   await campaign.upsertFaction(action.payload); break;
-          case 'upsertHook':      await campaign.upsertHook(action.payload); break;
-          case 'upsertLore':      await campaign.upsertLore(action.payload); break;
-          case 'upsertModule':    await campaign.upsertModule(action.payload); break;
-          case 'deleteSession':   await campaign.deleteSession(action.id); break;
-          case 'deleteNPC':       await campaign.deleteNPC(action.id); break;
-          case 'deletePC':        await campaign.deletePC(action.id); break;
-          case 'deleteLocation':  await campaign.deleteLocation(action.id); break;
-          case 'deleteFaction':   await campaign.deleteFaction(action.id); break;
-          case 'deleteHook':      await campaign.deleteHook(action.id); break;
-          case 'deleteLore':      await campaign.deleteLore(action.id); break;
-          case 'deleteModule':    await campaign.deleteModule(action.id); break;
+  // ── Apply confirmed actions (called when user clicks "Apply changes") ────
+  // Handles both chat flow (pendingActions) and document import flow (importActions only)
+
+  async function applyConfirmedActions(msgIdx: number) {
+    const msg = messages[msgIdx];
+    if (!msg || msg.role !== 'assistant' || !msg.importActions) return;
+
+    const importActions = msg.importActions;
+    const chatActions = msg.pendingActions; // present for chat flow, absent for doc import
+
+    // Transition to applying
+    setMessages(prev => prev.map((m, i) =>
+      i === msgIdx && m.role === 'assistant'
+        ? { ...m, importApplyState: { phase: 'applying' as const, appliedActionIds: [], failedActionIds: [] } }
+        : m
+    ));
+
+    const applied: string[] = [];
+    const failed: string[] = [];
+
+    for (let ai = 0; ai < importActions.length; ai++) {
+      const actionId = importActions[ai].action_id;
+      try {
+        if (chatActions && chatActions[ai]) {
+          // Chat flow: use PendingAction which has the right shape for campaign methods
+          const action = chatActions[ai];
+          switch (action.type) {
+            case 'upsertSession':   await campaign.upsertSession(action.payload); break;
+            case 'upsertNPC':       await campaign.upsertNPC(action.payload); break;
+            case 'upsertPC':        await campaign.upsertPC(action.payload); break;
+            case 'upsertLocation':  await campaign.upsertLocation(action.payload); break;
+            case 'upsertFaction':   await campaign.upsertFaction(action.payload); break;
+            case 'upsertHook':      await campaign.upsertHook(action.payload); break;
+            case 'upsertLore':      await campaign.upsertLore(action.payload); break;
+            case 'upsertModule':    await campaign.upsertModule(action.payload); break;
+            case 'deleteSession':   await campaign.deleteSession(action.id); break;
+            case 'deleteNPC':       await campaign.deleteNPC(action.id); break;
+            case 'deletePC':        await campaign.deletePC(action.id); break;
+            case 'deleteLocation':  await campaign.deleteLocation(action.id); break;
+            case 'deleteFaction':   await campaign.deleteFaction(action.id); break;
+            case 'deleteHook':      await campaign.deleteHook(action.id); break;
+            case 'deleteLore':      await campaign.deleteLore(action.id); break;
+            case 'deleteModule':    await campaign.deleteModule(action.id); break;
+          }
+        } else {
+          // Document import flow: use ImportAction, merge matched_id → payload.id
+          const action = importActions[ai];
+          const payload = { ...(action.payload as Record<string, unknown>) };
+          if (action.matched_id) payload.id = action.matched_id;
+          switch (action.type) {
+            case 'upsertSession':      await campaign.upsertSession(payload as Parameters<typeof campaign.upsertSession>[0]); break;
+            case 'upsertPC':           await campaign.upsertPC(payload as Parameters<typeof campaign.upsertPC>[0]); break;
+            case 'upsertNPC':          await campaign.upsertNPC(payload as Parameters<typeof campaign.upsertNPC>[0]); break;
+            case 'upsertLocation':     await campaign.upsertLocation(payload as Parameters<typeof campaign.upsertLocation>[0]); break;
+            case 'upsertFaction':      await campaign.upsertFaction(payload as Parameters<typeof campaign.upsertFaction>[0]); break;
+            case 'upsertHook':         await campaign.upsertHook(payload as Parameters<typeof campaign.upsertHook>[0]); break;
+            case 'upsertLore':         await campaign.upsertLore(payload as Parameters<typeof campaign.upsertLore>[0]); break;
+            case 'upsertModule':       await campaign.upsertModule(payload as Parameters<typeof campaign.upsertModule>[0]); break;
+            case 'upsertSubmodule':    await campaign.upsertSubmodule(payload as Parameters<typeof campaign.upsertSubmodule>[0]); break;
+            case 'upsertScene':        await campaign.upsertScene(payload as Parameters<typeof campaign.upsertScene>[0]); break;
+            case 'upsertRelationship': await campaign.upsertRelationship(payload as Parameters<typeof campaign.upsertRelationship>[0]); break;
+          }
         }
+        applied.push(actionId);
+      } catch {
+        failed.push(actionId);
       }
-      setAppliedIdxs(prev => new Set([...prev, msgIdx]));
-    } catch (err) {
-      alert(`Failed to apply changes: ${err instanceof Error ? err.message : err}`);
-    } finally {
-      setApplyingIdx(null);
+      setMessages(prev => prev.map((m, i) =>
+        i === msgIdx && m.role === 'assistant'
+          ? { ...m, importApplyState: { phase: 'applying' as const, appliedActionIds: [...applied], failedActionIds: [...failed] } }
+          : m
+      ));
     }
+
+    // Final state
+    setMessages(prev => prev.map((m, i) =>
+      i === msgIdx && m.role === 'assistant'
+        ? { ...m, pendingActions: undefined, importApplyState: { phase: 'done' as const, appliedActionIds: [...applied], failedActionIds: [...failed] } }
+        : m
+    ));
+
+    if (failed.length === 0 && applied.length > 0) toast(`Applied ${applied.length} change${applied.length === 1 ? '' : 's'}`, 'success');
+    else if (failed.length > 0) toast(`Applied ${applied.length}, ${failed.length} failed`, 'error');
+  }
+
+  function dismissConfirmedActions(msgIdx: number) {
+    setMessages(prev => prev.map((m, i) =>
+      i === msgIdx && m.role === 'assistant'
+        ? { ...m, pendingActions: undefined, importActions: undefined, importApplyState: undefined }
+        : m
+    ));
   }
 
   // ── Document import ──────────────────────────────────────────────────────
 
-  async function handleDocumentImport(input: DocumentInput) {
+  async function handleDocumentImport(docInput: DocumentInput, userInstructions?: string) {
     setApiError('');
 
-    const label = input.kind === 'gdocs-url'
+    const label = docInput.kind === 'gdocs-url'
       ? 'Imported Google Doc'
-      : `Uploaded ${input.filename ?? 'document'}`;
-    const userMsg: ChatMessage = { role: 'user', content: `📄 ${label}` };
-    const placeholderIdx = messages.length + 1;
-    setMessages(prev => [...prev, userMsg, { role: 'assistant', content: 'Reading document…' }]);
+      : `Uploaded ${docInput.filename ?? 'document'}`;
+    const userContent = userInstructions
+      ? `📄 ${label}\n${userInstructions}`
+      : `📄 ${label}`;
+    const userMsg: ChatMessage = { role: 'user', content: userContent };
+
+    // Use a ref to track the placeholder index — avoids stale closure issues
+    setMessages(prev => {
+      importPlaceholderRef.current = prev.length + 1;
+      return [...prev, userMsg, { role: 'assistant', content: '' }];
+    });
     setLoading(true);
+
+    // Helper to update the placeholder message by ref
+    function updatePlaceholder(updater: (m: ChatMessage & { role: 'assistant' }) => ChatMessage) {
+      setMessages(prev => prev.map((m, i) => {
+        if (i !== importPlaceholderRef.current || m.role !== 'assistant') return m;
+        return updater(m as ChatMessage & { role: 'assistant' });
+      }));
+    }
 
     try {
       const ctx = formatCampaignContext({
@@ -306,29 +562,47 @@ export default function AIAssistant({ open, onClose }: Props) {
         overviewTitle: overview.title,
         overviewPlot: overview.plotSummary,
       });
-      const { summary, actions } = await submitDocument(input, ctx);
 
-      setMessages(prev => prev.map((m, i) => {
-        if (i !== placeholderIdx) return m;
-        const displayText = summary || (actions.length > 0
-          ? `Found ${actions.length} proposed change${actions.length === 1 ? '' : 's'}.`
-          : 'No campaign updates found in that document.');
-        return {
-          role: 'assistant',
-          content: displayText,
-          importActions: actions.length > 0 ? actions : undefined,
-          importApplyState: actions.length > 0
-            ? { phase: 'idle', appliedActionIds: [], failedActionIds: [] }
-            : undefined,
-        };
-      }));
+      const { actions } = await submitDocument(
+        docInput,
+        ctx,
+        userInstructions,
+        (chunk) => {
+          updatePlaceholder(m => ({ ...m, content: m.content + chunk }));
+        },
+        () => {
+          updatePlaceholder(m => ({ ...m, isExtracting: true }));
+        },
+        (pass) => {
+          updatePlaceholder(m => ({
+            ...m,
+            isExtracting: true,
+            extractingLabel: `Extracting ${pass.label} (${pass.index + 1}/${pass.total})...`,
+          }));
+        },
+      );
+
+      if (actions.length > 0) {
+        // Show preview table and wait for user confirmation
+        updatePlaceholder(m => ({
+          ...m,
+          isExtracting: false,
+          autoApplied: true,
+          importActions: actions,
+          importApplyState: { phase: 'pending_confirmation', appliedActionIds: [], failedActionIds: [] },
+        }));
+      } else {
+        // No actions extracted — likely a timeout or empty parse
+        updatePlaceholder(m => ({
+          ...m,
+          isExtracting: false,
+          content: (m.content ? m.content + '\n\n' : '') +
+            'No changes were extracted. The document may have been too large for a single pass, or the extraction timed out. Try uploading again, or break the document into smaller sections.',
+        }));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      setMessages(prev => prev.map((m, i) =>
-        i === placeholderIdx
-          ? { role: 'assistant' as const, content: `Error importing document: ${msg}` }
-          : m,
-      ));
+      updatePlaceholder(() => ({ role: 'assistant', content: `Error importing document: ${msg}` }));
     } finally {
       setLoading(false);
     }
@@ -507,7 +781,6 @@ export default function AIAssistant({ open, onClose }: Props) {
     },
     inputArea: {
       padding: '12px 16px',
-      borderTop: '1px solid #3a3660',
       display: 'flex',
       gap: '8px',
       alignItems: 'flex-end',
@@ -566,7 +839,7 @@ export default function AIAssistant({ open, onClose }: Props) {
           </div>
           {messages.length > 0 && (
             <button
-              onClick={() => { setMessages([]); setAppliedIdxsArr([]); }}
+              onClick={() => { setMessages([]); }}
               style={{ background: 'none', border: '1px solid #3a3660', borderRadius: '6px', color: '#6a6490', fontSize: '11px', cursor: 'pointer', padding: '4px 10px' }}
             >
               Clear
@@ -598,74 +871,30 @@ export default function AIAssistant({ open, onClose }: Props) {
           {messages.map((msg, idx) => (
             <div key={idx} style={msg.role === 'user' ? s.userBubble : s.assistantBubble}>
               {msg.content || (loading && msg.role === 'assistant' ? <span style={{ color: '#6a6490' }}>Thinking…</span> : msg.content)}
-
-              {/* Pending actions confirmation */}
-              {msg.role === 'assistant' && msg.pendingActions && msg.pendingActions.length > 0 && (
-                <div style={{
-                  marginTop: '12px',
-                  borderTop: '1px solid #3a3660',
-                  paddingTop: '10px',
-                }}>
-                  <div style={{ color: '#9990b0', fontSize: '12px', marginBottom: '8px' }}>
-                    Proposed changes:
-                  </div>
-                  <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '12px', color: '#c9a84c', lineHeight: '1.8' }}>
-                    {msg.pendingActions.map((a, i) => (
-                      <li key={i}>{actionLabel(a)}</li>
-                    ))}
-                  </ul>
-                  {appliedIdxs.has(idx) ? (
-                    <div style={{ marginTop: '10px', color: '#6ab87a', fontSize: '12px', fontWeight: 600 }}>
-                      ✓ Applied to campaign
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                      <button
-                        onClick={() => applyActions(idx, msg.pendingActions!)}
-                        disabled={applyingIdx === idx}
-                        style={{
-                          backgroundColor: '#c9a84c',
-                          color: '#0f0e17',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '6px 14px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          cursor: applyingIdx === idx ? 'default' : 'pointer',
-                          opacity: applyingIdx === idx ? 0.6 : 1,
-                        }}
-                      >
-                        {applyingIdx === idx ? 'Applying…' : 'Apply changes'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setMessages(prev => prev.map((m, i) =>
-                            i === idx ? { ...m, pendingActions: undefined } : m
-                          ));
-                        }}
-                        style={{
-                          background: 'none',
-                          border: '1px solid #3a3660',
-                          borderRadius: '6px',
-                          padding: '6px 14px',
-                          fontSize: '12px',
-                          color: '#9990b0',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  )}
+              {msg.role === 'assistant' && msg.isExtracting && (
+                <div style={{ color: '#6a6490', fontSize: '12px', marginTop: '8px', fontStyle: 'italic' }}>
+                  {msg.extractingLabel ?? 'Extracting structured changes…'}
                 </div>
               )}
 
-              {/* Document import review */}
-              {msg.role === 'assistant' && msg.importActions && msg.importActions.length > 0 && (
+              {/* Auto-applied actions: preview table with confirm/dismiss */}
+              {msg.role === 'assistant' && msg.autoApplied && msg.importActions && msg.importActions.length > 0 && (
+                <ImportProgressTable
+                  actions={msg.importActions}
+                  appliedIds={new Set(msg.importApplyState?.appliedActionIds ?? [])}
+                  failedIds={new Set(msg.importApplyState?.failedActionIds ?? [])}
+                  phase={msg.importApplyState?.phase === 'idle' ? 'pending_confirmation' : msg.importApplyState?.phase ?? 'pending_confirmation'}
+                  onApply={() => applyConfirmedActions(idx)}
+                  onDismiss={() => dismissConfirmedActions(idx)}
+                />
+              )}
+
+              {/* Document import: full review cards */}
+              {msg.role === 'assistant' && !msg.autoApplied && msg.importActions && msg.importActions.length > 0 && (
                 <DocumentImportReview
                   actions={msg.importActions}
                   applyState={{
-                    phase: msg.importApplyState?.phase ?? 'idle',
+                    phase: (msg.importApplyState?.phase === 'pending_confirmation' ? 'idle' : msg.importApplyState?.phase) ?? 'idle',
                     appliedActionIds: new Set(msg.importApplyState?.appliedActionIds ?? []),
                     failedActionIds: new Set(msg.importApplyState?.failedActionIds ?? []),
                   }}
@@ -686,28 +915,76 @@ export default function AIAssistant({ open, onClose }: Props) {
         </div>
 
         {/* Input */}
-        <div style={s.inputArea}>
-          <DocumentUploadButton
-            disabled={loading}
-            onSubmit={handleDocumentImport}
-            onError={msg => setApiError(msg)}
-          />
-          <textarea
-            ref={textareaRef}
-            rows={2}
-            style={s.textarea}
-            placeholder="Ask about your campaign… (Enter to send, Shift+Enter for newline)"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <button
-            style={{ ...s.sendBtn, opacity: loading || !input.trim() ? 0.5 : 1 }}
-            onClick={sendMessage}
-            disabled={loading || !input.trim()}
-          >
-            Send
-          </button>
+        <div style={{ borderTop: '1px solid #3a3660' }}>
+          {/* Attachment chip */}
+          {pendingDocument && (
+            <div style={{
+              padding: '8px 16px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: '#2a2650',
+                border: '1px solid #3a3660',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                color: '#c9a84c',
+              }}>
+                <span>📄</span>
+                <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {pendingDocument.kind === 'gdocs-url'
+                    ? 'Google Doc'
+                    : pendingDocument.filename ?? 'Document'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPendingDocument(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#6a6490',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    padding: '0 2px',
+                    lineHeight: 1,
+                  }}
+                  title="Remove attachment"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+          <div style={s.inputArea}>
+            <DocumentUploadButton
+              disabled={loading}
+              onAttach={doc => setPendingDocument(doc)}
+              onError={msg => setApiError(msg)}
+            />
+            <textarea
+              ref={textareaRef}
+              rows={2}
+              style={s.textarea}
+              placeholder={pendingDocument
+                ? 'Add instructions (optional)… then press Enter or Send'
+                : 'Ask about your campaign… (Enter to send, Shift+Enter for newline)'}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button
+              style={{ ...s.sendBtn, opacity: loading || (!input.trim() && !pendingDocument) ? 0.5 : 1 }}
+              onClick={sendMessage}
+              disabled={loading || (!input.trim() && !pendingDocument)}
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </>

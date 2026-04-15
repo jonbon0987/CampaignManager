@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/parse-document.ts": {
+      "maxDuration": 120
+    },
+    "api/chat.ts": {
+      "maxDuration": 60
+    }
+  }
+}

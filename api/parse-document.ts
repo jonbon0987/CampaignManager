@@ -8,9 +8,10 @@ type RequestBody = {
   payload: string;          // raw text, base64 for docx/pdf, or URL for gdocs-url
   filename?: string;
   campaignContext: string;  // pre-formatted campaign entity listing
+  userInstructions?: string; // optional DM instructions to guide the parse
 };
 
-// ── Tool schema: the shape Claude MUST return ─────────────────────────────
+// ── Tool schema builder ─────────────────────────────────────────────────────
 //
 // We force tool use so we get strict structured JSON instead of having to
 // strip markdown fences. Every action has matched_id (string|null) and a
@@ -39,165 +40,206 @@ const propertiesForAction = (typeLiteral: string, payloadProps: Record<string, u
   additionalProperties: false,
 });
 
-const actionSchema = {
-  type: 'object' as const,
-  properties: {
-    summary: {
-      type: 'string',
-      description: 'A 1-3 sentence plain-language summary of what was found in the document.',
-    },
-    actions: {
-      type: 'array',
-      items: {
-        oneOf: [
-          propertiesForAction('upsertSession', {
-            session_number: { type: 'number' },
-            session_date: { type: ['string', 'null'] },
-            summary: { type: ['string', 'null'] },
-            combats: { type: ['string', 'null'] },
-            loot_rewards: { type: ['string', 'null'] },
-            hooks_notes: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-          }, ['session_number']),
-          propertiesForAction('upsertPC', {
-            character_name: { type: 'string' },
-            player_name: { type: ['string', 'null'] },
-            race: { type: ['string', 'null'] },
-            class: { type: ['string', 'null'] },
-            background: { type: ['string', 'null'] },
-            story_hooks: { type: ['string', 'null'] },
-            key_npcs: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-            is_active: { type: 'boolean' },
-            faction_ids: { type: 'array', items: { type: 'string' } },
-          }, ['character_name']),
-          propertiesForAction('upsertNPC', {
-            name: { type: 'string' },
-            role: { type: ['string', 'null'] },
-            affiliation: { type: ['string', 'null'] },
-            status: { type: 'string', enum: ['active', 'deceased', 'unknown'] },
-            description: { type: ['string', 'null'] },
-            hooks_motivations: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-            location: { type: ['string', 'null'] },
-            first_session: { type: ['number', 'null'] },
-            met_by_pcs: { type: 'boolean' },
-            faction_ids: { type: 'array', items: { type: 'string' } },
-          }, ['name', 'status']),
-          propertiesForAction('upsertLocation', {
-            name: { type: 'string' },
-            region: { type: ['string', 'null'] },
-            location_type: { type: ['string', 'null'] },
-            population: { type: ['string', 'null'] },
-            status: { type: ['string', 'null'] },
-            history: { type: ['string', 'null'] },
-            description: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-          }, ['name']),
-          propertiesForAction('upsertFaction', {
-            name: { type: 'string' },
-            faction_type: { type: ['string', 'null'] },
-            overview: { type: ['string', 'null'] },
-            key_figures: { type: ['string', 'null'] },
-            agenda: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-          }, ['name']),
-          propertiesForAction('upsertHook', {
-            title: { type: 'string' },
-            category: { type: ['string', 'null'], enum: ['main_plot', 'side_quest', 'character_arc', 'faction', null] },
-            description: { type: ['string', 'null'] },
-            last_updated_session: { type: ['number', 'null'] },
-            is_active: { type: 'boolean' },
-            dm_only_notes: { type: ['string', 'null'] },
-          }, ['title', 'is_active']),
-          propertiesForAction('upsertLore', {
-            title: { type: 'string' },
-            category: { type: ['string', 'null'] },
-            content: { type: ['string', 'null'] },
-            dm_only: { type: 'boolean' },
-          }, ['title', 'dm_only']),
-          propertiesForAction('upsertModule', {
-            chapter: { type: ['string', 'null'] },
-            title: { type: 'string' },
-            synopsis: { type: ['string', 'null'] },
-            status: { type: 'string', enum: ['planned', 'active', 'completed'] },
-            played_session: { type: ['number', 'null'] },
-            encounters: { type: ['string', 'null'] },
-            rewards: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-          }, ['title', 'status']),
-          propertiesForAction('upsertSubmodule', {
-            module_id: { type: 'string', description: 'UUID of the parent module this submodule belongs to.' },
-            title: { type: 'string' },
-            submodule_type: { type: ['string', 'null'] },
-            summary: { type: ['string', 'null'] },
-            content: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-            sort_order: { type: 'number' },
-          }, ['module_id', 'title']),
-          propertiesForAction('upsertScene', {
-            submodule_id: { type: 'string', description: 'UUID of the parent submodule this scene belongs to.' },
-            title: { type: 'string' },
-            scene_type: { type: ['string', 'null'] },
-            summary: { type: ['string', 'null'] },
-            content: { type: ['string', 'null'] },
-            dm_notes: { type: ['string', 'null'] },
-            sort_order: { type: 'number' },
-          }, ['submodule_id', 'title']),
-          propertiesForAction('upsertRelationship', {
-            from_id: { type: 'string' },
-            from_kind: { type: 'string', enum: ['pc', 'npc'] },
-            to_id: { type: 'string' },
-            to_kind: { type: 'string', enum: ['pc', 'npc'] },
-            relationship_type: { type: 'string', enum: ['ally', 'rival', 'foe', 'neutral'] },
-            label: { type: ['string', 'null'] },
-          }, ['from_id', 'from_kind', 'to_id', 'to_kind', 'relationship_type']),
-        ],
+// ── Extraction passes ───────────────────────────────────────────────────────
+// Each pass extracts a subset of entity types. This keeps each API call small
+// enough to complete within timeout limits, even for very large documents.
+
+interface ExtractionPass {
+  label: string;           // shown to user as progress text
+  focusInstruction: string; // tells Claude what to focus on
+  actionSchemas: ReturnType<typeof propertiesForAction>[];
+}
+
+const extractionPasses: ExtractionPass[] = [
+  {
+    label: 'characters',
+    focusInstruction: 'Extract ONLY player characters (PCs) and NPCs from the document. Include all details: roles, affiliations, statuses, descriptions, motivations, locations, and whether PCs have met them.',
+    actionSchemas: [
+      propertiesForAction('upsertPC', {
+        character_name: { type: 'string' },
+        player_name: { type: ['string', 'null'] },
+        race: { type: ['string', 'null'] },
+        class: { type: ['string', 'null'] },
+        background: { type: ['string', 'null'] },
+        story_hooks: { type: ['string', 'null'] },
+        key_npcs: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+        is_active: { type: 'boolean' },
+        faction_ids: { type: 'array', items: { type: 'string' } },
+      }, ['character_name']),
+      propertiesForAction('upsertNPC', {
+        name: { type: 'string' },
+        role: { type: ['string', 'null'] },
+        affiliation: { type: ['string', 'null'] },
+        status: { type: 'string', enum: ['active', 'deceased', 'unknown'] },
+        description: { type: ['string', 'null'] },
+        hooks_motivations: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+        location: { type: ['string', 'null'] },
+        first_session: { type: ['number', 'null'] },
+        met_by_pcs: { type: 'boolean' },
+        faction_ids: { type: 'array', items: { type: 'string' } },
+      }, ['name', 'status']),
+      propertiesForAction('upsertRelationship', {
+        from_id: { type: 'string' },
+        from_kind: { type: 'string', enum: ['pc', 'npc'] },
+        to_id: { type: 'string' },
+        to_kind: { type: 'string', enum: ['pc', 'npc'] },
+        relationship_type: { type: 'string', enum: ['ally', 'rival', 'foe', 'neutral'] },
+        label: { type: ['string', 'null'] },
+      }, ['from_id', 'from_kind', 'to_id', 'to_kind', 'relationship_type']),
+    ],
+  },
+  {
+    label: 'locations & factions',
+    focusInstruction: 'Extract ONLY locations and factions from the document. Include all details: regions, types, populations, histories, descriptions, agendas, and key figures.',
+    actionSchemas: [
+      propertiesForAction('upsertLocation', {
+        name: { type: 'string' },
+        region: { type: ['string', 'null'] },
+        location_type: { type: ['string', 'null'] },
+        population: { type: ['string', 'null'] },
+        status: { type: ['string', 'null'] },
+        history: { type: ['string', 'null'] },
+        description: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+      }, ['name']),
+      propertiesForAction('upsertFaction', {
+        name: { type: 'string' },
+        faction_type: { type: ['string', 'null'] },
+        overview: { type: ['string', 'null'] },
+        key_figures: { type: ['string', 'null'] },
+        agenda: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+      }, ['name']),
+    ],
+  },
+  {
+    label: 'sessions, hooks & lore',
+    focusInstruction: 'Extract ONLY sessions, plot hooks, and lore entries from the document. For sessions include recaps, combats, loot, and DM notes. For hooks include categories, descriptions, and active status. For lore include titles, categories, and content.',
+    actionSchemas: [
+      propertiesForAction('upsertSession', {
+        session_number: { type: 'number' },
+        session_date: { type: ['string', 'null'] },
+        summary: { type: ['string', 'null'] },
+        combats: { type: ['string', 'null'] },
+        loot_rewards: { type: ['string', 'null'] },
+        hooks_notes: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+      }, ['session_number']),
+      propertiesForAction('upsertHook', {
+        title: { type: 'string' },
+        category: { type: ['string', 'null'], enum: ['main_plot', 'side_quest', 'character_arc', 'faction', null] },
+        description: { type: ['string', 'null'] },
+        last_updated_session: { type: ['number', 'null'] },
+        is_active: { type: 'boolean' },
+        dm_only_notes: { type: ['string', 'null'] },
+      }, ['title', 'is_active']),
+      propertiesForAction('upsertLore', {
+        title: { type: 'string' },
+        category: { type: ['string', 'null'] },
+        content: { type: ['string', 'null'] },
+        dm_only: { type: 'boolean' },
+      }, ['title', 'dm_only']),
+    ],
+  },
+  {
+    label: 'modules & scenes',
+    focusInstruction: 'Extract ONLY modules, submodules, and scenes from the document. For modules include chapter numbers, synopses, statuses, encounters, and rewards. For submodules and scenes include parent IDs, summaries, and content.',
+    actionSchemas: [
+      propertiesForAction('upsertModule', {
+        chapter: { type: ['string', 'null'] },
+        title: { type: 'string' },
+        synopsis: { type: ['string', 'null'] },
+        status: { type: 'string', enum: ['planned', 'active', 'completed'] },
+        played_session: { type: ['number', 'null'] },
+        encounters: { type: ['string', 'null'] },
+        rewards: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+      }, ['title', 'status']),
+      propertiesForAction('upsertSubmodule', {
+        module_id: { type: 'string', description: 'UUID of the parent module this submodule belongs to.' },
+        title: { type: 'string' },
+        submodule_type: { type: ['string', 'null'] },
+        summary: { type: ['string', 'null'] },
+        content: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+        sort_order: { type: 'number' },
+      }, ['module_id', 'title']),
+      propertiesForAction('upsertScene', {
+        submodule_id: { type: 'string', description: 'UUID of the parent submodule this scene belongs to.' },
+        title: { type: 'string' },
+        scene_type: { type: ['string', 'null'] },
+        summary: { type: ['string', 'null'] },
+        content: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+        sort_order: { type: 'number' },
+      }, ['submodule_id', 'title']),
+    ],
+  },
+];
+
+function buildPassSchema(pass: ExtractionPass) {
+  return {
+    type: 'object' as const,
+    properties: {
+      actions: {
+        type: 'array',
+        items: {
+          oneOf: pass.actionSchemas,
+        },
       },
     },
-  },
-  required: ['summary', 'actions'],
-  additionalProperties: false,
-};
+    required: ['actions'],
+    additionalProperties: false,
+  };
+}
 
-function buildSystemPrompt(campaignContext: string): string {
-  return `You extract campaign updates from a DM's session document and propose a batch of structured changes.
+function buildExtractionSystemPrompt(campaignContext: string, pass: ExtractionPass): string {
+  return `You extract campaign updates from a DM's session document and propose structured changes.
 
 ${campaignContext}
 
 == YOUR TASK ==
 
-Read the document the DM has provided and identify every create-or-update that should be made to the campaign data above. Return your proposals via the propose_import_actions tool.
+${pass.focusInstruction}
+
+Return your proposals via the propose_import_actions tool. If the document has no relevant content for this category, return an empty actions array.
 
 == RULES ==
 
-1. **Matching**: For each proposed change, decide whether it updates an existing entity or creates a new one.
-   - Set "matched_id" to the existing entity's id (shown in brackets above) when you're confident it's the same thing. Be willing to match across minor naming differences (e.g. "the high priestess" vs "Zarethyl" if Zarethyl is established as a high priestess).
-   - Set "matched_id" to null ONLY when the entity genuinely doesn't exist yet.
-   - Always populate "reasoning" with a short sentence explaining the match decision. The DM will see this on their review card.
+1. **Matching**: Set "matched_id" to the existing entity's id (shown in [id:...] brackets above) when updating an existing entity. Set to null for new entities. Be willing to match across minor naming differences.
 
-2. **Coverage**: Propose updates to every relevant section, not just the obvious one. Typical patterns:
-   - A session recap → upsertSession AND upsertNPC for each NPC mentioned (updating description / met_by_pcs / location), AND upsertHook for every plot beat that advanced, AND upsertPC for any PC backstory detail revealed.
-   - A prep doc for a future session → upsertSubmodule or upsertScene under a module, plus any new NPCs/locations referenced.
-   - A character arc document → upsertPC for the PC, plus upsertHook for the arc, plus upsertNPC for any related NPCs.
+2. **Reasoning**: Always populate "reasoning" with a short sentence explaining the match decision.
 
-3. **met_by_pcs**: When the document shows PCs encountering an NPC for the first (or any) time, set "met_by_pcs": true on the NPC upsert.
+3. **met_by_pcs**: When the document shows PCs encountering an NPC, set "met_by_pcs": true.
 
-4. **Do not fabricate**: Only include fields supported by content in the document. Leave unchanged fields out of the payload entirely — do not re-emit existing values unless the document changes them. For creates, only include fields the document actually describes.
+4. **Do not fabricate**: Only include fields supported by content in the document. Leave unchanged fields out of the payload.
 
-5. **Never delete anything**. No deletion actions exist in the schema.
+5. **Never delete anything**.
 
-6. **Never invent IDs**. faction_ids, statblock_id, module_id, submodule_id, from_id, to_id must all come from the existing campaign data listed above. If you can't find a matching id, skip the action rather than making one up.
+6. **Never invent IDs**. faction_ids, module_id, submodule_id, from_id, to_id must come from existing campaign data. If you can't find a matching id, skip.
 
-7. **Sessions**: If proposing upsertSession with session_date, use ISO format (YYYY-MM-DD).
+7. **Sessions**: Use ISO date format (YYYY-MM-DD).
 
-8. **Hooks**: category must be one of main_plot, side_quest, character_arc, faction (or null).
+8. **Hooks**: category must be main_plot, side_quest, character_arc, faction, or null.
 
-9. **Summary**: Write a brief (1-3 sentence) human-readable summary of what you found. This appears in the chat bubble before the review cards.
-
-10. **Prefer updates over near-duplicates**: If a candidate match exists, prefer updating it rather than creating a duplicate with a slightly different name.
+9. **Prefer updates over near-duplicates**.
 
 Return ONLY via the propose_import_actions tool call. Do not emit plain text.`;
+}
+
+function buildSummarySystemPrompt(campaignContext: string): string {
+  return `You are a D&D campaign assistant. The DM has uploaded a document for you to analyze.
+
+${campaignContext}
+
+Read the document and write a brief 2-3 sentence summary of what you found — what kind of document it is, what entities it mentions, and what updates you'll be proposing to the campaign. Be specific about names and numbers (e.g. "This session recap covers 3 NPCs, 2 new locations, and advances the main plot hook. I'll extract all changes now.").
+
+IMPORTANT RULES:
+- Do NOT ask follow-up questions. Do NOT ask the user what to prioritize or what they'd like to do.
+- End with a statement like "Extracting changes now..." because the system will automatically extract all structured data after your summary.
+- Keep it to 2-3 sentences maximum. No bullet points, no lists.`;
 }
 
 function extractDocIdFromGoogleDocsUrl(url: string): string | null {
@@ -221,6 +263,59 @@ async function fetchGoogleDocAsText(url: string): Promise<string> {
   return await res.text();
 }
 
+// ── Run a single extraction pass with retry ─────────────────────────────────
+
+async function runExtractionPass(
+  client: Anthropic,
+  campaignContext: string,
+  userContent: Anthropic.ContentBlockParam[],
+  pass: ExtractionPass,
+): Promise<unknown[]> {
+  const schema = buildPassSchema(pass);
+  const systemPrompt = buildExtractionSystemPrompt(campaignContext, pass);
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const stream = client.messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8192,
+        system: systemPrompt,
+        tools: [
+          {
+            name: 'propose_import_actions',
+            description: `Propose ${pass.label} actions extracted from the DM document.`,
+            input_schema: schema as unknown as Anthropic.Tool.InputSchema,
+          },
+        ],
+        tool_choice: { type: 'tool', name: 'propose_import_actions' },
+        messages: [{ role: 'user', content: userContent }],
+      });
+
+      const finalMessage = await stream.finalMessage();
+
+      const toolUse = finalMessage.content.find(
+        (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
+      );
+
+      if (!toolUse) return [];
+
+      const toolInput = toolUse.input as { actions?: unknown[] };
+      return Array.isArray(toolInput.actions) ? toolInput.actions : [];
+    } catch (err) {
+      const isRetryable = err instanceof Anthropic.APIError &&
+        (err.status === 529 || err.status === 503 || err.status === 500);
+      if (isRetryable && attempt < 2) {
+        await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return [];
+}
+
+// ── Main handler ────────────────────────────────────────────────────────────
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -231,15 +326,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing kind or campaignContext' });
   }
 
+  // Switch to SSE streaming
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  function send(event: Record<string, unknown>) {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  }
+
   try {
     // ── 1. Turn the input into something we can send to Claude ──────────────
-    // Either a plain-text string, or a document block (for PDFs).
     let userContent: Anthropic.ContentBlockParam[];
 
     switch (body.kind) {
       case 'text': {
         if (!body.payload?.trim()) {
-          return res.status(400).json({ error: 'Empty document' });
+          send({ type: 'error', message: 'Empty document' });
+          res.end();
+          return;
         }
         userContent = [
           { type: 'text', text: `Document: ${body.filename ?? 'pasted text'}\n\n${body.payload}` },
@@ -251,11 +356,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
           buffer = Buffer.from(body.payload, 'base64');
         } catch {
-          return res.status(400).json({ error: 'Invalid base64 payload for docx' });
+          send({ type: 'error', message: 'Invalid base64 payload for docx' });
+          res.end();
+          return;
         }
         const { value: extracted } = await mammoth.extractRawText({ buffer });
         if (!extracted?.trim()) {
-          return res.status(400).json({ error: 'No text could be extracted from that .docx file.' });
+          send({ type: 'error', message: 'No text could be extracted from that .docx file.' });
+          res.end();
+          return;
         }
         userContent = [
           { type: 'text', text: `Document: ${body.filename ?? 'uploaded.docx'}\n\n${extracted}` },
@@ -264,7 +373,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       case 'pdf': {
         if (!body.payload) {
-          return res.status(400).json({ error: 'Missing pdf payload' });
+          send({ type: 'error', message: 'Missing pdf payload' });
+          res.end();
+          return;
         }
         userContent = [
           {
@@ -277,9 +388,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         break;
       }
       case 'gdocs-url': {
-        const text = await fetchGoogleDocAsText(body.payload);
+        let text: string;
+        try {
+          text = await fetchGoogleDocAsText(body.payload);
+        } catch (err) {
+          send({ type: 'error', message: err instanceof Error ? err.message : 'Failed to fetch Google Doc' });
+          res.end();
+          return;
+        }
         if (!text.trim()) {
-          return res.status(400).json({ error: 'The Google Doc appears to be empty.' });
+          send({ type: 'error', message: 'The Google Doc appears to be empty.' });
+          res.end();
+          return;
         }
         userContent = [
           { type: 'text', text: `Document (Google Docs): ${body.payload}\n\n${text}` },
@@ -287,46 +407,108 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         break;
       }
       default:
-        return res.status(400).json({ error: `Unknown kind: ${(body as { kind: string }).kind}` });
+        send({ type: 'error', message: `Unknown kind: ${(body as { kind: string }).kind}` });
+        res.end();
+        return;
     }
 
-    // ── 2. Call Claude with tool use forced ────────────────────────────────
+    // ── 2. Append user instructions if provided ─────────────────────────────
+    const instructionsSuffix = body.userInstructions?.trim()
+      ? `\n\nDM's instructions: ${body.userInstructions.trim()}`
+      : '';
+
+    if (instructionsSuffix) {
+      userContent.push({ type: 'text', text: instructionsSuffix });
+    }
+
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8192,
-      system: buildSystemPrompt(body.campaignContext),
-      tools: [
-        {
-          name: 'propose_import_actions',
-          description: 'Propose a batch of create/update actions extracted from the DM document.',
-          input_schema: actionSchema as unknown as Anthropic.Tool.InputSchema,
-        },
-      ],
-      tool_choice: { type: 'tool', name: 'propose_import_actions' },
-      messages: [{ role: 'user', content: userContent }],
-    });
+    // ── 3. Phase 1: stream a summary of what was found ──────────────────────
+    const summaryMessages: Anthropic.MessageParam[] = [
+      { role: 'user', content: userContent },
+    ];
 
-    // ── 3. Extract the tool_use block ──────────────────────────────────────
-    const toolUse = response.content.find(
-      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
-    );
-    if (!toolUse) {
-      return res.status(500).json({
-        error: 'Claude did not return a tool_use block. Try again or simplify the document.',
-      });
+    let summaryDone = false;
+    for (let attempt = 0; attempt < 3 && !summaryDone; attempt++) {
+      try {
+        const summaryStream = client.messages.stream({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 512,
+          system: buildSummarySystemPrompt(body.campaignContext),
+          messages: summaryMessages,
+        });
+
+        for await (const event of summaryStream) {
+          if (
+            event.type === 'content_block_delta' &&
+            event.delta.type === 'text_delta'
+          ) {
+            send({ type: 'text', text: event.delta.text });
+          }
+        }
+        summaryDone = true;
+      } catch (err) {
+        const isRetryable = err instanceof Anthropic.APIError &&
+          (err.status === 529 || err.status === 503 || err.status === 500);
+        if (isRetryable && attempt < 2) {
+          await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+          continue;
+        }
+        throw err;
+      }
     }
 
-    const input = toolUse.input as { summary?: string; actions?: unknown[] };
-    return res.status(200).json({
-      summary: input.summary ?? '',
-      actions: Array.isArray(input.actions) ? input.actions : [],
-    });
+    // ── 4. Phase 2: chunked extraction — one pass per entity category ───────
+    send({ type: 'extracting' });
+
+    // Send SSE heartbeats every 5s to keep the connection alive
+    const heartbeat = setInterval(() => {
+      res.write(`: heartbeat\n\n`);
+    }, 5000);
+
+    const allActions: unknown[] = [];
+    try {
+      for (let pi = 0; pi < extractionPasses.length; pi++) {
+        const pass = extractionPasses[pi];
+        // Tell the client which pass we're on
+        send({ type: 'pass', index: pi, total: extractionPasses.length, label: pass.label });
+
+        try {
+          const passActions = await runExtractionPass(client, body.campaignContext, userContent, pass);
+
+          // Stream each action to the client immediately
+          for (const action of passActions) {
+            send({ type: 'action', action });
+            allActions.push(action);
+          }
+        } catch (err) {
+          // Log but continue with remaining passes
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          send({ type: 'text', text: `\n\n_Warning: failed to extract ${pass.label} (${msg}). Continuing with remaining categories..._` });
+        }
+      }
+    } finally {
+      clearInterval(heartbeat);
+    }
+
+    send({ type: 'done', count: allActions.length });
+    res.end();
   } catch (err) {
-    const message = err instanceof Anthropic.APIError
-      ? `API Error (${err.status}): ${err.message}`
-      : err instanceof Error ? err.message : 'Unknown error';
-    return res.status(500).json({ error: message });
+    send({ type: 'error', message: friendlyError(err) });
+    res.end();
   }
+}
+
+function friendlyError(err: unknown): string {
+  if (err instanceof Anthropic.APIError) {
+    if (err.status === 529) {
+      return 'Claude is currently overloaded. Please wait a moment and try again.';
+    }
+    // The SDK exposes the parsed error body on err.error
+    const body = err.error as { error?: { message?: string; type?: string } } | undefined;
+    if (body?.error?.message) return body.error.message;
+    if (err.status) return `API error (${err.status}): ${err.message}`;
+    return err.message || 'Unknown API error';
+  }
+  return err instanceof Error ? err.message : 'Unknown error';
 }

@@ -1,18 +1,18 @@
 // Upload affordance mounted next to the AI Assistant textarea. Paperclip
 // button opens a small popover with two choices: upload a file, or paste
-// a Google Docs URL. Calls onSubmit with a DocumentInput which the parent
-// (AIAssistant) passes off to submitDocument().
+// a Google Docs URL. Calls onAttach with a DocumentInput which the parent
+// (AIAssistant) holds as a pending attachment until the user hits Send.
 
 import { useRef, useState } from 'react';
 import { extractClientSide, parseGoogleDocsUrl, type DocumentInput } from '../lib/documentImport';
 
 interface Props {
   disabled: boolean;
-  onSubmit: (input: DocumentInput) => void;
+  onAttach: (input: DocumentInput) => void;
   onError: (message: string) => void;
 }
 
-export default function DocumentUploadButton({ disabled, onSubmit, onError }: Props) {
+export default function DocumentUploadButton({ disabled, onAttach, onError }: Props) {
   const [open, setOpen] = useState(false);
   const [gdocsUrl, setGdocsUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,7 @@ export default function DocumentUploadButton({ disabled, onSubmit, onError }: Pr
     try {
       const input = await extractClientSide(file);
       setOpen(false);
-      onSubmit(input);
+      onAttach(input);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to read file');
     } finally {
@@ -41,7 +41,7 @@ export default function DocumentUploadButton({ disabled, onSubmit, onError }: Pr
       const input = parseGoogleDocsUrl(gdocsUrl);
       setGdocsUrl('');
       setOpen(false);
-      onSubmit(input);
+      onAttach(input);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Invalid URL');
     } finally {
