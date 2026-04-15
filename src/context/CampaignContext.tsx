@@ -84,6 +84,7 @@ interface CampaignContextType {
 
   // Player Characters
   upsertPC: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  upsertPCSilent: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
   deletePC: (id: string) => Promise<void>;
 
   // NPCs — scope: 'campaign' creates campaign-specific, 'global' creates in global pool
@@ -689,6 +690,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       upsertSession: withToast(upsertSession, 'Session saved'),
       deleteSession: withToast(deleteSession, 'Session deleted'),
       upsertPC: withToast(upsertPC, 'Character saved'),
+      upsertPCSilent: upsertPC,
       deletePC: withToast(deletePC, 'Character deleted'),
       upsertNPC: withToast(upsertNPC, 'NPC saved'),
       deleteNPC: withToast(deleteNPC, 'NPC deleted'),

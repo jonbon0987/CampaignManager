@@ -1,7 +1,7 @@
 import type { ReactNode, CSSProperties } from 'react';
 
 interface FormFieldProps {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   className?: string;
   hint?: string;
