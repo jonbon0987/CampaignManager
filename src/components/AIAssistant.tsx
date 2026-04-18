@@ -4,9 +4,10 @@ import { useToast } from '../context/ToastContext';
 import useLocalStorage from '../hooks/useLocalStorage';
 import type {
   Session, PlayerCharacter, NPC, Location,
-  Faction, Hook, LoreEntry, Module,
+  Faction, Hook, LoreEntry, Module, MonsterStatblock,
   SessionInsert, PlayerCharacterInsert, NPCInsert, LocationInsert,
   FactionInsert, HookInsert, LoreEntryInsert, ModuleInsert,
+  MonsterStatblockInsert,
 } from '../lib/database.types';
 import { submitDocument, type ImportAction, type DocumentInput, entityMeta, describeAction } from '../lib/documentImport';
 import { formatCampaignContext } from '../lib/campaignContext';
@@ -24,6 +25,7 @@ type PendingAction =
   | { type: 'upsertHook';      payload: HookInsert & { id?: string } }
   | { type: 'upsertLore';      payload: LoreEntryInsert & { id?: string } }
   | { type: 'upsertModule';    payload: ModuleInsert & { id?: string } }
+  | { type: 'upsertMonsterStatblock'; payload: MonsterStatblockInsert & { id?: string } }
   | { type: 'deleteSession';   id: string; label: string }
   | { type: 'deleteNPC';       id: string; label: string }
   | { type: 'deletePC';        id: string; label: string }
@@ -31,7 +33,8 @@ type PendingAction =
   | { type: 'deleteFaction';   id: string; label: string }
   | { type: 'deleteHook';      id: string; label: string }
   | { type: 'deleteLore';      id: string; label: string }
-  | { type: 'deleteModule';    id: string; label: string };
+  | { type: 'deleteModule';    id: string; label: string }
+  | { type: 'deleteMonsterStatblock'; id: string; label: string };
 
 interface ImportApplyState {
   phase: 'idle' | 'pending_confirmation' | 'applying' | 'done';
@@ -64,6 +67,7 @@ function pendingActionToImportType(a: PendingAction): ImportAction['type'] {
     case 'upsertHook':      return 'upsertHook';
     case 'upsertLore':      return 'upsertLore';
     case 'upsertModule':    return 'upsertModule';
+    case 'upsertMonsterStatblock': return 'upsertMonsterStatblock';
     // Delete actions don't have ImportAction equivalents — map to closest upsert for display
     case 'deleteSession':   return 'upsertSession';
     case 'deleteNPC':       return 'upsertNPC';
@@ -73,6 +77,7 @@ function pendingActionToImportType(a: PendingAction): ImportAction['type'] {
     case 'deleteHook':      return 'upsertHook';
     case 'deleteLore':      return 'upsertLore';
     case 'deleteModule':    return 'upsertModule';
+    case 'deleteMonsterStatblock': return 'upsertMonsterStatblock';
   }
 }
 
@@ -85,6 +90,7 @@ function buildSystemPrompt(data: {
   hooks: Hook[];
   lore: LoreEntry[];
   modules: Module[];
+  monsterStatblocks: MonsterStatblock[];
   overviewTitle: string;
   overviewPlot: string;
 }): string {
@@ -120,8 +126,9 @@ Upsert (include "id" to update existing, omit for new):
   { "type": "upsertHook", "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "..." } }
   { "type": "upsertLore", "payload": { "title": "...", "category": "history|artifact|creature|magic|religion", "content": "...", "dm_only": false } }
   { "type": "upsertModule", "payload": { "chapter": "1", "title": "...", "synopsis": "...", "status": "planned|active|completed", "played_session": null, "encounters": "...", "rewards": "...", "dm_notes": "..." } }
+  { "type": "upsertMonsterStatblock", "payload": { "name": "...", "creature_type": "Medium humanoid", "challenge_rating": "5", "armor_class": 15, "ac_descriptor": "chain shirt", "hit_points": 65, "hit_dice": "10d8+20", "speed": "30 ft.", "str": 16, "dex": 14, "con": 14, "int": 10, "wis": 12, "cha": 8, "saving_throws": "Str +6, Con +5", "skills": "Athletics +6", "damage_immunities": null, "damage_resistances": null, "condition_immunities": null, "senses": "passive Perception 11", "languages": "Common", "content": "### Traits\\n**Brave.** Advantage on saves vs frightened.\\n\\n### Actions\\n**Multiattack.** Two longsword attacks.\\n\\n**Longsword.** +6 to hit, 1d8+3 slashing.", "dm_notes": "...", "tags": "humanoid, soldier" } }
 
-Delete: { "type": "deleteNPC", "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule)
+Delete: { "type": "deleteNPC", "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule, deleteMonsterStatblock)
 
 Always use existing record IDs when updating. Only include fields you want to set.`;
 }
@@ -256,7 +263,7 @@ interface Props {
 
 export default function AIAssistant({ open, onClose }: Props) {
   const campaign = useCampaign();
-  const { sessions, pcs, npcs, locations, factions, hooks, lore, modules, overview } = campaign;
+  const { sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, overview } = campaign;
   const toast = useToast();
 
   const [messages, setMessages] = useLocalStorage<ChatMessage[]>('ai-chat-messages', []);
@@ -265,6 +272,7 @@ export default function AIAssistant({ open, onClose }: Props) {
   const [apiError, setApiError] = useState('');
   const [pendingDocument, setPendingDocument] = useState<DocumentInput | null>(null);
   const importPlaceholderRef = useRef<number>(-1);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -277,6 +285,14 @@ export default function AIAssistant({ open, onClose }: Props) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  function stopGeneration() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setLoading(false);
+  }
 
   async function sendMessage() {
     const hasText = !!input.trim();
@@ -301,7 +317,7 @@ export default function AIAssistant({ open, onClose }: Props) {
     setLoading(true);
 
     const systemPrompt = buildSystemPrompt({
-      sessions, pcs, npcs, locations, factions, hooks, lore, modules,
+      sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks,
       overviewTitle: overview.title,
       overviewPlot: overview.plotSummary,
     });
@@ -326,11 +342,15 @@ export default function AIAssistant({ open, onClose }: Props) {
       return result.trim();
     }
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: apiMessages, system: systemPrompt }),
+        signal: controller.signal,
       });
 
       if (!response.ok || !response.body) {
@@ -410,15 +430,26 @@ export default function AIAssistant({ open, onClose }: Props) {
         ));
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === 'assistant' && !last.content) {
-          return [...prev.slice(0, -1), { role: 'assistant' as const, content: `Error: ${msg}` }];
-        }
-        return [...prev, { role: 'assistant' as const, content: `Error: ${msg}` }];
-      });
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // User stopped generation — keep whatever was streamed so far
+        const displayText = stripJsonBlocks(fullText);
+        setMessages(prev => prev.map((m, i) =>
+          i === streamingIdx
+            ? { role: 'assistant' as const, content: displayText || '(Stopped)' }
+            : m
+        ));
+      } else {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && !last.content) {
+            return [...prev.slice(0, -1), { role: 'assistant' as const, content: `Error: ${msg}` }];
+          }
+          return [...prev, { role: 'assistant' as const, content: `Error: ${msg}` }];
+        });
+      }
     } finally {
+      abortControllerRef.current = null;
       setLoading(false);
     }
   }
@@ -470,6 +501,7 @@ export default function AIAssistant({ open, onClose }: Props) {
             case 'upsertHook':      await campaign.upsertHook(action.payload); break;
             case 'upsertLore':      await campaign.upsertLore(action.payload); break;
             case 'upsertModule':    await campaign.upsertModule(action.payload); break;
+            case 'upsertMonsterStatblock': await campaign.upsertMonsterStatblock(action.payload); break;
             case 'deleteSession':   await campaign.deleteSession(action.id); break;
             case 'deleteNPC':       await campaign.deleteNPC(action.id); break;
             case 'deletePC':        await campaign.deletePC(action.id); break;
@@ -478,6 +510,7 @@ export default function AIAssistant({ open, onClose }: Props) {
             case 'deleteHook':      await campaign.deleteHook(action.id); break;
             case 'deleteLore':      await campaign.deleteLore(action.id); break;
             case 'deleteModule':    await campaign.deleteModule(action.id); break;
+            case 'deleteMonsterStatblock': await campaign.deleteMonsterStatblock(action.id); break;
           }
         } else {
           // Document import flow: use ImportAction, merge matched_id → payload.id
@@ -496,6 +529,7 @@ export default function AIAssistant({ open, onClose }: Props) {
             case 'upsertSubmodule':    await campaign.upsertSubmodule(payload as Parameters<typeof campaign.upsertSubmodule>[0]); break;
             case 'upsertScene':        await campaign.upsertScene(payload as Parameters<typeof campaign.upsertScene>[0]); break;
             case 'upsertRelationship': await campaign.upsertRelationship(payload as Parameters<typeof campaign.upsertRelationship>[0]); break;
+            case 'upsertMonsterStatblock': await campaign.upsertMonsterStatblock(payload as Parameters<typeof campaign.upsertMonsterStatblock>[0]); break;
           }
         }
         applied.push(actionId);
@@ -548,6 +582,9 @@ export default function AIAssistant({ open, onClose }: Props) {
     });
     setLoading(true);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     // Helper to update the placeholder message by ref
     function updatePlaceholder(updater: (m: ChatMessage & { role: 'assistant' }) => ChatMessage) {
       setMessages(prev => prev.map((m, i) => {
@@ -558,7 +595,7 @@ export default function AIAssistant({ open, onClose }: Props) {
 
     try {
       const ctx = formatCampaignContext({
-        sessions, pcs, npcs, locations, factions, hooks, lore, modules,
+        sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks,
         overviewTitle: overview.title,
         overviewPlot: overview.plotSummary,
       });
@@ -580,14 +617,14 @@ export default function AIAssistant({ open, onClose }: Props) {
             extractingLabel: `Extracting ${pass.label} (${pass.index + 1}/${pass.total})...`,
           }));
         },
+        controller.signal,
       );
 
       if (actions.length > 0) {
-        // Show preview table and wait for user confirmation
+        // Show full review cards so user can pick which changes to apply
         updatePlaceholder(m => ({
           ...m,
           isExtracting: false,
-          autoApplied: true,
           importActions: actions,
           importApplyState: { phase: 'pending_confirmation', appliedActionIds: [], failedActionIds: [] },
         }));
@@ -601,9 +638,19 @@ export default function AIAssistant({ open, onClose }: Props) {
         }));
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      updatePlaceholder(() => ({ role: 'assistant', content: `Error importing document: ${msg}` }));
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // User stopped — keep whatever was streamed so far
+        updatePlaceholder(m => ({
+          ...m,
+          isExtracting: false,
+          content: m.content || '(Stopped)',
+        }));
+      } else {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        updatePlaceholder(() => ({ role: 'assistant', content: `Error importing document: ${msg}` }));
+      }
     } finally {
+      abortControllerRef.current = null;
       setLoading(false);
     }
   }
@@ -660,6 +707,9 @@ export default function AIAssistant({ open, onClose }: Props) {
             break;
           case 'upsertRelationship':
             await campaign.upsertRelationship(payload as Parameters<typeof campaign.upsertRelationship>[0]);
+            break;
+          case 'upsertMonsterStatblock':
+            await campaign.upsertMonsterStatblock(payload as Parameters<typeof campaign.upsertMonsterStatblock>[0]);
             break;
           default: {
             const _exhaustive: never = action;
@@ -977,13 +1027,27 @@ export default function AIAssistant({ open, onClose }: Props) {
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <button
-              style={{ ...s.sendBtn, opacity: loading || (!input.trim() && !pendingDocument) ? 0.5 : 1 }}
-              onClick={sendMessage}
-              disabled={loading || (!input.trim() && !pendingDocument)}
-            >
-              Send
-            </button>
+            {loading ? (
+              <button
+                style={{
+                  ...s.sendBtn,
+                  backgroundColor: '#e05c5c',
+                  color: '#fff',
+                }}
+                onClick={stopGeneration}
+                title="Stop generation"
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                style={{ ...s.sendBtn, opacity: (!input.trim() && !pendingDocument) ? 0.5 : 1 }}
+                onClick={sendMessage}
+                disabled={!input.trim() && !pendingDocument}
+              >
+                Send
+              </button>
+            )}
           </div>
         </div>
       </div>

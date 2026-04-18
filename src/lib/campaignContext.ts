@@ -5,7 +5,7 @@
 
 import type {
   Session, PlayerCharacter, NPC, Location,
-  Faction, Hook, LoreEntry, Module,
+  Faction, Hook, LoreEntry, Module, MonsterStatblock,
 } from './database.types';
 
 export function formatCampaignContext(data: {
@@ -17,6 +17,7 @@ export function formatCampaignContext(data: {
   hooks: Hook[];
   lore: LoreEntry[];
   modules: Module[];
+  monsterStatblocks?: MonsterStatblock[];
   overviewTitle: string;
   overviewPlot: string;
 }): string {
@@ -47,5 +48,8 @@ LORE ENTRIES (${data.lore.length}):
 ${data.lore.map(l => `  ${l.title} (${l.category ?? '?'}) [id:${l.id}]`).join('\n') || '  (none)'}
 
 MODULES (${data.modules.length}):
-${data.modules.map(m => `  Ch.${m.chapter ?? '?'}: ${m.title} [${m.status}] [id:${m.id}]`).join('\n') || '  (none)'}`;
+${data.modules.map(m => `  Ch.${m.chapter ?? '?'}: ${m.title} [${m.status}] [id:${m.id}]`).join('\n') || '  (none)'}
+
+STAT SHEETS (${data.monsterStatblocks?.length ?? 0}):
+${data.monsterStatblocks?.map(s => `  ${s.name} (${s.creature_type ?? '?'}, CR ${s.challenge_rating ?? '?'}) [id:${s.id}]`).join('\n') || '  (none)'}`;
 }

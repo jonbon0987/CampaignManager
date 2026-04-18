@@ -182,10 +182,10 @@ export default function Sidebar({
               fontFamily: 'Georgia, Cambria, serif',
               justifyContent: isOpen ? 'flex-start' : 'center',
             }}
-            title={!isOpen ? 'DM Assistant' : undefined}
+            title={!isOpen ? 'Campaign Assistant' : undefined}
           >
             <Sparkles size={16} strokeWidth={1.5} />
-            {isOpen && <span>DM Assistant</span>}
+            {isOpen && <span>Campaign Assistant</span>}
           </button>
 
           {/* Collapse toggle (desktop only) */}

@@ -177,6 +177,42 @@ const extractionPasses: ExtractionPass[] = [
       }, ['submodule_id', 'title']),
     ],
   },
+  {
+    label: 'creature stat sheets',
+    focusInstruction: `Extract ONLY creature/monster stat blocks from the document. These are mechanical game statistics for creatures, NPCs, or player characters — armor class, hit points, ability scores, actions, traits, etc.
+
+For the "content" field, use markdown to format the stat block's traits, actions, reactions, legendary actions, and any other abilities. Use **bold** for ability names. Group them under markdown headings (### Traits, ### Actions, ### Reactions, ### Legendary Actions, etc.).
+
+Do NOT extract NPCs, PCs, locations, or other narrative data here — only mechanical stat blocks.`,
+    actionSchemas: [
+      propertiesForAction('upsertMonsterStatblock', {
+        name: { type: 'string' },
+        creature_type: { type: ['string', 'null'], description: 'e.g. "Medium humanoid (elf)", "Large dragon"' },
+        challenge_rating: { type: ['string', 'null'], description: 'e.g. "1/4", "5", "20"' },
+        armor_class: { type: ['number', 'null'] },
+        ac_descriptor: { type: ['string', 'null'], description: 'e.g. "natural armor", "leather armor, shield"' },
+        hit_points: { type: ['number', 'null'] },
+        hit_dice: { type: ['string', 'null'], description: 'e.g. "8d8+16"' },
+        speed: { type: ['string', 'null'], description: 'e.g. "30 ft., fly 60 ft."' },
+        str: { type: ['number', 'null'] },
+        dex: { type: ['number', 'null'] },
+        con: { type: ['number', 'null'] },
+        int: { type: ['number', 'null'] },
+        wis: { type: ['number', 'null'] },
+        cha: { type: ['number', 'null'] },
+        saving_throws: { type: ['string', 'null'], description: 'e.g. "Dex +5, Wis +3"' },
+        skills: { type: ['string', 'null'], description: 'e.g. "Perception +5, Stealth +7"' },
+        damage_immunities: { type: ['string', 'null'] },
+        damage_resistances: { type: ['string', 'null'] },
+        condition_immunities: { type: ['string', 'null'] },
+        senses: { type: ['string', 'null'], description: 'e.g. "darkvision 60 ft., passive Perception 15"' },
+        languages: { type: ['string', 'null'] },
+        content: { type: ['string', 'null'], description: 'Markdown-formatted traits, actions, reactions, legendary actions, and other abilities.' },
+        dm_notes: { type: ['string', 'null'] },
+        tags: { type: ['string', 'null'], description: 'Comma-separated tags for filtering, e.g. "boss, undead, homebrew"' },
+      }, ['name']),
+    ],
+  },
 ];
 
 function buildPassSchema(pass: ExtractionPass) {
@@ -195,14 +231,18 @@ function buildPassSchema(pass: ExtractionPass) {
   };
 }
 
-function buildExtractionSystemPrompt(campaignContext: string, pass: ExtractionPass): string {
+function buildExtractionSystemPrompt(campaignContext: string, pass: ExtractionPass, userInstructions?: string): string {
+  const instructionBlock = userInstructions?.trim()
+    ? `\n\n== DM'S INSTRUCTIONS (HIGHEST PRIORITY) ==\n\nThe DM gave these specific instructions:\n"${userInstructions.trim()}"\n\nYou MUST follow these instructions exactly. If the DM asked to create a specific entity type (e.g. "upload as a submodule", "create a module", "add as lore"), ONLY create that entity type — do NOT extract other entity types unless the DM explicitly asked for them. The DM's instructions override the default extraction behavior.\n\nIf this extraction pass does not match what the DM asked for, return an empty actions array.`
+    : '';
+
   return `You extract campaign updates from a DM's session document and propose structured changes.
 
 ${campaignContext}
 
 == YOUR TASK ==
 
-${pass.focusInstruction}
+${pass.focusInstruction}${instructionBlock}
 
 Return your proposals via the propose_import_actions tool. If the document has no relevant content for this category, return an empty actions array.
 
@@ -229,12 +269,16 @@ Return your proposals via the propose_import_actions tool. If the document has n
 Return ONLY via the propose_import_actions tool call. Do not emit plain text.`;
 }
 
-function buildSummarySystemPrompt(campaignContext: string): string {
+function buildSummarySystemPrompt(campaignContext: string, userInstructions?: string): string {
+  const instructionBlock = userInstructions?.trim()
+    ? `\n\nThe DM gave these specific instructions for how to process this document:\n"${userInstructions.trim()}"\n\nYou MUST acknowledge these instructions in your summary. Describe what the document contains AND confirm you will follow the DM's instructions. For example, if they said "upload as a submodule", confirm you'll create a submodule — do NOT say you'll extract NPCs, locations, etc. unless the DM asked for that.`
+    : '';
+
   return `You are a D&D campaign assistant. The DM has uploaded a document for you to analyze.
 
 ${campaignContext}
 
-Read the document and write a brief 2-3 sentence summary of what you found — what kind of document it is, what entities it mentions, and what updates you'll be proposing to the campaign. Be specific about names and numbers (e.g. "This session recap covers 3 NPCs, 2 new locations, and advances the main plot hook. I'll extract all changes now.").
+Read the document and write a brief 2-3 sentence summary of what you found — what kind of document it is, what entities it mentions, and what updates you'll be proposing to the campaign. Be specific about names and numbers (e.g. "This session recap covers 3 NPCs, 2 new locations, and advances the main plot hook. I'll extract all changes now.").${instructionBlock}
 
 IMPORTANT RULES:
 - Do NOT ask follow-up questions. Do NOT ask the user what to prioritize or what they'd like to do.
@@ -270,9 +314,10 @@ async function runExtractionPass(
   campaignContext: string,
   userContent: Anthropic.ContentBlockParam[],
   pass: ExtractionPass,
+  userInstructions?: string,
 ): Promise<unknown[]> {
   const schema = buildPassSchema(pass);
-  const systemPrompt = buildExtractionSystemPrompt(campaignContext, pass);
+  const systemPrompt = buildExtractionSystemPrompt(campaignContext, pass, userInstructions);
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -434,7 +479,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const summaryStream = client.messages.stream({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 512,
-          system: buildSummarySystemPrompt(body.campaignContext),
+          system: buildSummarySystemPrompt(body.campaignContext, body.userInstructions),
           messages: summaryMessages,
         });
 
@@ -474,7 +519,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         send({ type: 'pass', index: pi, total: extractionPasses.length, label: pass.label });
 
         try {
-          const passActions = await runExtractionPass(client, body.campaignContext, userContent, pass);
+          const passActions = await runExtractionPass(client, body.campaignContext, userContent, pass, body.userInstructions);
 
           // Stream each action to the client immediately
           for (const action of passActions) {

@@ -103,6 +103,7 @@ function ImportEntityCard({
         case 'upsertSubmodule':return campaign.submodules;
         case 'upsertScene':    return campaign.scenes;
         case 'upsertRelationship': return [];
+        case 'upsertMonsterStatblock': return campaign.monsterStatblocks;
       }
     })();
 

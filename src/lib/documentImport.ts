@@ -17,6 +17,7 @@ import type {
   SubmoduleInsert,
   SceneInsert,
   CharacterRelationshipInsert,
+  MonsterStatblockInsert,
 } from './database.types';
 
 // ── ImportAction discriminated union ───────────────────────────────────────
@@ -45,7 +46,8 @@ export type ImportAction =
   | ImportActionBase<'upsertModule', Omit<ModuleInsert, 'campaign_id'>>
   | ImportActionBase<'upsertSubmodule', SubmoduleInsert>
   | ImportActionBase<'upsertScene', SceneInsert>
-  | ImportActionBase<'upsertRelationship', Omit<CharacterRelationshipInsert, 'campaign_id'>>;
+  | ImportActionBase<'upsertRelationship', Omit<CharacterRelationshipInsert, 'campaign_id'>>
+  | ImportActionBase<'upsertMonsterStatblock', Omit<MonsterStatblockInsert, 'campaign_id'>>;
 
 export type ImportActionType = ImportAction['type'];
 
@@ -66,7 +68,8 @@ export const entityMeta: Record<ImportActionType, {
   upsertModule:       { label: 'Module',       badgeColor: 'gold',   nameField: 'title' },
   upsertSubmodule:    { label: 'Submodule',    badgeColor: 'muted',  nameField: 'title' },
   upsertScene:        { label: 'Scene',        badgeColor: 'muted',  nameField: 'title' },
-  upsertRelationship: { label: 'Relationship', badgeColor: 'muted',  nameField: 'label' },
+  upsertRelationship:      { label: 'Relationship', badgeColor: 'muted',  nameField: 'label' },
+  upsertMonsterStatblock:  { label: 'Stat Sheet',   badgeColor: 'blue',   nameField: 'name' },
 };
 
 export function describeAction(a: ImportAction): string {
@@ -146,6 +149,7 @@ export async function submitDocument(
   onText?: (chunk: string) => void,
   onExtracting?: () => void,
   onPass?: (pass: { index: number; total: number; label: string }) => void,
+  signal?: AbortSignal,
 ): Promise<ParseDocumentResponse> {
   const endpoint = import.meta.env.VITE_MOCK_PARSE === 'true'
     ? '/api/parse-document-mock'
@@ -154,6 +158,7 @@ export async function submitDocument(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...input, campaignContext, userInstructions }),
+    signal,
   });
 
   if (!res.ok || !res.body) {
