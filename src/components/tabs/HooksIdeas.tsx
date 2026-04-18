@@ -191,6 +191,7 @@ export default function HooksIdeas() {
             return (
               <InlineEditCard
                 key={hook.id}
+                entityId={hook.id}
                 isEditing={isEditing}
                 onSave={saveEdit}
                 onCancel={cancelEdit}

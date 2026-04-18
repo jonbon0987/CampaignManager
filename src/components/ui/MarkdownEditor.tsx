@@ -1,16 +1,51 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import type { RefObject } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { ENTITY_LINK_RE, EntityChip } from './StatBlockText';
+import type { EntityType } from './StatBlockText';
+import { MarkdownContent } from './MarkdownContent';
 
 type Mode = 'write' | 'preview';
+
+interface EntityLink {
+  entityType: EntityType;
+  id: string;
+  displayName: string;
+  /** The full raw markup, e.g. [[npc:uuid:Name]] */
+  raw: string;
+}
+
+/** Extract all entity links from the raw text */
+function extractEntityLinks(text: string): EntityLink[] {
+  const links: EntityLink[] = [];
+  ENTITY_LINK_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = ENTITY_LINK_RE.exec(text)) !== null) {
+    links.push({
+      entityType: match[1] as EntityType,
+      id: match[2],
+      displayName: match[3] ?? '',
+      raw: match[0],
+    });
+  }
+  return links;
+}
+
+/** Strip all entity link markup from text.
+ *  Preserves all user-typed whitespace including trailing spaces and newlines. */
+function stripEntityLinks(text: string): string {
+  let result = text;
+  // Remove each entity link and any single newline immediately before it
+  // (the newline is the separator we insert in handleDisplayChange)
+  result = result.replace(/\n?\[\[(creature|npc|location|session|faction|hook):[a-f0-9-]{36}(?:[^\]]*)?]]/g, '');
+  return result;
+}
 
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   minHeight?: string;
-  /** Expose the textarea ref for external toolbars (e.g. creature link) */
+  /** Expose the textarea ref for external toolbars (e.g. entity link insertion) */
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }
 
@@ -31,17 +66,25 @@ function wrapSelection(
   before: string,
   after: string,
   onChange: (v: string) => void,
+  /** The full raw value including entity links (not the display value) */
+  rawValue: string,
+  /** The display value shown in the textarea (entity links stripped) */
+  displayValue: string,
 ) {
-  const { selectionStart, selectionEnd, value } = textarea;
-  const selected = value.slice(selectionStart, selectionEnd);
+  const { selectionStart, selectionEnd } = textarea;
+  const selected = displayValue.slice(selectionStart, selectionEnd);
   const replacement = `${before}${selected || 'text'}${after}`;
-  const next = value.slice(0, selectionStart) + replacement + value.slice(selectionEnd);
-  onChange(next);
-  // Restore cursor inside the wrapper
+  // Apply the edit to the display value, then re-append entity links
+  const newDisplay = displayValue.slice(0, selectionStart) + replacement + displayValue.slice(selectionEnd);
+  // Reconstruct: entity links from raw + edited text
+  const entityLinks = extractEntityLinks(rawValue);
+  const entityMarkup = entityLinks.map(l => l.raw).join('');
+  onChange(newDisplay + (entityMarkup ? '\n' + entityMarkup : ''));
+  // Restore cursor
   requestAnimationFrame(() => {
     textarea.focus();
     const cursorPos = selectionStart + before.length;
-    const cursorEnd = cursorPos + (selected.length || 4); // "text".length
+    const cursorEnd = cursorPos + (selected.length || 4);
     textarea.setSelectionRange(cursorPos, cursorEnd);
   });
 }
@@ -50,11 +93,15 @@ function prefixLine(
   textarea: HTMLTextAreaElement,
   prefix: string,
   onChange: (v: string) => void,
+  rawValue: string,
+  displayValue: string,
 ) {
-  const { selectionStart, value } = textarea;
-  const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-  const next = value.slice(0, lineStart) + prefix + value.slice(lineStart);
-  onChange(next);
+  const { selectionStart } = textarea;
+  const lineStart = displayValue.lastIndexOf('\n', selectionStart - 1) + 1;
+  const newDisplay = displayValue.slice(0, lineStart) + prefix + displayValue.slice(lineStart);
+  const entityLinks = extractEntityLinks(rawValue);
+  const entityMarkup = entityLinks.map(l => l.raw).join('');
+  onChange(newDisplay + (entityMarkup ? '\n' + entityMarkup : ''));
   requestAnimationFrame(() => {
     textarea.focus();
     textarea.setSelectionRange(selectionStart + prefix.length, selectionStart + prefix.length);
@@ -72,25 +119,46 @@ export function MarkdownEditor({
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const taRef = externalRef ?? internalRef;
 
+  // Parse entity links and display text from the raw value
+  const entityLinks = useMemo(() => extractEntityLinks(value), [value]);
+  const displayValue = useMemo(() => stripEntityLinks(value), [value]);
+
+  /** Rebuild the raw value from edited display text + current entity links */
+  const handleDisplayChange = useCallback((newDisplay: string) => {
+    const entityMarkup = entityLinks.map(l => l.raw).join('');
+    onChange(newDisplay + (entityMarkup ? '\n' + entityMarkup : ''));
+  }, [entityLinks, onChange]);
+
+  /** Remove a specific entity link from the raw value */
+  const handleRemoveLink = useCallback((link: EntityLink) => {
+    // Remove just this one occurrence of the raw markup
+    const idx = value.indexOf(link.raw);
+    if (idx === -1) return;
+    // Also remove a preceding newline separator if present
+    const start = idx > 0 && value[idx - 1] === '\n' ? idx - 1 : idx;
+    let next = value.slice(0, start) + value.slice(idx + link.raw.length);
+    onChange(next);
+  }, [value, onChange]);
+
   const handleBold = useCallback(() => {
-    if (taRef.current) wrapSelection(taRef.current, '**', '**', onChange);
-  }, [taRef, onChange]);
+    if (taRef.current) wrapSelection(taRef.current, '**', '**', onChange, value, displayValue);
+  }, [taRef, onChange, value, displayValue]);
 
   const handleItalic = useCallback(() => {
-    if (taRef.current) wrapSelection(taRef.current, '_', '_', onChange);
-  }, [taRef, onChange]);
+    if (taRef.current) wrapSelection(taRef.current, '_', '_', onChange, value, displayValue);
+  }, [taRef, onChange, value, displayValue]);
 
   const handleHeading = useCallback(() => {
-    if (taRef.current) prefixLine(taRef.current, '### ', onChange);
-  }, [taRef, onChange]);
+    if (taRef.current) prefixLine(taRef.current, '### ', onChange, value, displayValue);
+  }, [taRef, onChange, value, displayValue]);
 
   const handleList = useCallback(() => {
-    if (taRef.current) prefixLine(taRef.current, '- ', onChange);
-  }, [taRef, onChange]);
+    if (taRef.current) prefixLine(taRef.current, '- ', onChange, value, displayValue);
+  }, [taRef, onChange, value, displayValue]);
 
   const handleLink = useCallback(() => {
-    if (taRef.current) wrapSelection(taRef.current, '[', '](url)', onChange);
-  }, [taRef, onChange]);
+    if (taRef.current) wrapSelection(taRef.current, '[', '](url)', onChange, value, displayValue);
+  }, [taRef, onChange, value, displayValue]);
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     padding: '3px 10px',
@@ -148,25 +216,46 @@ export function MarkdownEditor({
 
       {/* Content area */}
       {mode === 'write' ? (
-        <textarea
-          ref={taRef}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          style={{
-            width: '100%',
-            minHeight,
-            backgroundColor: '#1a1830',
-            color: '#e8d5b0',
-            border: 'none',
-            outline: 'none',
-            padding: '10px 12px',
-            fontSize: '0.875rem',
-            fontFamily: 'Georgia, Cambria, serif',
-            lineHeight: '1.6',
-            resize: 'vertical',
-          }}
-        />
+        <div>
+          {/* Entity link chips */}
+          {entityLinks.length > 0 && (
+            <div
+              className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1"
+              style={{ borderBottom: '1px solid #2e2c4a' }}
+            >
+              {entityLinks.map((link, i) => (
+                <EntityChip
+                  key={`${link.id}-${i}`}
+                  entityType={link.entityType}
+                  id={link.id}
+                  displayName={link.displayName}
+                  onRemove={() => handleRemoveLink(link)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Textarea showing only the text (no entity markup) */}
+          <textarea
+            ref={taRef}
+            value={displayValue}
+            onChange={e => handleDisplayChange(e.target.value)}
+            placeholder={placeholder}
+            style={{
+              width: '100%',
+              minHeight,
+              backgroundColor: '#1a1830',
+              color: '#e8d5b0',
+              border: 'none',
+              outline: 'none',
+              padding: '10px 12px',
+              fontSize: '0.875rem',
+              fontFamily: 'Georgia, Cambria, serif',
+              lineHeight: '1.6',
+              resize: 'vertical',
+            }}
+          />
+        </div>
       ) : (
         <div
           className="markdown-preview"
@@ -180,7 +269,7 @@ export function MarkdownEditor({
           }}
         >
           {value ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+            <MarkdownContent text={value} />
           ) : (
             <span style={{ color: '#4a4470', fontStyle: 'italic' }}>Nothing to preview</span>
           )}

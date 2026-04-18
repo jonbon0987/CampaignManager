@@ -11,6 +11,8 @@ interface InlineEditCardProps {
   saving?: boolean;
   children: ReactNode;
   className?: string;
+  /** Entity id for scroll-to-highlight navigation */
+  entityId?: string;
 }
 
 export function InlineEditCard({
@@ -22,9 +24,10 @@ export function InlineEditCard({
   saving,
   children,
   className = '',
+  entityId,
 }: InlineEditCardProps) {
   return (
-    <EntityCard isEditing={isEditing} className={className}>
+    <EntityCard isEditing={isEditing} className={className} entityId={entityId}>
       {children}
       {isEditing && (
         <div className="flex items-center gap-2 mt-4 pt-3" style={{ borderTop: '1px solid #3a3660' }}>

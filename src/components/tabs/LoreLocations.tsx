@@ -187,6 +187,7 @@ export default function LoreLocations() {
             return (
               <InlineEditCard
                 key={loc.id}
+                entityId={loc.id}
                 isEditing={isEditing}
                 onSave={saveEdit}
                 onCancel={cancelEdit}

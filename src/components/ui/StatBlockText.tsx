@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
+import { useNavigation } from '../../context/NavigationContext';
 
 // Matches [[type:uuid]] or [[type:uuid:Display Name]]
 // Supported types: creature, npc, location, session, faction, hook
@@ -45,9 +46,18 @@ const entityStyles: Record<EntityType, { bg: string; color: string; border: stri
   hook:     { bg: '#3a2a1a', color: '#e0a060', border: '#7a5a2a', icon: '💡' },
 };
 
-function EntityChip({ entityType, id, displayName }: { entityType: EntityType; id: string; displayName: string }) {
+interface EntityChipProps {
+  entityType: EntityType;
+  id: string;
+  displayName: string;
+  /** Show an × button to remove this chip */
+  onRemove?: () => void;
+}
+
+function EntityChip({ entityType, id, displayName, onRemove }: EntityChipProps) {
   const { monsterStatblocks, npcs, locations, sessions, factions, hooks } = useCampaign();
   const { openStatBlock } = useStatBlockPanel();
+  const { navigateToEntity } = useNavigation();
 
   let label = displayName || 'Unknown';
   let missing = true;
@@ -91,31 +101,66 @@ function EntityChip({ entityType, id, displayName }: { entityType: EntityType; i
     e.stopPropagation();
     if (entityType === 'creature') {
       openStatBlock(id);
+    } else {
+      navigateToEntity(entityType, id);
     }
-    // Other entity types: no navigation yet (could be extended to navigate to tab + highlight)
   };
 
   return (
-    <button
-      onClick={handleClick}
-      title={missing ? `${entityType} not found` : `${entityType}: ${label}`}
+    <span
       style={{
-        display: 'inline',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '3px',
         fontSize: '0.8em',
         padding: '1px 7px',
         borderRadius: '4px',
         backgroundColor: missing ? '#2a1a1a' : style.bg,
         color: missing ? '#e05c5c' : style.color,
         border: `1px solid ${missing ? '#5a2a2a' : style.border}`,
-        cursor: entityType === 'creature' ? 'pointer' : 'default',
         fontFamily: 'inherit',
         lineHeight: '1.4',
         verticalAlign: 'baseline',
         whiteSpace: 'nowrap',
       }}
     >
-      {missing ? `⚠ ${label}` : `${style.icon} ${label}`}
-    </button>
+      <button
+        onClick={handleClick}
+        title={missing ? `${entityType} not found` : `${entityType}: ${label}`}
+        style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          color: 'inherit',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          fontSize: 'inherit',
+          lineHeight: 'inherit',
+        }}
+      >
+        {missing ? `⚠ ${label}` : `${style.icon} ${label}`}
+      </button>
+      {onRemove && (
+        <button
+          onClick={e => { e.stopPropagation(); onRemove(); }}
+          title="Remove link"
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '0 0 0 2px',
+            color: missing ? '#e05c5c' : style.color,
+            cursor: 'pointer',
+            fontSize: '0.85em',
+            lineHeight: 1,
+            opacity: 0.6,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}
+        >
+          ×
+        </button>
+      )}
+    </span>
   );
 }
 

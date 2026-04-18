@@ -157,6 +157,7 @@ export default function Lore() {
             return (
               <InlineEditCard
                 key={entry.id}
+                entityId={entry.id}
                 isEditing={isEditing}
                 onSave={saveEdit}
                 onCancel={cancelEdit}

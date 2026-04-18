@@ -219,6 +219,7 @@ export default function NPCs() {
             return (
               <InlineEditCard
                 key={npc.id}
+                entityId={npc.id}
                 isEditing={isEditing}
                 onSave={saveEdit}
                 onCancel={cancelEdit}

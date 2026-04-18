@@ -204,6 +204,7 @@ export default function SessionNotes() {
             return (
               <div
                 key={session.id}
+                data-entity-id={session.id}
                 className="rounded-lg border overflow-hidden transition-colors duration-150"
                 style={{
                   backgroundColor: '#1a1828',

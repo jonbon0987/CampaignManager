@@ -193,6 +193,7 @@ export default function Factions() {
             return (
               <div
                 key={faction.id}
+                data-entity-id={faction.id}
                 className="rounded-lg border overflow-hidden transition-colors duration-150"
                 style={{
                   backgroundColor: '#1a1828',
