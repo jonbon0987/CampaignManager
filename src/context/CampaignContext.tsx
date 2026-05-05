@@ -8,6 +8,7 @@ import {
   CampaignNPCs as CampaignNPCsDB,
   CampaignLocations as CampaignLocationsDB,
   Sessions as SessionsDB,
+  SessionPreps as SessionPrepsDB,
   PlayerCharacters as PlayerCharactersDB,
   NPCs as NPCsDB,
   Locations as LocationsDB,
@@ -27,6 +28,7 @@ import {
 import type {
   Campaign, CampaignInsert,
   Session, SessionInsert,
+  SessionPrep, SessionPrepInsert,
   PlayerCharacter, PlayerCharacterInsert,
   NPC, NPCInsert,
   Location, LocationInsert,
@@ -147,6 +149,11 @@ interface CampaignContextType {
   upsertEncounter: (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
   deleteEncounter: (id: string) => Promise<void>;
 
+  // Session Prep
+  sessionPreps: SessionPrep[];
+  upsertSessionPrep: (p: Omit<SessionPrepInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  deleteSessionPrep: (id: string) => Promise<void>;
+
   // Module Dependencies
   moduleDeps: ModuleDependency[];
   loadModuleDeps: (campaignId: string) => Promise<void>;
@@ -212,6 +219,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [moduleSheets, setModuleSheets] = useState<ModuleSheet[]>([]);
   const [monsterStatblocks, setMonsterStatblocks] = useState<MonsterStatblock[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [sessionPreps, setSessionPreps] = useState<SessionPrep[]>([]);
   const [moduleDeps, setModuleDeps] = useState<ModuleDependency[]>([]);
   const [submoduleDeps, setSubmoduleDeps] = useState<SubmoduleDependency[]>([]);
 
@@ -317,6 +325,11 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       }
       try {
         setEncounters(await EncountersDB.getAll(campaignId));
+      } catch {
+        // table doesn't exist yet — silently ignore until migration is applied
+      }
+      try {
+        setSessionPreps(await SessionPrepsDB.getAll(campaignId));
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
       }
@@ -632,6 +645,19 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setEncounters(prev => prev.filter(e => e.id !== id));
   }, [selectedCampaignId]);
 
+  // ---- Session Prep ----
+  const upsertSessionPrep = useCallback(async (p: Omit<SessionPrepInsert, 'campaign_id'> & { id?: string }) => {
+    if (!selectedCampaignId) return;
+    await SessionPrepsDB.upsert({ ...p, campaign_id: selectedCampaignId });
+    setSessionPreps(await SessionPrepsDB.getAll(selectedCampaignId));
+  }, [selectedCampaignId]);
+
+  const deleteSessionPrep = useCallback(async (id: string) => {
+    if (!selectedCampaignId) return;
+    await SessionPrepsDB.delete(id);
+    setSessionPreps(prev => prev.filter(p => p.id !== id));
+  }, [selectedCampaignId]);
+
   // ---- Module Dependencies ----
   const loadModuleDeps = useCallback(async (campaignId: string) => {
     setModuleDeps(await ModuleDepsDB.getByCampaign(campaignId));
@@ -725,6 +751,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       encounters,
       upsertEncounter: withToast(upsertEncounter, 'Encounter saved'),
       deleteEncounter: withToast(deleteEncounter, 'Encounter deleted'),
+      sessionPreps,
+      upsertSessionPrep: withToast(upsertSessionPrep, 'Prep notes saved'),
+      deleteSessionPrep: withToast(deleteSessionPrep, 'Prep notes deleted'),
       moduleDeps, loadModuleDeps,
       upsertModuleDep: withToast(upsertModuleDep),
       deleteModuleDep: withToast(deleteModuleDep),

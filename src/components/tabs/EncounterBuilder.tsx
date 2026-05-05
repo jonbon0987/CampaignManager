@@ -8,6 +8,7 @@ import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
+import { getAIProvider } from '../../lib/aiProvider';
 import { InitiativeTracker } from '../InitiativeTracker';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
@@ -313,7 +314,7 @@ Respond with a JSON object (no markdown, raw JSON only):
         const res = await fetch('/api/generate-creature', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({ prompt, provider: getAIProvider() }),
         });
         const data = await res.json() as { text?: string; error?: string };
         if (res.ok && data.text) {
@@ -510,7 +511,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
       const res = await fetch('/api/generate-encounter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, provider: getAIProvider() }),
       });
       const data = await res.json() as { text?: string; error?: string };
       if (!res.ok || data.error) throw new Error(data.error ?? `Server error: ${res.status}`);

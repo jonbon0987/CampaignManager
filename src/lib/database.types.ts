@@ -59,6 +59,17 @@ export interface Session {
   updated_at: string;
 }
 
+export interface SessionPrep {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  session_number: number;
+  prep_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PlayerCharacter {
   id: string;
   user_id: string;
@@ -227,6 +238,7 @@ export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_i
 // --------------- Insert shapes (omit server-set fields) ---------------
 
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type SessionPrepInsert = Omit<SessionPrep, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>;

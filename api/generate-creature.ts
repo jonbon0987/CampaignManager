@@ -1,5 +1,4 @@
-import './_env';
-import Anthropic from '@anthropic-ai/sdk';
+import { resolveProvider, generateText, friendlyError } from './_ai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -7,9 +6,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { prompt, model = 'claude-sonnet-4-6' } = req.body as {
+  const { prompt, provider: bodyProvider } = req.body as {
     prompt: string;
-    model?: string;
+    provider?: string;
   };
 
   if (!prompt) {
@@ -17,23 +16,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const response = await client.messages.create({
-      model,
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const raw = response.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b as Anthropic.TextBlock).text)
-      .join('');
-
+    const provider = resolveProvider(bodyProvider);
+    const raw = await generateText({ provider, prompt });
     return res.status(200).json({ text: raw });
   } catch (err) {
-    const message = err instanceof Anthropic.APIError
-      ? `API Error (${err.status}): ${err.message}`
-      : err instanceof Error ? err.message : 'Unknown error';
-    return res.status(500).json({ error: message });
+    return res.status(500).json({ error: friendlyError(err) });
   }
 }

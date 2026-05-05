@@ -9,6 +9,7 @@ import { supabase } from './supabase';
 import type {
   Campaign, CampaignInsert,
   Session, SessionInsert,
+  SessionPrep, SessionPrepInsert,
   PlayerCharacter, PlayerCharacterInsert,
   NPC, NPCInsert,
   Location, LocationInsert,
@@ -168,6 +169,38 @@ export const Sessions = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('sessions').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// SESSION PREP
+// ============================================================
+
+export const SessionPreps = {
+  async getAll(campaignId: string): Promise<SessionPrep[]> {
+    const { data, error } = await supabase
+      .from('session_prep')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('session_number', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(prep: SessionPrepInsert): Promise<SessionPrep> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('session_prep')
+      .upsert({ ...prep, user_id }, { onConflict: 'campaign_id,session_number' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('session_prep').delete().eq('id', id);
     if (error) throw error;
   },
 };

@@ -85,7 +85,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
             style={{
               position: 'absolute',
               bottom: 'calc(100% + 8px)',
-              right: 0,
+              left: 0,
               width: '280px',
               backgroundColor: '#1a1830',
               border: '1px solid #3a3660',

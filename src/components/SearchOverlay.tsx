@@ -56,6 +56,17 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
       }
     }
 
+    // Session Prep
+    for (const p of campaign.sessionPreps) {
+      if (match(p.notes) || match(String(p.session_number)) || match(p.prep_date)) {
+        matches.push({
+          id: p.id, label: `Session #${p.session_number} Prep`,
+          detail: p.prep_date ?? undefined,
+          tab: 'sessions', icon: ScrollText, group: 'Session Prep',
+        });
+      }
+    }
+
     // Player Characters
     for (const pc of campaign.pcs) {
       if (match(pc.character_name) || match(pc.player_name) || match(pc.race) ||

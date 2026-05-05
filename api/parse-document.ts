@@ -2,6 +2,7 @@ import './_env';
 import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mammoth from 'mammoth';
+import { resolveProvider, streamSummary, structuredExtract, friendlyError, type AIProvider } from './_ai';
 
 type RequestBody = {
   kind: 'text' | 'docx' | 'pdf' | 'gdocs-url';
@@ -9,6 +10,7 @@ type RequestBody = {
   filename?: string;
   campaignContext: string;  // pre-formatted campaign entity listing
   userInstructions?: string; // optional DM instructions to guide the parse
+  provider?: string;
 };
 
 // ── Tool schema builder ─────────────────────────────────────────────────────
@@ -254,7 +256,7 @@ Return your proposals via the propose_import_actions tool. If the document has n
 
 3. **met_by_pcs**: When the document shows PCs encountering an NPC, set "met_by_pcs": true.
 
-4. **Do not fabricate**: Only include fields supported by content in the document. Leave unchanged fields out of the payload.
+4. **Do not fabricate**: Only include fields you want to set. Leave unchanged fields out of the payload. When updating a text field on a matched existing entity, INCORPORATE the existing content shown in the campaign data above — do not discard it. Add, revise, or append new information from the document into the existing text. Write the merged result as a single cohesive field value.
 
 5. **Never delete anything**.
 
@@ -287,7 +289,6 @@ IMPORTANT RULES:
 }
 
 function extractDocIdFromGoogleDocsUrl(url: string): string | null {
-  // https://docs.google.com/document/d/<id>/edit or .../d/<id>/view
   const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
   return match ? match[1] : null;
 }
@@ -307,18 +308,34 @@ async function fetchGoogleDocAsText(url: string): Promise<string> {
   return await res.text();
 }
 
-// ── Run a single extraction pass with retry ─────────────────────────────────
+// ── Run a single extraction pass (provider-aware) ──────────────────────────
 
 async function runExtractionPass(
-  client: Anthropic,
+  provider: AIProvider,
   campaignContext: string,
-  userContent: Anthropic.ContentBlockParam[],
+  userContentText: string,
   pass: ExtractionPass,
   userInstructions?: string,
+  // Claude-only: full content blocks for PDF support
+  claudeUserContent?: Anthropic.ContentBlockParam[],
 ): Promise<unknown[]> {
   const schema = buildPassSchema(pass);
   const systemPrompt = buildExtractionSystemPrompt(campaignContext, pass, userInstructions);
 
+  if (provider === 'gemini') {
+    const result = await structuredExtract({
+      provider: 'gemini',
+      system: systemPrompt,
+      userContent: userContentText,
+      schema,
+      schemaDescription: `Propose ${pass.label} actions extracted from the DM document.`,
+    });
+    const parsed = result as { actions?: unknown[] };
+    return Array.isArray(parsed?.actions) ? parsed.actions : [];
+  }
+
+  // Claude — tool use with retry (uses full content blocks for PDF support)
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const stream = client.messages.stream({
@@ -333,7 +350,7 @@ async function runExtractionPass(
           },
         ],
         tool_choice: { type: 'tool', name: 'propose_import_actions' },
-        messages: [{ role: 'user', content: userContent }],
+        messages: [{ role: 'user', content: claudeUserContent || userContentText }],
       });
 
       const finalMessage = await stream.finalMessage();
@@ -371,6 +388,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing kind or campaignContext' });
   }
 
+  const provider = resolveProvider(body.provider);
+
   // Switch to SSE streaming
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -381,8 +400,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // ── 1. Turn the input into something we can send to Claude ──────────────
-    let userContent: Anthropic.ContentBlockParam[];
+    // ── 1. Turn the input into text (and optionally Claude content blocks) ──
+    let userContentText = '';
+    let claudeUserContent: Anthropic.ContentBlockParam[] | undefined;
 
     switch (body.kind) {
       case 'text': {
@@ -391,9 +411,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.end();
           return;
         }
-        userContent = [
-          { type: 'text', text: `Document: ${body.filename ?? 'pasted text'}\n\n${body.payload}` },
-        ];
+        userContentText = `Document: ${body.filename ?? 'pasted text'}\n\n${body.payload}`;
         break;
       }
       case 'docx': {
@@ -411,9 +429,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.end();
           return;
         }
-        userContent = [
-          { type: 'text', text: `Document: ${body.filename ?? 'uploaded.docx'}\n\n${extracted}` },
-        ];
+        userContentText = `Document: ${body.filename ?? 'uploaded.docx'}\n\n${extracted}`;
         break;
       }
       case 'pdf': {
@@ -422,7 +438,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.end();
           return;
         }
-        userContent = [
+        if (provider === 'gemini') {
+          // Gemini doesn't support PDF content blocks the same way — we note this
+          send({ type: 'error', message: 'PDF parsing with Gemini is not yet supported. Please convert to .txt or .docx, or switch to Claude for PDF imports.' });
+          res.end();
+          return;
+        }
+        // Claude gets native PDF content blocks
+        claudeUserContent = [
           {
             type: 'document',
             source: { type: 'base64', media_type: 'application/pdf', data: body.payload },
@@ -430,6 +453,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           { type: 'text', text: 'Parse the attached document and propose campaign updates.' },
         ];
+        userContentText = 'Parse the attached document and propose campaign updates.';
         break;
       }
       case 'gdocs-url': {
@@ -446,9 +470,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.end();
           return;
         }
-        userContent = [
-          { type: 'text', text: `Document (Google Docs): ${body.payload}\n\n${text}` },
-        ];
+        userContentText = `Document (Google Docs): ${body.payload}\n\n${text}`;
         break;
       }
       default:
@@ -463,45 +485,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : '';
 
     if (instructionsSuffix) {
-      userContent.push({ type: 'text', text: instructionsSuffix });
-    }
-
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    // ── 3. Phase 1: stream a summary of what was found ──────────────────────
-    const summaryMessages: Anthropic.MessageParam[] = [
-      { role: 'user', content: userContent },
-    ];
-
-    let summaryDone = false;
-    for (let attempt = 0; attempt < 3 && !summaryDone; attempt++) {
-      try {
-        const summaryStream = client.messages.stream({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 512,
-          system: buildSummarySystemPrompt(body.campaignContext, body.userInstructions),
-          messages: summaryMessages,
-        });
-
-        for await (const event of summaryStream) {
-          if (
-            event.type === 'content_block_delta' &&
-            event.delta.type === 'text_delta'
-          ) {
-            send({ type: 'text', text: event.delta.text });
-          }
-        }
-        summaryDone = true;
-      } catch (err) {
-        const isRetryable = err instanceof Anthropic.APIError &&
-          (err.status === 529 || err.status === 503 || err.status === 500);
-        if (isRetryable && attempt < 2) {
-          await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
-          continue;
-        }
-        throw err;
+      userContentText += instructionsSuffix;
+      if (claudeUserContent) {
+        claudeUserContent.push({ type: 'text', text: instructionsSuffix });
       }
     }
+
+    // ── 3. Phase 1: stream a summary of what was found ──────────────────────
+    const summaryInput = claudeUserContent
+      ? claudeUserContent.map(b => 'text' in b ? (b as { text: string }).text : '[attached file]').join('\n')
+      : userContentText;
+
+    await streamSummary({
+      provider,
+      system: buildSummarySystemPrompt(body.campaignContext, body.userInstructions),
+      userContent: summaryInput,
+      onText(text) {
+        send({ type: 'text', text });
+      },
+    });
 
     // ── 4. Phase 2: chunked extraction — one pass per entity category ───────
     send({ type: 'extracting' });
@@ -519,7 +521,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         send({ type: 'pass', index: pi, total: extractionPasses.length, label: pass.label });
 
         try {
-          const passActions = await runExtractionPass(client, body.campaignContext, userContent, pass, body.userInstructions);
+          const passActions = await runExtractionPass(
+            provider,
+            body.campaignContext,
+            userContentText,
+            pass,
+            body.userInstructions,
+            claudeUserContent,
+          );
 
           // Stream each action to the client immediately
           for (const action of passActions) {
@@ -542,18 +551,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     send({ type: 'error', message: friendlyError(err) });
     res.end();
   }
-}
-
-function friendlyError(err: unknown): string {
-  if (err instanceof Anthropic.APIError) {
-    if (err.status === 529) {
-      return 'Claude is currently overloaded. Please wait a moment and try again.';
-    }
-    // The SDK exposes the parsed error body on err.error
-    const body = err.error as { error?: { message?: string; type?: string } } | undefined;
-    if (body?.error?.message) return body.error.message;
-    if (err.status) return `API error (${err.status}): ${err.message}`;
-    return err.message || 'Unknown API error';
-  }
-  return err instanceof Error ? err.message : 'Unknown error';
 }

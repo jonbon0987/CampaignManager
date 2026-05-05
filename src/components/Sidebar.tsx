@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  MessageSquare,
   Menu,
 } from 'lucide-react';
 import type { Tab } from '../App';
@@ -49,6 +50,12 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'creatures',  label: 'Stat Sheets',     icon: Skull },
       { id: 'encounters', label: 'Encounters',      icon: Swords },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { id: 'assistant',  label: 'AI Assistant',    icon: Sparkles },
     ],
   },
 ];
@@ -172,20 +179,20 @@ export default function Sidebar({
 
         {/* Bottom controls */}
         <div className="shrink-0 border-t py-2" style={{ borderColor: '#3a3660' }}>
-          {/* AI Assistant button */}
+          {/* Quick Chat panel button */}
           <button
             onClick={onOpenAI}
             className="w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-surface-high"
             style={{
-              color: '#c9a84c',
+              color: '#9990b0',
               backgroundColor: 'transparent',
               fontFamily: 'Georgia, Cambria, serif',
               justifyContent: isOpen ? 'flex-start' : 'center',
             }}
-            title={!isOpen ? 'Campaign Assistant' : undefined}
+            title={!isOpen ? 'Quick Chat' : undefined}
           >
-            <Sparkles size={16} strokeWidth={1.5} />
-            {isOpen && <span>Campaign Assistant</span>}
+            <MessageSquare size={16} strokeWidth={1.5} />
+            {isOpen && <span>Quick Chat</span>}
           </button>
 
           {/* Collapse toggle (desktop only) */}

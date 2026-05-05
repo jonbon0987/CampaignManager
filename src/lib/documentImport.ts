@@ -150,6 +150,7 @@ export async function submitDocument(
   onExtracting?: () => void,
   onPass?: (pass: { index: number; total: number; label: string }) => void,
   signal?: AbortSignal,
+  provider?: string,
 ): Promise<ParseDocumentResponse> {
   const endpoint = import.meta.env.VITE_MOCK_PARSE === 'true'
     ? '/api/parse-document-mock'
@@ -157,7 +158,7 @@ export async function submitDocument(
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...input, campaignContext, userInstructions }),
+    body: JSON.stringify({ ...input, campaignContext, userInstructions, provider }),
     signal,
   });
 
@@ -250,6 +251,71 @@ export async function submitDocument(
   }
 
   return { summary: summary.trim(), actions };
+}
+
+// ── Entity lookup for merge-on-apply ──────────────────────────────────────
+// When applying an import action that updates an existing entity (matched_id),
+// we need to merge the AI's sparse payload onto the full existing record so
+// that fields the AI didn't include are preserved rather than nulled.
+
+const internalFields = new Set([
+  'user_id', 'created_at', 'updated_at', 'campaign_id',
+]);
+
+/** Strip DB-internal fields that are managed by the db/context layer. */
+export function stripInternalFields(entity: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(entity)) {
+    if (!internalFields.has(key)) result[key] = value;
+  }
+  return result;
+}
+
+/**
+ * Look up an existing entity from the campaign context lists.
+ * Returns the full entity record (as a plain object) or null.
+ *
+ * The `campaign` parameter is loosely typed so this utility doesn't need
+ * to import the full CampaignContext type — it just needs the entity arrays.
+ */
+export function lookupExistingEntity(
+  campaign: {
+    sessions: Array<{ id: string }>;
+    pcs: Array<{ id: string }>;
+    npcs: Array<{ id: string }>;
+    locations: Array<{ id: string }>;
+    factions: Array<{ id: string }>;
+    hooks: Array<{ id: string }>;
+    lore: Array<{ id: string }>;
+    modules: Array<{ id: string }>;
+    submodules: Array<{ id: string }>;
+    scenes: Array<{ id: string }>;
+    relationships: Array<{ id: string }>;
+    monsterStatblocks: Array<{ id: string }>;
+  },
+  actionType: ImportActionType,
+  matchedId: string | null,
+): Record<string, unknown> | null {
+  if (!matchedId) return null;
+
+  const listMap: Record<ImportActionType, Array<{ id: string }>> = {
+    upsertSession: campaign.sessions,
+    upsertPC: campaign.pcs,
+    upsertNPC: campaign.npcs,
+    upsertLocation: campaign.locations,
+    upsertFaction: campaign.factions,
+    upsertHook: campaign.hooks,
+    upsertLore: campaign.lore,
+    upsertModule: campaign.modules,
+    upsertSubmodule: campaign.submodules,
+    upsertScene: campaign.scenes,
+    upsertRelationship: campaign.relationships,
+    upsertMonsterStatblock: campaign.monsterStatblocks,
+  };
+
+  const list = listMap[actionType];
+  if (!list) return null;
+  return (list.find(e => e.id === matchedId) as Record<string, unknown>) ?? null;
 }
 
 // ── Fuzzy name match utility ───────────────────────────────────────────────

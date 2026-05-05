@@ -12,6 +12,7 @@ import HooksIdeas from './components/tabs/HooksIdeas';
 import CreatureStatblocks from './components/tabs/CreatureStatblocks';
 import EncounterBuilder from './components/tabs/EncounterBuilder';
 import Factions from './components/tabs/Factions';
+import AssistantFullPage from './components/tabs/AssistantFullPage';
 import AIAssistant from './components/AIAssistant';
 import StatBlockPanel from './components/StatBlockPanel';
 import SearchOverlay from './components/SearchOverlay';
@@ -23,7 +24,7 @@ import { ConfirmProvider } from './context/ConfirmContext';
 import { ToastProvider } from './context/ToastContext';
 import useLocalStorage from './hooks/useLocalStorage';
 
-export type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'encounters' | 'hooks' | 'factions';
+export type Tab = 'overview' | 'sessions' | 'characters' | 'lore' | 'modules' | 'creatures' | 'encounters' | 'hooks' | 'factions' | 'assistant';
 
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -84,7 +85,7 @@ function AppInner({ user }: { user: User }) {
           />
 
           <main className="flex-1 overflow-y-auto px-3 py-4 sm:p-6">
-            <div className="mx-auto w-full" style={{ maxWidth: '900px' }}>
+            <div className="mx-auto w-full" style={{ maxWidth: activeTab === 'assistant' ? '1200px' : '900px' }}>
               {error && (
                 <div className="mb-4 px-4 py-3 rounded text-sm" style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
                   Failed to load data: {error}
@@ -103,6 +104,7 @@ function AppInner({ user }: { user: User }) {
                   {activeTab === 'encounters'  && <EncounterBuilder />}
                   {activeTab === 'hooks'       && <HooksIdeas />}
                   {activeTab === 'factions'    && <Factions />}
+                  {activeTab === 'assistant'   && <AssistantFullPage />}
                 </>
               )}
             </div>

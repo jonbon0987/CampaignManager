@@ -15,6 +15,7 @@ import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { insertAtCursor } from '../../lib/textUtils';
 import type { Session } from '../../lib/database.types';
+import SessionPrep from './SessionPrep';
 
 type SessionForm = {
   session_number: number;
@@ -81,7 +82,7 @@ function SessionSection({
   );
 }
 
-export default function SessionNotes() {
+function SessionLog() {
   const { sessions, upsertSession, deleteSession } = useCampaign();
   const confirm = useConfirm();
   const [search, setSearch] = useState('');
@@ -447,6 +448,52 @@ export default function SessionNotes() {
           </SessionSection>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+// ─── shell with sub-tabs ──────────────────────────────────────────────────────
+
+type SubTab = 'log' | 'prep';
+
+const SUB_TABS: { id: SubTab; label: string }[] = [
+  { id: 'log',  label: 'Session Log' },
+  { id: 'prep', label: 'Session Prep' },
+];
+
+export default function SessionNotes() {
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>('log');
+
+  const pillStyle = (active: boolean): React.CSSProperties => ({
+    padding: '6px 16px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: active ? 600 : 400,
+    cursor: 'pointer',
+    border: 'none',
+    backgroundColor: active ? '#2a2840' : 'transparent',
+    color: active ? '#c9a84c' : '#9990b0',
+    transition: 'all 0.15s',
+    fontFamily: 'Georgia, Cambria, serif',
+  });
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex gap-1 p-1 rounded-lg mb-5 self-start" style={{ backgroundColor: '#12111e' }}>
+        {SUB_TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveSubTab(tab.id)}
+            style={pillStyle(activeSubTab === tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div>
+        {activeSubTab === 'log'  && <SessionLog />}
+        {activeSubTab === 'prep' && <SessionPrep />}
+      </div>
     </div>
   );
 }
