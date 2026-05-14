@@ -12,6 +12,7 @@ import type {
 import { submitDocument, type ImportAction, type DocumentInput, lookupExistingEntity, stripInternalFields } from '../lib/documentImport';
 import { formatCampaignContext } from '../lib/campaignContext';
 import { getAIProvider, setAIProvider, type AIProvider } from '../lib/aiProvider';
+import { authHeaders } from '../lib/apiClient';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -240,7 +241,7 @@ export function useAIChat() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ messages: apiMessages, system: systemPrompt, provider: aiProvider }),
         signal: controller.signal,
       });
