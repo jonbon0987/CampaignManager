@@ -108,11 +108,11 @@ export function SearchableSelect({
           alignItems: 'center',
           justifyContent: 'space-between',
           width: '100%',
-          backgroundColor: '#22203a',
-          color: selected ? '#e8d5b0' : '#6a6490',
-          border: '1px solid #3a3660',
+          backgroundColor: 'var(--paper-2)',
+          color: selected ? 'var(--ink)' : 'var(--ink-3)',
+          border: '1px solid var(--rule)',
           borderRadius: 4,
-          fontFamily: 'Georgia, Cambria, serif',
+          fontFamily: 'var(--serif)',
           fontSize: 14,
           padding: '8px 10px',
           cursor: 'pointer',
@@ -126,13 +126,13 @@ export function SearchableSelect({
           {allowClear && value && (
             <span
               onClick={e => { e.stopPropagation(); onChange(null); }}
-              style={{ display: 'flex', alignItems: 'center', color: '#9990b0' }}
+              style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-2)' }}
               title="Clear"
             >
               <X size={14} />
             </span>
           )}
-          <ChevronDown size={14} style={{ color: '#9990b0' }} />
+          <ChevronDown size={14} style={{ color: 'var(--ink-2)' }} />
         </span>
       </button>
 
@@ -145,8 +145,8 @@ export function SearchableSelect({
             left: 0,
             right: 0,
             marginTop: 4,
-            backgroundColor: '#1a1828',
-            border: '1px solid #3a3660',
+            backgroundColor: 'var(--paper)',
+            border: '1px solid var(--rule)',
             borderRadius: 4,
             zIndex: 60,
             boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
@@ -155,9 +155,9 @@ export function SearchableSelect({
           onKeyDown={handleKeyDown}
         >
           {/* Search input */}
-          <div style={{ padding: '6px 8px', borderBottom: '1px solid #2e2c4a' }}>
+          <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--rule-soft)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Search size={14} style={{ color: '#6a6490', flexShrink: 0 }} />
+              <Search size={14} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
               <input
                 ref={inputRef}
                 type="text"
@@ -167,10 +167,10 @@ export function SearchableSelect({
                 style={{
                   flex: 1,
                   backgroundColor: 'transparent',
-                  color: '#e8d5b0',
+                  color: 'var(--ink)',
                   border: 'none',
                   outline: 'none',
-                  fontFamily: 'Georgia, Cambria, serif',
+                  fontFamily: 'var(--serif)',
                   fontSize: 13,
                   padding: '4px 0',
                 }}
@@ -193,23 +193,23 @@ export function SearchableSelect({
                   width: '100%',
                   background: 'none',
                   border: 'none',
-                  color: '#6a6490',
+                  color: 'var(--ink-3)',
                   fontStyle: 'italic',
                   textAlign: 'left',
                   padding: '6px 8px',
                   fontSize: 13,
                   cursor: 'pointer',
                   borderRadius: 3,
-                  fontFamily: 'Georgia, Cambria, serif',
+                  fontFamily: 'var(--serif)',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#22203a'; }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--paper-2)'; }}
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 None
               </button>
             )}
             {filtered.length === 0 && (
-              <div style={{ padding: '8px', color: '#6a6490', fontSize: 13, textAlign: 'center' }}>
+              <div style={{ padding: '8px', color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
                 No matches
               </div>
             )}
@@ -225,22 +225,22 @@ export function SearchableSelect({
                   style={{
                     display: 'block',
                     width: '100%',
-                    background: isHighlighted ? '#22203a' : 'none',
+                    background: isHighlighted ? 'var(--paper-2)' : 'none',
                     border: 'none',
-                    color: opt.id === value ? '#c9a84c' : '#e8d5b0',
+                    color: opt.id === value ? 'var(--gold)' : 'var(--ink)',
                     textAlign: 'left',
                     padding: '6px 8px',
                     fontSize: 13,
                     cursor: 'pointer',
                     borderRadius: 3,
-                    fontFamily: 'Georgia, Cambria, serif',
+                    fontFamily: 'var(--serif)',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#22203a'; setHighlightIndex(i); }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--paper-2)'; setHighlightIndex(i); }}
                   onMouseLeave={e => { if (!isHighlighted) e.currentTarget.style.backgroundColor = 'transparent'; }}
                 >
                   <div>{opt.label}</div>
                   {opt.detail && (
-                    <div style={{ fontSize: 11, color: '#6a6490', marginTop: 2 }}>{opt.detail}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{opt.detail}</div>
                   )}
                 </button>
               );

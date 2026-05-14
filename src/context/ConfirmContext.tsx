@@ -63,7 +63,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               left: '50%',
               transform: 'translate(-50%, -50%)',
               zIndex: 9999,
-              backgroundColor: '#1a1830',
+              backgroundColor: 'var(--paper)',
               border: '1px solid #3a3660',
               borderRadius: '12px',
               padding: '24px',
@@ -78,8 +78,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   margin: '0 0 8px',
                   fontSize: '16px',
                   fontWeight: 700,
-                  color: state.danger ? '#e05c5c' : '#c9a84c',
-                  fontFamily: 'Georgia, Cambria, serif',
+                  color: state.danger ? '#e05c5c' : 'var(--gold)',
+                  fontFamily: 'var(--serif)',
                 }}
               >
                 {state.title}
@@ -90,7 +90,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 margin: '0 0 20px',
                 fontSize: '14px',
                 lineHeight: '1.5',
-                color: '#e8d5b0',
+                color: 'var(--ink)',
               }}
             >
               {state.message}
@@ -104,9 +104,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   borderRadius: '6px',
                   padding: '8px 16px',
                   fontSize: '13px',
-                  color: '#9990b0',
+                  color: 'var(--ink-2)',
                   cursor: 'pointer',
-                  fontFamily: 'Georgia, Cambria, serif',
+                  fontFamily: 'var(--serif)',
                 }}
               >
                 {state.cancelLabel ?? 'Cancel'}
@@ -121,8 +121,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  fontFamily: 'Georgia, Cambria, serif',
-                  backgroundColor: state.danger !== false ? '#c94c4c' : '#c9a84c',
+                  fontFamily: 'var(--serif)',
+                  backgroundColor: state.danger !== false ? '#c94c4c' : 'var(--gold)',
                   color: '#fff',
                 }}
               >

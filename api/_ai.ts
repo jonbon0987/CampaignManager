@@ -8,7 +8,7 @@
  * without duplicating provider-selection logic.
  */
 
-import './_env';
+import './_env.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI, type GenerateContentRequest, type Part } from '@google/generative-ai';
 
@@ -92,7 +92,7 @@ export interface StreamChatOpts {
 
 /** Stream a multi-turn chat response (used by chat endpoint). */
 export async function streamChat(opts: StreamChatOpts): Promise<void> {
-  const { provider, messages, system, maxTokens = 8192, onText } = opts;
+  const { provider, messages, system, maxTokens = 4096, onText } = opts;
 
   if (provider === 'gemini') {
     const client = getGeminiClient();
@@ -131,7 +131,7 @@ export async function streamChat(opts: StreamChatOpts): Promise<void> {
       done = true;
     } catch (err) {
       const isRetryable = err instanceof Anthropic.APIError &&
-        (err.status === 529 || err.status === 503 || err.status === 500);
+        (err.status === 529 || err.status === 503 || err.status === 502 || err.status === 500);
       if (isRetryable && attempt < 2) {
         await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
         continue;
@@ -189,7 +189,7 @@ export async function streamSummary(opts: StreamSummaryOpts): Promise<void> {
       done = true;
     } catch (err) {
       const isRetryable = err instanceof Anthropic.APIError &&
-        (err.status === 529 || err.status === 503 || err.status === 500);
+        (err.status === 529 || err.status === 503 || err.status === 502 || err.status === 500);
       if (isRetryable && attempt < 2) {
         await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
         continue;
@@ -267,7 +267,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
       return toolUse ? toolUse.input : { actions: [] };
     } catch (err) {
       const isRetryable = err instanceof Anthropic.APIError &&
-        (err.status === 529 || err.status === 503 || err.status === 500);
+        (err.status === 529 || err.status === 503 || err.status === 502 || err.status === 500);
       if (isRetryable && attempt < 2) {
         await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
         continue;
@@ -282,7 +282,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
 
 export function friendlyError(err: unknown): string {
   if (err instanceof Anthropic.APIError) {
-    if (err.status === 529) return 'Claude is currently overloaded. Please wait a moment and try again.';
+    if (err.status === 529 || err.status === 502) return 'Claude is temporarily unavailable. Please wait a moment and try again.';
     const body = err.error as { error?: { message?: string } } | undefined;
     if (body?.error?.message) return body.error.message;
     if (err.status) return `API error (${err.status}): ${err.message}`;

@@ -50,10 +50,10 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
     >
       <div
         className={`rounded-lg border flex flex-col ${sizeClasses[resolvedSize]}`}
-        style={{ backgroundColor: '#1a1828', borderColor: '#3a3660', maxHeight: '90vh' }}
+        style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', maxHeight: '90vh' }}
       >
-        <div className="flex items-center justify-between p-4 border-b shrink-0" style={{ borderColor: '#3a3660' }}>
-          <h2 className="text-xl font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, serif' }}>
+        <div className="flex items-center justify-between p-4 border-b shrink-0" style={{ borderColor: 'var(--rule)' }}>
+          <h2 className="text-xl font-bold" style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}>
             {title}
           </h2>
           <button
@@ -67,11 +67,11 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
           {children}
         </div>
         {footer ? (
-          <div className="p-4 border-t shrink-0" style={{ borderColor: '#3a3660' }}>
+          <div className="p-4 border-t shrink-0" style={{ borderColor: 'var(--rule)' }}>
             {footer}
           </div>
         ) : onSave ? (
-          <div className="flex justify-end gap-2 p-4 border-t shrink-0" style={{ borderColor: '#3a3660' }}>
+          <div className="flex justify-end gap-2 p-4 border-t shrink-0" style={{ borderColor: 'var(--rule)' }}>
             <Button variant="secondary" onClick={handleClose}>Cancel</Button>
             <Button variant="primary" onClick={onSave}>{saveLabel}</Button>
           </div>

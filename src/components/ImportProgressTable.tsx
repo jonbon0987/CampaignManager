@@ -2,11 +2,11 @@ import type { ImportAction } from '../lib/documentImport';
 import { entityMeta, describeAction } from '../lib/documentImport';
 
 const badgeColors: Record<string, { bg: string; text: string; border: string }> = {
-  gold:   { bg: '#2a2418', text: '#c9a84c', border: '#5a4a20' },
+  gold:   { bg: '#2a2418', text: 'var(--gold)', border: '#5a4a20' },
   green:  { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
   red:    { bg: '#3a1a1a', text: '#e05c5c', border: '#6a2a2a' },
   blue:   { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
-  muted:  { bg: '#1a1828', text: '#9990b0', border: '#3a3660' },
+  muted:  { bg: 'var(--paper)', text: 'var(--ink-2)', border: 'var(--rule)' },
   yellow: { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
   orange: { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
 };
@@ -22,7 +22,7 @@ export default function ImportProgressTable({ actions, appliedIds, failedIds, ph
   const doneCount = appliedIds.size + failedIds.size;
   return (
     <div style={{ marginTop: '12px', borderTop: '1px solid #3a3660', paddingTop: '10px' }}>
-      <div style={{ fontSize: '11px', color: '#9990b0', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--ink-2)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
         {phase === 'pending_confirmation' ? (
           <>Proposed {actions.length} change{actions.length === 1 ? '' : 's'}:</>
         ) : phase === 'applying' ? (
@@ -70,7 +70,7 @@ export default function ImportProgressTable({ actions, appliedIds, failedIds, ph
                 {meta.label}
               </span>
               <span style={{
-                color: applied ? '#6ab87a' : failed ? '#e05c5c' : '#e8d5b0',
+                color: applied ? '#6ab87a' : failed ? '#e05c5c' : 'var(--ink)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -86,8 +86,8 @@ export default function ImportProgressTable({ actions, appliedIds, failedIds, ph
           <button
             onClick={onApply}
             style={{
-              backgroundColor: '#c9a84c',
-              color: '#0f0e17',
+              backgroundColor: 'var(--gold)',
+              color: 'var(--bg)',
               border: 'none',
               borderRadius: '6px',
               padding: '6px 14px',
@@ -107,7 +107,7 @@ export default function ImportProgressTable({ actions, appliedIds, failedIds, ph
                 borderRadius: '6px',
                 padding: '6px 14px',
                 fontSize: '12px',
-                color: '#9990b0',
+                color: 'var(--ink-2)',
                 cursor: 'pointer',
               }}
             >

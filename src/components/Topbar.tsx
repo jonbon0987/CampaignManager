@@ -1,77 +1,129 @@
-import { Menu, Search, Dice5 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
+import type { Tab } from '../App';
 import CampaignSelector from './CampaignSelector';
-import { signOut } from '../lib/auth';
+
+interface ViewOption { id: string; label: string; }
 
 interface TopbarProps {
   user: User;
+  activeTab: Tab;
+  tabLabel: string;
   onOpenMobileMenu: () => void;
   onOpenSearch: () => void;
   onToggleDice: () => void;
+  onOpenAI: () => void;
+  onOpenInbox: () => void;
+  onOpenCapture: () => void;
+  onToggleRun: () => void;
+  runMode: boolean;
   isMobile: boolean;
+  proposalCount?: number;
+  viewMode?: string;
+  setViewMode?: (v: string) => void;
+  viewOptions?: ViewOption[];
 }
 
-export default function Topbar({ user, onOpenMobileMenu, onOpenSearch, onToggleDice, isMobile }: TopbarProps) {
+export default function Topbar({
+  activeTab,
+  tabLabel,
+  onOpenMobileMenu,
+  onOpenSearch,
+  onToggleDice,
+  onOpenAI,
+  onOpenInbox,
+  onOpenCapture,
+  onToggleRun,
+  runMode,
+  isMobile,
+  proposalCount = 0,
+  viewMode,
+  setViewMode,
+  viewOptions,
+}: TopbarProps) {
   return (
-    <header
-      className="flex items-center gap-3 px-4 border-b shrink-0"
-      style={{ height: '56px', backgroundColor: '#0a0918', borderColor: '#3a3660' }}
-    >
+    <header className="cm-top">
       {/* Mobile hamburger */}
       {isMobile && (
-        <button
-          onClick={onOpenMobileMenu}
-          className="shrink-0 p-1.5 rounded transition-colors text-muted hover:text-parchment border-none bg-transparent"
-          aria-label="Open menu"
-        >
-          <Menu size={20} strokeWidth={1.5} />
+        <button onClick={onOpenMobileMenu} className="cm-top-btn" aria-label="Open menu">
+          ☰
         </button>
       )}
 
-      {/* Campaign selector — grows to fill space, constrained on desktop */}
-      <div className="flex-1 min-w-0" style={{ maxWidth: '300px' }}>
-        <CampaignSelector />
+      {/* Breadcrumb */}
+      <div className="cm-top-crumbs">
+        <span className="cm-top-crumb cm-top-crumb-root" style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>
+          <CampaignSelector compact />
+        </span>
+        <span className="cm-top-crumb-sep">/</span>
+        <span className="cm-top-crumb">{tabLabel}</span>
       </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* View mode segment — only shown on tabs that have it */}
+      {viewOptions && viewOptions.length > 0 && setViewMode && (
+        <div className="cm-vm">
+          {viewOptions.map(o => (
+            <button
+              key={o.id}
+              className={`cm-vm-btn ${viewMode === o.id ? 'is-active' : ''}`}
+              onClick={() => setViewMode(o.id)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="cm-top-spacer" />
 
       {/* Right cluster */}
-      <div className="flex items-center gap-3 shrink-0">
-        <button
-          onClick={onToggleDice}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs transition-colors border border-border bg-transparent"
-          style={{ color: '#6a6490' }}
-          title="Dice Roller"
-        >
-          <Dice5 size={14} strokeWidth={1.5} />
-          <span className="hidden sm:inline">Dice</span>
+      <div className="cm-top-actions">
+        {/* Proposals */}
+        {proposalCount > 0 && (
+          <button
+            onClick={onOpenInbox}
+            className="cm-top-btn"
+            title="AI Proposals"
+            style={{ borderColor: 'var(--gold)', color: 'var(--ink)' }}
+          >
+            <span className="cm-top-btn-glyph">✎</span>
+            {!isMobile && <span>Proposals</span>}
+            <span className="cm-top-badge">{proposalCount}</span>
+          </button>
+        )}
+
+        {/* Search */}
+        <button onClick={onOpenSearch} className="cm-top-btn" title="Search (⌘K)">
+          <span className="cm-top-btn-glyph">⌕</span>
+          {!isMobile && <span>Search</span>}
+          {!isMobile && <kbd>⌘K</kbd>}
         </button>
-        <button
-          onClick={onOpenSearch}
-          className="flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors border border-border bg-transparent"
-          style={{ color: '#6a6490' }}
-          title="Search (⌘K)"
-        >
-          <Search size={14} strokeWidth={1.5} />
-          <span className="hidden sm:inline">Search</span>
-          <kbd className="hidden sm:inline text-xs" style={{
-            padding: '0 4px',
-            borderRadius: '3px',
-            border: '1px solid #3a3660',
-            backgroundColor: '#0f0e17',
-            fontSize: '10px',
-            color: '#4a4470',
-          }}>⌘K</kbd>
+
+        {/* AI Assistant */}
+        <button onClick={onOpenAI} className="cm-top-btn" title="Campaign Assistant">
+          <span className="cm-top-btn-glyph">✦</span>
+          {!isMobile && <span>Assistant</span>}
         </button>
-        <span className="text-xs hidden sm:block" style={{ color: '#6a6490' }}>
-          {user.email}
-        </span>
+
+        {/* Post-Session Capture */}
+        <button onClick={onOpenCapture} className="cm-top-btn" title="Post-session capture">
+          <span className="cm-top-btn-glyph">✍</span>
+          {!isMobile && <span>Capture</span>}
+        </button>
+
+        {/* Session Bar / Tools */}
+        <button onClick={onToggleDice} className="cm-top-btn" title="Session tools (Initiative · Dice · Search)">
+          <span className="cm-top-btn-glyph">⚄</span>
+          {!isMobile && <span>Session Tools</span>}
+        </button>
+
+        {/* Run Session — primary gold button */}
         <button
-          onClick={signOut}
-          className="text-xs px-3 py-1.5 rounded transition-colors text-muted hover:text-parchment border border-border bg-transparent"
+          onClick={onToggleRun}
+          className={`cm-top-btn cm-top-btn-primary ${runMode ? 'is-on' : ''}`}
+          title={runMode ? 'Exit Session' : 'Run Session'}
         >
-          Sign out
+          <span className="cm-top-btn-glyph">⚜</span>
+          <span>{runMode ? 'Exit' : 'Run Session'}</span>
         </button>
       </div>
     </header>

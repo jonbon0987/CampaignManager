@@ -71,18 +71,12 @@ const emptyModuleForm = (): ModuleForm => ({
 });
 
 const FACTION_TYPE_COLORS: Record<string, string> = {
-  guild: '#c9a84c', government: '#70a0e0', religious: '#d0c060',
+  guild: 'var(--gold)', government: '#70a0e0', religious: '#d0c060',
   criminal: '#e05c5c', military: '#60b0a0', arcane: '#b080e0',
-  merchant: '#e09050', other: '#9990b0',
+  merchant: '#e09050', other: 'var(--ink-2)',
 };
 
 // --------------- Styles ---------------
-
-const statusStyles: Record<Module['status'], { bg: string; text: string; border: string }> = {
-  planned:   { bg: '#1a1a3a', text: '#6090e0', border: '#3a3a7a' },
-  active:    { bg: '#1a3a1a', text: '#4caf7d', border: '#2a7a2a' },
-  completed: { bg: '#2a2a2a', text: '#7a7a7a', border: '#4a4a4a' },
-};
 
 const typeColors: Record<string, { bg: string; text: string; border: string }> = {
   location:    { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
@@ -103,15 +97,6 @@ const typeColors: Record<string, { bg: string; text: string; border: string }> =
 
 const getTypeStyle = (t: string | null) =>
   typeColors[t ?? 'other'] ?? typeColors['other'];
-
-const sectionLabel = {
-  color: '#c9a84c',
-  fontSize: '0.7rem',
-  fontWeight: 600,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.08em',
-  marginBottom: '0.4rem',
-};
 
 // ================================================================
 // PROPS
@@ -224,7 +209,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   }, [expandedSubId, loadScenes]);
 
   const modSubmodules = submodules.filter(s => s.module_id === mod.id);
-  const ss = statusStyles[mod.status];
   const expandedSub = expandedSubId ? modSubmodules.find(s => s.id === expandedSubId) : null;
 
   const breadcrumbSegments = [
@@ -478,55 +462,58 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   // ----------------------------------------------------------------
 
   return (
-    <div style={{ maxWidth: '900px' }}>
-      {/* Breadcrumb + header */}
-      <div className="mb-6">
-        <div className="mb-3">
-          <Breadcrumb segments={breadcrumbSegments} />
+    <div className="cm-detail">
+      {/* Breadcrumb */}
+      <div style={{ marginBottom: 20 }}>
+        <Breadcrumb segments={breadcrumbSegments} />
+      </div>
+
+      {/* Detail header */}
+      <div className="cm-detail-head">
+        <div className="cm-detail-eyebrow">
+          {mod.chapter ? `Chapter ${mod.chapter}` : 'Module'} · {mod.status}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2
-                className="text-xl font-bold leading-tight"
-                style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
-              >
-                {mod.chapter ? `${mod.chapter}: ` : ''}{mod.title}
-              </h2>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 className="cm-detail-title">
+              {mod.title || 'Untitled'}
+            </h2>
+            {mod.synopsis && (
+              <p className="cm-detail-sub">
+                {mod.synopsis.length > 200 ? mod.synopsis.slice(0, 200) + '…' : mod.synopsis}
+              </p>
+            )}
+            {/* badges row */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
               <span
-                className="text-xs px-2 py-1 rounded border capitalize"
-                style={{ backgroundColor: ss.bg, color: ss.text, borderColor: ss.border }}
+                className={`cm-tag cm-tag-${mod.status === 'active' ? 'active' : mod.status === 'completed' ? 'muted' : 'planned'}`}
+                style={{ textTransform: 'capitalize' }}
               >
                 {mod.status}
               </span>
               {(() => {
                 const faction = mod.faction_id ? factions.find(f => f.id === mod.faction_id) : null;
                 if (!faction) return null;
-                const fColor = FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? '#9990b0';
+                const fColor = FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? 'var(--ink-2)';
                 return (
-                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border" style={{ backgroundColor: fColor + '1a', color: fColor, borderColor: fColor + '33' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: fColor, display: 'inline-block' }} />
+                  <span className="cm-chip" style={{ borderColor: fColor + '55' }}>
+                    <span className="cm-chip-glyph" style={{ color: fColor }}>◆</span>
                     {faction.name}
                   </span>
                 );
               })()}
               {mod.node_role && (
-                <span className="text-xs px-2 py-1 rounded border" style={{
-                  backgroundColor: mod.node_role === 'start' ? '#2a2418' : '#3a1a1a',
-                  color: mod.node_role === 'start' ? '#c9a84c' : '#e05c5c',
-                  borderColor: mod.node_role === 'start' ? '#5a4a20' : '#6a2a2a',
+                <span className="cm-tag" style={{
+                  color: mod.node_role === 'start' ? 'var(--gold)' : 'var(--accent)',
+                  borderColor: mod.node_role === 'start' ? 'rgba(201,168,76,.35)' : 'rgba(201,122,85,.35)',
+                  background: mod.node_role === 'start' ? 'rgba(201,168,76,.08)' : 'rgba(201,122,85,.08)',
                 }}>
                   {mod.node_role === 'start' ? 'Starting Mission' : 'Final Boss'}
                 </span>
               )}
             </div>
-            {mod.synopsis && (
-              <p className="text-sm mt-0.5" style={{ color: '#9990b0' }}>
-                {mod.synopsis}
-              </p>
-            )}
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <Button variant="secondary" size="sm" onClick={openEditModule}>Edit</Button>
             <Button variant="danger" size="sm" onClick={handleDeleteModule}>Delete</Button>
           </div>
@@ -534,15 +521,15 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
       </div>
 
       {/* Section tab bar */}
-      <div className="flex border-b mb-5" style={{ borderColor: '#3a3660' }}>
+      <div className="flex border-b mb-5" style={{ borderColor: 'var(--rule)' }}>
         {(['submodules', 'overview', 'dependencies'] as const).map(t => (
           <button
             key={t}
             onClick={() => setActiveSection(t)}
             className="px-5 py-2.5 text-sm font-semibold capitalize transition-colors"
             style={{
-              color: activeSection === t ? '#c9a84c' : '#6a6490',
-              borderBottom: activeSection === t ? '2px solid #c9a84c' : '2px solid transparent',
+              color: activeSection === t ? 'var(--gold)' : 'var(--ink-3)',
+              borderBottom: activeSection === t ? '2px solid var(--gold)' : '2px solid transparent',
               backgroundColor: 'transparent',
             }}
           >
@@ -557,536 +544,475 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
 
       {/* ===== SUBMODULES SECTION ===== */}
       {activeSection === 'submodules' && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <span style={sectionLabel}>Submodules</span>
-            <Button variant="primary" size="sm" onClick={openAddSubmodule}>+ Add Submodule</Button>
-          </div>
+        <div className="cm-detail-body">
+          <div className="cm-section">
+            <div className="cm-section-head">
+              <span className="cm-section-title">Submodules</span>
+              <div className="cm-section-rule" />
+              <Button variant="primary" size="sm" onClick={openAddSubmodule}>+ Add</Button>
+            </div>
 
-          {modSubmodules.length === 0 ? (
-            <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-              No submodules yet. Add a location or story beat.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {modSubmodules.map(sub => {
-                const ts = getTypeStyle(sub.submodule_type);
-                const isSubExpanded = expandedSubId === sub.id;
-                const subScenes = scenes.filter(sc => sc.submodule_id === sub.id);
+            {modSubmodules.length === 0 ? (
+              <p className="cm-empty is-inline">No submodules yet. Add a location or story beat.</p>
+            ) : (
+              <div className="cm-submodule-list">
+                {modSubmodules.map(sub => {
+                  const ts = getTypeStyle(sub.submodule_type);
+                  const isSubExpanded = expandedSubId === sub.id;
+                  const subScenes = scenes.filter(sc => sc.submodule_id === sub.id);
 
-                return (
-                  <div
-                    key={sub.id}
-                    className="rounded-lg border overflow-hidden"
-                    style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
-                  >
-                    {/* Submodule header */}
-                    <div className="flex items-start gap-3 p-4">
-                      <div
-                        className="flex-1 min-w-0 cursor-pointer"
-                        onClick={() => setExpandedSubId(isSubExpanded ? null : sub.id)}
-                      >
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-xs" style={{ color: '#6a6490' }}>
-                            {isSubExpanded ? '▼' : '▶'}
-                          </span>
-                          <span
-                            className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
-                            style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border }}
-                          >
-                            {sub.submodule_type ?? 'other'}
-                          </span>
-                          <span
-                            className="font-semibold text-sm"
-                            style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}
-                          >
-                            {sub.title}
-                          </span>
-                          {subScenes.length > 0 && (
-                            <span
-                              className="text-xs px-1.5 py-0.5 rounded"
-                              style={{ backgroundColor: '#1a1a3a', color: '#6090e0' }}
-                            >
-                              {subScenes.length} scene{subScenes.length !== 1 ? 's' : ''}
+                  return (
+                    <div
+                      key={sub.id}
+                      className={`cm-submodule${isSubExpanded ? ' is-expanded' : ''}`}
+                    >
+                      {/* Submodule header */}
+                      <div className="cm-submodule-head">
+                        <div
+                          className="cm-submodule-head-left"
+                          onClick={() => setExpandedSubId(isSubExpanded ? null : sub.id)}
+                        >
+                          <div className="cm-submodule-meta">
+                            <span className="cm-submodule-chevron">▶</span>
+                            <span className="cm-tag" style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border + '88', textTransform: 'capitalize' }}>
+                              {sub.submodule_type ?? 'other'}
                             </span>
+                            <span className="cm-submodule-title">{sub.title}</span>
+                            {subScenes.length > 0 && (
+                              <span className="cm-tag" style={{ color: 'var(--ink-3)' }}>
+                                {subScenes.length} scene{subScenes.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                          {sub.summary && (
+                            <p className="cm-submodule-summary">
+                              {sub.summary.substring(0, isSubExpanded ? undefined : 180)}{!isSubExpanded && sub.summary.length > 180 ? '…' : ''}
+                            </p>
                           )}
                         </div>
-                        {sub.summary && !isSubExpanded && (
-                          <p className="text-sm ml-5" style={{ color: '#9990b0', lineHeight: '1.5' }}>
-                            {sub.summary.substring(0, 180)}{sub.summary.length > 180 ? '…' : ''}
-                          </p>
-                        )}
-                        {sub.summary && isSubExpanded && (
-                          <p className="text-sm ml-5 mb-2" style={{ color: '#9990b0', lineHeight: '1.5', fontStyle: 'italic' }}>
-                            {sub.summary}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-1.5 shrink-0">
-                        <button
-                          onClick={() => setViewingSubmodule(sub)}
-                          className="text-xs px-2.5 py-1 rounded"
-                          style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => openEditSubmodule(sub)}
-                          className="text-xs px-2.5 py-1 rounded"
-                          style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSubmodule(sub)}
-                          className="text-xs px-2.5 py-1 rounded"
-                          style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Scenes + Linked Creatures (expanded) */}
-                    {isSubExpanded && (
-                      <div
-                        className="border-t"
-                        style={{ borderColor: '#2a2648', backgroundColor: '#0f0e1a' }}
-                      >
-                        {/* Linked Creatures */}
-                        {(() => {
-                          const linkedIds = parseLinkedIds(sub.linked_monster_ids);
-                          const linked = linkedIds
-                            .map(id => monsterStatblocks.find(m => m.id === id))
-                            .filter((m): m is MonsterStatblock => !!m);
-                          return (
-                            <div className="px-4 pt-3 pb-1">
-                              <div className="flex justify-between items-center mb-2">
-                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Stat Sheets</span>
-                                <Button variant="danger" size="sm" onClick={() => setCreaturePickerTarget({ kind: 'submodule', item: sub })} style={{ backgroundColor: '#3a1a1a', borderColor: '#7a2a2a' }}>
-                                  + Link Stat Sheet
-                                </Button>
-                              </div>
-                              {linked.length === 0 ? (
-                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No stat sheets linked.</p>
-                              ) : (
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                  {linked.map(m => {
-                                    const ts = getTypeStyle(m.creature_type);
-                                    return (
-                                      <div
-                                        key={m.id}
-                                        className="flex items-center gap-1.5 rounded border px-2 py-1"
-                                        style={{ backgroundColor: ts.bg, borderColor: ts.border }}
-                                      >
-                                        <button
-                                          onClick={() => setViewingLinkedCreature(m)}
-                                          className="text-xs font-medium"
-                                          style={{ color: ts.text }}
-                                        >
-                                          {m.name}{m.challenge_rating ? ` (CR ${m.challenge_rating})` : ''}
-                                        </button>
-                                        <button
-                                          onClick={() => handleUnlinkCreature({ kind: 'submodule', item: sub }, m.id)}
-                                          className="text-xs"
-                                          style={{ color: '#6a6490' }}
-                                          title="Unlink"
-                                        >
-                                          ✕
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {/* Linked Encounters */}
-                        {(() => {
-                          const linkedIds = parseLinkedIds(sub.linked_encounter_ids);
-                          const linked = linkedIds
-                            .map(id => encounters.find(e => e.id === id))
-                            .filter((e): e is Encounter => !!e);
-                          return (
-                            <div className="px-4 pt-1 pb-1">
-                              <div className="flex justify-between items-center mb-2">
-                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Linked Encounters</span>
-                                <Button variant="secondary" size="sm" onClick={() => setEncounterPickerSubId(sub.id)} style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', borderColor: '#2a4a7a' }}>
-                                  + Link Encounter
-                                </Button>
-                              </div>
-                              {linked.length === 0 ? (
-                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No encounters linked.</p>
-                              ) : (
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                  {linked.map(enc => {
-                                    const diffColors: Record<string, { bg: string; text: string; border: string }> = {
-                                      easy:   { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
-                                      medium: { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
-                                      hard:   { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
-                                      deadly: { bg: '#3a1010', text: '#e04040', border: '#7a2020' },
-                                    };
-                                    const dc = diffColors[enc.difficulty ?? ''] ?? { bg: '#1a1828', text: '#9990b0', border: '#3a3660' };
-                                    return (
-                                      <div
-                                        key={enc.id}
-                                        className="flex items-center gap-1.5 rounded border px-2 py-1"
-                                        style={{ backgroundColor: dc.bg, borderColor: dc.border }}
-                                      >
-                                        <button
-                                          onClick={() => setViewingLinkedEncounter(enc)}
-                                          className="text-xs font-medium"
-                                          style={{ color: dc.text }}
-                                        >
-                                          {enc.name}{enc.difficulty ? ` (${enc.difficulty})` : ''}
-                                        </button>
-                                        <button
-                                          onClick={() => handleUnlinkEncounter(sub, enc.id)}
-                                          className="text-xs"
-                                          style={{ color: '#6a6490' }}
-                                          title="Unlink"
-                                        >
-                                          ✕
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {/* Submodule Dependencies */}
-                        {(() => {
-                          const subPrereqs = submoduleDeps.filter(d => d.dependent_id === sub.id);
-                          const subDependents = submoduleDeps.filter(d => d.prerequisite_id === sub.id);
-                          const availableSubs = modSubmodules.filter(
-                            s => s.id !== sub.id && !subPrereqs.find(d => d.prerequisite_id === s.id),
-                          );
-                          return (
-                            <div className="px-4 pt-1 pb-1">
-                              <div className="flex justify-between items-center mb-2">
-                                <span style={{ ...sectionLabel, marginBottom: 0 }}>Submodule Dependencies</span>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => openAddSubDep(sub.id)}
-                                  style={{ backgroundColor: '#1a1a3a', color: '#9090d0', borderColor: '#3a3a7a' }}
-                                >
-                                  + Add Dep
-                                </Button>
-                              </div>
-                              {subPrereqs.length === 0 && subDependents.length === 0 ? (
-                                <p className="text-xs mb-2" style={{ color: '#6a6490', fontStyle: 'italic' }}>No dependencies.</p>
-                              ) : (
-                                <div className="space-y-1 mb-2">
-                                  {subPrereqs.map(dep => {
-                                    const prereqSub = modSubmodules.find(s => s.id === dep.prerequisite_id);
-                                    if (!prereqSub) return null;
-                                    return (
-                                      <div key={dep.id} className="flex items-center gap-2 text-xs">
-                                        <span style={{ color: '#6a6490' }}>Needs:</span>
-                                        <span
-                                          className="px-1.5 py-0.5 rounded font-bold"
-                                          style={{
-                                            backgroundColor: dep.dependency_type === 'required' ? '#1a2a1a' : '#1a1530',
-                                            color: dep.dependency_type === 'required' ? '#4caf7d' : '#b080e0',
-                                          }}
-                                        >
-                                          {dep.dependency_type === 'required' ? 'AND' : 'OR'}
-                                        </span>
-                                        <span style={{ color: '#e8d5b0' }}>{prereqSub.title}</span>
-                                        <button
-                                          onClick={() => deleteSubmoduleDep(dep.id)}
-                                          style={{ color: '#e05c5c' }}
-                                          title="Remove"
-                                        >
-                                          ✕
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                  {subDependents.map(dep => {
-                                    const depSub = modSubmodules.find(s => s.id === dep.dependent_id);
-                                    if (!depSub) return null;
-                                    return (
-                                      <div key={dep.id} className="flex items-center gap-2 text-xs">
-                                        <span style={{ color: '#6a6490' }}>Blocks:</span>
-                                        <span style={{ color: '#e8d5b0' }}>{depSub.title}</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {/* Submodule dep modal */}
-                              {subDepModalSubId === sub.id && (
-                                <Modal
-                                  isOpen
-                                  onClose={() => setSubDepModalSubId(null)}
-                                  title="Add Submodule Dependency"
-                                  onSave={handleSaveSubDep}
-                                >
-                                  <FormField label="This submodule needs...">
-                                    <select
-                                      value={subDepForm.prerequisite_id}
-                                      onChange={e => setSubDepForm(prev => ({ ...prev, prerequisite_id: e.target.value }))}
-                                      style={inputStyle}
-                                    >
-                                      <option value="">Select a submodule…</option>
-                                      {availableSubs.map(s => (
-                                        <option key={s.id} value={s.id}>{s.title}</option>
-                                      ))}
-                                    </select>
-                                  </FormField>
-                                  <FormField label="Dependency Type">
-                                    <div className="flex gap-4 mt-1">
-                                      {(['required', 'optional'] as const).map(t => (
-                                        <label key={t} className="flex items-center gap-2 cursor-pointer">
-                                          <input
-                                            type="radio"
-                                            name="subDepType"
-                                            value={t}
-                                            checked={subDepForm.dependency_type === t}
-                                            onChange={() => setSubDepForm(prev => ({ ...prev, dependency_type: t, group_id: '' }))}
-                                          />
-                                          <span className="text-sm capitalize" style={{ color: '#e8d5b0' }}>
-                                            {t === 'required' ? 'Required (AND)' : 'Optional (OR)'}
-                                          </span>
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </FormField>
-                                  <FormField label="Label (optional)">
-                                    <input
-                                      type="text"
-                                      value={subDepForm.label}
-                                      onChange={e => setSubDepForm(prev => ({ ...prev, label: e.target.value }))}
-                                      placeholder="e.g., Must finish before this location opens"
-                                      style={inputStyle}
-                                    />
-                                  </FormField>
-                                  {subDepError && (
-                                    <p className="text-sm mt-2" style={{ color: '#e05c5c' }}>{subDepError}</p>
-                                  )}
-                                </Modal>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        <div className="flex justify-between items-center px-4 py-3">
-                          <span style={{ ...sectionLabel, marginBottom: 0 }}>Scenes</span>
-                          <Button variant="primary" size="sm" onClick={() => openAddScene(sub.id)}>+ Add Scene</Button>
+                        <div className="cm-submodule-actions">
+                          <button
+                            onClick={() => setViewingSubmodule(sub)}
+                            className="cm-top-btn"
+                            style={{ fontSize: 12, padding: '4px 10px' }}
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => openEditSubmodule(sub)}
+                            className="cm-top-btn"
+                            style={{ fontSize: 12, padding: '4px 10px' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSubmodule(sub)}
+                            className="cm-top-btn"
+                            style={{ fontSize: 12, padding: '4px 10px', color: 'var(--accent)' }}
+                          >
+                            ✕
+                          </button>
                         </div>
-                        {subScenes.length === 0 ? (
-                          <p className="text-xs px-4 pb-4" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-                            No scenes yet.
-                          </p>
-                        ) : (
-                          <div className="space-y-2 px-4 pb-4">
-                            {subScenes.map(scene => {
-                              const scs = getTypeStyle(scene.scene_type);
-                              return (
-                                <div
-                                  key={scene.id}
-                                  className="rounded border p-3 flex items-start justify-between gap-3"
-                                  style={{ backgroundColor: '#141222', borderColor: '#2a2648' }}
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                      <span
-                                        className="text-xs px-1.5 py-0.5 rounded border capitalize shrink-0"
-                                        style={{ backgroundColor: scs.bg, color: scs.text, borderColor: scs.border }}
-                                      >
-                                        {scene.scene_type ?? 'other'}
-                                      </span>
-                                      <span
-                                        className="text-sm font-medium"
-                                        style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}
-                                      >
-                                        {scene.title}
-                                      </span>
-                                    </div>
-                                    {scene.summary && (
-                                      <p className="text-xs mt-0.5" style={{ color: '#9990b0', lineHeight: '1.5' }}>
-                                        {scene.summary.substring(0, 140)}{scene.summary.length > 140 ? '…' : ''}
-                                      </p>
-                                    )}
-                                    {/* Linked creatures on scene */}
-                                    {(() => {
-                                      const linkedIds = parseLinkedIds(scene.linked_monster_ids);
-                                      const linked = linkedIds
-                                        .map(id => monsterStatblocks.find(m => m.id === id))
-                                        .filter((m): m is MonsterStatblock => !!m);
-                                      return linked.length > 0 ? (
-                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                          {linked.map(m => {
-                                            const ts = getTypeStyle(m.creature_type);
-                                            return (
-                                              <div
-                                                key={m.id}
-                                                className="flex items-center gap-1 rounded border px-1.5 py-0.5"
-                                                style={{ backgroundColor: ts.bg, borderColor: ts.border }}
-                                              >
-                                                <button
-                                                  onClick={() => setViewingLinkedCreature(m)}
-                                                  className="text-xs"
-                                                  style={{ color: ts.text }}
-                                                >
-                                                  {m.name}{m.challenge_rating ? ` CR${m.challenge_rating}` : ''}
-                                                </button>
-                                                <button
-                                                  onClick={() => handleUnlinkCreature({ kind: 'scene', item: scene }, m.id)}
-                                                  className="text-xs"
-                                                  style={{ color: '#6a6490' }}
-                                                  title="Unlink"
-                                                >
-                                                  ✕
-                                                </button>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      ) : null;
-                                    })()}
-                                  </div>
-                                  <div className="flex gap-1.5 shrink-0">
-                                    <button
-                                      onClick={() => setCreaturePickerTarget({ kind: 'scene', item: scene })}
-                                      className="text-xs px-2 py-1 rounded"
-                                      style={{ backgroundColor: '#3a1a1a', color: '#e07070', border: '1px solid #7a2a2a' }}
-                                      title="Link stat sheet"
-                                    >
-                                      + Stat Sheet
-                                    </button>
-                                    <button
-                                      onClick={() => setViewingScene(scene)}
-                                      className="text-xs px-2.5 py-1 rounded"
-                                      style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
-                                    >
-                                      View
-                                    </button>
-                                    <button
-                                      onClick={() => openEditScene(scene)}
-                                      className="text-xs px-2.5 py-1 rounded"
-                                      style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteScene(scene)}
-                                      className="text-xs px-2.5 py-1 rounded"
-                                      style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+
+                      {/* Expanded body */}
+                      {isSubExpanded && (
+                        <div className="cm-submodule-body">
+
+                          {/* Linked Stat Sheets */}
+                          {(() => {
+                            const linkedIds = parseLinkedIds(sub.linked_monster_ids);
+                            const linked = linkedIds
+                              .map(id => monsterStatblocks.find(m => m.id === id))
+                              .filter((m): m is MonsterStatblock => !!m);
+                            return (
+                              <div className="cm-submodule-section">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                  <span className="cm-section-title">Linked Stat Sheets</span>
+                                  <button
+                                    className="cm-top-btn"
+                                    style={{ fontSize: 11, padding: '3px 9px' }}
+                                    onClick={() => setCreaturePickerTarget({ kind: 'submodule', item: sub })}
+                                  >
+                                    + Link
+                                  </button>
+                                </div>
+                                {linked.length === 0 ? (
+                                  <p className="cm-empty-inline">No stat sheets linked.</p>
+                                ) : (
+                                  <div className="cm-chip-list">
+                                    {linked.map(m => {
+                                      const cs = getTypeStyle(m.creature_type);
+                                      return (
+                                        <span key={m.id} className="cm-chip" style={{ borderColor: cs.border + '88' }}>
+                                          <span className="cm-chip-glyph" style={{ color: cs.text }}>☠</span>
+                                          <button onClick={() => setViewingLinkedCreature(m)} style={{ color: cs.text }}>
+                                            {m.name}{m.challenge_rating ? ` CR${m.challenge_rating}` : ''}
+                                          </button>
+                                          <button
+                                            onClick={() => handleUnlinkCreature({ kind: 'submodule', item: sub }, m.id)}
+                                            style={{ color: 'var(--ink-3)', marginLeft: 2 }}
+                                            title="Unlink"
+                                          >
+                                            ✕
+                                          </button>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Linked Encounters */}
+                          {(() => {
+                            const linkedIds = parseLinkedIds(sub.linked_encounter_ids);
+                            const linked = linkedIds
+                              .map(id => encounters.find(e => e.id === id))
+                              .filter((e): e is Encounter => !!e);
+                            const diffText: Record<string, string> = {
+                              easy: '#6ab87a', medium: '#d0c060', hard: '#e09050', deadly: '#e04040',
+                            };
+                            return (
+                              <div className="cm-submodule-section">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                  <span className="cm-section-title">Linked Encounters</span>
+                                  <button
+                                    className="cm-top-btn"
+                                    style={{ fontSize: 11, padding: '3px 9px' }}
+                                    onClick={() => setEncounterPickerSubId(sub.id)}
+                                  >
+                                    + Link
+                                  </button>
+                                </div>
+                                {linked.length === 0 ? (
+                                  <p className="cm-empty-inline">No encounters linked.</p>
+                                ) : (
+                                  <div className="cm-chip-list">
+                                    {linked.map(enc => {
+                                      const col = diffText[enc.difficulty ?? ''] ?? 'var(--ink-2)';
+                                      return (
+                                        <span key={enc.id} className="cm-chip">
+                                          <span className="cm-chip-glyph" style={{ color: col }}>⚔</span>
+                                          <button onClick={() => setViewingLinkedEncounter(enc)} style={{ color: col }}>
+                                            {enc.name}{enc.difficulty ? ` (${enc.difficulty})` : ''}
+                                          </button>
+                                          <button
+                                            onClick={() => handleUnlinkEncounter(sub, enc.id)}
+                                            style={{ color: 'var(--ink-3)', marginLeft: 2 }}
+                                            title="Unlink"
+                                          >
+                                            ✕
+                                          </button>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Submodule Dependencies */}
+                          {(() => {
+                            const subPrereqs = submoduleDeps.filter(d => d.dependent_id === sub.id);
+                            const subDependents = submoduleDeps.filter(d => d.prerequisite_id === sub.id);
+                            const availableSubs = modSubmodules.filter(
+                              s => s.id !== sub.id && !subPrereqs.find(d => d.prerequisite_id === s.id),
+                            );
+                            return (
+                              <div className="cm-submodule-section">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                  <span className="cm-section-title">Dependencies</span>
+                                  <button
+                                    className="cm-top-btn"
+                                    style={{ fontSize: 11, padding: '3px 9px' }}
+                                    onClick={() => openAddSubDep(sub.id)}
+                                  >
+                                    + Add
+                                  </button>
+                                </div>
+                                {subPrereqs.length === 0 && subDependents.length === 0 ? (
+                                  <p className="cm-empty-inline">No dependencies.</p>
+                                ) : (
+                                  <div className="cm-dep-list">
+                                    {subPrereqs.map(dep => {
+                                      const prereqSub = modSubmodules.find(s => s.id === dep.prerequisite_id);
+                                      if (!prereqSub) return null;
+                                      return (
+                                        <div key={dep.id} className="cm-dep-row">
+                                          <span style={{ color: 'var(--ink-3)', fontSize: 11, fontFamily: 'var(--mono)' }}>needs</span>
+                                          <span className={`cm-dep-badge cm-dep-badge-${dep.dependency_type === 'required' ? 'and' : 'or'}`}>
+                                            {dep.dependency_type === 'required' ? 'AND' : 'OR'}
+                                          </span>
+                                          <span style={{ flex: 1, fontFamily: 'var(--display)', fontSize: 14, color: 'var(--ink)' }}>{prereqSub.title}</span>
+                                          <button
+                                            onClick={() => deleteSubmoduleDep(dep.id)}
+                                            style={{ color: 'var(--accent)', fontSize: 12 }}
+                                            title="Remove"
+                                          >
+                                            ✕
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                    {subDependents.map(dep => {
+                                      const depSub = modSubmodules.find(s => s.id === dep.dependent_id);
+                                      if (!depSub) return null;
+                                      return (
+                                        <div key={dep.id} className="cm-dep-row">
+                                          <span style={{ color: 'var(--ink-3)', fontSize: 11, fontFamily: 'var(--mono)' }}>blocks</span>
+                                          <span style={{ flex: 1, fontFamily: 'var(--display)', fontSize: 14, color: 'var(--ink)' }}>{depSub.title}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                {subDepModalSubId === sub.id && (
+                                  <Modal
+                                    isOpen
+                                    onClose={() => setSubDepModalSubId(null)}
+                                    title="Add Submodule Dependency"
+                                    onSave={handleSaveSubDep}
+                                  >
+                                    <FormField label="This submodule needs...">
+                                      <select
+                                        value={subDepForm.prerequisite_id}
+                                        onChange={e => setSubDepForm(prev => ({ ...prev, prerequisite_id: e.target.value }))}
+                                        style={inputStyle}
+                                      >
+                                        <option value="">Select a submodule…</option>
+                                        {availableSubs.map(s => (
+                                          <option key={s.id} value={s.id}>{s.title}</option>
+                                        ))}
+                                      </select>
+                                    </FormField>
+                                    <FormField label="Dependency Type">
+                                      <div className="flex gap-4 mt-1">
+                                        {(['required', 'optional'] as const).map(t => (
+                                          <label key={t} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                              type="radio"
+                                              name="subDepType"
+                                              value={t}
+                                              checked={subDepForm.dependency_type === t}
+                                              onChange={() => setSubDepForm(prev => ({ ...prev, dependency_type: t, group_id: '' }))}
+                                            />
+                                            <span className="text-sm capitalize" style={{ color: 'var(--ink)' }}>
+                                              {t === 'required' ? 'Required (AND)' : 'Optional (OR)'}
+                                            </span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </FormField>
+                                    <FormField label="Label (optional)">
+                                      <input
+                                        type="text"
+                                        value={subDepForm.label}
+                                        onChange={e => setSubDepForm(prev => ({ ...prev, label: e.target.value }))}
+                                        placeholder="e.g., Must finish before this location opens"
+                                        style={inputStyle}
+                                      />
+                                    </FormField>
+                                    {subDepError && (
+                                      <p className="text-sm mt-2" style={{ color: 'var(--accent)' }}>{subDepError}</p>
+                                    )}
+                                  </Modal>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Scenes */}
+                          <div className="cm-submodule-section">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                              <span className="cm-section-title">Scenes</span>
+                              <Button variant="primary" size="sm" onClick={() => openAddScene(sub.id)}>+ Add Scene</Button>
+                            </div>
+                            {subScenes.length === 0 ? (
+                              <p className="cm-empty-inline">No scenes yet.</p>
+                            ) : (
+                              <div className="cm-scene-list">
+                                {subScenes.map((scene, idx) => {
+                                  const scs = getTypeStyle(scene.scene_type);
+                                  const linkedCreatureIds = parseLinkedIds(scene.linked_monster_ids);
+                                  const linkedCreatures = linkedCreatureIds
+                                    .map(id => monsterStatblocks.find(m => m.id === id))
+                                    .filter((m): m is MonsterStatblock => !!m);
+                                  return (
+                                    <div key={scene.id} className="cm-scene">
+                                      <div className="cm-scene-num">{idx + 1}</div>
+                                      <div className="cm-scene-body">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+                                          <span className="cm-tag" style={{ backgroundColor: scs.bg, color: scs.text, borderColor: scs.border + '88', textTransform: 'capitalize' }}>
+                                            {scene.scene_type ?? 'other'}
+                                          </span>
+                                          <span className="cm-scene-title">{scene.title}</span>
+                                        </div>
+                                        {scene.summary && (
+                                          <p className="cm-scene-summary">
+                                            {scene.summary.substring(0, 140)}{scene.summary.length > 140 ? '…' : ''}
+                                          </p>
+                                        )}
+                                        {linkedCreatures.length > 0 && (
+                                          <div className="cm-chip-list" style={{ marginTop: 6 }}>
+                                            {linkedCreatures.map(m => {
+                                              const cs = getTypeStyle(m.creature_type);
+                                              return (
+                                                <span key={m.id} className="cm-chip" style={{ borderColor: cs.border + '88' }}>
+                                                  <span className="cm-chip-glyph" style={{ color: cs.text }}>☠</span>
+                                                  <button onClick={() => setViewingLinkedCreature(m)} style={{ color: cs.text }}>
+                                                    {m.name}{m.challenge_rating ? ` CR${m.challenge_rating}` : ''}
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleUnlinkCreature({ kind: 'scene', item: scene }, m.id)}
+                                                    style={{ color: 'var(--ink-3)', marginLeft: 2 }}
+                                                    title="Unlink"
+                                                  >
+                                                    ✕
+                                                  </button>
+                                                </span>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="cm-scene-actions">
+                                        <button
+                                          onClick={() => setCreaturePickerTarget({ kind: 'scene', item: scene })}
+                                          className="cm-top-btn"
+                                          style={{ fontSize: 11, padding: '3px 8px' }}
+                                          title="Link stat sheet"
+                                        >
+                                          + Stat
+                                        </button>
+                                        <button
+                                          onClick={() => setViewingScene(scene)}
+                                          className="cm-top-btn"
+                                          style={{ fontSize: 11, padding: '3px 8px' }}
+                                        >
+                                          View
+                                        </button>
+                                        <button
+                                          onClick={() => openEditScene(scene)}
+                                          className="cm-top-btn"
+                                          style={{ fontSize: 11, padding: '3px 8px' }}
+                                        >
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteScene(scene)}
+                                          className="cm-top-btn"
+                                          style={{ fontSize: 11, padding: '3px 8px', color: 'var(--accent)' }}
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* ===== OVERVIEW SECTION ===== */}
       {activeSection === 'overview' && (
-        <div className="space-y-5">
+        <div className="cm-detail-body">
           {mod.synopsis && (
-            <div>
-              <div style={sectionLabel}>Synopsis</div>
-              <MarkdownContent text={mod.synopsis} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
+            <div className="cm-section">
+              <div className="cm-section-head">
+                <span className="cm-section-title">Synopsis</span>
+                <div className="cm-section-rule" />
+              </div>
+              <MarkdownContent text={mod.synopsis} className="cm-prose" style={{ lineHeight: '1.75', fontSize: '15px' }} />
             </div>
           )}
           {mod.encounters && (
-            <div>
-              <div style={sectionLabel}>Encounters & Story Beats</div>
-              <MarkdownContent text={mod.encounters} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7', fontFamily: 'Georgia, serif' }} />
+            <div className="cm-section">
+              <div className="cm-section-head">
+                <span className="cm-section-title">Encounters &amp; Story Beats</span>
+                <div className="cm-section-rule" />
+              </div>
+              <MarkdownContent text={mod.encounters} className="cm-prose" style={{ lineHeight: '1.75', fontSize: '15px' }} />
             </div>
           )}
           {mod.rewards && (
-            <div>
-              <div style={sectionLabel}>Rewards</div>
-              <MarkdownContent text={mod.rewards} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
+            <div className="cm-section">
+              <div className="cm-section-head">
+                <span className="cm-section-title">Rewards</span>
+                <div className="cm-section-rule" />
+              </div>
+              <MarkdownContent text={mod.rewards} className="cm-prose" style={{ lineHeight: '1.75', fontSize: '15px' }} />
             </div>
           )}
           {mod.dm_notes && (
-            <div>
-              <div style={sectionLabel}>DM Notes</div>
-              <MarkdownContent text={mod.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.7', fontStyle: 'italic' }} />
+            <div className="cm-section">
+              <div className="cm-section-head">
+                <span className="cm-section-title">DM Notes</span>
+                <div className="cm-section-rule" />
+              </div>
+              <blockquote className="cm-detail-note">
+                <MarkdownContent text={mod.dm_notes} style={{ lineHeight: '1.7', fontSize: '14px' }} />
+              </blockquote>
             </div>
           )}
           {!mod.synopsis && !mod.encounters && !mod.rewards && !mod.dm_notes && (
-            <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-              No details recorded for this module.
-            </p>
+            <p className="cm-empty">No details recorded for this module.</p>
           )}
         </div>
       )}
 
       {/* ===== DEPENDENCIES SECTION ===== */}
       {activeSection === 'dependencies' && (
-        <div className="space-y-6">
+        <div className="cm-detail-body">
 
           {/* Depends On (prerequisites) */}
-          <div>
-            <div className="flex justify-between items-center mb-3">
-              <span style={sectionLabel}>Depends On (Prerequisites)</span>
-              <Button variant="primary" size="sm" onClick={openAddModDep}>+ Add Dependency</Button>
+          <div className="cm-section">
+            <div className="cm-section-head">
+              <span className="cm-section-title">Depends On</span>
+              <div className="cm-section-rule" />
+              <Button variant="primary" size="sm" onClick={openAddModDep}>+ Add</Button>
             </div>
 
             {prereqs.length === 0 ? (
-              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-                No prerequisites. This module can start at any time.
-              </p>
+              <p className="cm-empty is-inline">No prerequisites — this module can start at any time.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="cm-dep-list">
                 {/* Required (AND) deps */}
                 {prereqs.filter(d => d.dependency_type === 'required').map(dep => {
                   const prereqMod = modules.find(m => m.id === dep.prerequisite_id);
                   if (!prereqMod) return null;
-                  const ps = statusStyles[prereqMod.status];
                   return (
-                    <div
-                      key={dep.id}
-                      className="rounded border p-3 flex items-center gap-3"
-                      style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
-                    >
-                      <span
-                        className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0"
-                        style={{ backgroundColor: '#1a2a1a', color: '#4caf7d', border: '1px solid #2a6a2a' }}
-                      >
-                        AND
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                    <div key={dep.id} className="cm-dep-row">
+                      <span className="cm-dep-badge cm-dep-badge-and">AND</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontFamily: 'var(--display)', fontSize: 15, color: 'var(--ink)' }}>
                           {prereqMod.chapter ? `${prereqMod.chapter}: ` : ''}{prereqMod.title}
                         </span>
                         {dep.label && (
-                          <span className="ml-2 text-xs" style={{ color: '#9990b0' }}>{dep.label}</span>
+                          <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--ink-2)', fontStyle: 'italic' }}>{dep.label}</span>
                         )}
                       </div>
-                      <span
-                        className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
-                        style={{ backgroundColor: ps.bg, color: ps.text, borderColor: ps.border }}
-                      >
+                      <span className={`cm-tag cm-tag-${prereqMod.status === 'active' ? 'active' : prereqMod.status === 'completed' ? 'muted' : 'planned'}`} style={{ textTransform: 'capitalize', flexShrink: 0 }}>
                         {prereqMod.status}
                       </span>
                       <button
                         onClick={() => deleteModuleDep(dep.id)}
-                        className="text-xs px-2 py-1 rounded shrink-0"
-                        style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                        title="Remove dependency"
+                        className="cm-top-btn"
+                        style={{ fontSize: 11, padding: '2px 7px', color: 'var(--accent)', flexShrink: 0 }}
+                        title="Remove"
                       >
                         ✕
                       </button>
@@ -1094,52 +1020,36 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                   );
                 })}
 
-                {/* Optional (OR) deps grouped by group_id */}
+                {/* Optional (OR) deps grouped */}
                 {orGroups.map((gid, gi) => {
                   const group = optionalPrereqs.filter(d => d.group_id === gid);
                   return (
-                    <div
-                      key={gid}
-                      className="rounded border overflow-hidden"
-                      style={{ borderColor: '#3a3060', backgroundColor: '#1a1828' }}
-                    >
-                      <div
-                        className="px-3 py-1.5 text-xs font-bold"
-                        style={{ backgroundColor: '#1a1530', color: '#b080e0', borderBottom: '1px solid #3a3060' }}
-                      >
-                        OR Group {gi + 1} — any one of these satisfies the requirement:
+                    <div key={gid} className="cm-dep-or-group">
+                      <div className="cm-dep-or-group-head">
+                        OR Group {gi + 1} — any one satisfies the requirement
                       </div>
-                      <div className="space-y-1 p-2">
+                      <div className="cm-dep-or-group-body">
                         {group.map(dep => {
                           const prereqMod = modules.find(m => m.id === dep.prerequisite_id);
                           if (!prereqMod) return null;
-                          const ps = statusStyles[prereqMod.status];
                           return (
-                            <div key={dep.id} className="flex items-center gap-3 px-1">
-                              <span
-                                className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0"
-                                style={{ backgroundColor: '#1a1530', color: '#b080e0', border: '1px solid #5a3080' }}
-                              >
-                                OR
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                            <div key={dep.id} className="cm-dep-row">
+                              <span className="cm-dep-badge cm-dep-badge-or">OR</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ fontFamily: 'var(--display)', fontSize: 15, color: 'var(--ink)' }}>
                                   {prereqMod.chapter ? `${prereqMod.chapter}: ` : ''}{prereqMod.title}
                                 </span>
                                 {dep.label && (
-                                  <span className="ml-2 text-xs" style={{ color: '#9990b0' }}>{dep.label}</span>
+                                  <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--ink-2)', fontStyle: 'italic' }}>{dep.label}</span>
                                 )}
                               </div>
-                              <span
-                                className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
-                                style={{ backgroundColor: ps.bg, color: ps.text, borderColor: ps.border }}
-                              >
+                              <span className={`cm-tag cm-tag-${prereqMod.status === 'active' ? 'active' : prereqMod.status === 'completed' ? 'muted' : 'planned'}`} style={{ textTransform: 'capitalize', flexShrink: 0 }}>
                                 {prereqMod.status}
                               </span>
                               <button
                                 onClick={() => deleteModuleDep(dep.id)}
-                                className="text-xs px-2 py-1 rounded shrink-0"
-                                style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
+                                className="cm-top-btn"
+                                style={{ fontSize: 11, padding: '2px 7px', color: 'var(--accent)', flexShrink: 0 }}
                                 title="Remove"
                               >
                                 ✕
@@ -1156,43 +1066,27 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           </div>
 
           {/* Required By (reverse view, read-only) */}
-          <div>
-            <div className="mb-3">
-              <span style={sectionLabel}>Required By (Blocks These Modules)</span>
+          <div className="cm-section">
+            <div className="cm-section-head">
+              <span className="cm-section-title">Blocks These Modules</span>
+              <div className="cm-section-rule" />
             </div>
             {dependents.length === 0 ? (
-              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
-                No modules depend on this one yet.
-              </p>
+              <p className="cm-empty is-inline">No modules depend on this one yet.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="cm-dep-list">
                 {dependents.map(dep => {
                   const depMod = modules.find(m => m.id === dep.dependent_id);
                   if (!depMod) return null;
-                  const ds = statusStyles[depMod.status];
                   return (
-                    <div
-                      key={dep.id}
-                      className="rounded border p-3 flex items-center gap-3"
-                      style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
-                    >
-                      <span
-                        className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0"
-                        style={{
-                          backgroundColor: dep.dependency_type === 'required' ? '#1a2a1a' : '#1a1530',
-                          color: dep.dependency_type === 'required' ? '#4caf7d' : '#b080e0',
-                          border: `1px solid ${dep.dependency_type === 'required' ? '#2a6a2a' : '#5a3080'}`,
-                        }}
-                      >
+                    <div key={dep.id} className="cm-dep-row">
+                      <span className={`cm-dep-badge cm-dep-badge-${dep.dependency_type === 'required' ? 'and' : 'or'}`}>
                         {dep.dependency_type === 'required' ? 'AND' : 'OR'}
                       </span>
-                      <span className="flex-1 text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                      <span style={{ flex: 1, fontFamily: 'var(--display)', fontSize: 15, color: 'var(--ink)' }}>
                         {depMod.chapter ? `${depMod.chapter}: ` : ''}{depMod.title}
                       </span>
-                      <span
-                        className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
-                        style={{ backgroundColor: ds.bg, color: ds.text, borderColor: ds.border }}
-                      >
+                      <span className={`cm-tag cm-tag-${depMod.status === 'active' ? 'active' : depMod.status === 'completed' ? 'muted' : 'planned'}`} style={{ textTransform: 'capitalize', flexShrink: 0 }}>
                         {depMod.status}
                       </span>
                     </div>
@@ -1238,7 +1132,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                   checked={modDepForm.dependency_type === t}
                   onChange={() => setModDepForm(prev => ({ ...prev, dependency_type: t, group_id: '' }))}
                 />
-                <span className="text-sm" style={{ color: '#e8d5b0' }}>
+                <span className="text-sm" style={{ color: 'var(--ink)' }}>
                   {t === 'required' ? 'Required (AND) — must be completed' : 'Optional (OR) — any one in group satisfies'}
                 </span>
               </label>
@@ -1480,26 +1374,26 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingSubmodule.summary && (
               <div>
                 <div style={sectionLabel}>Summary</div>
-                <MarkdownContent text={viewingSubmodule.summary} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingSubmodule.summary} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             {viewingSubmodule.content && (
               <div>
                 <div style={sectionLabel}>Full Write-Up</div>
-                <MarkdownContent text={viewingSubmodule.content} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
+                <MarkdownContent text={viewingSubmodule.content} className="text-sm" style={{ color: 'var(--ink)', lineHeight: '1.8', fontFamily: 'var(--display)' }} />
               </div>
             )}
             {viewingSubmodule.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <MarkdownContent text={viewingSubmodule.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingSubmodule.dm_notes} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => { setViewingSubmodule(null); openEditSubmodule(viewingSubmodule); }}
                 className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
               >
                 Edit
               </button>
@@ -1535,26 +1429,26 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingScene.summary && (
               <div>
                 <div style={sectionLabel}>Summary</div>
-                <MarkdownContent text={viewingScene.summary} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingScene.summary} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             {viewingScene.content && (
               <div>
                 <div style={sectionLabel}>Full Write-Up</div>
-                <MarkdownContent text={viewingScene.content} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.8', fontFamily: 'Georgia, serif' }} />
+                <MarkdownContent text={viewingScene.content} className="text-sm" style={{ color: 'var(--ink)', lineHeight: '1.8', fontFamily: 'var(--display)' }} />
               </div>
             )}
             {viewingScene.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <MarkdownContent text={viewingScene.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
+                <MarkdownContent text={viewingScene.dm_notes} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }} />
               </div>
             )}
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => { setViewingScene(null); openEditScene(viewingScene); }}
                 className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
               >
                 Edit
               </button>
@@ -1575,12 +1469,12 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         >
           <div className="space-y-3">
             {monsterStatblocks.length === 0 ? (
-              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
+              <p className="text-sm" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>
                 No stat sheets yet. Add some from the Stat Sheets tab first.
               </p>
             ) : (
               <>
-                <p className="text-xs" style={{ color: '#9990b0' }}>
+                <p className="text-xs" style={{ color: 'var(--ink-2)' }}>
                   Select a stat sheet to link to this {creaturePickerTarget.kind}.
                   Linked stat sheets are shown inline when viewing it.
                 </p>
@@ -1593,7 +1487,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                       <div
                         key={m.id}
                         className="rounded border p-3 flex items-center justify-between gap-3"
-                        style={{ backgroundColor: '#1a1828', borderColor: alreadyLinked ? ts.border : '#3a3660' }}
+                        style={{ backgroundColor: 'var(--paper)', borderColor: alreadyLinked ? ts.border : 'var(--rule)' }}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <span
@@ -1602,11 +1496,11 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                           >
                             {m.creature_type ?? 'other'}
                           </span>
-                          <span className="text-sm font-medium" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                          <span className="text-sm font-medium" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
                             {m.name}
                           </span>
                           {m.challenge_rating && (
-                            <span className="text-xs" style={{ color: '#9990b0' }}>CR {m.challenge_rating}</span>
+                            <span className="text-xs" style={{ color: 'var(--ink-2)' }}>CR {m.challenge_rating}</span>
                           )}
                         </div>
                         <button
@@ -1614,8 +1508,8 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                           disabled={alreadyLinked}
                           className="text-xs px-3 py-1 rounded shrink-0 disabled:opacity-50"
                           style={{
-                            backgroundColor: alreadyLinked ? '#1a1828' : '#a07830',
-                            color: alreadyLinked ? '#6a6490' : '#e8d5b0',
+                            backgroundColor: alreadyLinked ? 'var(--paper)' : '#a07830',
+                            color: alreadyLinked ? 'var(--ink-3)' : 'var(--ink)',
                             border: alreadyLinked ? '1px solid #3a3660' : 'none',
                           }}
                         >
@@ -1660,7 +1554,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                 </span>
               )}
               {viewingLinkedCreature.tags && (
-                <span className="text-xs" style={{ color: '#6a6490' }}>{viewingLinkedCreature.tags}</span>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewingLinkedCreature.tags}</span>
               )}
             </div>
             {viewingLinkedCreature.content && (
@@ -1669,11 +1563,11 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                 <pre
                   className="text-sm whitespace-pre-wrap rounded p-3"
                   style={{
-                    color: '#e8d5b0',
+                    color: 'var(--ink)',
                     lineHeight: '1.7',
                     fontFamily: 'monospace',
                     fontSize: '0.8rem',
-                    backgroundColor: '#0f0e17',
+                    backgroundColor: 'var(--bg)',
                     border: '1px solid #3a3660',
                   }}
                 >
@@ -1684,7 +1578,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingLinkedCreature.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
+                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
                   {viewingLinkedCreature.dm_notes}
                 </p>
               </div>
@@ -1704,12 +1598,12 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           title="Link Encounter"
         >
           <div className="space-y-3">
-            <p className="text-xs" style={{ color: '#9990b0' }}>
+            <p className="text-xs" style={{ color: 'var(--ink-2)' }}>
               Select an encounter to link to this submodule.
               Linked encounters are shown inline when viewing it.
             </p>
             {encounters.length === 0 ? (
-              <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>
+              <p className="text-sm" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>
                 No encounters found. Create some in the Encounter Builder tab first.
               </p>
             ) : (
@@ -1724,7 +1618,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                     hard:   { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
                     deadly: { bg: '#3a1010', text: '#e04040', border: '#7a2020' },
                   };
-                  const dc = diffColors[enc.difficulty ?? ''] ?? { bg: '#1a1828', text: '#9990b0', border: '#3a3660' };
+                  const dc = diffColors[enc.difficulty ?? ''] ?? { bg: 'var(--paper)', text: 'var(--ink-2)', border: 'var(--rule)' };
                   return (
                     <button
                       key={enc.id}
@@ -1732,14 +1626,14 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                       disabled={alreadyLinked}
                       className="w-full text-left rounded border p-3 flex items-center justify-between gap-3"
                       style={{
-                        backgroundColor: alreadyLinked ? '#1a1828' : dc.bg,
-                        borderColor: alreadyLinked ? '#3a3660' : dc.border,
+                        backgroundColor: alreadyLinked ? 'var(--paper)' : dc.bg,
+                        borderColor: alreadyLinked ? 'var(--rule)' : dc.border,
                         opacity: alreadyLinked ? 0.5 : 1,
                         cursor: alreadyLinked ? 'default' : 'pointer',
                       }}
                     >
                       <div className="min-w-0">
-                        <span className="text-sm font-medium block" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                        <span className="text-sm font-medium block" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
                           {enc.name}
                         </span>
                         {(enc.difficulty || enc.environment) && (
@@ -1749,7 +1643,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                         )}
                       </div>
                       {alreadyLinked && (
-                        <span className="text-xs shrink-0" style={{ color: '#6a6490' }}>linked</span>
+                        <span className="text-xs shrink-0" style={{ color: 'var(--ink-3)' }}>linked</span>
                       )}
                     </button>
                   );
@@ -1774,9 +1668,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             <div className="flex items-center gap-2 flex-wrap">
               {viewingLinkedEncounter.difficulty && (
                 <span className="text-xs px-2 py-0.5 rounded border capitalize" style={{
-                  backgroundColor: { easy: '#1a2a1a', medium: '#2a2a1a', hard: '#3a2010', deadly: '#3a1010' }[viewingLinkedEncounter.difficulty] ?? '#1a1828',
-                  color: { easy: '#6ab87a', medium: '#d0c060', hard: '#e09050', deadly: '#e04040' }[viewingLinkedEncounter.difficulty] ?? '#9990b0',
-                  borderColor: { easy: '#2a5a2a', medium: '#6a6020', hard: '#7a4a20', deadly: '#7a2020' }[viewingLinkedEncounter.difficulty] ?? '#3a3660',
+                  backgroundColor: { easy: '#1a2a1a', medium: '#2a2a1a', hard: '#3a2010', deadly: '#3a1010' }[viewingLinkedEncounter.difficulty] ?? 'var(--paper)',
+                  color: { easy: '#6ab87a', medium: '#d0c060', hard: '#e09050', deadly: '#e04040' }[viewingLinkedEncounter.difficulty] ?? 'var(--ink-2)',
+                  borderColor: { easy: '#2a5a2a', medium: '#6a6020', hard: '#7a4a20', deadly: '#7a2020' }[viewingLinkedEncounter.difficulty] ?? 'var(--rule)',
                 }}>
                   {viewingLinkedEncounter.difficulty}
                 </span>
@@ -1787,7 +1681,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
                 </span>
               )}
               {(viewingLinkedEncounter.party_size || viewingLinkedEncounter.party_level) && (
-                <span className="text-xs" style={{ color: '#6a6490' }}>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
                   {[
                     viewingLinkedEncounter.party_size ? `${viewingLinkedEncounter.party_size} players` : null,
                     viewingLinkedEncounter.party_level ? `level ${viewingLinkedEncounter.party_level}` : null,
@@ -1798,7 +1692,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingLinkedEncounter.description && (
               <div>
                 <div style={sectionLabel}>Description</div>
-                <p className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }}>
+                <p className="text-sm" style={{ color: 'var(--ink)', lineHeight: '1.7' }}>
                   {viewingLinkedEncounter.description}
                 </p>
               </div>
@@ -1806,7 +1700,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             {viewingLinkedEncounter.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
+                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
                   {viewingLinkedEncounter.dm_notes}
                 </p>
               </div>

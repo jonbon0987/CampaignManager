@@ -43,10 +43,10 @@ const emptyForm = (): LoreForm => ({
 });
 
 const inputEditStyle: React.CSSProperties = {
-  backgroundColor: '#0f0e17',
-  color: '#e8d5b0',
+  backgroundColor: 'var(--bg)',
+  color: 'var(--ink)',
   border: '1px solid #3a3660',
-  fontFamily: 'Georgia, Cambria, serif',
+  fontFamily: 'var(--serif)',
   fontSize: '0.875rem',
   borderRadius: '0.375rem',
   padding: '0.375rem 0.5rem',
@@ -54,7 +54,7 @@ const inputEditStyle: React.CSSProperties = {
 };
 
 const labelStyle: React.CSSProperties = {
-  color: '#c9a84c',
+  color: 'var(--gold)',
   fontSize: '0.65rem',
   fontWeight: 600,
   textTransform: 'uppercase',
@@ -132,7 +132,7 @@ export default function Lore() {
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
           className="text-sm rounded px-2 py-1.5 outline-none"
-          style={{ backgroundColor: '#1a1828', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+          style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid #3a3660', fontFamily: 'var(--serif)' }}
         >
           <option value="all">All Categories</option>
           {LORE_CATEGORIES.map(c => (
@@ -206,9 +206,9 @@ export default function Lore() {
                         id={`dm-only-${entry.id}`}
                         checked={editForm.dm_only}
                         onChange={e => setEditForm(prev => prev ? { ...prev, dm_only: e.target.checked } : prev)}
-                        style={{ accentColor: '#c9a84c' }}
+                        style={{ accentColor: 'var(--gold)' }}
                       />
-                      <label htmlFor={`dm-only-${entry.id}`} className="text-xs" style={{ color: '#9990b0' }}>DM only</label>
+                      <label htmlFor={`dm-only-${entry.id}`} className="text-xs" style={{ color: 'var(--ink-2)' }}>DM only</label>
                     </div>
                   </div>
                 ) : (
@@ -217,7 +217,7 @@ export default function Lore() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0 pr-2">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif' }}>
+                            <h3 className="font-bold" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)' }}>
                               {entry.title || 'Untitled'}
                             </h3>
                             {entry.dm_only && <Badge label="DM Only" color="red" size="xs" />}
@@ -225,12 +225,12 @@ export default function Lore() {
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <Badge label={formatCategory(cat)} color={categoryBadgeColor[cat]} size="xs" />
-                          <span className="text-xs ml-1" style={{ color: '#6a6490' }}>{isExpanded ? '▲' : '▼'}</span>
+                          <span className="text-xs ml-1" style={{ color: 'var(--ink-3)' }}>{isExpanded ? '▲' : '▼'}</span>
                         </div>
                       </div>
 
                       {entry.content && (
-                        <p className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.6', whiteSpace: isExpanded ? 'pre-wrap' : undefined }}>
+                        <p className="text-sm mt-2" style={{ color: 'var(--ink-2)', lineHeight: '1.6', whiteSpace: isExpanded ? 'pre-wrap' : undefined }}>
                           {isExpanded
                             ? entry.content
                             : entry.content.substring(0, 140) + (entry.content.length > 140 ? '…' : '')}
@@ -298,9 +298,9 @@ export default function Lore() {
             id="new-lore-dm-only"
             checked={form.dm_only}
             onChange={e => setForm(prev => ({ ...prev, dm_only: e.target.checked }))}
-            style={{ accentColor: '#c9a84c' }}
+            style={{ accentColor: 'var(--gold)' }}
           />
-          <label htmlFor="new-lore-dm-only" className="text-xs" style={{ color: '#9990b0' }}>DM only (hidden from players)</label>
+          <label htmlFor="new-lore-dm-only" className="text-xs" style={{ color: 'var(--ink-2)' }}>DM only (hidden from players)</label>
         </div>
       </Modal>
     </div>

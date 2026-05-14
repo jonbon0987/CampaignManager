@@ -1,12 +1,7 @@
 import { useState, useRef } from 'react';
-import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
-import { SectionHeader } from '../ui/SectionHeader';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { EmptyState } from '../ui/EmptyState';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
@@ -19,8 +14,8 @@ import ModuleWeb from './ModuleWeb';
 type SubTab = 'list' | 'web';
 
 const SUB_TABS: { id: SubTab; label: string }[] = [
-  { id: 'list', label: 'Module List' },
-  { id: 'web',  label: 'Module Web' },
+  { id: 'list', label: 'List' },
+  { id: 'web',  label: 'Dependencies' },
 ];
 
 type ModuleForm = {
@@ -52,20 +47,9 @@ const statusBadgeColor: Record<Module['status'], 'blue' | 'green' | 'muted'> = {
 };
 
 const FACTION_TYPE_COLORS: Record<string, string> = {
-  guild: '#c9a84c', government: '#70a0e0', religious: '#d0c060',
+  guild: 'var(--gold)', government: '#70a0e0', religious: '#d0c060',
   criminal: '#e05c5c', military: '#60b0a0', arcane: '#b080e0',
-  merchant: '#e09050', other: '#9990b0',
-};
-
-const inputEditStyle: React.CSSProperties = {
-  backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660',
-  fontFamily: 'Georgia, Cambria, serif', fontSize: '0.875rem', borderRadius: '0.375rem',
-  padding: '0.375rem 0.5rem', width: '100%',
-};
-
-const labelStyle: React.CSSProperties = {
-  color: '#c9a84c', fontSize: '0.65rem', fontWeight: 600,
-  textTransform: 'uppercase', letterSpacing: '0.08em',
+  merchant: '#e09050', other: 'var(--ink-2)',
 };
 
 const selectStyle: React.CSSProperties = {
@@ -74,22 +58,25 @@ const selectStyle: React.CSSProperties = {
   WebkitAppearance: 'none' as const,
 };
 
+const labelStyle: React.CSSProperties = {
+  fontSize: '11px',
+  color: 'var(--ink-3)',
+  fontFamily: 'var(--mono)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+};
+
 // ─── module list ──────────────────────────────────────────────────────────────
 
 function ModuleList() {
   const {
-    modules, upsertModule, submodules, moduleSheets, moduleDeps,
+    modules, upsertModule, moduleDeps,
     upsertModuleDep, selectedCampaignId, factions,
   } = useCampaign();
 
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [moduleForm, setModuleForm] = useState<ModuleForm>(emptyModuleForm());
-
-  // inline edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ chapter: string; title: string; status: Module['status']; faction_id: string | null; node_role: 'start' | 'boss' | null } | null>(null);
-  const [saving, setSaving] = useState(false);
 
   // Textarea refs for entity link toolbar
   const newSynopsisRef = useRef<HTMLTextAreaElement>(null);
@@ -139,180 +126,81 @@ function ModuleList() {
     setPendingDeps(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const startEdit = (mod: Module) => {
-    setEditingId(mod.id);
-    setEditForm({ chapter: mod.chapter ?? '', title: mod.title, status: mod.status, faction_id: mod.faction_id, node_role: mod.node_role });
-  };
-
-  const cancelEdit = () => { setEditingId(null); setEditForm(null); };
-
-  const saveEdit = async () => {
-    if (!editForm || !editingId) return;
-    const mod = modules.find(m => m.id === editingId);
-    if (!mod) return;
-    setSaving(true);
-    await upsertModule({
-      id: editingId,
-      chapter: editForm.chapter || null,
-      title: editForm.title,
-      status: editForm.status,
-      faction_id: editForm.faction_id,
-      node_role: editForm.node_role,
-      synopsis: mod.synopsis,
-      encounters: mod.encounters,
-      rewards: mod.rewards,
-      dm_notes: mod.dm_notes,
-      played_session: mod.played_session,
-    });
-    setSaving(false);
-    cancelEdit();
-  };
-
   // already-added prereq IDs (to exclude from the dep add select)
   const pendingPrereqIds = new Set(pendingDeps.map(d => d.prerequisite_id));
   const availableForDep = modules.filter(m => !pendingPrereqIds.has(m.id));
 
   const selectedModule = modules.find(m => m.id === selectedModuleId);
-  if (selectedModule) {
-    return (
-      <ModuleDetail
-        module={selectedModule}
-        onBack={() => setSelectedModuleId(null)}
-        onModuleDeleted={() => setSelectedModuleId(null)}
-      />
-    );
-  }
+  const sortedModules = [...modules].sort((a, b) => {
+    const aId = a.chapter ? parseFloat(a.chapter) : Infinity;
+    const bId = b.chapter ? parseFloat(b.chapter) : Infinity;
+    return aId - bId;
+  });
 
   return (
-    <div className="max-w-4xl">
-      <SectionHeader
-        title="Modules"
-        subtitle={`${modules.length} module${modules.length !== 1 ? 's' : ''}`}
-        onAdd={openAddModule}
-        addLabel="Add Module"
-      />
-
-      {modules.length === 0 ? (
-        <EmptyState message="No modules yet. Add your first campaign chapter!" onAdd={openAddModule} addLabel="Add Module" />
-      ) : (
-        <div className="space-y-3">
-          {[...modules].sort((a, b) => {
-            const aId = a.chapter ? parseFloat(a.chapter) : Infinity;
-            const bId = b.chapter ? parseFloat(b.chapter) : Infinity;
-            return aId - bId;
-          }).map(mod => {
-            const isEditing = editingId === mod.id;
-            const modSubmodules = submodules.filter(s => s.module_id === mod.id);
-            const modSheets = moduleSheets.filter(s => s.module_id === mod.id);
-            const prereqCount = moduleDeps.filter(d => d.dependent_id === mod.id).length;
-            const blockerCount = moduleDeps.filter(d => d.prerequisite_id === mod.id).length;
-
+    <div className="cm-md" style={{ height: '100%' }}>
+      {/* Left rail */}
+      <div className="cm-md-list">
+        <div className="cm-md-list-head">
+          <div>
+            <div className="cm-md-eyebrow">Campaign</div>
+            <div className="cm-md-title">Modules</div>
+          </div>
+          <button className="cm-md-add" onClick={openAddModule}>+ Add</button>
+        </div>
+        <div className="cm-md-list-scroll">
+          {modules.length === 0 ? (
+            <div className="cm-empty">No modules yet.</div>
+          ) : sortedModules.map(mod => {
+            const isActive = selectedModuleId === mod.id;
+            const faction = mod.faction_id ? factions.find(f => f.id === mod.faction_id) : null;
+            const fColor = faction ? (FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? 'var(--ink-2)') : null;
             return (
-              <div
+              <button
                 key={mod.id}
-                className="rounded-lg border p-4 flex items-center gap-4 transition-colors duration-150"
-                style={{
-                  backgroundColor: '#1a1828',
-                  borderColor: isEditing ? '#c9a84c' : '#2e2c4a',
-                }}
+                className={`cm-row ${isActive ? 'is-active' : ''}`}
+                onClick={() => setSelectedModuleId(mod.id)}
               >
-                {isEditing && editForm ? (
-                  <div className="flex-1 flex flex-col gap-3">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="block mb-1" style={labelStyle}>Module ID</label>
-                        <input type="number" value={editForm.chapter} onChange={e => setEditForm(prev => prev ? { ...prev, chapter: e.target.value } : prev)} autoFocus style={inputEditStyle} />
-                      </div>
-                      <div>
-                        <label className="block mb-1" style={labelStyle}>Name</label>
-                        <input type="text" value={editForm.title} onChange={e => setEditForm(prev => prev ? { ...prev, title: e.target.value } : prev)} style={inputEditStyle} />
-                      </div>
-                      <div>
-                        <label className="block mb-1" style={labelStyle}>Status</label>
-                        <select value={editForm.status} onChange={e => setEditForm(prev => prev ? { ...prev, status: e.target.value as Module['status'] } : prev)} style={inputEditStyle}>
-                          <option value="planned">Planned</option>
-                          <option value="active">Active</option>
-                          <option value="completed">Completed</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block mb-1" style={labelStyle}>Faction / Storyline</label>
-                        <select value={editForm.faction_id ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, faction_id: e.target.value || null } : prev)} style={inputEditStyle}>
-                          <option value="">-- No Faction --</option>
-                          {factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block mb-1" style={labelStyle}>Node Role</label>
-                        <select value={editForm.node_role ?? ''} onChange={e => setEditForm(prev => prev ? { ...prev, node_role: (e.target.value || null) as 'start' | 'boss' | null } : prev)} style={inputEditStyle}>
-                          <option value="">Normal</option>
-                          <option value="start">Starting Mission</option>
-                          <option value="boss">Final Boss</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
-                        {saving ? 'Saving…' : 'Save'}
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {mod.chapter && (
-                      <div className="text-3xl font-bold shrink-0 w-10 text-center" style={{ color: '#3a3660', fontFamily: 'Georgia, Cambria, serif' }}>
-                        {mod.chapter}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif' }}>
-                        {mod.chapter ? `${mod.chapter}: ` : ''}{mod.title || 'Untitled'}
-                      </h3>
-                      {mod.synopsis && (
-                        <p className="text-sm mt-0.5" style={{ color: '#9990b0', lineHeight: '1.5' }}>
-                          {mod.synopsis.substring(0, 120)}{mod.synopsis.length > 120 ? '…' : ''}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <Badge label={mod.status} color={statusBadgeColor[mod.status]} size="xs" />
-                        {(() => {
-                          const faction = mod.faction_id ? factions.find(f => f.id === mod.faction_id) : null;
-                          if (!faction) return null;
-                          const fColor = FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? '#9990b0';
-                          return (
-                            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: fColor + '1a', color: fColor, border: `1px solid ${fColor}33` }}>
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: fColor, display: 'inline-block' }} />
-                              {faction.name}
-                            </span>
-                          );
-                        })()}
-                        {mod.node_role && (
-                          <Badge label={mod.node_role === 'start' ? 'Start' : 'Boss'} color={mod.node_role === 'start' ? 'gold' : 'red'} size="xs" />
-                        )}
-                        {modSubmodules.length > 0 && <Badge label={`${modSubmodules.length} submodule${modSubmodules.length !== 1 ? 's' : ''}`} color="gold" size="xs" />}
-                        {modSheets.length > 0 && <Badge label={`${modSheets.length} sheet${modSheets.length !== 1 ? 's' : ''}`} color="muted" size="xs" />}
-                        {prereqCount > 0 && <Badge label={`${prereqCount} prereq${prereqCount !== 1 ? 's' : ''}`} color="blue" size="xs" />}
-                        {blockerCount > 0 && <Badge label={`blocks ${blockerCount}`} color="green" size="xs" />}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button variant="ghost" size="sm" onClick={() => startEdit(mod)} title="Edit">
-                        <Pencil size={14} strokeWidth={1.5} />
-                      </Button>
-                      <Button variant="primary" size="sm" onClick={() => setSelectedModuleId(mod.id)}>
-                        Open →
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
+                <span className="cm-row-glyph">❧</span>
+                <span className="cm-row-body">
+                  <span className="cm-row-title">
+                    {mod.chapter ? `${mod.chapter}. ` : ''}{mod.title || 'Untitled'}
+                  </span>
+                  <span className="cm-row-sub">
+                    {mod.status.charAt(0).toUpperCase() + mod.status.slice(1)}
+                    {faction ? ` · ${faction.name}` : ''}
+                  </span>
+                  {fColor && (
+                    <span className="cm-row-badges">
+                      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: fColor }} />
+                    </span>
+                  )}
+                </span>
+                <span className="cm-row-meta" style={{ color: mod.status === 'active' ? 'var(--gold)' : mod.status === 'completed' ? 'var(--moss)' : 'var(--ink-3)' }}>
+                  {mod.status === 'active' ? '●' : mod.status === 'completed' ? '✓' : '○'}
+                </span>
+              </button>
             );
           })}
         </div>
-      )}
+      </div>
+
+      {/* Detail panel */}
+      <div className="cm-md-detail">
+        {selectedModule ? (
+          <ModuleDetail
+            module={selectedModule}
+            onBack={() => setSelectedModuleId(null)}
+            onModuleDeleted={() => setSelectedModuleId(null)}
+          />
+        ) : (
+          <div className="cm-empty" style={{ paddingTop: 80 }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>❧</div>
+            <div style={{ fontFamily: 'var(--display)', fontSize: 18, color: 'var(--ink-2)' }}>Select a module</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 6 }}>Choose from the list to view details.</div>
+          </div>
+        )}
+      </div>
 
       {/* create module modal */}
       <Modal isOpen={moduleModalOpen} onClose={() => setModuleModalOpen(false)} title="New Module" onSave={handleCreateModule} wide>
@@ -361,16 +249,16 @@ function ModuleList() {
         {modules.length > 0 && (
           <div className="mt-2">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold" style={{ color: '#9990b0', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <span className="text-xs font-semibold" style={{ color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Prerequisites (optional)
               </span>
               {!depAddOpen && (
                 <button
                   onClick={() => setDepAddOpen(true)}
                   className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: '#2a2840', color: '#c9a84c', border: '1px solid #3a3660', cursor: 'pointer' }}
+                  style={{ backgroundColor: 'var(--rule-soft)', color: 'var(--gold)', border: '1px solid #3a3660', cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#3a3860')}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#2a2840')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--rule-soft)')}
                 >
                   ＋ Add
                 </button>
@@ -387,17 +275,17 @@ function ModuleList() {
                     <span
                       key={idx}
                       className="flex items-center gap-1.5 text-xs px-2 py-1 rounded"
-                      style={{ backgroundColor: '#0d0c1a', border: '1px solid #3a3660', color: '#e8d5b0' }}
+                      style={{ backgroundColor: '#0d0c1a', border: '1px solid #3a3660', color: 'var(--ink)' }}
                     >
                       {label}
-                      <span style={{ color: dep.dependency_type === 'optional' ? '#c9a84c' : '#9990b0' }}>
+                      <span style={{ color: dep.dependency_type === 'optional' ? 'var(--gold)' : 'var(--ink-2)' }}>
                         · {dep.dependency_type}
                       </span>
                       <button
                         onClick={() => removePendingDep(idx)}
-                        style={{ background: 'none', border: 'none', color: '#6a6490', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                        style={{ background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer', padding: 0, lineHeight: 1 }}
                         onMouseEnter={e => (e.currentTarget.style.color = '#e05c5c')}
-                        onMouseLeave={e => (e.currentTarget.style.color = '#6a6490')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
                       >
                         ✕
                       </button>
@@ -453,8 +341,8 @@ function ModuleList() {
                     onClick={addPendingDep}
                     disabled={!depAddForm.prerequisite_id}
                     className="text-xs px-3 py-1 rounded disabled:opacity-40"
-                    style={{ backgroundColor: '#a07830', color: '#e8d5b0', border: 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#c9a84c')}
+                    style={{ backgroundColor: '#a07830', color: 'var(--ink)', border: 'none', cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--gold)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#a07830')}
                   >
                     Add
@@ -462,9 +350,9 @@ function ModuleList() {
                   <button
                     onClick={() => { setDepAddOpen(false); setDepAddForm({ prerequisite_id: '', dependency_type: 'required', label: '' }); }}
                     className="text-xs px-3 py-1 rounded"
-                    style={{ color: '#9990b0', border: '1px solid #3a3660', background: 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#9990b0')}
+                    style={{ color: 'var(--ink-2)', border: '1px solid #3a3660', background: 'none', cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-2)')}
                   >
                     Cancel
                   </button>
@@ -483,33 +371,20 @@ function ModuleList() {
 export default function Modules() {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('list');
 
-  const pillStyle = (active: boolean): React.CSSProperties => ({
-    padding: '6px 16px',
-    borderRadius: '6px',
-    fontSize: '13px',
-    fontWeight: active ? 600 : 400,
-    cursor: 'pointer',
-    border: 'none',
-    backgroundColor: active ? '#2a2840' : 'transparent',
-    color: active ? '#c9a84c' : '#9990b0',
-    transition: 'all 0.15s',
-    fontFamily: 'Georgia, Cambria, serif',
-  });
-
   return (
-    <div className="flex flex-col">
-      <div className="flex gap-1 p-1 rounded-lg mb-5 self-start" style={{ backgroundColor: '#12111e' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="cm-subtabs">
         {SUB_TABS.map(tab => (
           <button
             key={tab.id}
+            className={`cm-subtab${activeSubTab === tab.id ? ' is-active' : ''}`}
             onClick={() => setActiveSubTab(tab.id)}
-            style={pillStyle(activeSubTab === tab.id)}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      <div>
+      <div style={{ flex: 1, minHeight: 0, overflow: activeSubTab === 'list' ? 'auto' : 'hidden' }}>
         {activeSubTab === 'list' && <ModuleList />}
         {activeSubTab === 'web'  && <ModuleWeb />}
       </div>

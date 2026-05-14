@@ -62,7 +62,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
           border: '1px solid #3a3660',
           borderRadius: '8px',
           padding: '10px 12px',
-          color: open ? '#c9a84c' : '#9990b0',
+          color: open ? 'var(--gold)' : 'var(--ink-2)',
           fontSize: '18px',
           cursor: disabled ? 'default' : 'pointer',
           lineHeight: 1,
@@ -87,7 +87,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               bottom: 'calc(100% + 8px)',
               left: 0,
               width: '280px',
-              backgroundColor: '#1a1830',
+              backgroundColor: 'var(--paper)',
               border: '1px solid #3a3660',
               borderRadius: '10px',
               padding: '14px',
@@ -98,7 +98,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
             <div
               style={{
                 fontSize: '11px',
-                color: '#c9a84c',
+                color: 'var(--gold)',
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -114,8 +114,8 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               disabled={loading}
               style={{
                 width: '100%',
-                backgroundColor: '#c9a84c',
-                color: '#0f0e17',
+                backgroundColor: 'var(--gold)',
+                color: 'var(--bg)',
                 border: 'none',
                 borderRadius: '6px',
                 padding: '8px 12px',
@@ -139,7 +139,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               style={{
                 margin: '12px 0 8px',
                 fontSize: '10px',
-                color: '#6a6490',
+                color: 'var(--ink-3)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 display: 'flex',
@@ -147,9 +147,9 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
                 gap: '6px',
               }}
             >
-              <div style={{ flex: 1, height: '1px', backgroundColor: '#3a3660' }} />
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--rule)' }} />
               or
-              <div style={{ flex: 1, height: '1px', backgroundColor: '#3a3660' }} />
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--rule)' }} />
             </div>
 
             <input
@@ -166,8 +166,8 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               disabled={loading}
               style={{
                 width: '100%',
-                backgroundColor: '#22203a',
-                color: '#e8d5b0',
+                backgroundColor: 'var(--paper-2)',
+                color: 'var(--ink)',
                 border: '1px solid #3a3660',
                 borderRadius: '6px',
                 padding: '8px 10px',
@@ -189,7 +189,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
                 borderRadius: '6px',
                 padding: '6px 12px',
                 fontSize: '12px',
-                color: '#9990b0',
+                color: 'var(--ink-2)',
                 cursor: loading || !gdocsUrl.trim() ? 'default' : 'pointer',
                 opacity: loading || !gdocsUrl.trim() ? 0.5 : 1,
               }}
@@ -197,7 +197,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               Parse Google Doc
             </button>
 
-            <div style={{ marginTop: '10px', fontSize: '10px', color: '#6a6490', lineHeight: 1.4 }}>
+            <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--ink-3)', lineHeight: 1.4 }}>
               Google Docs must be shared publicly (Anyone with the link).
             </div>
           </div>

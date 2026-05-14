@@ -40,15 +40,15 @@ export default function AssistantFullPage() {
         <span style={{ fontSize: '24px' }}>✦</span>
         <div style={{ flex: 1 }}>
           <h1 style={{
-            color: '#c9a84c',
+            color: 'var(--gold)',
             fontWeight: 700,
             fontSize: '20px',
-            fontFamily: 'Georgia, serif',
+            fontFamily: 'var(--display)',
             margin: 0,
           }}>
             Campaign Assistant
           </h1>
-          <div style={{ color: '#6a6490', fontSize: '12px', marginTop: '2px' }}>
+          <div style={{ color: 'var(--ink-3)', fontSize: '12px', marginTop: '2px' }}>
             Chat, upload documents, and manage your campaign data
           </div>
         </div>
@@ -59,7 +59,7 @@ export default function AssistantFullPage() {
             background: 'none',
             border: '1px solid #3a3660',
             borderRadius: '6px',
-            color: aiProvider === 'gemini' ? '#4285f4' : '#c9a84c',
+            color: aiProvider === 'gemini' ? '#4285f4' : 'var(--gold)',
             fontSize: '12px',
             cursor: 'pointer',
             padding: '5px 12px',
@@ -75,7 +75,7 @@ export default function AssistantFullPage() {
               background: 'none',
               border: '1px solid #3a3660',
               borderRadius: '6px',
-              color: '#6a6490',
+              color: 'var(--ink-3)',
               fontSize: '12px',
               cursor: 'pointer',
               padding: '5px 12px',
@@ -97,15 +97,15 @@ export default function AssistantFullPage() {
       }}>
         {messages.length === 0 && (
           <div style={{
-            color: '#4a4470',
+            color: 'var(--ink-3)',
             fontSize: '14px',
             textAlign: 'center',
             marginTop: '80px',
             lineHeight: '2',
           }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✦</div>
-            <div style={{ fontSize: '16px', color: '#6a6490' }}>Try asking:</div>
-            <div style={{ marginTop: '12px', color: '#6a6490', fontSize: '14px' }}>
+            <div style={{ fontSize: '16px', color: 'var(--ink-3)' }}>Try asking:</div>
+            <div style={{ marginTop: '12px', color: 'var(--ink-3)', fontSize: '14px' }}>
               "Here are my session notes — organize them"<br />
               "Add a new NPC named Mira, a halfling fence"<br />
               "Flesh out my next module"<br />
@@ -119,8 +119,8 @@ export default function AssistantFullPage() {
             key={idx}
             style={msg.role === 'user' ? {
               alignSelf: 'flex-end',
-              backgroundColor: '#2a2650',
-              color: '#e8d5b0',
+              backgroundColor: 'var(--paper-2)',
+              color: 'var(--ink)',
               padding: '12px 16px',
               borderRadius: '12px 12px 2px 12px',
               maxWidth: '70%',
@@ -129,8 +129,8 @@ export default function AssistantFullPage() {
               whiteSpace: 'pre-wrap',
             } : {
               alignSelf: 'flex-start',
-              backgroundColor: '#1a1830',
-              color: '#e8d5b0',
+              backgroundColor: 'var(--paper)',
+              color: 'var(--ink)',
               padding: '12px 16px',
               borderRadius: '2px 12px 12px 12px',
               maxWidth: '85%',
@@ -140,9 +140,9 @@ export default function AssistantFullPage() {
               border: '1px solid #2a2650',
             }}
           >
-            {msg.content || (loading && msg.role === 'assistant' ? <span style={{ color: '#6a6490' }}>Thinking…</span> : msg.content)}
+            {msg.content || (loading && msg.role === 'assistant' ? <span style={{ color: 'var(--ink-3)' }}>Thinking…</span> : msg.content)}
             {msg.role === 'assistant' && msg.isExtracting && (
-              <div style={{ color: '#6a6490', fontSize: '12px', marginTop: '8px', fontStyle: 'italic' }}>
+              <div style={{ color: 'var(--ink-3)', fontSize: '12px', marginTop: '8px', fontStyle: 'italic' }}>
                 {msg.extractingLabel ?? 'Extracting structured changes…'}
               </div>
             )}
@@ -198,12 +198,12 @@ export default function AssistantFullPage() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: '#2a2650',
+              backgroundColor: 'var(--paper-2)',
               border: '1px solid #3a3660',
               borderRadius: '6px',
               padding: '4px 10px',
               fontSize: '12px',
-              color: '#c9a84c',
+              color: 'var(--gold)',
             }}>
               <span>📄</span>
               <span style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -217,7 +217,7 @@ export default function AssistantFullPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#6a6490',
+                  color: 'var(--ink-3)',
                   fontSize: '14px',
                   cursor: 'pointer',
                   padding: '0 2px',
@@ -246,8 +246,8 @@ export default function AssistantFullPage() {
             rows={2}
             style={{
               flex: 1,
-              backgroundColor: '#1a1830',
-              color: '#e8d5b0',
+              backgroundColor: 'var(--paper)',
+              color: 'var(--ink)',
               border: '1px solid #3a3660',
               borderRadius: '8px',
               padding: '10px 12px',
@@ -286,8 +286,8 @@ export default function AssistantFullPage() {
           ) : (
             <button
               style={{
-                backgroundColor: '#c9a84c',
-                color: '#0f0e17',
+                backgroundColor: 'var(--gold)',
+                color: 'var(--bg)',
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px 16px',

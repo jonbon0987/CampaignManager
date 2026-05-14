@@ -131,9 +131,9 @@ function ImportEntityCard({
   return (
     <div
       style={{
-        border: `1px solid ${statusTint?.border ?? (accepted ? '#3a3660' : '#2e2c4a')}`,
+        border: `1px solid ${statusTint?.border ?? (accepted ? 'var(--rule)' : 'var(--rule)')}`,
         borderRadius: '8px',
-        backgroundColor: statusTint?.bg ?? (accepted ? '#1a1828' : '#141220'),
+        backgroundColor: statusTint?.bg ?? (accepted ? 'var(--paper)' : '#141220'),
         padding: '12px',
         opacity: accepted || applied ? 1 : 0.55,
         transition: 'opacity 0.15s, border-color 0.15s',
@@ -146,12 +146,12 @@ function ImportEntityCard({
           checked={accepted}
           onChange={onToggle}
           disabled={applying || applied}
-          style={{ marginTop: '4px', accentColor: '#c9a84c', cursor: applying || applied ? 'default' : 'pointer' }}
+          style={{ marginTop: '4px', accentColor: 'var(--gold)', cursor: applying || applied ? 'default' : 'pointer' }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <Badge label={meta.label} color={meta.badgeColor} size="xs" />
-            <span style={{ color: '#e8d5b0', fontWeight: 600, fontSize: '13px' }}>
+            <span style={{ color: 'var(--ink)', fontWeight: 600, fontSize: '13px' }}>
               {describeAction(action)}
             </span>
           </div>
@@ -183,7 +183,7 @@ function ImportEntityCard({
             marginTop: '8px',
             marginLeft: '26px',
             fontSize: '11px',
-            color: '#9990b0',
+            color: 'var(--ink-2)',
             fontStyle: 'italic',
             lineHeight: 1.5,
           }}
@@ -195,7 +195,7 @@ function ImportEntityCard({
       {/* Match override (not for relationships, which have no lookup list) */}
       {action.type !== 'upsertRelationship' && matchCandidates.length > 0 && !applied && (
         <div style={{ marginTop: '10px', marginLeft: '26px' }}>
-          <label style={{ fontSize: '10px', color: '#6a6490', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <label style={{ fontSize: '10px', color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Match to
           </label>
           <select
@@ -243,7 +243,7 @@ function ImportEntityCard({
       )}
 
       {diffRows.length === 0 && !applied && (
-        <div style={{ marginTop: '10px', marginLeft: '26px', fontSize: '11px', color: '#6a6490' }}>
+        <div style={{ marginTop: '10px', marginLeft: '26px', fontSize: '11px', color: 'var(--ink-3)' }}>
           No field changes vs current entity.
         </div>
       )}
@@ -266,7 +266,7 @@ function DiffRowEditor({ row, disabled, onChange }: DiffRowEditorProps) {
 
   const oldDisplay =
     row.oldValue == null || row.oldValue === ''
-      ? <span style={{ color: '#4a4470' }}>(empty)</span>
+      ? <span style={{ color: 'var(--ink-3)' }}>(empty)</span>
       : <span>{String(row.oldValue)}</span>;
 
   return (
@@ -274,7 +274,7 @@ function DiffRowEditor({ row, disabled, onChange }: DiffRowEditorProps) {
       <div
         style={{
           fontSize: '10px',
-          color: '#c9a84c',
+          color: 'var(--gold)',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
           marginBottom: '4px',
@@ -286,7 +286,7 @@ function DiffRowEditor({ row, disabled, onChange }: DiffRowEditorProps) {
       <div
         style={{
           fontSize: '11px',
-          color: '#6a6490',
+          color: 'var(--ink-3)',
           textDecoration: 'line-through',
           marginBottom: '4px',
           wordBreak: 'break-word',
@@ -295,13 +295,13 @@ function DiffRowEditor({ row, disabled, onChange }: DiffRowEditorProps) {
         {oldDisplay}
       </div>
       {isBoolean ? (
-        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#e8d5b0', fontSize: '12px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ink)', fontSize: '12px' }}>
           <input
             type="checkbox"
             checked={!!row.newValue}
             disabled={disabled}
             onChange={e => onChange(e.target.checked)}
-            style={{ accentColor: '#c9a84c' }}
+            style={{ accentColor: 'var(--gold)' }}
           />
           {row.newValue ? 'true' : 'false'}
         </label>
@@ -371,7 +371,7 @@ export default function DocumentImportReview({ actions, onApply, onDismiss, appl
 
   return (
     <div style={{ marginTop: '12px', borderTop: '1px solid #3a3660', paddingTop: '10px' }}>
-      <div style={{ color: '#9990b0', fontSize: '12px', marginBottom: '10px' }}>
+      <div style={{ color: 'var(--ink-2)', fontSize: '12px', marginBottom: '10px' }}>
         Proposed changes ({actions.length}):
       </div>
 
@@ -421,8 +421,8 @@ export default function DocumentImportReview({ actions, onApply, onDismiss, appl
             onClick={handleApply}
             disabled={applying || selectedCount === 0}
             style={{
-              backgroundColor: '#c9a84c',
-              color: '#0f0e17',
+              backgroundColor: 'var(--gold)',
+              color: 'var(--bg)',
               border: 'none',
               borderRadius: '6px',
               padding: '6px 14px',
@@ -473,6 +473,6 @@ const ghostBtn = {
   borderRadius: '6px',
   padding: '6px 10px',
   fontSize: '11px',
-  color: '#9990b0',
+  color: 'var(--ink-2)',
   cursor: 'pointer',
 } as const;

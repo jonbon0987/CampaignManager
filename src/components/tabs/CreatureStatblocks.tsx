@@ -103,7 +103,7 @@ export function isStatBlockEmpty(m: MonsterStatblock): boolean {
 // --------------- Styles ---------------
 
 const sectionLabel = {
-  color: '#c9a84c',
+  color: 'var(--gold)',
   fontSize: '0.7rem',
   fontWeight: 600,
   textTransform: 'uppercase' as const,
@@ -186,8 +186,8 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 
   const traitRow = (label: string, value: string | null) =>
     value ? (
-      <div key={label} style={{ fontSize: '0.8rem', color: '#e8d5b0', lineHeight: '1.5' }}>
-        <span style={{ color: '#c9a84c', fontWeight: 600 }}>{label}: </span>
+      <div key={label} style={{ fontSize: '0.8rem', color: 'var(--ink)', lineHeight: '1.5' }}>
+        <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{label}: </span>
         {value}
       </div>
     ) : null;
@@ -199,24 +199,24 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
           {m.armor_class != null && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#e8d5b0' }}>{m.armor_class}</div>
-              <div style={{ fontSize: '0.65rem', color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>{m.armor_class}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 AC{m.ac_descriptor ? ` (${m.ac_descriptor})` : ''}
               </div>
             </div>
           )}
           {m.hit_points != null && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#e8d5b0' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>
                 {m.hit_points}{m.hit_dice ? ` (${m.hit_dice})` : ''}
               </div>
-              <div style={{ fontSize: '0.65rem', color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>HP</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>HP</div>
             </div>
           )}
           {m.speed && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#e8d5b0' }}>{m.speed}</div>
-              <div style={{ fontSize: '0.65rem', color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Speed</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>{m.speed}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Speed</div>
             </div>
           )}
         </div>
@@ -229,14 +229,14 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
             const score = m[key];
             return (
               <div key={key} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>
                   {key.toUpperCase()}
                 </div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e8d5b0' }}>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--ink)' }}>
                   {score ?? '—'}
                 </div>
                 {score != null && (
-                  <div style={{ fontSize: '0.7rem', color: '#9990b0' }}>{abilityMod(score)}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--ink-2)' }}>{abilityMod(score)}</div>
                 )}
               </div>
             );
@@ -267,11 +267,11 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
             as="pre"
             text={m.content}
             style={{
-              color: '#e8d5b0',
+              color: 'var(--ink)',
               lineHeight: '1.7',
-              fontFamily: 'Georgia, serif',
+              fontFamily: 'var(--display)',
               fontSize: '0.85rem',
-              backgroundColor: '#0f0e17',
+              backgroundColor: 'var(--bg)',
               border: '1px solid #3a3660',
               borderRadius: '6px',
               padding: '12px',
@@ -290,7 +290,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
             as="p"
             text={m.dm_notes}
             style={{
-              color: '#9990b0',
+              color: 'var(--ink-2)',
               fontSize: '0.875rem',
               lineHeight: '1.6',
               fontStyle: 'italic',
@@ -564,7 +564,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     const mod = !isNaN(score) ? abilityMod(score) : null;
     return (
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '0.65rem', color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
         <input
           type="number"
           min={1}
@@ -574,7 +574,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           placeholder="—"
           style={{ ...inputStyle, textAlign: 'center', padding: '4px 2px', width: '100%' }}
         />
-        <div style={{ fontSize: '0.65rem', color: '#9990b0', marginTop: '3px', minHeight: '1em' }}>
+        <div style={{ fontSize: '0.65rem', color: 'var(--ink-2)', marginTop: '3px', minHeight: '1em' }}>
           {mod ?? ''}
         </div>
       </div>
@@ -582,14 +582,14 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
   };
 
   return (
-    <div style={{ maxWidth: '900px' }}>
+    <div style={{ maxWidth: '900px', padding: '28px' }}>
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold leading-tight" style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}>
+          <h2 className="text-xl font-bold leading-tight" style={{ color: 'var(--gold)', fontFamily: 'var(--serif)' }}>
             Stat Sheets
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{monsterStatblocks.length} stat sheet{monsterStatblocks.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>{monsterStatblocks.length} stat sheet{monsterStatblocks.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex-1" />
         <button
@@ -602,7 +602,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         <button
           onClick={openAdd}
           className="inline-flex items-center justify-center gap-1.5 rounded border font-medium transition-colors duration-150 px-3 py-1.5 text-sm"
-          style={{ backgroundColor: '#c9a84c', color: '#0f0e17', borderColor: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+          style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)', borderColor: 'var(--gold)', fontFamily: 'var(--serif)' }}
         >
           + Add Stat Sheet
         </button>
@@ -617,16 +617,16 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 min-w-0 px-3 py-1.5 rounded text-sm outline-none"
-            style={{ backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660', minWidth: '180px' }}
+            style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid #3a3660', minWidth: '180px' }}
           />
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={() => setFilterType('all')}
               className="text-xs px-2.5 py-1 rounded border"
               style={{
-                backgroundColor: filterType === 'all' ? '#2a2050' : '#1a1828',
-                color: filterType === 'all' ? '#c9a84c' : '#9990b0',
-                borderColor: filterType === 'all' ? '#5a4a90' : '#3a3660',
+                backgroundColor: filterType === 'all' ? '#2a2050' : 'var(--paper)',
+                color: filterType === 'all' ? 'var(--gold)' : 'var(--ink-2)',
+                borderColor: filterType === 'all' ? '#5a4a90' : 'var(--rule)',
               }}
             >
               All
@@ -640,9 +640,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                   onClick={() => setFilterType(active ? 'all' : t)}
                   className="text-xs px-2.5 py-1 rounded border capitalize"
                   style={{
-                    backgroundColor: active ? ts.bg : '#1a1828',
-                    color: active ? ts.text : '#9990b0',
-                    borderColor: active ? ts.border : '#3a3660',
+                    backgroundColor: active ? ts.bg : 'var(--paper)',
+                    color: active ? ts.text : 'var(--ink-2)',
+                    borderColor: active ? ts.border : 'var(--rule)',
                   }}
                 >
                   {t}
@@ -655,11 +655,11 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
       {/* List */}
       {monsterStatblocks.length === 0 ? (
-        <div className="text-center py-16" style={{ color: '#6a6490' }}>
+        <div className="text-center py-16" style={{ color: 'var(--ink-3)' }}>
           No stat sheets yet. Add your first one!
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-10" style={{ color: '#6a6490' }}>
+        <div className="text-center py-10" style={{ color: 'var(--ink-3)' }}>
           No stat sheets match your filter.
         </div>
       ) : (
@@ -670,7 +670,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               <div
                 key={m.id}
                 className="rounded-lg border p-4 flex items-center gap-4"
-                style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
+                style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)' }}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -680,7 +680,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                     >
                       {m.creature_type ?? 'other'}
                     </span>
-                    <span className="font-semibold text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+                    <span className="font-semibold text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
                       {m.name}
                     </span>
                     {m.challenge_rating && (
@@ -700,7 +700,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                     )}
                   </div>
                   {m.tags && (
-                    <p className="text-xs" style={{ color: '#6a6490' }}>{m.tags}</p>
+                    <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{m.tags}</p>
                   )}
                 </div>
                 <div className="flex gap-1.5 shrink-0">
@@ -714,14 +714,14 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                   <button
                     onClick={() => openEdit(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
+                    style={{ backgroundColor: 'var(--paper-2)', color: '#e05c5c', border: '1px solid #3a3660' }}
                   >
                     ✕
                   </button>
@@ -752,8 +752,8 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 disabled={genLoading}
                 className="flex-1 text-sm py-1.5 font-medium transition-colors"
                 style={{
-                  backgroundColor: genMode === mode ? '#2a2050' : '#1a1828',
-                  color: genMode === mode ? '#c9a84c' : '#9990b0',
+                  backgroundColor: genMode === mode ? '#2a2050' : 'var(--paper)',
+                  color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)',
                 }}
               >
                 {mode === 'cr' ? 'By Challenge Rating' : 'By Party'}
@@ -763,7 +763,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
           {genMode === 'cr' ? (
             <>
-              <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6' }}>
+              <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
                 Optionally enter a CR, or leave blank for a random difficulty.
               </p>
               <FormField label="Challenge Rating (optional)">
@@ -778,13 +778,13 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                   disabled={genLoading}
                 />
               </FormField>
-              <div className="text-xs" style={{ color: '#4a4470' }}>
+              <div className="text-xs" style={{ color: 'var(--ink-3)' }}>
                 Valid CRs: 0, 1/8, 1/4, 1/2, 1–30
               </div>
             </>
           ) : (
             <>
-              <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6' }}>
+              <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
                 Enter your party details and the DM Assistant will build a boss stat sheet scaled to challenge them.
               </p>
               <div className="grid grid-cols-2 gap-4">
@@ -824,16 +824,16 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               disabled={genLoading}
               className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
               style={{
-                backgroundColor: genUseCampaignContext ? '#2a2050' : '#1a1828',
-                color: genUseCampaignContext ? '#c9a84c' : '#9990b0',
-                border: `1px solid ${genUseCampaignContext ? '#5a4090' : '#3a3660'}`,
+                backgroundColor: genUseCampaignContext ? '#2a2050' : 'var(--paper)',
+                color: genUseCampaignContext ? 'var(--gold)' : 'var(--ink-2)',
+                border: `1px solid ${genUseCampaignContext ? '#5a4090' : 'var(--rule)'}`,
               }}
             >
               {genUseCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
             </button>
           </div>
           {genUseCampaignContext && (
-            <p className="text-xs" style={{ color: '#4a4470' }}>
+            <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
               Will include the last 5 session summaries, lore entries, and locations from your campaign.
             </p>
           )}
@@ -854,7 +854,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             <p className="text-sm" style={{ color: '#e05c5c' }}>{genError}</p>
           )}
           {genLoading && (
-            <p className="text-sm" style={{ color: '#9990b0', fontStyle: 'italic' }}>
+            <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
               Generating stat block…
             </p>
           )}
@@ -1011,7 +1011,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 </span>
               )}
               {viewing.tags && (
-                <span className="text-xs" style={{ color: '#6a6490' }}>{viewing.tags}</span>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewing.tags}</span>
               )}
             </div>
             <StatBlockBody m={viewing} />
@@ -1019,7 +1019,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               <button
                 onClick={() => { setViewing(null); openEdit(viewing); }}
                 className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
               >
                 Edit
               </button>

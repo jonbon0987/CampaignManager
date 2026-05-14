@@ -12,7 +12,7 @@ import { PCEditModal } from '../PCEditModal';
 import { getFactionTypeStyle } from '../../lib/theme';
 
 const labelStyle: React.CSSProperties = {
-  color: '#c9a84c',
+  color: 'var(--gold)',
   fontSize: '0.65rem',
   fontWeight: 600,
   textTransform: 'uppercase',
@@ -50,13 +50,13 @@ export default function PCs() {
                 >
                   <div className="flex items-start justify-between group">
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-bold" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif' }}>
+                      <h3 className="font-bold" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)' }}>
                         {pc.character_name || 'Unnamed'}
                       </h3>
-                      <div className="text-sm mt-1" style={{ color: '#c9a84c' }}>
+                      <div className="text-sm mt-1" style={{ color: 'var(--gold)' }}>
                         {[pc.race, pc.class].filter(Boolean).join(' · ')}
                       </div>
-                      <div className="text-xs mt-1" style={{ color: '#9990b0' }}>
+                      <div className="text-xs mt-1" style={{ color: 'var(--ink-2)' }}>
                         Player: {pc.player_name || '—'}
                       </div>
                       {pc.faction_ids && pc.faction_ids.length > 0 && (
@@ -107,34 +107,34 @@ export default function PCs() {
                       <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setEditModalPcId(pc.id); }} title="Edit">
                         <Pencil size={12} strokeWidth={1.5} />
                       </Button>
-                      <span className="text-xs" style={{ color: '#6a6490' }}>
+                      <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
                         {isExpanded ? '▲' : '▼'}
                       </span>
                     </div>
                   </div>
 
                   {isExpanded && (
-                    <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
+                    <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--rule)' }}>
                       {pc.background && (
                         <div className="mb-3">
                           <div className="mb-1" style={labelStyle}>Background</div>
-                          <MarkdownContent text={pc.background} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
+                          <MarkdownContent text={pc.background} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }} />
                         </div>
                       )}
                       {pc.story_hooks && (
                         <div className="mb-3">
                           <div className="mb-1" style={labelStyle}>Story Hooks</div>
-                          <MarkdownContent text={pc.story_hooks} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
+                          <MarkdownContent text={pc.story_hooks} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }} />
                         </div>
                       )}
                       {pc.key_npcs && (
                         <div className="mb-3">
                           <div className="mb-1" style={labelStyle}>Key NPCs</div>
-                          <MarkdownContent text={pc.key_npcs} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
+                          <MarkdownContent text={pc.key_npcs} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }} />
                         </div>
                       )}
                       {!pc.background && !pc.story_hooks && !pc.key_npcs && (
-                        <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No additional details recorded.</p>
+                        <p className="text-sm" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>No additional details recorded.</p>
                       )}
                     </div>
                   )}

@@ -1,4 +1,4 @@
-import { resolveProvider, generateText, friendlyError } from './_ai';
+import { resolveProvider, generateText, friendlyError } from './_ai.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

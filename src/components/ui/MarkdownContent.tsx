@@ -9,22 +9,24 @@ import type { EntityType } from './StatBlockText';
  * Supported types: creature, npc, location, session, faction, hook.
  */
 interface MarkdownContentProps {
-  text: string | null | undefined;
+  text?: string | null | undefined;
+  content?: string | null | undefined;
   style?: CSSProperties;
   className?: string;
 }
 
-export function MarkdownContent({ text, style, className }: MarkdownContentProps) {
-  if (!text) return null;
+export function MarkdownContent({ text, content, style, className }: MarkdownContentProps) {
+  const resolved = text ?? content;
+  if (!resolved) return null;
 
   // Check if there are any entity links
-  const hasEntityLinks = ENTITY_LINK_RE.test(text);
+  const hasEntityLinks = ENTITY_LINK_RE.test(resolved);
   ENTITY_LINK_RE.lastIndex = 0;
 
   if (!hasEntityLinks) {
     return (
       <div className={`markdown-preview ${className ?? ''}`} style={style}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{resolved}</ReactMarkdown>
       </div>
     );
   }
@@ -36,9 +38,9 @@ export function MarkdownContent({ text, style, className }: MarkdownContentProps
   let key = 0;
 
   ENTITY_LINK_RE.lastIndex = 0;
-  while ((match = ENTITY_LINK_RE.exec(text)) !== null) {
+  while ((match = ENTITY_LINK_RE.exec(resolved)) !== null) {
     if (match.index > lastIndex) {
-      const mdChunk = text.slice(lastIndex, match.index);
+      const mdChunk = resolved.slice(lastIndex, match.index);
       parts.push(
         <ReactMarkdown key={key++} remarkPlugins={[remarkGfm]}>{mdChunk}</ReactMarkdown>
       );
@@ -53,10 +55,10 @@ export function MarkdownContent({ text, style, className }: MarkdownContentProps
     );
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < text.length) {
+  if (lastIndex < resolved.length) {
     parts.push(
       <ReactMarkdown key={key++} remarkPlugins={[remarkGfm]}>
-        {text.slice(lastIndex)}
+        {resolved.slice(lastIndex)}
       </ReactMarkdown>
     );
   }
