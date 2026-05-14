@@ -11,13 +11,6 @@ import ModuleWeb from './ModuleWeb';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type SubTab = 'list' | 'web';
-
-const SUB_TABS: { id: SubTab; label: string }[] = [
-  { id: 'list', label: 'List' },
-  { id: 'web',  label: 'Dependencies' },
-];
-
 type ModuleForm = {
   chapter: string | null;
   title: string;
@@ -366,28 +359,13 @@ function ModuleList() {
   );
 }
 
-// ─── shell with sub-tabs ──────────────────────────────────────────────────────
+// ─── shell ────────────────────────────────────────────────────────────────────
 
-export default function Modules() {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('list');
-
+export default function Modules({ viewMode = 'list' }: { viewMode?: string; setViewMode?: (v: string) => void }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="cm-subtabs">
-        {SUB_TABS.map(tab => (
-          <button
-            key={tab.id}
-            className={`cm-subtab${activeSubTab === tab.id ? ' is-active' : ''}`}
-            onClick={() => setActiveSubTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ flex: 1, minHeight: 0, overflow: activeSubTab === 'list' ? 'auto' : 'hidden' }}>
-        {activeSubTab === 'list' && <ModuleList />}
-        {activeSubTab === 'web'  && <ModuleWeb />}
-      </div>
+    <div style={{ height: '100%', overflow: viewMode === 'list' ? 'auto' : 'hidden' }}>
+      {viewMode === 'list' && <ModuleList />}
+      {viewMode === 'web'  && <ModuleWeb />}
     </div>
   );
 }

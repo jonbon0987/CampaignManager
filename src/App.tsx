@@ -29,8 +29,20 @@ import useLocalStorage from './hooks/useLocalStorage';
 // cast = PCs + NPCs + Factions, world = Locations + Lore, combat = Stat Sheets + Encounters
 export type Tab = 'overview' | 'cast' | 'world' | 'modules' | 'sessions' | 'combat' | 'settings';
 
+// View options per tab — what the topbar segment control shows
+const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
+  cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship Web' }],
+  modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Dependencies' }],
+  sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }, { id: 'hooks', label: 'Hooks' }],
+};
+
+const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
+  cast: 'list', modules: 'list', sessions: 'log',
+};
+
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', modules: 'list', sessions: 'log' });
   const [aiOpen, setAiOpen] = useLocalStorage<boolean>('dnd-ai-open', true);
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
   const [isMobile, setIsMobile] = useState(false);
@@ -41,6 +53,9 @@ function AppInner({ user }: { user: User }) {
   const [runMode, setRunMode] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+
+  const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
+  const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
   const { loading, error, pcs } = useCampaign();
   const chat = useAIChat();
   const pcNames = pcs.map(p => p.character_name).filter(Boolean);
@@ -125,6 +140,9 @@ function AppInner({ user }: { user: User }) {
             runMode={runMode}
             isMobile={isMobile}
             proposalCount={chat.pendingProposalCount}
+            viewMode={activeViewMode}
+            setViewMode={setViewMode}
+            viewOptions={TAB_VIEW_OPTIONS[activeTab]}
           />
 
           <div className="cm-canvas">
@@ -138,10 +156,10 @@ function AppInner({ user }: { user: User }) {
             ) : (
               <>
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
-                {activeTab === 'cast'      && <Characters />}
+                {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} />}
                 {activeTab === 'world'     && <LoreLocations />}
-                {activeTab === 'modules'   && <Modules />}
-                {activeTab === 'sessions'  && <SessionNotes />}
+                {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} />}
+                {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} />}
                 {activeTab === 'combat'    && <CombatView />}
                 {activeTab === 'settings'  && <SettingsView />}
               </>
