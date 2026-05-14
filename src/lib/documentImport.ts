@@ -5,6 +5,7 @@
 //   2. submitDocument(input, ctx) → POST /api/parse-document → { summary, actions }
 //   3. The caller (AIAssistant) passes the actions into DocumentImportReview.
 
+import { authHeaders } from './apiClient';
 import type {
   SessionInsert,
   PlayerCharacterInsert,
@@ -157,7 +158,7 @@ export async function submitDocument(
     : '/api/parse-document';
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({ ...input, campaignContext, userInstructions, provider }),
     signal,
   });

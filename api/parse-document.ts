@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mammoth from 'mammoth';
 import { resolveProvider, streamSummary, structuredExtract, friendlyError, type AIProvider } from './_ai.js';
+import { requireAuth } from './_auth.js';
 
 type RequestBody = {
   kind: 'text' | 'docx' | 'pdf' | 'gdocs-url';
@@ -382,6 +383,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
 
   const body = req.body as RequestBody;
   if (!body || !body.kind || !body.campaignContext) {

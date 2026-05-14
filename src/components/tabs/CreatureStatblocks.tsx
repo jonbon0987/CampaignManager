@@ -9,6 +9,7 @@ import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
 import { StatBlockText } from '../ui/StatBlockText';
 import { getAIProvider } from '../../lib/aiProvider';
+import { authHeaders } from '../../lib/apiClient';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -499,7 +500,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     try {
       const res = await fetch('/api/generate-creature', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ prompt, provider: getAIProvider() }),
       });
       const data = await res.json() as { text?: string; error?: string };
