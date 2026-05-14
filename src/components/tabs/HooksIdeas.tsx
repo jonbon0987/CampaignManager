@@ -41,9 +41,9 @@ const categoryBadgeColor: Record<Category, 'red' | 'gold' | 'green' | 'blue'> = 
 
 const categoryStyles: Record<Category, { border: string; badge: string; badgeBg: string }> = {
   main_plot:     { border: '#6a2a2a', badge: '#e05c5c', badgeBg: '#3a1a1a' },
-  side_quest:    { border: '#4a3a1a', badge: '#c9a84c', badgeBg: '#2a2a10' },
+  side_quest:    { border: '#4a3a1a', badge: 'var(--gold)', badgeBg: '#2a2a10' },
   character_arc: { border: '#1a3a3a', badge: '#4caf7d', badgeBg: '#0a2a1a' },
-  faction:       { border: '#2a1a4a', badge: '#9060e0', badgeBg: '#1a0a3a' },
+  faction:       { border: '#3a2a1a', badge: '#c97a55', badgeBg: '#2a1a10' },
 };
 
 const defaultStyle = categoryStyles.side_quest;
@@ -138,7 +138,7 @@ export default function HooksIdeas() {
   const activeCount = hooks.filter(h => h.is_active).length;
 
   return (
-    <div>
+    <div style={{ padding: '28px' }}>
       <SectionHeader
         title="Hooks & Ideas"
         subtitle={`${activeCount} active · ${hooks.length} total`}
@@ -153,8 +153,8 @@ export default function HooksIdeas() {
                   onClick={() => setFilterCategory(c)}
                   className="text-xs px-3 py-1.5 rounded transition-colors"
                   style={{
-                    backgroundColor: filterCategory === c ? '#3a3660' : '#22203a',
-                    color: filterCategory === c ? '#e8d5b0' : '#9990b0',
+                    backgroundColor: filterCategory === c ? 'var(--rule)' : 'var(--paper-2)',
+                    color: filterCategory === c ? 'var(--ink)' : 'var(--ink-2)',
                     border: '1px solid #3a3660',
                   }}
                 >
@@ -162,12 +162,12 @@ export default function HooksIdeas() {
                 </button>
               ))}
             </div>
-            <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#9990b0' }}>
+            <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--ink-2)' }}>
               <input
                 type="checkbox"
                 checked={showInactive}
                 onChange={e => setShowInactive(e.target.checked)}
-                style={{ accentColor: '#c9a84c' }}
+                style={{ accentColor: 'var(--gold)' }}
               />
               Show resolved
             </label>
@@ -208,7 +208,7 @@ export default function HooksIdeas() {
                       placeholder="Title"
                       autoFocus
                       className="w-full px-2 py-1.5 rounded text-sm outline-none"
-                      style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+                      style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid #3a3660', fontFamily: 'var(--serif)' }}
                     />
                     <div className="flex gap-1 flex-wrap">
                       {CATEGORIES.map(c => (
@@ -217,7 +217,7 @@ export default function HooksIdeas() {
                           onClick={() => setEditForm(prev => prev ? { ...prev, category: c } : prev)}
                           className="text-xs px-3 py-1 rounded transition-colors"
                           style={{
-                            backgroundColor: editForm.category === c ? categoryStyles[c].badgeBg : '#22203a',
+                            backgroundColor: editForm.category === c ? categoryStyles[c].badgeBg : 'var(--paper-2)',
                             color: categoryStyles[c].badge,
                             border: `1px solid ${categoryStyles[c].border}`,
                             fontWeight: editForm.category === c ? 600 : 400,
@@ -237,16 +237,16 @@ export default function HooksIdeas() {
                     style={{ opacity: hook.is_active ? 1 : 0.55 }}
                   >
                     <div className="flex items-start justify-between mb-2 gap-2">
-                      <h3 className="font-bold flex-1 text-sm" style={{ color: hook.is_active ? '#e8d5b0' : '#6a6490', fontFamily: 'Georgia, Cambria, serif' }}>
+                      <h3 className="font-bold flex-1 text-sm" style={{ color: hook.is_active ? 'var(--ink)' : 'var(--ink-3)', fontFamily: 'var(--serif)' }}>
                         {hook.title || 'Untitled Idea'}
                       </h3>
                       <Badge label={formatCategory(hook.category)} color={badgeColor} size="xs" />
                     </div>
 
                     {hook.description ? (
-                      <MarkdownContent text={hook.description} className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? '#c9b88a' : '#5a5470', lineHeight: '1.6' }} />
+                      <MarkdownContent text={hook.description} className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? 'var(--ink-2)' : 'var(--ink-3)', lineHeight: '1.6' }} />
                     ) : (
-                      <p className="text-sm flex-1 mb-4" style={{ color: '#5a5470', lineHeight: '1.6', fontStyle: 'italic' }}>No details written.</p>
+                      <p className="text-sm flex-1 mb-4" style={{ color: 'var(--ink-3)', lineHeight: '1.6', fontStyle: 'italic' }}>No details written.</p>
                     )}
 
                     <div className="flex gap-2 mt-auto">
@@ -297,7 +297,7 @@ export default function HooksIdeas() {
                 onClick={() => setForm(prev => ({ ...prev, category: c }))}
                 className="text-sm px-4 py-2 rounded flex-1 transition-colors"
                 style={{
-                  backgroundColor: form.category === c ? categoryStyles[c].badgeBg : '#22203a',
+                  backgroundColor: form.category === c ? categoryStyles[c].badgeBg : 'var(--paper-2)',
                   color: categoryStyles[c].badge,
                   border: `1px solid ${categoryStyles[c].border}`,
                   fontWeight: form.category === c ? 600 : 400,

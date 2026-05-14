@@ -8,7 +8,7 @@ const entityConfig: Record<EntityType, { icon: string; label: string; color: str
   creature: { icon: '⚔', label: 'Stat Sheet', color: '#c060d0', bg: '#2a1a3a', border: '#5a2a7a' },
   npc:      { icon: '👤', label: 'NPC',      color: '#70a0e0', bg: '#1a2a3a', border: '#2a4a7a' },
   location: { icon: '📍', label: 'Location', color: '#60c080', bg: '#1a3a2a', border: '#2a6a4a' },
-  session:  { icon: '📜', label: 'Session',  color: '#c9a84c', bg: '#2a2a1a', border: '#5a5a2a' },
+  session:  { icon: '📜', label: 'Session',  color: 'var(--gold)', bg: '#2a2a1a', border: '#5a5a2a' },
   faction:  { icon: '🛡', label: 'Faction',  color: '#b070b0', bg: '#2a1a2a', border: '#5a3060' },
   hook:     { icon: '💡', label: 'Hook',     color: '#e0a060', bg: '#3a2a1a', border: '#7a5a2a' },
 };
@@ -135,8 +135,8 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                 fontSize: '0.75rem',
                 padding: '4px 10px',
                 borderRadius: '4px',
-                backgroundColor: activeType === 'all' ? '#3a3660' : '#1a1828',
-                color: activeType === 'all' ? '#e8d5b0' : '#6a6490',
+                backgroundColor: activeType === 'all' ? 'var(--rule)' : 'var(--paper)',
+                color: activeType === 'all' ? 'var(--ink)' : 'var(--ink-3)',
                 border: '1px solid #3a3660',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -155,9 +155,9 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                     fontSize: '0.75rem',
                     padding: '4px 10px',
                     borderRadius: '4px',
-                    backgroundColor: activeType === type ? cfg.bg : '#1a1828',
-                    color: activeType === type ? cfg.color : '#6a6490',
-                    border: `1px solid ${activeType === type ? cfg.border : '#3a3660'}`,
+                    backgroundColor: activeType === type ? cfg.bg : 'var(--paper)',
+                    color: activeType === type ? cfg.color : 'var(--ink-3)',
+                    border: `1px solid ${activeType === type ? cfg.border : 'var(--rule)'}`,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
                   }}
@@ -177,8 +177,8 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
             autoFocus
             style={{
               width: '100%',
-              backgroundColor: '#1a1830',
-              color: '#e8d5b0',
+              backgroundColor: 'var(--paper)',
+              color: 'var(--ink)',
               border: '1px solid #3a3660',
               borderRadius: '6px',
               padding: '8px 12px',
@@ -189,11 +189,11 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
 
           {/* Results list */}
           {allEntities.length === 0 ? (
-            <p style={{ color: '#6a6490', fontSize: '0.875rem', fontStyle: 'italic' }}>
+            <p style={{ color: 'var(--ink-3)', fontSize: '0.875rem', fontStyle: 'italic' }}>
               No entities yet. Add some to your campaign first.
             </p>
           ) : filtered.length === 0 ? (
-            <p style={{ color: '#6a6490', fontSize: '0.875rem', fontStyle: 'italic' }}>
+            <p style={{ color: 'var(--ink-3)', fontSize: '0.875rem', fontStyle: 'italic' }}>
               No entities match your search.
             </p>
           ) : (
@@ -211,14 +211,14 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                       gap: '10px',
                       padding: '8px 12px',
                       borderRadius: '6px',
-                      backgroundColor: '#1a1828',
+                      backgroundColor: 'var(--paper)',
                       border: '1px solid #3a3660',
                       cursor: 'pointer',
                       textAlign: 'left',
                       width: '100%',
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#22203a')}
-                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1a1828')}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--paper-2)')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--paper)')}
                   >
                     <span
                       style={{
@@ -241,8 +241,8 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                         flex: 1,
                         fontSize: '0.875rem',
                         fontWeight: 600,
-                        color: '#e8d5b0',
-                        fontFamily: 'Georgia, serif',
+                        color: 'var(--ink)',
+                        fontFamily: 'var(--display)',
                         minWidth: 0,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -255,7 +255,7 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                       <span
                         style={{
                           fontSize: '0.7rem',
-                          color: '#6a6490',
+                          color: 'var(--ink-3)',
                           flexShrink: 0,
                           maxWidth: '140px',
                           overflow: 'hidden',

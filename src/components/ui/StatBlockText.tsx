@@ -41,7 +41,7 @@ const entityStyles: Record<EntityType, { bg: string; color: string; border: stri
   creature: { bg: '#2a1a3a', color: '#c060d0', border: '#5a2a7a', icon: '⚔' },
   npc:      { bg: '#1a2a3a', color: '#70a0e0', border: '#2a4a7a', icon: '👤' },
   location: { bg: '#1a3a2a', color: '#60c080', border: '#2a6a4a', icon: '📍' },
-  session:  { bg: '#2a2a1a', color: '#c9a84c', border: '#5a5a2a', icon: '📜' },
+  session:  { bg: '#2a2a1a', color: 'var(--gold)', border: '#5a5a2a', icon: '📜' },
   faction:  { bg: '#2a1a2a', color: '#b070b0', border: '#5a3060', icon: '🛡' },
   hook:     { bg: '#3a2a1a', color: '#e0a060', border: '#7a5a2a', icon: '💡' },
 };

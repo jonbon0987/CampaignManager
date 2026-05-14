@@ -74,10 +74,10 @@ export function InlineEditField({
   };
 
   const inputStyle: React.CSSProperties = {
-    backgroundColor: '#1a1828',
-    color: '#e8d5b0',
-    border: '1px solid #3a3660',
-    fontFamily: 'Georgia, Cambria, serif',
+    backgroundColor: 'var(--paper)',
+    color: 'var(--ink)',
+    border: '1px solid var(--rule)',
+    fontFamily: 'var(--serif)',
     fontSize: '0.875rem',
     borderRadius: '0.375rem',
     padding: '0.375rem 0.5rem',
@@ -91,7 +91,7 @@ export function InlineEditField({
           <div
             className="mb-1"
             style={{
-              color: '#c9a84c',
+              color: 'var(--gold)',
               fontSize: '0.65rem',
               fontWeight: 600,
               textTransform: 'uppercase',
@@ -163,7 +163,7 @@ export function InlineEditField({
         <div
           className="mb-0.5"
           style={{
-            color: '#c9a84c',
+            color: 'var(--gold)',
             fontSize: '0.65rem',
             fontWeight: 600,
             textTransform: 'uppercase',
@@ -176,7 +176,7 @@ export function InlineEditField({
       <span
         className="text-sm"
         style={{
-          color: isEmpty ? '#6a6490' : '#e8d5b0',
+          color: isEmpty ? 'var(--ink-3)' : 'var(--ink)',
           fontStyle: isEmpty ? 'italic' : 'normal',
           whiteSpace: type === 'textarea' ? 'pre-wrap' : 'normal',
         }}
@@ -188,7 +188,7 @@ export function InlineEditField({
           size={12}
           strokeWidth={1.5}
           className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: '#6a6490' }}
+          style={{ color: 'var(--ink-3)' }}
         />
       )}
     </div>

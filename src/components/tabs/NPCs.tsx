@@ -52,17 +52,17 @@ const statusBadgeColor: Record<NPC['status'], 'green' | 'red' | 'gold'> = {
 const statusStyles: Record<NPC['status'], { bg: string; text: string }> = {
   active:   { bg: '#1a3a1a', text: '#4caf7d' },
   deceased: { bg: '#3a1a1a', text: '#e05c5c' },
-  unknown:  { bg: '#2a2a1a', text: '#c9a84c' },
+  unknown:  { bg: '#2a2a1a', text: 'var(--gold)' },
 };
 
 const inputEditStyle: React.CSSProperties = {
-  backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660',
-  fontFamily: 'Georgia, Cambria, serif', fontSize: '0.875rem', borderRadius: '0.375rem',
+  backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid #3a3660',
+  fontFamily: 'var(--serif)', fontSize: '0.875rem', borderRadius: '0.375rem',
   padding: '0.375rem 0.5rem', width: '100%',
 };
 
 const labelStyle: React.CSSProperties = {
-  color: '#c9a84c', fontSize: '0.65rem', fontWeight: 600,
+  color: 'var(--gold)', fontSize: '0.65rem', fontWeight: 600,
   textTransform: 'uppercase', letterSpacing: '0.08em',
 };
 
@@ -164,8 +164,8 @@ export default function NPCs() {
   const pillStyle = (active: boolean): React.CSSProperties => ({
     padding: '6px 16px', borderRadius: '6px', fontSize: '13px',
     fontWeight: active ? 600 : 400, cursor: 'pointer', border: 'none',
-    backgroundColor: active ? '#2a2840' : 'transparent',
-    color: active ? '#c9a84c' : '#9990b0', transition: 'all 0.15s',
+    backgroundColor: active ? 'var(--rule-soft)' : 'transparent',
+    color: active ? 'var(--gold)' : 'var(--ink-2)', transition: 'all 0.15s',
   });
 
   return (
@@ -197,7 +197,7 @@ export default function NPCs() {
       </div>
 
       {viewMode === 'global' && (
-        <p className="text-xs mb-4" style={{ color: '#6a6490' }}>
+        <p className="text-xs mb-4" style={{ color: 'var(--ink-3)' }}>
           Global NPCs are available across all campaigns. Use "Add to Campaign" to include one in the current campaign.
         </p>
       )}
@@ -290,13 +290,13 @@ export default function NPCs() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0 pr-2">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif' }}>
+                            <h3 className="font-bold" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)' }}>
                               {npc.name || 'Unnamed NPC'}
                             </h3>
                             {isGlobal && <Badge label="Global" color="blue" size="xs" />}
                           </div>
-                          {npc.role && <div className="text-sm mt-0.5" style={{ color: '#9990b0' }}>{npc.role}</div>}
-                          {npc.affiliation && <div className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{npc.affiliation}</div>}
+                          {npc.role && <div className="text-sm mt-0.5" style={{ color: 'var(--ink-2)' }}>{npc.role}</div>}
+                          {npc.affiliation && <div className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>{npc.affiliation}</div>}
                           {npc.faction_ids && npc.faction_ids.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {npc.faction_ids.map(fid => {
@@ -347,31 +347,31 @@ export default function NPCs() {
                             className="text-xs px-2 py-0.5 rounded transition-colors"
                             title={npc.met_by_pcs ? 'PCs have met this NPC' : 'PCs have not met this NPC'}
                             style={{
-                              backgroundColor: npc.met_by_pcs ? '#1a2e3a' : '#22203a',
+                              backgroundColor: npc.met_by_pcs ? '#1a2e3a' : 'var(--paper-2)',
                               color: npc.met_by_pcs ? '#4ab8d4' : '#4a4870',
-                              border: `1px solid ${npc.met_by_pcs ? '#2a6080' : '#3a3660'}`,
+                              border: `1px solid ${npc.met_by_pcs ? '#2a6080' : 'var(--rule)'}`,
                             }}
                           >
                             {npc.met_by_pcs ? 'Met' : 'Unmet'}
                           </button>
-                          <span className="text-xs ml-1" style={{ color: '#6a6490' }}>{isExpanded ? '▲' : '▼'}</span>
+                          <span className="text-xs ml-1" style={{ color: 'var(--ink-3)' }}>{isExpanded ? '▲' : '▼'}</span>
                         </div>
                       </div>
 
                       {npc.description && (
                         isExpanded ? (
-                          <MarkdownContent text={npc.description} className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }} />
+                          <MarkdownContent text={npc.description} className="text-sm mt-2" style={{ color: 'var(--ink-2)', lineHeight: '1.5' }} />
                         ) : (
-                          <p className="text-sm mt-2" style={{ color: '#c9b88a', lineHeight: '1.5' }}>
+                          <p className="text-sm mt-2" style={{ color: 'var(--ink-2)', lineHeight: '1.5' }}>
                             {npc.description.substring(0, 100)}{npc.description.length > 100 ? '…' : ''}
                           </p>
                         )
                       )}
 
                       {isExpanded && npc.hooks_motivations && (
-                        <div className="mt-4 pt-4 border-t" style={{ borderColor: '#3a3660' }}>
+                        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--rule)' }}>
                           <div className="mb-1" style={labelStyle}>Hooks & Motivations</div>
-                          <MarkdownContent text={npc.hooks_motivations} className="text-sm" style={{ color: '#c9b88a', lineHeight: '1.6' }} />
+                          <MarkdownContent text={npc.hooks_motivations} className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }} />
                         </div>
                       )}
                     </div>
@@ -401,13 +401,13 @@ export default function NPCs() {
 
       {/* Link Global NPC picker modal */}
       <Modal isOpen={linkPickerOpen} onClose={() => { setLinkPickerOpen(false); setLinkSearch(''); }} title="Link Global NPC to Campaign" onSave={undefined} wide>
-        <p className="text-sm mb-3" style={{ color: '#9990b0' }}>
+        <p className="text-sm mb-3" style={{ color: 'var(--ink-2)' }}>
           Select global NPCs to add to this campaign.
           {unlinkableGlobals.length > 0 && ` (${unlinkableGlobals.length} already linked)`}
         </p>
         <input type="text" value={linkSearch} onChange={e => setLinkSearch(e.target.value)} placeholder="Search global NPCs..." style={{ ...inputStyle, marginBottom: '12px' }} />
         {linkableGlobals.length === 0 ? (
-          <div className="text-center py-8" style={{ color: '#6a6490' }}>
+          <div className="text-center py-8" style={{ color: 'var(--ink-3)' }}>
             {linkSearch ? 'No matches.' : 'All global NPCs are already linked to this campaign.'}
           </div>
         ) : (
@@ -415,10 +415,10 @@ export default function NPCs() {
             {linkableGlobals.map(npc => {
               const ss = statusStyles[npc.status];
               return (
-                <div key={npc.id} className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: '#12111e', borderColor: '#3a3660' }}>
+                <div key={npc.id} className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: '#12111e', borderColor: 'var(--rule)' }}>
                   <div>
-                    <span className="font-semibold text-sm" style={{ color: '#e8d5b0' }}>{npc.name}</span>
-                    {npc.role && <span className="text-xs ml-2" style={{ color: '#9990b0' }}>{npc.role}</span>}
+                    <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{npc.name}</span>
+                    {npc.role && <span className="text-xs ml-2" style={{ color: 'var(--ink-2)' }}>{npc.role}</span>}
                     <span className="text-xs ml-2 px-1.5 py-0.5 rounded capitalize" style={{ backgroundColor: ss.bg, color: ss.text }}>{npc.status}</span>
                   </div>
                   <Button variant="secondary" size="sm" onClick={() => linkNPCToCampaign(npc.id)} style={{ color: '#4caf7d' }}>+ Add</Button>
@@ -432,7 +432,7 @@ export default function NPCs() {
       {/* Create-only modal */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={viewMode === 'global' ? 'New Global NPC' : 'New NPC'} onSave={handleCreate} wide>
         {viewMode === 'global' && (
-          <p className="text-xs mb-4" style={{ color: '#6a6490' }}>Creating a Global NPC — available across all campaigns.</p>
+          <p className="text-xs mb-4" style={{ color: 'var(--ink-3)' }}>Creating a Global NPC — available across all campaigns.</p>
         )}
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Name"><input type="text" value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Garrak the Bold" style={inputStyle} /></FormField>

@@ -107,7 +107,7 @@ export default function SessionPrep() {
   };
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl" style={{ padding: '28px' }}>
       <SectionHeader
         title="Session Prep"
         subtitle={`${sessionPreps.length} prep note${sessionPreps.length !== 1 ? 's' : ''}`}
@@ -136,23 +136,23 @@ export default function SessionPrep() {
               <div
                 key={prep.id}
                 data-entity-id={prep.id}
-                className="rounded-lg border overflow-hidden transition-colors duration-150"
+                className="rounded-lg border transition-colors duration-150"
                 style={{
-                  backgroundColor: '#1a1828',
-                  borderColor: isEditing ? '#c9a84c' : '#2e2c4a',
+                  backgroundColor: 'var(--paper)',
+                  borderColor: isEditing ? 'var(--gold)' : 'var(--rule)',
                 }}
               >
                 {/* Header row */}
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer"
-                  style={{ borderBottom: isExpanded ? '1px solid #3a3660' : 'none' }}
+                  style={{ borderBottom: isExpanded ? '1px solid var(--rule)' : 'none' }}
                   onClick={() => {
                     if (!isEditing) setExpandedId(isExpanded ? null : prep.id);
                   }}
                 >
                   <div className="flex items-center gap-3">
                     <Badge label={`Session ${prep.session_number} Prep`} color="blue" size="sm" />
-                    <span className="text-xs" style={{ color: '#6a6490' }}>{prep.prep_date ?? '—'}</span>
+                    <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{prep.prep_date ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {!isEditing && (
@@ -172,7 +172,7 @@ export default function SessionPrep() {
                     >
                       ×
                     </Button>
-                    <span className="text-xs ml-1" style={{ color: '#6a6490' }}>
+                    <span className="text-xs ml-1" style={{ color: 'var(--ink-3)' }}>
                       {isExpanded ? '▲' : '▼'}
                     </span>
                   </div>
@@ -185,7 +185,7 @@ export default function SessionPrep() {
                       <div className="flex flex-col gap-3">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                            <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                               Session #
                             </label>
                             <input
@@ -194,11 +194,11 @@ export default function SessionPrep() {
                               onChange={e => setEditForm(prev => prev ? { ...prev, session_number: parseInt(e.target.value) || 1 } : prev)}
                               min={1}
                               className="w-full px-2 py-1.5 rounded text-sm outline-none"
-                              style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+                              style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid var(--rule)', fontFamily: 'var(--serif)' }}
                             />
                           </div>
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                            <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                               Prep Date
                             </label>
                             <input
@@ -206,12 +206,12 @@ export default function SessionPrep() {
                               value={editForm.prep_date ?? ''}
                               onChange={e => setEditForm(prev => prev ? { ...prev, prep_date: e.target.value || null } : prev)}
                               className="w-full px-2 py-1.5 rounded text-sm outline-none"
-                              style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+                              style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid var(--rule)', fontFamily: 'var(--serif)', colorScheme: 'dark' }}
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                          <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Prep Notes
                           </label>
                           <MarkdownEditor
@@ -236,9 +236,9 @@ export default function SessionPrep() {
                     ) : (
                       <div className="flex flex-col gap-3">
                         {prep.notes ? (
-                          <MarkdownContent text={prep.notes} className="text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                          <MarkdownContent text={prep.notes} className="text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
                         ) : (
-                          <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No prep notes yet. Click the pencil to add some!</p>
+                          <p className="text-sm" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>No prep notes yet. Click the pencil to add some!</p>
                         )}
                       </div>
                     )}

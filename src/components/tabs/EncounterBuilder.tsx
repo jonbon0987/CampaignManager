@@ -3,7 +3,6 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import { Button } from '../ui/Button';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
@@ -39,18 +38,18 @@ const difficultyColors: Record<string, { bg: string; text: string; border: strin
 };
 
 const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-  draft:     { bg: '#1a1828', text: '#6a6490', border: '#3a3660' },
+  draft:     { bg: '#211c16', text: '#897f68', border: '#2e2820' },
   ready:     { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
   completed: { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
 };
 
-const sectionLabel = {
+const sectionLabel: React.CSSProperties = {
   color: '#c9a84c',
-  fontSize: '0.7rem',
-  fontWeight: 600,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.08em',
-  marginBottom: '0.4rem',
+  fontSize: '0.65rem',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.12em',
+  marginBottom: '0.5rem',
 };
 
 // ================================================================
@@ -89,7 +88,7 @@ function parseCombatants(raw: string | null): EncounterCombatant[] {
 }
 
 // ================================================================
-// Combatant row sub-component
+// Combatant row sub-component (edit modal)
 // ================================================================
 function CombatantRow({
   c,
@@ -109,11 +108,11 @@ function CombatantRow({
   return (
     <div
       className="rounded p-3 flex flex-col gap-2"
-      style={{ backgroundColor: '#0f0e17', border: '1px solid #3a3660' }}
+      style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}
     >
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
+          <span className="font-semibold text-sm" style={{ color: '#e8dcc4', fontFamily: 'var(--display)' }}>
             {c.name}
           </span>
           {c.challenge_rating && (
@@ -122,7 +121,7 @@ function CombatantRow({
             </span>
           )}
           {c.creature_type && (
-            <span className="ml-1 text-xs capitalize" style={{ color: '#6a6490' }}>{c.creature_type}</span>
+            <span className="ml-1 text-xs capitalize" style={{ color: '#897f68' }}>{c.creature_type}</span>
           )}
           {c.source === 'saved' && statblockName && onViewSheet && (
             <button
@@ -134,24 +133,23 @@ function CombatantRow({
             </button>
           )}
         </div>
-        {/* Count controls */}
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => onCountChange(-1)}
             className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center"
-            style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+            style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}
           >−</button>
-          <span className="text-sm font-semibold w-5 text-center" style={{ color: '#e8d5b0' }}>{c.count}</span>
+          <span className="text-sm font-semibold w-5 text-center" style={{ color: '#e8dcc4' }}>{c.count}</span>
           <button
             onClick={() => onCountChange(1)}
             className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center"
-            style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
+            style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}
           >+</button>
         </div>
         <button
           onClick={onRemove}
           className="text-xs px-2 py-1 rounded shrink-0"
-          style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
+          style={{ backgroundColor: '#1e1a14', color: '#e05c5c', border: '1px solid #2e2820' }}
         >✕</button>
       </div>
       <input
@@ -160,7 +158,7 @@ function CombatantRow({
         onChange={e => onNotesChange(e.target.value)}
         placeholder="Notes for this combatant…"
         className="text-xs w-full px-2 py-1 rounded outline-none"
-        style={{ backgroundColor: '#1a1830', color: '#9990b0', border: '1px solid #2a2850' }}
+        style={{ backgroundColor: '#1c1814', color: '#b9ac90', border: '1px solid #26211a' }}
       />
     </div>
   );
@@ -211,11 +209,13 @@ export default function EncounterBuilder() {
   const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, upsertMonsterStatblock, pcs, sessions, lore, locations, overview } = useCampaign();
   const confirm = useConfirm();
 
-  // List state
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  // Selected encounter in master-detail
+  const [selected, setSelected] = useState<Encounter | null>(null);
+
+  // Search
   const [search, setSearch] = useState('');
 
-  // View / edit modal
+  // Edit modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Encounter | null>(null);
   const [form, setForm] = useState<EncounterForm>(emptyForm());
@@ -224,9 +224,6 @@ export default function EncounterBuilder() {
   const [saveStatus, setSaveStatus] = useState('');
   const descRef = useRef<HTMLTextAreaElement>(null);
   const dmNotesRef = useRef<HTMLTextAreaElement>(null);
-
-  // View detail panel
-  const [viewing, setViewing] = useState<Encounter | null>(null);
 
   // AI generate modal
   const [genModalOpen, setGenModalOpen] = useState(false);
@@ -290,20 +287,18 @@ export default function EncounterBuilder() {
 
     setSaving(true);
     try {
+      const idMap = new Map<string, string>();
+      for (let i = 0; i < combatants.length; i++) {
+        const c = combatants[i];
+        if (c.source !== 'custom' || c.statblock_id) continue;
 
-    // For any custom combatant without a statblock, generate a full stat block via AI then save it.
-    const idMap = new Map<string, string>();
-    for (let i = 0; i < combatants.length; i++) {
-      const c = combatants[i];
-      if (c.source !== 'custom' || c.statblock_id) continue;
+        let content: string | null = null;
+        let dm_notes: string | null = null;
+        let tags: string | null = null;
 
-      let content: string | null = null;
-      let dm_notes: string | null = null;
-      let tags: string | null = null;
-
-      try {
-        setSaveStatus(`Generating stat block for ${c.name}…`);
-        const prompt = `Generate a complete D&D 5e stat block for a creature named "${c.name}"${c.creature_type ? ` (${c.creature_type})` : ''}${c.challenge_rating ? `, CR ${c.challenge_rating}` : ''}. Follow official D&D 5e stat block format exactly.
+        try {
+          setSaveStatus(`Generating stat block for ${c.name}…`);
+          const prompt = `Generate a complete D&D 5e stat block for a creature named "${c.name}"${c.creature_type ? ` (${c.creature_type})` : ''}${c.challenge_rating ? `, CR ${c.challenge_rating}` : ''}. Follow official D&D 5e stat block format exactly.
 
 Respond with a JSON object (no markdown, raw JSON only):
 {
@@ -311,57 +306,62 @@ Respond with a JSON object (no markdown, raw JSON only):
   "content": "full stat block as plain text in official D&D 5e format",
   "dm_notes": "2-3 sentences of DM tactics and encounter tips"
 }`;
-        const res = await fetch('/api/generate-creature', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, provider: getAIProvider() }),
-        });
-        const data = await res.json() as { text?: string; error?: string };
-        if (res.ok && data.text) {
-          const jsonText = data.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-          const parsed = JSON.parse(jsonText) as { tags: string; content: string; dm_notes: string };
-          content = parsed.content ?? null;
-          dm_notes = parsed.dm_notes ?? null;
-          tags = parsed.tags ?? null;
+          const res = await fetch('/api/generate-creature', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, provider: getAIProvider() }),
+          });
+          const data = await res.json() as { text?: string; error?: string };
+          if (res.ok && data.text) {
+            const jsonText = data.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+            const parsed = JSON.parse(jsonText) as { tags: string; content: string; dm_notes: string };
+            content = parsed.content ?? null;
+            dm_notes = parsed.dm_notes ?? null;
+            tags = parsed.tags ?? null;
+          }
+        } catch {
+          // If AI fails, save with empty content
         }
-      } catch {
-        // If AI fails, save with empty content — user can fill it in later
+
+        const sb = await upsertMonsterStatblock({
+          name: c.name,
+          creature_type: c.creature_type,
+          challenge_rating: c.challenge_rating,
+          content,
+          dm_notes,
+          tags,
+          sort_order: monsterStatblocks.length + idMap.size,
+        });
+        idMap.set(c.id, sb.id);
       }
 
-      const sb = await upsertMonsterStatblock({
-        name: c.name,
-        creature_type: c.creature_type,
-        challenge_rating: c.challenge_rating,
-        content,
-        dm_notes,
-        tags,
-        sort_order: monsterStatblocks.length + idMap.size,
+      if (newCustomCombatants.length > 0) setSaveStatus('Saving encounter…');
+
+      const finalCombatants = combatants.map(c => {
+        const sbId = idMap.get(c.id);
+        if (!sbId) return c;
+        return { ...c, source: 'saved' as const, statblock_id: sbId };
       });
-      idMap.set(c.id, sb.id);
-    }
 
-    if (newCustomCombatants.length > 0) setSaveStatus('Saving encounter…');
-
-    const finalCombatants = combatants.map(c => {
-      const sbId = idMap.get(c.id);
-      if (!sbId) return c;
-      return { ...c, source: 'saved' as const, statblock_id: sbId };
-    });
-
-    await upsertEncounter({
-      ...(editing ? { id: editing.id } : {}),
-      name: form.name.trim(),
-      description: form.description || null,
-      environment: form.environment || null,
-      difficulty: form.difficulty || null,
-      party_size: form.party_size ? parseInt(form.party_size, 10) : null,
-      party_level: form.party_level ? parseInt(form.party_level, 10) : null,
-      dm_notes: form.dm_notes || null,
-      status: form.status,
-      combatants: finalCombatants.length > 0 ? JSON.stringify(finalCombatants) : null,
-      sort_order: editing?.sort_order ?? encounters.length,
-    });
-    setModalOpen(false);
+      const editingId = editing?.id;
+      await upsertEncounter({
+        ...(editing ? { id: editing.id } : {}),
+        name: form.name.trim(),
+        description: form.description || null,
+        environment: form.environment || null,
+        difficulty: form.difficulty || null,
+        party_size: form.party_size ? parseInt(form.party_size, 10) : null,
+        party_level: form.party_level ? parseInt(form.party_level, 10) : null,
+        dm_notes: form.dm_notes || null,
+        status: form.status,
+        combatants: finalCombatants.length > 0 ? JSON.stringify(finalCombatants) : null,
+        sort_order: editing?.sort_order ?? encounters.length,
+      });
+      setModalOpen(false);
+      // Select the saved encounter — find by id if editing, otherwise by name
+      if (editingId) {
+        setSelected(prev => prev?.id === editingId ? prev : (encounters.find(e => e.id === editingId) ?? prev));
+      }
     } finally {
       setSaving(false);
       setSaveStatus('');
@@ -371,7 +371,7 @@ Respond with a JSON object (no markdown, raw JSON only):
   const handleDelete = async (enc: Encounter) => {
     if (await confirm(`Delete encounter "${enc.name}"?`)) {
       await deleteEncounter(enc.id);
-      if (viewing?.id === enc.id) setViewing(null);
+      if (selected?.id === enc.id) setSelected(null);
     }
   };
 
@@ -433,11 +433,8 @@ Respond with a JSON object (no markdown, raw JSON only):
   // ---- AI generation ----
 
   const openGenModal = () => {
-    // Pre-fill party info from active PCs
     const activePCs = pcs.filter(p => p.is_active);
-    if (activePCs.length > 0) {
-      setGenPartySize(String(activePCs.length));
-    }
+    if (activePCs.length > 0) setGenPartySize(String(activePCs.length));
     setGenMode('ai');
     setGenUseCampaignContext(false);
     setGenAdditionalContext('');
@@ -448,7 +445,6 @@ Respond with a JSON object (no markdown, raw JSON only):
 
   const handleGenerate = async () => {
     if (genMode === 'manual') {
-      // Just open the edit modal blank
       openAdd();
       setGenModalOpen(false);
       return;
@@ -533,7 +529,6 @@ For each combatant: if it matches a creature in the saved library (same name), s
         }>;
       };
 
-      // Map combatants — resolve saved ones to actual statblock IDs
       const resolvedCombatants: EncounterCombatant[] = (parsed.combatants ?? []).map(c => {
         const savedMatch = monsterStatblocks.find(
           m => m.name.toLowerCase() === c.name.toLowerCase()
@@ -575,161 +570,185 @@ For each combatant: if it matches a creature in the saved library (same name), s
   // ---- filtering ----
 
   const filtered = encounters.filter(enc => {
-    const statusMatch = filterStatus === 'all' || enc.status === filterStatus;
+    if (!search) return true;
     const s = search.toLowerCase();
-    const searchMatch = !search
-      || enc.name.toLowerCase().includes(s)
+    return enc.name.toLowerCase().includes(s)
       || (enc.environment ?? '').toLowerCase().includes(s)
       || (enc.difficulty ?? '').toLowerCase().includes(s);
-    return statusMatch && searchMatch;
   });
+
+  // Keep selected in sync if data changes
+  const selectedEnc = selected ? (encounters.find(e => e.id === selected.id) ?? null) : null;
 
   // ================================================================
   // Render
   // ================================================================
 
   return (
-    <div style={{ maxWidth: '900px' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold leading-tight" style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}>
-            Encounter Builder
-          </h2>
-          {encounters.length > 0 && (
-            <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>
-              {encounters.length} encounter{encounters.length !== 1 ? 's' : ''}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={openGenModal} style={{ color: '#c060d0', borderColor: '#5a2a7a' }}>
-            ✦ Build Encounter
-          </Button>
-          <Button variant="primary" onClick={openAdd}>+ Manual</Button>
-        </div>
-      </div>
+    <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
 
-      {/* Filter bar */}
-      {encounters.length > 0 && (
-        <div className="flex items-center gap-3 mb-5 flex-wrap">
-          <input
-            type="text"
-            placeholder="Search by name, environment, or difficulty…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-0 px-3 py-1.5 rounded text-sm outline-none"
-            style={{ backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660', minWidth: '180px' }}
-          />
-          <div className="flex items-center gap-1.5">
-            {(['all', ...STATUSES] as const).map(s => {
-              const active = filterStatus === s;
-              const cs = s !== 'all' ? statusColors[s] : null;
-              return (
-                <button
-                  key={s}
-                  onClick={() => setFilterStatus(s)}
-                  className="text-xs px-2.5 py-1 rounded border capitalize"
-                  style={{
-                    backgroundColor: active ? (cs?.bg ?? '#2a2050') : '#1a1828',
-                    color: active ? (cs?.text ?? '#c9a84c') : '#9990b0',
-                    borderColor: active ? (cs?.border ?? '#5a4a90') : '#3a3660',
-                  }}
-                >
-                  {s}
-                </button>
-              );
-            })}
+      {/* ============================================================
+          LEFT SIDEBAR — list
+      ============================================================ */}
+      <div
+        className="flex flex-col shrink-0"
+        style={{
+          width: '220px',
+          borderRight: '1px solid #2e2820',
+          height: '100%',
+          overflowY: 'auto',
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: '20px 16px 10px' }}>
+          <div style={{ color: '#897f68', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
+            {encounters.length} {encounters.length === 1 ? 'entry' : 'entries'}
+          </div>
+          <div className="flex items-center justify-between">
+            <span style={{ color: '#e8dcc4', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
+              Encounters
+            </span>
+            <button
+              onClick={openGenModal}
+              style={{
+                color: '#c9a84c',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                backgroundColor: 'transparent',
+                border: '1px solid #3e3428',
+                borderRadius: '4px',
+                padding: '2px 8px',
+                cursor: 'pointer',
+              }}
+            >
+              + New
+            </button>
           </div>
         </div>
-      )}
 
-      {/* List */}
-      {encounters.length === 0 ? (
-        <div className="text-center py-16" style={{ color: '#6a6490' }}>
-          No encounters yet. Use <strong style={{ color: '#c060d0' }}>✦ Build Encounter</strong> for DM assistance, or <strong style={{ color: '#c9a84c' }}>+ Manual</strong> to create one yourself.
+        {/* Search */}
+        <div style={{ padding: '0 12px 10px' }}>
+          <input
+            type="text"
+            placeholder="Search…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              backgroundColor: '#1e1a14',
+              border: '1px solid #2e2820',
+              borderRadius: '4px',
+              padding: '5px 10px',
+              fontSize: '0.78rem',
+              color: '#e8dcc4',
+              outline: 'none',
+            }}
+          />
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-10" style={{ color: '#6a6490' }}>No encounters match your filter.</div>
-      ) : (
-        <div className="space-y-2">
+
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {filtered.length === 0 && (
+            <div style={{ padding: '24px 16px', color: '#897f68', fontSize: '0.78rem', textAlign: 'center' }}>
+              {encounters.length === 0 ? 'No encounters yet.' : 'No matches.'}
+            </div>
+          )}
           {filtered.map(enc => {
-            const cs = statusColors[enc.status] ?? statusColors.draft;
-            const dc = enc.difficulty ? (difficultyColors[enc.difficulty] ?? null) : null;
-            const combatantList = parseCombatants(enc.combatants);
-            const totalCreatures = combatantList.reduce((sum, c) => sum + c.count, 0);
+            const isActive = selectedEnc?.id === enc.id;
+            const dc = enc.difficulty ? difficultyColors[enc.difficulty] : null;
+            const sc = statusColors[enc.status] ?? statusColors.draft;
             return (
               <div
                 key={enc.id}
-                className="rounded-lg border p-4 flex items-center gap-4"
-                style={{ backgroundColor: '#1a1828', borderColor: '#3a3660' }}
+                onClick={() => setSelected(enc)}
+                style={{
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  backgroundColor: isActive ? '#1e1a14' : 'transparent',
+                  borderLeft: isActive ? '2px solid #c9a84c' : '2px solid transparent',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '6px',
+                }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span
-                      className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
-                      style={{ backgroundColor: cs.bg, color: cs.text, borderColor: cs.border }}
-                    >
-                      {enc.status}
-                    </span>
-                    <span className="font-semibold text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, serif' }}>
-                      {enc.name}
-                    </span>
+                {/* Delete button */}
+                <button
+                  onClick={e => { e.stopPropagation(); handleDelete(enc); }}
+                  style={{
+                    color: '#4a4438',
+                    fontSize: '0.7rem',
+                    lineHeight: 1,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    flexShrink: 0,
+                    marginTop: '1px',
+                  }}
+                  title="Delete"
+                >
+                  ✕
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: isActive ? '#e8dcc4' : '#c9b88a', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'var(--display)', marginBottom: '4px', lineHeight: 1.3 }}>
+                    {enc.name}
+                  </div>
+                  {/* Difficulty badge + status pill */}
+                  <div className="flex flex-wrap items-center gap-1">
                     {dc && (
-                      <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{ backgroundColor: dc.bg, color: dc.text, border: `1px solid ${dc.border}` }}>
+                      <span style={{
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em',
+                        backgroundColor: dc.bg,
+                        color: dc.text,
+                        border: `1px solid ${dc.border}`,
+                        borderRadius: '3px',
+                        padding: '1px 5px',
+                      }}>
                         {enc.difficulty}
                       </span>
                     )}
-                    {enc.environment && (
-                      <span className="text-xs capitalize" style={{ color: '#6a6490' }}>{enc.environment}</span>
-                    )}
+                    <span style={{
+                      fontSize: '0.6rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      backgroundColor: sc.bg,
+                      color: sc.text,
+                      border: `1px solid ${sc.border}`,
+                      borderRadius: '3px',
+                      padding: '1px 5px',
+                    }}>
+                      {enc.status}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs" style={{ color: '#6a6490' }}>
-                    {enc.party_size && enc.party_level && (
-                      <span>{enc.party_size}p / lvl {enc.party_level}</span>
-                    )}
-                    {totalCreatures > 0 && (
-                      <span>{totalCreatures} combatant{totalCreatures !== 1 ? 's' : ''} ({combatantList.length} type{combatantList.length !== 1 ? 's' : ''})</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-1.5 shrink-0">
-                  {enc.status !== 'completed' && parseCombatants(enc.combatants).length > 0 && (
-                    <button
-                      onClick={() => setRunningEncounter(enc)}
-                      className="text-xs px-2.5 py-1 rounded font-semibold"
-                      style={{ backgroundColor: '#1a2a1a', color: '#6ab87a', border: '1px solid #2a5a2a' }}
-                    >
-                      ▶ Run
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setViewing(enc)}
-                    className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
-                  >
-                    View
-                  </button>
-                  <button
-                    onClick={() => openEdit(enc)}
-                    className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(enc)}
-                    className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
-                  >
-                    ✕
-                  </button>
                 </div>
               </div>
             );
           })}
         </div>
-      )}
+      </div>
+
+      {/* ============================================================
+          RIGHT DETAIL PANEL
+      ============================================================ */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
+        {!selectedEnc ? (
+          <div style={{ color: '#897f68', fontSize: '0.85rem', marginTop: '60px', textAlign: 'center' }}>
+            Select an encounter to view details.
+          </div>
+        ) : (
+          <DetailPanel
+            enc={selectedEnc}
+            monsterStatblocks={monsterStatblocks}
+            onEdit={() => openEdit(selectedEnc)}
+            onRun={() => setRunningEncounter(selectedEnc)}
+            onViewStatblock={setViewingStatblock}
+          />
+        )}
+      </div>
 
       {/* ================================================================
           BUILD / GENERATE MODAL
@@ -742,8 +761,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
         saveLabel={genMode === 'ai' ? '✦ Generate' : 'Build Manually'}
       >
         <div className="space-y-4">
-          {/* Mode toggle */}
-          <div className="flex rounded overflow-hidden" style={{ border: '1px solid #3a3660' }}>
+          <div className="flex rounded overflow-hidden" style={{ border: '1px solid #2e2820' }}>
             {(['ai', 'manual'] as const).map(mode => (
               <button
                 key={mode}
@@ -751,8 +769,8 @@ For each combatant: if it matches a creature in the saved library (same name), s
                 disabled={genLoading}
                 className="flex-1 text-sm py-1.5 font-medium transition-colors"
                 style={{
-                  backgroundColor: genMode === mode ? '#2a2050' : '#1a1828',
-                  color: genMode === mode ? '#c9a84c' : '#9990b0',
+                  backgroundColor: genMode === mode ? '#2a2218' : '#1c1814',
+                  color: genMode === mode ? '#c9a84c' : '#b9ac90',
                 }}
               >
                 {mode === 'ai' ? '✦ AI Build' : '✎ Manual'}
@@ -762,120 +780,76 @@ For each combatant: if it matches a creature in the saved library (same name), s
 
           {genMode === 'ai' ? (
             <>
-              <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6' }}>
+              <p className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.6' }}>
                 Describe your encounter and the AI will populate combatants, difficulty, and DM notes.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Number of Players">
-                  <input
-                    type="number" min={1} max={10}
-                    value={genPartySize}
+                  <input type="number" min={1} max={10} value={genPartySize}
                     onChange={e => { setGenPartySize(e.target.value); setGenError(''); }}
-                    placeholder="e.g. 4"
-                    style={inputStyle}
-                    disabled={genLoading}
-                    autoFocus
-                  />
+                    placeholder="e.g. 4" style={inputStyle} disabled={genLoading} autoFocus />
                 </FormField>
                 <FormField label="Average Party Level">
-                  <input
-                    type="number" min={1} max={20}
-                    value={genPartyLevel}
+                  <input type="number" min={1} max={20} value={genPartyLevel}
                     onChange={e => { setGenPartyLevel(e.target.value); setGenError(''); }}
-                    placeholder="e.g. 5"
-                    style={inputStyle}
-                    disabled={genLoading}
-                  />
+                    placeholder="e.g. 5" style={inputStyle} disabled={genLoading} />
                 </FormField>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Difficulty">
-                  <select
-                    value={genDifficulty}
-                    onChange={e => setGenDifficulty(e.target.value)}
-                    style={inputStyle}
-                    disabled={genLoading}
-                  >
-                    {DIFFICULTIES.map(d => (
-                      <option key={d} value={d} className="capitalize">{d.charAt(0).toUpperCase() + d.slice(1)}</option>
-                    ))}
+                  <select value={genDifficulty} onChange={e => setGenDifficulty(e.target.value)} style={inputStyle} disabled={genLoading}>
+                    {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
                   </select>
                 </FormField>
                 <FormField label="Environment (optional)">
-                  <select
-                    value={genEnvironment}
-                    onChange={e => setGenEnvironment(e.target.value)}
-                    style={inputStyle}
-                    disabled={genLoading}
-                  >
+                  <select value={genEnvironment} onChange={e => setGenEnvironment(e.target.value)} style={inputStyle} disabled={genLoading}>
                     <option value="">Any</option>
-                    {ENVIRONMENTS.map(env => (
-                      <option key={env} value={env} className="capitalize">{env.charAt(0).toUpperCase() + env.slice(1)}</option>
-                    ))}
+                    {ENVIRONMENTS.map(env => <option key={env} value={env}>{env.charAt(0).toUpperCase() + env.slice(1)}</option>)}
                   </select>
                 </FormField>
               </div>
               <FormField label="Encounter Concept (optional)" hint="What is this encounter — its setting, enemies, or story beat?">
-                <input
-                  type="text"
-                  value={genTheme}
-                  onChange={e => setGenTheme(e.target.value)}
-                  placeholder="e.g. ambush by cultists, dragon's lair, undead siege…"
-                  style={inputStyle}
-                  disabled={genLoading}
-                />
+                <input type="text" value={genTheme} onChange={e => setGenTheme(e.target.value)}
+                  placeholder="e.g. ambush by cultists, dragon's lair, undead siege…" style={inputStyle} disabled={genLoading} />
               </FormField>
-              {/* Campaign context toggle */}
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setGenUseCampaignContext(v => !v)}
                   disabled={genLoading}
                   className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
                   style={{
-                    backgroundColor: genUseCampaignContext ? '#2a2050' : '#1a1828',
-                    color: genUseCampaignContext ? '#c9a84c' : '#9990b0',
-                    border: `1px solid ${genUseCampaignContext ? '#5a4090' : '#3a3660'}`,
+                    backgroundColor: genUseCampaignContext ? '#2a2218' : '#1c1814',
+                    color: genUseCampaignContext ? '#c9a84c' : '#b9ac90',
+                    border: `1px solid ${genUseCampaignContext ? '#5a4828' : '#2e2820'}`,
                   }}
                 >
                   {genUseCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
                 </button>
               </div>
               {genUseCampaignContext && (
-                <p className="text-xs" style={{ color: '#4a4470' }}>
+                <p className="text-xs" style={{ color: '#897f68' }}>
                   Will include the last 5 session summaries, lore entries, and locations from your campaign.
                 </p>
               )}
-
-              {/* Additional context */}
               <FormField label="DM Instructions (optional)" hint="Specific rules or narrative constraints the AI must follow.">
-                <textarea
-                  rows={3}
-                  value={genAdditionalContext}
-                  onChange={e => setGenAdditionalContext(e.target.value)}
+                <textarea rows={3} value={genAdditionalContext} onChange={e => setGenAdditionalContext(e.target.value)}
                   placeholder="e.g. The villain escapes at the end. No more than 2 stat sheet types. Include a puzzle element."
-                  style={textareaStyle}
-                  disabled={genLoading}
-                />
+                  style={textareaStyle} disabled={genLoading} />
               </FormField>
-
               {monsterStatblocks.length > 0 && (
-                <p className="text-xs" style={{ color: '#4a4470' }}>
+                <p className="text-xs" style={{ color: '#897f68' }}>
                   The AI will consider your {monsterStatblocks.length} saved stat sheet{monsterStatblocks.length !== 1 ? 's' : ''} when building the encounter.
                 </p>
               )}
             </>
           ) : (
-            <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6' }}>
+            <p className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.6' }}>
               Open a blank encounter form and add stat sheets manually from your library or by name.
             </p>
           )}
 
           {genError && <p className="text-sm" style={{ color: '#e05c5c' }}>{genError}</p>}
-          {genLoading && (
-            <p className="text-sm" style={{ color: '#9990b0', fontStyle: 'italic' }}>
-              Building encounter…
-            </p>
-          )}
+          {genLoading && <p className="text-sm" style={{ color: '#b9ac90', fontStyle: 'italic' }}>Building encounter…</p>}
         </div>
       </Modal>
 
@@ -891,73 +865,41 @@ For each combatant: if it matches a creature in the saved library (same name), s
         wide
       >
         <div className="space-y-4">
-          {/* Basic info */}
           <FormField label="Encounter Name">
-            <input
-              type="text"
-              value={form.name}
+            <input type="text" value={form.name}
               onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="e.g. Ambush at Darkwood Crossing"
-              style={inputStyle}
-              autoFocus
-            />
+              placeholder="e.g. Ambush at Darkwood Crossing" style={inputStyle} autoFocus />
           </FormField>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Difficulty">
-              <select
-                value={form.difficulty}
-                onChange={e => setForm(prev => ({ ...prev, difficulty: e.target.value }))}
-                style={inputStyle}
-              >
+              <select value={form.difficulty} onChange={e => setForm(prev => ({ ...prev, difficulty: e.target.value }))} style={inputStyle}>
                 <option value="">— none —</option>
-                {DIFFICULTIES.map(d => (
-                  <option key={d} value={d} className="capitalize">{d.charAt(0).toUpperCase() + d.slice(1)}</option>
-                ))}
+                {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
               </select>
             </FormField>
             <FormField label="Environment">
-              <select
-                value={form.environment}
-                onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))}
-                style={inputStyle}
-              >
+              <select value={form.environment} onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))} style={inputStyle}>
                 <option value="">— none —</option>
-                {ENVIRONMENTS.map(env => (
-                  <option key={env} value={env} className="capitalize">{env.charAt(0).toUpperCase() + env.slice(1)}</option>
-                ))}
+                {ENVIRONMENTS.map(env => <option key={env} value={env}>{env.charAt(0).toUpperCase() + env.slice(1)}</option>)}
               </select>
             </FormField>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <FormField label="Party Size">
-              <input
-                type="number" min={1} max={10}
-                value={form.party_size}
+              <input type="number" min={1} max={10} value={form.party_size}
                 onChange={e => setForm(prev => ({ ...prev, party_size: e.target.value }))}
-                placeholder="e.g. 4"
-                style={inputStyle}
-              />
+                placeholder="e.g. 4" style={inputStyle} />
             </FormField>
             <FormField label="Avg Party Level">
-              <input
-                type="number" min={1} max={20}
-                value={form.party_level}
+              <input type="number" min={1} max={20} value={form.party_level}
                 onChange={e => setForm(prev => ({ ...prev, party_level: e.target.value }))}
-                placeholder="e.g. 5"
-                style={inputStyle}
-              />
+                placeholder="e.g. 5" style={inputStyle} />
             </FormField>
             <FormField label="Status">
-              <select
-                value={form.status}
-                onChange={e => setForm(prev => ({ ...prev, status: e.target.value as typeof form.status }))}
-                style={inputStyle}
-              >
-                {STATUSES.map(s => (
-                  <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                ))}
+              <select value={form.status} onChange={e => setForm(prev => ({ ...prev, status: e.target.value as typeof form.status }))} style={inputStyle}>
+                {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
               </select>
             </FormField>
           </div>
@@ -972,15 +914,13 @@ For each combatant: if it matches a creature in the saved library (same name), s
             <div style={sectionLabel}>Combatants</div>
             <div className="space-y-2 mb-3">
               {combatants.length === 0 && (
-                <p className="text-xs" style={{ color: '#4a4470' }}>No combatants added yet.</p>
+                <p className="text-xs" style={{ color: '#897f68' }}>No combatants added yet.</p>
               )}
               {combatants.map(c => {
                 const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;
                 return (
                   <CombatantRow
-                    key={c.id}
-                    c={c}
-                    statblockName={sb?.name ?? null}
+                    key={c.id} c={c} statblockName={sb?.name ?? null}
                     onCountChange={delta => updateCombatantCount(c.id, delta)}
                     onNotesChange={notes => updateCombatantNotes(c.id, notes)}
                     onRemove={() => removeCombatant(c.id)}
@@ -990,100 +930,62 @@ For each combatant: if it matches a creature in the saved library (same name), s
               })}
             </div>
 
-            {/* Add creature controls */}
             {addCreatureMode === null && (
               <div className="flex gap-2">
                 {monsterStatblocks.length > 0 && (
-                  <button
-                    onClick={() => setAddCreatureMode('saved')}
-                    className="text-xs px-3 py-1.5 rounded"
-                    style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', border: '1px solid #2a4a7a' }}
-                  >
+                  <button onClick={() => setAddCreatureMode('saved')} className="text-xs px-3 py-1.5 rounded"
+                    style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', border: '1px solid #2a4a7a' }}>
                     + From Library
                   </button>
                 )}
-                <button
-                  onClick={() => setAddCreatureMode('custom')}
-                  className="text-xs px-3 py-1.5 rounded"
-                  style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-                >
+                <button onClick={() => setAddCreatureMode('custom')} className="text-xs px-3 py-1.5 rounded"
+                  style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}>
                   + Custom Creature
                 </button>
               </div>
             )}
 
             {addCreatureMode === 'saved' && (
-              <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#0f0e17', border: '1px solid #3a3660' }}>
+              <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
                 <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Select from Library</p>
                 <div className="max-h-48 overflow-y-auto space-y-1">
                   {monsterStatblocks.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => addSavedCombatant(m.id)}
-                      className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2 transition-colors hover:bg-surface-high"
-                      style={{ backgroundColor: '#1a1828', color: '#e8d5b0', border: '1px solid #2a2850' }}
-                    >
+                    <button key={m.id} onClick={() => addSavedCombatant(m.id)}
+                      className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
+                      style={{ backgroundColor: '#1c1814', color: '#e8dcc4', border: '1px solid #26211a' }}>
                       <span className="flex-1">{m.name}</span>
                       {m.challenge_rating && <span style={{ color: '#c08060' }}>CR {m.challenge_rating}</span>}
-                      {m.creature_type && <span className="capitalize" style={{ color: '#6a6490' }}>{m.creature_type}</span>}
+                      {m.creature_type && <span className="capitalize" style={{ color: '#897f68' }}>{m.creature_type}</span>}
                     </button>
                   ))}
                 </div>
-                <button
-                  onClick={() => setAddCreatureMode(null)}
-                  className="text-xs px-2 py-1 rounded"
-                  style={{ color: '#6a6490', border: '1px solid #3a3660' }}
-                >
+                <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
+                  style={{ color: '#897f68', border: '1px solid #2e2820' }}>
                   Cancel
                 </button>
               </div>
             )}
 
             {addCreatureMode === 'custom' && (
-              <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#0f0e17', border: '1px solid #3a3660' }}>
+              <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
                 <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Add Custom Creature</p>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-3">
-                    <input
-                      type="text"
-                      value={customCreatureName}
-                      onChange={e => setCustomCreatureName(e.target.value)}
+                    <input type="text" value={customCreatureName} onChange={e => setCustomCreatureName(e.target.value)}
                       placeholder="Creature name *"
                       style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }}
-                      autoFocus
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomCombatant(); }}}
-                    />
+                      autoFocus onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomCombatant(); }}} />
                   </div>
-                  <input
-                    type="text"
-                    value={customCreatureType}
-                    onChange={e => setCustomCreatureType(e.target.value)}
-                    placeholder="Type (optional)"
-                    style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }}
-                  />
-                  <input
-                    type="text"
-                    value={customCreatureCR}
-                    onChange={e => setCustomCreatureCR(e.target.value)}
-                    placeholder="CR (optional)"
-                    style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }}
-                  />
+                  <input type="text" value={customCreatureType} onChange={e => setCustomCreatureType(e.target.value)}
+                    placeholder="Type (optional)" style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }} />
+                  <input type="text" value={customCreatureCR} onChange={e => setCustomCreatureCR(e.target.value)}
+                    placeholder="CR (optional)" style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }} />
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={addCustomCombatant}
-                    className="text-xs px-3 py-1 rounded"
-                    style={{ backgroundColor: '#a07830', color: '#e8d5b0' }}
-                  >
-                    Add
-                  </button>
-                  <button
-                    onClick={() => setAddCreatureMode(null)}
-                    className="text-xs px-2 py-1 rounded"
-                    style={{ color: '#6a6490', border: '1px solid #3a3660' }}
-                  >
-                    Cancel
-                  </button>
+                  <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded"
+                    style={{ backgroundColor: '#a07830', color: '#e8dcc4' }}>Add</button>
+                  <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
+                    style={{ color: '#897f68', border: '1px solid #2e2820' }}>Cancel</button>
                 </div>
               </div>
             )}
@@ -1095,136 +997,16 @@ For each combatant: if it matches a creature in the saved library (same name), s
           </FormField>
 
           {saving && saveStatus && (
-            <p className="text-sm" style={{ color: '#9990b0', fontStyle: 'italic' }}>{saveStatus}</p>
+            <p className="text-sm" style={{ color: '#b9ac90', fontStyle: 'italic' }}>{saveStatus}</p>
           )}
         </div>
       </Modal>
 
       {/* ================================================================
-          VIEW MODAL
-      ================================================================ */}
-      {viewing && (
-        <Modal
-          isOpen={!!viewing}
-          onClose={() => setViewing(null)}
-          title={viewing.name}
-          wide
-        >
-          <div className="space-y-4">
-            {/* Meta badges */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {(() => {
-                const cs = statusColors[viewing.status] ?? statusColors.draft;
-                return (
-                  <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                    style={{ backgroundColor: cs.bg, color: cs.text, borderColor: cs.border }}>
-                    {viewing.status}
-                  </span>
-                );
-              })()}
-              {viewing.difficulty && (() => {
-                const dc = difficultyColors[viewing.difficulty];
-                return dc ? (
-                  <span className="text-xs px-2 py-0.5 rounded capitalize"
-                    style={{ backgroundColor: dc.bg, color: dc.text, border: `1px solid ${dc.border}` }}>
-                    {viewing.difficulty}
-                  </span>
-                ) : null;
-              })()}
-              {viewing.environment && (
-                <span className="text-xs capitalize" style={{ color: '#6a6490' }}>{viewing.environment}</span>
-              )}
-              {viewing.party_size && viewing.party_level && (
-                <span className="text-xs" style={{ color: '#6a6490' }}>
-                  {viewing.party_size} players · avg level {viewing.party_level}
-                </span>
-              )}
-            </div>
-
-            {/* Description */}
-            {viewing.description && (
-              <div>
-                <div style={sectionLabel}>Description</div>
-                <MarkdownContent text={viewing.description} className="text-sm" style={{ color: '#e8d5b0', lineHeight: '1.7' }} />
-              </div>
-            )}
-
-            {/* Combatants */}
-            {(() => {
-              const list = parseCombatants(viewing.combatants);
-              if (list.length === 0) return null;
-              const total = list.reduce((s, c) => s + c.count, 0);
-              return (
-                <div>
-                  <div style={sectionLabel}>Combatants — {total} total</div>
-                  <div className="space-y-1">
-                    {list.map(c => {
-                      const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;
-                      return (
-                        <div key={c.id} className="flex items-baseline gap-2 text-sm" style={{ color: '#e8d5b0' }}>
-                          <span className="font-semibold" style={{ minWidth: '1.5rem', textAlign: 'right', color: '#c9a84c' }}>{c.count}×</span>
-                          {sb ? (
-                            <button
-                              onClick={() => setViewingStatblock(sb)}
-                              className="text-sm font-medium underline decoration-dotted"
-                              style={{ color: '#e8d5b0', textUnderlineOffset: '3px' }}
-                            >
-                              {c.name}
-                            </button>
-                          ) : (
-                            <span>{c.name}</span>
-                          )}
-                          {c.challenge_rating && <span className="text-xs" style={{ color: '#c08060' }}>CR {c.challenge_rating}</span>}
-                          {c.creature_type && <span className="text-xs capitalize" style={{ color: '#6a6490' }}>{c.creature_type}</span>}
-                          {c.notes && <span className="text-xs italic" style={{ color: '#6a6490' }}>— {c.notes}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* DM Notes */}
-            {viewing.dm_notes && (
-              <div>
-                <div style={sectionLabel}>DM Notes</div>
-                <MarkdownContent text={viewing.dm_notes} className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }} />
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-2">
-              {viewing.status !== 'completed' && parseCombatants(viewing.combatants).length > 0 && (
-                <button
-                  onClick={() => { setViewing(null); setRunningEncounter(viewing); }}
-                  className="text-xs px-3 py-1 rounded font-semibold"
-                  style={{ backgroundColor: '#1a2a1a', color: '#6ab87a', border: '1px solid #2a5a2a' }}
-                >
-                  ▶ Run Encounter
-                </button>
-              )}
-              <button
-                onClick={() => { setViewing(null); openEdit(viewing); }}
-                className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ================================================================
           CREATURE SHEET VIEWER
       ================================================================ */}
       {viewingStatblock && (
-        <Modal
-          isOpen={!!viewingStatblock}
-          onClose={() => setViewingStatblock(null)}
-          title={viewingStatblock.name}
-          wide
-        >
+        <Modal isOpen={!!viewingStatblock} onClose={() => setViewingStatblock(null)} title={viewingStatblock.name} wide>
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
               {viewingStatblock.creature_type && (
@@ -1240,28 +1022,19 @@ For each combatant: if it matches a creature in the saved library (same name), s
                 </span>
               )}
               {viewingStatblock.tags && (
-                <span className="text-xs" style={{ color: '#6a6490' }}>{viewingStatblock.tags}</span>
+                <span className="text-xs" style={{ color: '#897f68' }}>{viewingStatblock.tags}</span>
               )}
             </div>
             {viewingStatblock.content && (
-              <pre
-                className="text-sm whitespace-pre-wrap rounded p-3"
-                style={{
-                  color: '#e8d5b0',
-                  lineHeight: '1.7',
-                  fontFamily: 'monospace',
-                  fontSize: '0.8rem',
-                  backgroundColor: '#0f0e17',
-                  border: '1px solid #3a3660',
-                }}
-              >
+              <pre className="text-sm whitespace-pre-wrap rounded p-3"
+                style={{ color: '#e8dcc4', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
                 {viewingStatblock.content}
               </pre>
             )}
             {viewingStatblock.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#9990b0', lineHeight: '1.6', fontStyle: 'italic' }}>
+                <p className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.6', fontStyle: 'italic' }}>
                   {viewingStatblock.dm_notes}
                 </p>
               </div>
@@ -1274,10 +1047,7 @@ For each combatant: if it matches a creature in the saved library (same name), s
           INITIATIVE TRACKER
       ================================================================ */}
       {runningEncounter && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col"
-          style={{ backgroundColor: '#0f0e17' }}
-        >
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: '#15120e' }}>
           <InitiativeTracker
             encounter={runningEncounter}
             statblocks={monsterStatblocks}
@@ -1285,6 +1055,272 @@ For each combatant: if it matches a creature in the saved library (same name), s
             onClose={() => setRunningEncounter(null)}
           />
         </div>
+      )}
+    </div>
+  );
+}
+
+// ================================================================
+// Detail panel (read-only view)
+// ================================================================
+
+function DetailPanel({
+  enc,
+  monsterStatblocks,
+  onEdit,
+  onRun,
+  onViewStatblock,
+}: {
+  enc: Encounter;
+  monsterStatblocks: MonsterStatblock[];
+  onEdit: () => void;
+  onRun: () => void;
+  onViewStatblock: (sb: MonsterStatblock) => void;
+}) {
+  const combatantList = parseCombatants(enc.combatants);
+  const dc = enc.difficulty ? difficultyColors[enc.difficulty] : null;
+  const sc = statusColors[enc.status] ?? statusColors.draft;
+  const canRun = enc.status !== 'completed' && combatantList.length > 0;
+
+  // Total creature count
+  const totalCreatures = combatantList.reduce((sum, c) => sum + c.count, 0);
+
+  return (
+    <div style={{ maxWidth: '700px' }}>
+
+      {/* ── Eyebrow ── */}
+      <div style={{
+        color: '#897f68',
+        fontSize: '0.6rem',
+        fontWeight: 700,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        marginBottom: '8px',
+      }}>
+        Encounter{enc.difficulty ? ` · ${enc.difficulty}` : ''}
+      </div>
+
+      {/* ── Title + action row ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
+        <h1 style={{
+          color: '#e8dcc4',
+          fontSize: '2rem',
+          fontWeight: 700,
+          fontFamily: 'var(--display)',
+          lineHeight: 1.15,
+          margin: 0,
+          flex: 1,
+          minWidth: 0,
+        }}>
+          {enc.name}
+        </h1>
+        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+          <button onClick={onEdit} style={{
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: '#b9ac90',
+            backgroundColor: 'transparent',
+            border: '1px solid #2e2820',
+            borderRadius: '3px',
+            padding: '6px 14px',
+            cursor: 'pointer',
+            fontFamily: 'var(--serif)',
+          }}>
+            Edit
+          </button>
+          {canRun && (
+            <button onClick={onRun} style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#15120e',
+              backgroundColor: '#c9a84c',
+              border: '1px solid #c9a84c',
+              borderRadius: '3px',
+              padding: '6px 16px',
+              cursor: 'pointer',
+              fontFamily: 'var(--serif)',
+            }}>
+              ▶ Run Encounter
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Stat strip ── */}
+      <div style={{
+        display: 'flex',
+        gap: '1px',
+        backgroundColor: '#2e2820',
+        border: '1px solid #2e2820',
+        borderRadius: '4px',
+        overflow: 'hidden',
+        marginBottom: '28px',
+      }}>
+        {[
+          { label: 'Status', value: enc.status, color: sc.text },
+          { label: 'Difficulty', value: enc.difficulty ?? '—', color: dc?.text ?? '#897f68' },
+          { label: 'Environment', value: enc.environment ?? '—', color: '#b9ac90' },
+          { label: 'Party', value: enc.party_size && enc.party_level ? `${enc.party_size}× Lv${enc.party_level}` : '—', color: '#b9ac90' },
+          { label: 'Creatures', value: totalCreatures > 0 ? String(totalCreatures) : '—', color: '#c9a84c' },
+        ].map(stat => (
+          <div key={stat.label} style={{
+            flex: 1,
+            backgroundColor: '#1c1814',
+            padding: '10px 14px',
+            textAlign: 'center',
+          }}>
+            <div style={{ color: '#897f68', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '3px', fontFamily: 'var(--mono)' }}>
+              {stat.label}
+            </div>
+            <div style={{ color: stat.color, fontSize: '0.82rem', fontWeight: 600, fontFamily: 'var(--serif)', textTransform: 'capitalize' }}>
+              {stat.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Description ── */}
+      {enc.description && (
+        <div style={{ marginBottom: '28px' }}>
+          <MarkdownContent text={enc.description} className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.75', fontStyle: 'italic' }} />
+        </div>
+      )}
+
+      {/* ── Creatures ── */}
+      {combatantList.length > 0 && (
+        <div style={{ marginBottom: '28px' }}>
+          <div style={{ ...sectionLabel, marginBottom: '0' }}>Creatures</div>
+          <div style={{ marginTop: '8px' }}>
+            {combatantList.map(c => {
+              const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '28px 1fr auto',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '11px 0',
+                    borderBottom: '1px solid #1e1a14',
+                  }}
+                >
+                  {/* Count badge */}
+                  <div style={{
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '3px',
+                    backgroundColor: '#1e1a14',
+                    border: '1px solid #2e2820',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: '#c9a84c',
+                    fontFamily: 'var(--mono)',
+                    flexShrink: 0,
+                  }}>
+                    {c.count}
+                  </div>
+
+                  {/* Name + meta */}
+                  <div style={{ minWidth: 0 }}>
+                    {sb ? (
+                      <button
+                        onClick={() => onViewStatblock(sb)}
+                        style={{
+                          color: '#e8dcc4',
+                          fontSize: '0.9rem',
+                          fontWeight: 600,
+                          fontFamily: 'var(--display)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                          textAlign: 'left',
+                          textDecoration: 'underline dotted',
+                          textUnderlineOffset: '3px',
+                          textDecorationColor: '#3e3428',
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    ) : (
+                      <span style={{ color: '#e8dcc4', fontSize: '0.9rem', fontWeight: 600, fontFamily: 'var(--display)' }}>{c.name}</span>
+                    )}
+                    <div style={{ color: '#897f68', fontSize: '0.72rem', marginTop: '2px', fontFamily: 'var(--mono)' }}>
+                      {[
+                        c.challenge_rating ? `CR ${c.challenge_rating}` : null,
+                        c.creature_type,
+                        sb?.hit_points ? `${sb.hit_points} HP` : null,
+                        sb?.armor_class ? `AC ${sb.armor_class}` : null,
+                      ].filter(Boolean).join('  ·  ')}
+                    </div>
+                  </div>
+
+                  {/* Roll init link */}
+                  <button
+                    onClick={onRun}
+                    title="Launch initiative tracker"
+                    style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: '#5a4828',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px 0',
+                      fontFamily: 'var(--mono)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    Roll Init
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── DM Notes ── */}
+      {enc.dm_notes && (
+        <div style={{
+          marginBottom: '28px',
+          padding: '14px 16px',
+          backgroundColor: '#1c1814',
+          border: '1px solid #2e2820',
+          borderLeft: '3px solid #3e3428',
+          borderRadius: '3px',
+        }}>
+          <div style={{ ...sectionLabel, marginBottom: '8px' }}>DM Notes</div>
+          <MarkdownContent text={enc.dm_notes} className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.75' }} />
+        </div>
+      )}
+
+      {/* ── Bottom run CTA (if can run) ── */}
+      {canRun && (
+        <button
+          onClick={onRun}
+          style={{
+            width: '100%',
+            backgroundColor: '#c9a84c',
+            color: '#15120e',
+            border: 'none',
+            borderRadius: '4px',
+            padding: '12px',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            fontFamily: 'var(--serif)',
+            cursor: 'pointer',
+            letterSpacing: '0.02em',
+          }}
+        >
+          ▶ Run Encounter · {totalCreatures} {totalCreatures === 1 ? 'creature' : 'creatures'}
+        </button>
       )}
     </div>
   );

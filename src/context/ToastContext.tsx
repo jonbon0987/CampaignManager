@@ -62,7 +62,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 padding: '10px 16px',
                 borderRadius: '8px',
                 fontSize: '13px',
-                fontFamily: 'Georgia, Cambria, serif',
+                fontFamily: 'var(--serif)',
                 cursor: 'pointer',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
                 animation: 'toast-slide-in 0.2s ease-out',

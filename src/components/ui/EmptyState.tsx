@@ -9,7 +9,7 @@ interface EmptyStateProps {
 export function EmptyState({ message, onAdd, addLabel = 'Add' }: EmptyStateProps) {
   return (
     <div className="text-center py-16">
-      <p className="text-sm mb-4" style={{ color: '#6a6490' }}>{message}</p>
+      <p className="text-sm mb-4" style={{ color: 'var(--ink-3)' }}>{message}</p>
       {onAdd && (
         <Button variant="primary" size="sm" onClick={onAdd}>
           + {addLabel}

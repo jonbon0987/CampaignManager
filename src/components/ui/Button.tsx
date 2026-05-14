@@ -43,7 +43,7 @@ export function Button({
         ${base} ${hover} ${sizeClass} ${className}
       `.trim().replace(/\s+/g, ' ')}
       style={{
-        fontFamily: 'Georgia, Cambria, serif',
+        fontFamily: 'var(--serif)',
         ...(variant === 'danger' ? { color: '#e05c5c' } : {}),
         ...style,
       }}

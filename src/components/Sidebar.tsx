@@ -1,71 +1,53 @@
-import {
-  LayoutDashboard,
-  ScrollText,
-  Lightbulb,
-  BookOpen,
-  Users,
-  Map,
-  Shield,
-  Skull,
-  Swords,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  MessageSquare,
-  Menu,
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu } from 'lucide-react';
 import type { Tab } from '../App';
+import { useCampaign } from '../context/CampaignContext';
 
 interface NavItem {
   id: Tab;
   label: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  glyph: string;
 }
 
-interface NavGroup {
-  label: string;
-  items: NavItem[];
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: 'Campaign',
-    items: [
-      { id: 'overview',   label: 'Overview',        icon: LayoutDashboard },
-      { id: 'sessions',   label: 'Session Notes',   icon: ScrollText },
-      { id: 'hooks',      label: 'Hooks & Ideas',   icon: Lightbulb },
-      { id: 'modules',    label: 'Modules',         icon: BookOpen },
-    ],
-  },
-  {
-    label: 'World',
-    items: [
-      { id: 'characters', label: 'Characters',      icon: Users },
-      { id: 'lore',       label: 'Locations',        icon: Map },
-      { id: 'factions',   label: 'Factions',         icon: Shield },
-    ],
-  },
-  {
-    label: 'Combat',
-    items: [
-      { id: 'creatures',  label: 'Stat Sheets',     icon: Skull },
-      { id: 'encounters', label: 'Encounters',      icon: Swords },
-    ],
-  },
-  {
-    label: 'Tools',
-    items: [
-      { id: 'assistant',  label: 'AI Assistant',    icon: Sparkles },
-    ],
-  },
+const TABS: NavItem[] = [
+  { id: 'overview', label: 'Overview', glyph: '❖' },
+  { id: 'cast',     label: 'Cast',     glyph: '◇' },
+  { id: 'world',    label: 'World',    glyph: '✦' },
+  { id: 'modules',  label: 'Modules',  glyph: '❧' },
+  { id: 'sessions', label: 'Sessions', glyph: '✧' },
+  { id: 'combat',   label: 'Combat',   glyph: '⚔' },
+  { id: 'settings', label: 'Settings', glyph: '⚙' },
 ];
+
+// Recently viewed entries
+interface RecentEntry {
+  kind: string;
+  id: string;
+  label: string;
+  tab: Tab;
+}
+
+const recentStore: RecentEntry[] = [];
+
+export function pushRecent(entry: RecentEntry) {
+  const idx = recentStore.findIndex(r => r.kind === entry.kind && r.id === entry.id);
+  if (idx >= 0) recentStore.splice(idx, 1);
+  recentStore.unshift(entry);
+  if (recentStore.length > 6) recentStore.length = 6;
+  window.dispatchEvent(new CustomEvent('recent-changed'));
+}
+
+export function getRecents() {
+  return [...recentStore];
+}
 
 interface SidebarProps {
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
   isOpen: boolean;
   onToggle: () => void;
-  onOpenAI: () => void;
+  onToggleRun?: () => void;
+  runMode?: boolean;
   isMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -75,14 +57,26 @@ export default function Sidebar({
   setActiveTab,
   isOpen,
   onToggle,
-  onOpenAI,
+  onToggleRun,
+  runMode = false,
   isMobile,
   onCloseMobile,
 }: SidebarProps) {
+  const { selectedCampaign } = useCampaign();
+  const collapsed = !isOpen && !isMobile;
+
   const handleNavClick = (tab: Tab) => {
     setActiveTab(tab);
     if (isMobile) onCloseMobile();
   };
+
+  // Recently viewed
+  const [recents, setRecents] = useState<RecentEntry[]>([]);
+  useEffect(() => {
+    const handler = () => setRecents(getRecents());
+    window.addEventListener('recent-changed', handler);
+    return () => window.removeEventListener('recent-changed', handler);
+  }, []);
 
   return (
     <>
@@ -97,12 +91,8 @@ export default function Sidebar({
 
       {/* Sidebar panel */}
       <aside
-        className="flex flex-col shrink-0 border-r overflow-hidden transition-all duration-200"
+        className={`cm-side ${collapsed ? 'is-collapsed' : ''}`}
         style={{
-          width: isOpen ? '240px' : '56px',
-          backgroundColor: '#0a0918',
-          borderColor: '#3a3660',
-          // Mobile: fixed overlay; Desktop: inline
           ...(isMobile ? {
             position: 'fixed',
             top: 0,
@@ -110,120 +100,109 @@ export default function Sidebar({
             bottom: 0,
             zIndex: 50,
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-            width: '240px',
+            width: '200px',
           } : {}),
         }}
       >
-        {/* Logo area */}
-        <div
-          className="flex items-center gap-3 px-3 border-b shrink-0"
-          style={{ height: '56px', borderColor: '#3a3660' }}
-        >
-          <div className="shrink-0 flex items-center justify-center" style={{ width: '32px' }}>
-            <span className="text-xl select-none">⚔️</span>
+        {/* Header */}
+        <div className="cm-side-head">
+          <div
+            className="cm-crest"
+            onClick={collapsed ? onToggle : undefined}
+            style={collapsed ? { cursor: 'pointer' } : undefined}
+            title={collapsed ? 'Expand sidebar' : undefined}
+          >
+            ❖
           </div>
-          {isOpen && (
-            <span
-              className="text-sm font-bold truncate"
-              style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="cm-side-eyebrow">Chronicle</div>
+            <div className="cm-side-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {selectedCampaign?.name || 'Campaign Manager'}
+            </div>
+          </div>
+          {!isMobile && !collapsed && (
+            <button
+              className="cm-side-toggle"
+              onClick={onToggle}
+              title="Collapse sidebar"
             >
-              Campaign Manager
-            </span>
+              ‹
+            </button>
           )}
         </div>
 
-        {/* Nav groups */}
-        <nav className="flex-1 overflow-y-auto py-3">
-          {NAV_GROUPS.map(group => (
-            <div key={group.label} className="mb-4">
-              {isOpen && (
-                <div
-                  className="px-3 mb-1"
-                  style={{
-                    color: '#6a6490',
-                    fontSize: '0.65rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {group.label}
-                </div>
-              )}
-              {!isOpen && <div className="mb-1" style={{ height: '4px' }} />}
-              {group.items.map(item => {
-                const isActive = activeTab === item.id;
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavClick(item.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors relative ${!isActive ? 'hover:text-parchment' : ''}`}
-                    style={{
-                      color: isActive ? '#c9a84c' : '#9990b0',
-                      backgroundColor: isActive ? '#22203a' : 'transparent',
-                      borderLeft: isActive ? '2px solid #c9a84c' : '2px solid transparent',
-                      fontFamily: 'Georgia, Cambria, serif',
-                      justifyContent: isOpen ? 'flex-start' : 'center',
-                    }}
-                    title={!isOpen ? item.label : undefined}
-                  >
-                    <Icon size={16} strokeWidth={1.5} />
-                    {isOpen && <span className="truncate">{item.label}</span>}
-                  </button>
-                );
-              })}
-            </div>
+        {/* Navigation */}
+        <nav className="cm-nav">
+          <div className="cm-nav-section">Campaign</div>
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              className={`cm-nav-item ${activeTab === t.id ? 'is-active' : ''}`}
+              onClick={() => handleNavClick(t.id)}
+            >
+              <span className="cm-nav-glyph">{t.glyph}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.label}</span>
+            </button>
           ))}
         </nav>
 
-        {/* Bottom controls */}
-        <div className="shrink-0 border-t py-2" style={{ borderColor: '#3a3660' }}>
-          {/* Quick Chat panel button */}
+        {/* Recently Viewed */}
+        {recents.length > 0 && (
+          <div className="rv">
+            <div className="rv-label">Recent</div>
+            {recents.map((r, i) => (
+              <button
+                key={i}
+                className="rv-item"
+                onClick={() => handleNavClick(r.tab)}
+              >
+                <span className="rv-glyph">·</span>
+                <span className="rv-name">{r.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="cm-side-foot">
           <button
-            onClick={onOpenAI}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-surface-high"
-            style={{
-              color: '#9990b0',
-              backgroundColor: 'transparent',
-              fontFamily: 'Georgia, Cambria, serif',
-              justifyContent: isOpen ? 'flex-start' : 'center',
-            }}
-            title={!isOpen ? 'Quick Chat' : undefined}
+            className={`cm-run-btn ${runMode ? 'is-on' : ''}`}
+            onClick={onToggleRun}
           >
-            <MessageSquare size={16} strokeWidth={1.5} />
-            {isOpen && <span>Quick Chat</span>}
+            <span style={{ fontSize: '14px' }}>⚜</span>
+            <span>{runMode ? 'Exit Session' : 'Run Session'}</span>
           </button>
-
-          {/* Collapse toggle (desktop only) */}
-          {!isMobile && (
-            <button
-              onClick={onToggle}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:text-muted"
-              style={{
-                color: '#6a6490',
-                backgroundColor: 'transparent',
-                justifyContent: isOpen ? 'flex-start' : 'center',
-              }}
-              title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            >
-              {isOpen ? <ChevronLeft size={16} strokeWidth={1.5} /> : <ChevronRight size={16} strokeWidth={1.5} />}
-              {isOpen && <span className="text-xs">Collapse</span>}
-            </button>
-          )}
-
-          {/* Mobile close button */}
-          {isMobile && (
-            <button
-              onClick={onCloseMobile}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors"
-              style={{ color: '#6a6490', backgroundColor: 'transparent', justifyContent: 'flex-start' }}
-            >
-              <Menu size={16} strokeWidth={1.5} />
-              <span className="text-xs">Close menu</span>
-            </button>
+          {selectedCampaign && (
+            <div className="cm-side-meta">
+              <div>{selectedCampaign.name}</div>
+            </div>
           )}
         </div>
+
+        {/* Mobile close */}
+        {isMobile && (
+          <div style={{ padding: '8px 14px', borderTop: '1px solid var(--rule-soft)' }}>
+            <button
+              onClick={onCloseMobile}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--ink-3)',
+                cursor: 'pointer',
+                fontFamily: 'var(--serif)',
+                fontSize: '13px',
+              }}
+            >
+              <Menu size={14} />
+              <span>Close menu</span>
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );

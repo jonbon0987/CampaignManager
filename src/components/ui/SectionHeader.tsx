@@ -15,12 +15,12 @@ export function SectionHeader({ title, subtitle, onAdd, addLabel = 'Add', extra 
       <div className="min-w-0">
         <h2
           className="text-xl font-bold leading-tight"
-          style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+          style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
         >
           {title}
         </h2>
         {subtitle && (
-          <p className="text-xs mt-0.5" style={{ color: '#6a6490' }}>{subtitle}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>{subtitle}</p>
         )}
       </div>
       <div className="flex-1" />

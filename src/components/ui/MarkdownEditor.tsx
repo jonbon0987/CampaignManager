@@ -52,7 +52,7 @@ interface MarkdownEditorProps {
 const toolbarBtnStyle: React.CSSProperties = {
   backgroundColor: 'transparent',
   border: 'none',
-  color: '#6a6490',
+  color: 'var(--ink-3)',
   cursor: 'pointer',
   padding: '2px 6px',
   borderRadius: '3px',
@@ -167,20 +167,20 @@ export function MarkdownEditor({
     fontWeight: active ? 600 : 400,
     cursor: 'pointer',
     border: 'none',
-    backgroundColor: active ? '#2a2840' : 'transparent',
-    color: active ? '#c9a84c' : '#6a6490',
-    fontFamily: 'Georgia, Cambria, serif',
+    backgroundColor: active ? 'var(--rule-soft)' : 'transparent',
+    color: active ? 'var(--gold)' : 'var(--ink-3)',
+    fontFamily: 'var(--serif)',
   });
 
   return (
     <div
       className="rounded-md overflow-hidden"
-      style={{ border: '1px solid #3a3660', backgroundColor: '#1a1830' }}
+      style={{ border: '1px solid #3a3660', backgroundColor: 'var(--paper)' }}
     >
       {/* Toolbar */}
       <div
         className="flex items-center gap-1 px-2 py-1"
-        style={{ borderBottom: '1px solid #2e2c4a', backgroundColor: '#14132a' }}
+        style={{ borderBottom: '1px solid #2e2c4a', backgroundColor: 'var(--bg-2)' }}
       >
         <div className="flex gap-0.5 mr-2">
           <button onClick={() => setMode('write')} style={pillStyle(mode === 'write')}>Write</button>
@@ -189,26 +189,26 @@ export function MarkdownEditor({
 
         {mode === 'write' && (
           <>
-            <div style={{ width: 1, height: 16, backgroundColor: '#2e2c4a', margin: '0 4px' }} />
+            <div style={{ width: 1, height: 16, backgroundColor: 'var(--rule)', margin: '0 4px' }} />
             <button onClick={handleBold} style={toolbarBtnStyle} title="Bold"
-              onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#6a6490')}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
             ><b>B</b></button>
             <button onClick={handleItalic} style={toolbarBtnStyle} title="Italic"
-              onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#6a6490')}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
             ><i>I</i></button>
             <button onClick={handleHeading} style={toolbarBtnStyle} title="Heading"
-              onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#6a6490')}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
             >H</button>
             <button onClick={handleList} style={toolbarBtnStyle} title="List"
-              onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#6a6490')}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
             >•</button>
             <button onClick={handleLink} style={toolbarBtnStyle} title="Link"
-              onMouseEnter={e => (e.currentTarget.style.color = '#e8d5b0')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#6a6490')}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
             >🔗</button>
           </>
         )}
@@ -244,13 +244,13 @@ export function MarkdownEditor({
             style={{
               width: '100%',
               minHeight,
-              backgroundColor: '#1a1830',
-              color: '#e8d5b0',
+              backgroundColor: 'var(--paper)',
+              color: 'var(--ink)',
               border: 'none',
               outline: 'none',
               padding: '10px 12px',
               fontSize: '0.875rem',
-              fontFamily: 'Georgia, Cambria, serif',
+              fontFamily: 'var(--serif)',
               lineHeight: '1.6',
               resize: 'vertical',
             }}
@@ -263,15 +263,15 @@ export function MarkdownEditor({
             minHeight,
             padding: '10px 12px',
             fontSize: '0.875rem',
-            fontFamily: 'Georgia, Cambria, serif',
+            fontFamily: 'var(--serif)',
             lineHeight: '1.6',
-            color: '#e8d5b0',
+            color: 'var(--ink)',
           }}
         >
           {value ? (
             <MarkdownContent text={value} />
           ) : (
-            <span style={{ color: '#4a4470', fontStyle: 'italic' }}>Nothing to preview</span>
+            <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>Nothing to preview</span>
           )}
         </div>
       )}

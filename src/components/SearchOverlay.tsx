@@ -74,7 +74,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: pc.id, label: pc.character_name,
           detail: `${pc.race ?? ''} ${pc.class ?? ''}`.trim() || undefined,
-          tab: 'characters', icon: User, group: 'Characters',
+          tab: 'cast', icon: User, group: 'Characters',
         });
       }
     }
@@ -86,7 +86,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: npc.id, label: npc.name,
           detail: [npc.role, npc.affiliation].filter(Boolean).join(' · ') || undefined,
-          tab: 'characters', icon: Users, group: 'NPCs',
+          tab: 'cast', icon: Users, group: 'NPCs',
         });
       }
     }
@@ -98,7 +98,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: loc.id, label: loc.name,
           detail: [loc.location_type, loc.region].filter(Boolean).join(' · ') || undefined,
-          tab: 'lore', icon: Map, group: 'Locations',
+          tab: 'world', icon: Map, group: 'Locations',
         });
       }
     }
@@ -110,7 +110,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: f.id, label: f.name,
           detail: f.faction_type ?? undefined,
-          tab: 'factions', icon: Shield, group: 'Factions',
+          tab: 'cast', icon: Shield, group: 'Factions',
         });
       }
     }
@@ -121,7 +121,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: h.id, label: h.title,
           detail: `${h.category ?? ''} · ${h.is_active ? 'active' : 'resolved'}`,
-          tab: 'hooks', icon: Lightbulb, group: 'Hooks & Ideas',
+          tab: 'sessions', icon: Lightbulb, group: 'Hooks & Ideas',
         });
       }
     }
@@ -132,7 +132,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: l.id, label: l.title,
           detail: l.category ?? undefined,
-          tab: 'lore', icon: Library, group: 'Lore',
+          tab: 'world', icon: Library, group: 'Lore',
         });
       }
     }
@@ -154,7 +154,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: c.id, label: c.name,
           detail: [c.creature_type, c.challenge_rating ? `CR ${c.challenge_rating}` : null].filter(Boolean).join(' · ') || undefined,
-          tab: 'creatures', icon: Skull, group: 'Stat Sheets',
+          tab: 'combat', icon: Skull, group: 'Stat Sheets',
         });
       }
     }
@@ -165,7 +165,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: e.id, label: e.name,
           detail: e.status ?? undefined,
-          tab: 'encounters', icon: Swords, group: 'Encounters',
+          tab: 'combat', icon: Swords, group: 'Encounters',
         });
       }
     }
@@ -237,8 +237,8 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
           width: 'min(560px, calc(100vw - 32px))',
           maxHeight: '60vh',
           zIndex: 9001,
-          backgroundColor: '#1a1830',
-          border: '1px solid #3a3660',
+          backgroundColor: 'var(--paper)',
+          border: '1px solid var(--rule)',
           borderRadius: '12px',
           boxShadow: '0 16px 64px rgba(0,0,0,0.6)',
           display: 'flex',
@@ -251,9 +251,9 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         <div style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           padding: '12px 16px',
-          borderBottom: '1px solid #3a3660',
+          borderBottom: '1px solid var(--rule)',
         }}>
-          <Search size={18} strokeWidth={1.5} style={{ color: '#6a6490', flexShrink: 0 }} />
+          <Search size={18} strokeWidth={1.5} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"
@@ -265,19 +265,13 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
               background: 'none',
               border: 'none',
               outline: 'none',
-              color: '#e8d5b0',
+              color: 'var(--ink)',
               fontSize: '15px',
-              fontFamily: 'Georgia, Cambria, serif',
+              fontFamily: 'var(--serif)',
             }}
           />
-          <div style={{ color: '#4a4470', fontSize: '11px', flexShrink: 0 }}>
-            <kbd style={{
-              padding: '2px 6px',
-              borderRadius: '4px',
-              border: '1px solid #3a3660',
-              backgroundColor: '#0f0e17',
-              fontSize: '10px',
-            }}>ESC</kbd>
+          <div style={{ color: 'var(--ink-3)', fontSize: '11px', flexShrink: 0 }}>
+            <kbd className="cm-kbd">ESC</kbd>
           </div>
         </div>
 
@@ -287,7 +281,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
             <div style={{
               padding: '32px 16px',
               textAlign: 'center',
-              color: '#4a4470',
+              color: 'var(--ink-3)',
               fontSize: '13px',
             }}>
               No results for "{query}"
@@ -298,7 +292,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
             <div style={{
               padding: '32px 16px',
               textAlign: 'center',
-              color: '#4a4470',
+              color: 'var(--ink-3)',
               fontSize: '13px',
               lineHeight: '1.8',
             }}>
@@ -314,7 +308,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
                 fontWeight: 600,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
-                color: '#6a6490',
+                color: 'var(--ink-3)',
               }}>
                 {g.group}
               </div>
@@ -336,32 +330,26 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
                       border: 'none',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      backgroundColor: isSelected ? '#22203a' : 'transparent',
-                      color: '#e8d5b0',
-                      fontFamily: 'Georgia, Cambria, serif',
+                      backgroundColor: isSelected ? 'var(--highlight)' : 'transparent',
+                      color: 'var(--ink)',
+                      fontFamily: 'var(--serif)',
                       fontSize: '14px',
                     }}
                   >
-                    <Icon size={16} strokeWidth={1.5} style={{ color: '#9990b0', flexShrink: 0 }} />
+                    <Icon size={16} strokeWidth={1.5} style={{ color: 'var(--ink-2)', flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {item.label}
                       </div>
                       {item.detail && (
-                        <div style={{ fontSize: '11px', color: '#6a6490', marginTop: '1px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--ink-3)', marginTop: '1px' }}>
                           {item.detail}
                         </div>
                       )}
                     </div>
                     {isSelected && (
-                      <span style={{ color: '#4a4470', fontSize: '11px', flexShrink: 0 }}>
-                        <kbd style={{
-                          padding: '1px 5px',
-                          borderRadius: '3px',
-                          border: '1px solid #3a3660',
-                          backgroundColor: '#0f0e17',
-                          fontSize: '10px',
-                        }}>↵</kbd>
+                      <span style={{ color: 'var(--ink-3)', fontSize: '11px', flexShrink: 0 }}>
+                        <kbd className="cm-kbd">↵</kbd>
                       </span>
                     )}
                   </button>

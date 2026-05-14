@@ -52,6 +52,9 @@ export type ChatMessage =
       importActions?: ImportAction[];
       importApplyState?: ImportApplyState;
       autoApplied?: boolean;
+      proposalTitle?: string;
+      proposalSource?: string;
+      proposalTimestamp?: number;
     };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -149,6 +152,18 @@ export function useAIChat() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // On mount, reset any messages stuck in 'applying' phase (e.g. from a page refresh mid-apply)
+  useEffect(() => {
+    setMessages(prev => prev.map(m => {
+      if (m.role !== 'assistant') return m;
+      if (m.importApplyState?.phase === 'applying') {
+        return { ...m, importApplyState: { ...m.importApplyState, phase: 'idle' as const } };
+      }
+      return m;
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -187,7 +202,8 @@ export function useAIChat() {
       return;
     }
 
-    const userMsg: ChatMessage = { role: 'user', content: input.trim() };
+    const userPrompt = input.trim();
+    const userMsg: ChatMessage = { role: 'user', content: userPrompt };
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setInput('');
@@ -199,7 +215,10 @@ export function useAIChat() {
       overviewPlot: overview.plotSummary,
     });
 
-    const apiMessages = nextMessages.map(m => ({
+    // Keep only the last 10 messages to avoid token bloat across long sessions.
+    // Campaign context is always in the system prompt, so old history adds little value.
+    const recentMessages = nextMessages.slice(-10);
+    const apiMessages = recentMessages.map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
     }));
@@ -288,6 +307,9 @@ export function useAIChat() {
                 pendingActions: parsedActions,
                 importActions,
                 importApplyState: { phase: 'pending_confirmation', appliedActionIds: [], failedActionIds: [] },
+                proposalTitle: userPrompt.length > 60 ? userPrompt.slice(0, 57) + '…' : userPrompt,
+                proposalSource: 'Ask Campaign Assistant',
+                proposalTimestamp: Date.now(),
               }
             : m
         ));
@@ -481,11 +503,18 @@ export function useAIChat() {
       );
 
       if (actions.length > 0) {
+        const filename = docInput.kind === 'gdocs-url' ? 'Google Doc' : (docInput.filename ?? 'document');
+        const title = userInstructions
+          ? (userInstructions.length > 60 ? userInstructions.slice(0, 57) + '…' : userInstructions)
+          : `Import ${filename}`;
         updatePlaceholder(m => ({
           ...m,
           isExtracting: false,
           importActions: actions,
           importApplyState: { phase: 'pending_confirmation', appliedActionIds: [], failedActionIds: [] },
+          proposalTitle: title,
+          proposalSource: filename,
+          proposalTimestamp: Date.now(),
         }));
       } else {
         updatePlaceholder(m => ({
@@ -626,6 +655,14 @@ export function useAIChat() {
     }
   }
 
+  // Count messages with unresolved import proposals (not yet applied or dismissed)
+  const pendingProposalCount = messages.reduce((count, m) => {
+    if (m.role !== 'assistant') return count;
+    if (!m.importActions?.length) return count;
+    if (m.importApplyState?.phase === 'done') return count;
+    return count + m.importActions.length;
+  }, 0);
+
   return {
     messages,
     input,
@@ -647,5 +684,6 @@ export function useAIChat() {
     handleKeyDown,
     bottomRef,
     textareaRef,
+    pendingProposalCount,
   };
 }

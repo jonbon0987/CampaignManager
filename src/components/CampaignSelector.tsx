@@ -72,18 +72,18 @@ export default function CampaignSelector() {
           className="flex items-center gap-1"
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
         >
-          <h1
-            className="text-xl font-bold leading-tight"
-            style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+          <span
+            style={{ color: 'var(--ink-3)', fontFamily: 'var(--serif)', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px', display: 'inline-block' }}
           >
             {displayName}
-          </h1>
+          </span>
           <span
-            className="text-sm transition-transform"
+            className="text-xs transition-transform"
             style={{
-              color: '#6a6490',
+              color: 'var(--ink-3)',
               transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
               display: 'inline-block',
+              fontSize: '10px',
             }}
           >
             ▾
@@ -91,32 +91,31 @@ export default function CampaignSelector() {
         </button>
         <button
           onClick={handleOpenEdit}
-          className="text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: '#6a6490', border: '1px solid #3a3660', marginLeft: '4px', backgroundColor: 'transparent' }}
+          className="text-xs px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: 'var(--ink-3)', border: '1px solid var(--rule)', marginLeft: '2px', backgroundColor: 'transparent', fontSize: '10px' }}
           title="Rename campaign"
         >
           ✎
         </button>
       </div>
-      <p className="text-xs hidden sm:block" style={{ color: '#6a6490' }}>D&D Campaign Manager</p>
 
       {/* Dropdown */}
       {dropdownOpen && (
         <div
           className="absolute left-0 top-full mt-1 rounded-lg border z-50 py-1"
-          style={{ backgroundColor: '#1a1828', borderColor: '#3a3660', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: '200px', maxWidth: 'calc(100vw - 2rem)' }}
+          style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: '200px', maxWidth: 'calc(100vw - 2rem)' }}
         >
           {campaigns.map(campaign => (
             <div
               key={campaign.id}
               className="flex items-center gap-2 px-3 py-2"
-              style={{ borderBottom: '1px solid #2a2840' }}
+              style={{ borderBottom: '1px solid var(--rule-soft)' }}
             >
               <button
                 onClick={() => { switchCampaign(campaign.id); setDropdownOpen(false); }}
                 className="flex-1 text-left text-sm truncate"
                 style={{
-                  color: campaign.id === selectedCampaignId ? '#c9a84c' : '#e8d5b0',
+                  color: campaign.id === selectedCampaignId ? 'var(--gold)' : 'var(--ink)',
                   fontWeight: campaign.id === selectedCampaignId ? 'bold' : 'normal',
                   background: 'none',
                   border: 'none',
@@ -125,7 +124,7 @@ export default function CampaignSelector() {
                 }}
               >
                 {campaign.id === selectedCampaignId && (
-                  <span style={{ color: '#c9a84c', marginRight: '6px' }}>✓</span>
+                  <span style={{ color: 'var(--gold)', marginRight: '6px' }}>✓</span>
                 )}
                 {campaign.name || 'New Campaign'}
               </button>
@@ -133,7 +132,7 @@ export default function CampaignSelector() {
                 <button
                   onClick={() => { setDropdownOpen(false); setDeleteTarget({ id: campaign.id, name: campaign.name || 'New Campaign' }); }}
                   className="text-xs px-1.5 py-0.5 rounded shrink-0 transition-colors"
-                  style={{ color: '#e05c5c', border: '1px solid #3a3660', background: 'none', cursor: 'pointer' }}
+                  style={{ color: 'var(--accent)', border: '1px solid var(--rule)', background: 'none', cursor: 'pointer' }}
                   title={`Delete "${campaign.name}"`}
                 >
                   ✕
@@ -215,15 +214,15 @@ export default function CampaignSelector() {
         onClose={() => setDeleteTarget(null)}
         title="Delete Campaign"
       >
-        <p className="text-sm mb-3" style={{ color: '#e8d5b0' }}>
-          Are you sure you want to delete <strong style={{ color: '#c9a84c' }}>{deleteTarget?.name}</strong>?
+        <p className="text-sm mb-3" style={{ color: 'var(--ink)' }}>
+          Are you sure you want to delete <strong style={{ color: 'var(--gold)' }}>{deleteTarget?.name}</strong>?
         </p>
-        <p className="text-sm mb-5" style={{ color: '#9990b0' }}>
+        <p className="text-sm mb-5" style={{ color: 'var(--ink-2)' }}>
           This will permanently delete all sessions, characters, modules, hooks, and factions belonging to this campaign. This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" onClick={handleDeleteConfirm} style={{ backgroundColor: '#7a2020', borderColor: '#7a2020', color: '#e8d5b0' }}>Delete Campaign</Button>
+          <Button variant="danger" onClick={handleDeleteConfirm} style={{ backgroundColor: '#6a2a2a', borderColor: '#6a2a2a', color: 'var(--ink)' }}>Delete Campaign</Button>
         </div>
       </Modal>
     </div>

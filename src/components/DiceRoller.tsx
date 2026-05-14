@@ -137,7 +137,7 @@ export default function DiceRoller({ open, onClose }: DiceRollerProps) {
           backgroundColor: colors.bg,
         }}>
           <span style={{ fontSize: 18 }}>🎲</span>
-          <span style={{ flex: 1, color: colors.gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif' }}>
+          <span style={{ flex: 1, color: colors.gold, fontWeight: 700, fontSize: 14, fontFamily: 'var(--display)' }}>
             Dice Roller
           </span>
           <button

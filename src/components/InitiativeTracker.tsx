@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Button } from './ui/Button';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../lib/database.types';
 
 // ─── D&D 5e conditions ───────────────────────────────────────────────────────
@@ -11,10 +10,10 @@ const CONDITIONS = [
 type Condition = (typeof CONDITIONS)[number];
 
 const conditionColors: Record<string, string> = {
-  blinded: '#6a6490', charmed: '#b070b0', deafened: '#6a6490',
-  frightened: '#c9a84c', grappled: '#c08060', incapacitated: '#6a6490',
-  invisible: '#70a0e0', paralyzed: '#e05c5c', petrified: '#6a6490',
-  poisoned: '#6ab87a', prone: '#c08060', restrained: '#c08060',
+  blinded: '#897f68', charmed: '#b070b0', deafened: '#897f68',
+  frightened: '#c9a84c', grappled: '#c08060', incapacitated: '#897f68',
+  invisible: '#70a0e0', paralyzed: '#e05c5c', petrified: '#897f68',
+  poisoned: '#6ab87a', prone: '#c97a55', restrained: '#c08060',
   stunned: '#e0a060', unconscious: '#e05c5c', concentrating: '#70a0e0',
 };
 
@@ -56,9 +55,20 @@ function parseCombatants(raw: string | null): EncounterCombatant[] {
   catch { return []; }
 }
 
+// Kind glyph mapping
+function kindGlyph(isPC: boolean): string {
+  return isPC ? '◈' : '◆';
+}
+
+// HP bar color based on percentage
+function hpBarColor(pct: number): string {
+  if (pct > 60) return 'linear-gradient(to right, #c97a55, #c9a84c)';
+  if (pct > 25) return 'linear-gradient(to right, #c97a55, #e0a060)';
+  return 'linear-gradient(to right, #e05c5c, #c97a55)';
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose }: InitiativeTrackerProps) {
-  // Build initial combatant list from encounter data
   const initialCombatants = useMemo(() => {
     const result: Combatant[] = [];
     const encounterCombatants = parseCombatants(encounter.combatants);
@@ -70,10 +80,10 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
       const ac = sb?.armor_class ?? null;
 
       for (let i = 0; i < ec.count; i++) {
-        const suffix = ec.count > 1 ? ` ${i + 1}` : '';
+        const label = ec.count > 1 ? ` ${String.fromCharCode(65 + i)}` : '';
         result.push({
           id: crypto.randomUUID(),
-          name: `${ec.name}${suffix}`,
+          name: `${ec.name}${label}`,
           initiative: null,
           dexMod,
           maxHp,
@@ -87,7 +97,6 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
       }
     }
 
-    // Add PCs
     for (const name of pcNames) {
       result.push({
         id: crypto.randomUUID(),
@@ -108,17 +117,16 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
   }, [encounter.combatants, statblocks, pcNames]);
 
   const [combatants, setCombatants] = useState<Combatant[]>(initialCombatants);
-  const [currentTurn, setCurrentTurn] = useState<number>(-1); // -1 = not started
+  const [currentTurn, setCurrentTurn] = useState<number>(-1);
   const [round, setRound] = useState(1);
   const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
-  const [hpInput, setHpInput] = useState<Record<string, string>>({});
   const [conditionMenuId, setConditionMenuId] = useState<string | null>(null);
+  const [hpInputs, setHpInputs] = useState<Record<string, string>>({});
   const [addingCombatant, setAddingCombatant] = useState(false);
   const [newCombatantName, setNewCombatantName] = useState('');
 
   const started = currentTurn >= 0;
 
-  // Sort by initiative (descending), breaking ties by dex mod
   const sorted = useMemo(() => {
     return [...combatants].sort((a, b) => {
       const ai = a.initiative ?? -999;
@@ -131,9 +139,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
   const rollAllInitiatives = useCallback(() => {
     setCombatants(prev => prev.map(c => ({
       ...c,
-      initiative: c.isPC
-        ? c.initiative // Don't override PC initiatives if already set
-        : rollD20() + c.dexMod,
+      initiative: rollD20() + c.dexMod,
     })));
   }, []);
 
@@ -163,27 +169,22 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
     }
   };
 
-  const prevTurn = () => {
-    if (currentTurn <= 0) {
-      if (round > 1) {
-        setCurrentTurn(sorted.length - 1);
-        setRound(r => r - 1);
-      }
-    } else {
-      setCurrentTurn(currentTurn - 1);
-    }
+  const resetCombat = () => {
+    setCurrentTurn(-1);
+    setRound(1);
   };
 
-  const applyHp = (id: string, delta: number) => {
+  const applyHpDelta = (id: string, delta: number) => {
     setCombatants(prev => prev.map(c => {
       if (c.id !== id) return c;
-      const newHp = Math.max(0, Math.min(c.maxHp, c.currentHp + delta));
+      const newHp = c.maxHp > 0
+        ? Math.max(0, Math.min(c.maxHp, c.currentHp + delta))
+        : Math.max(0, c.currentHp + delta);
       const newConditions = new Set(c.conditions);
       if (newHp === 0 && !c.isPC) newConditions.add('unconscious');
       if (newHp > 0) newConditions.delete('unconscious');
       return { ...c, currentHp: newHp, conditions: newConditions };
     }));
-    setHpInput(prev => ({ ...prev, [id]: '' }));
   };
 
   const toggleCondition = (id: string, condition: Condition) => {
@@ -198,7 +199,6 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
 
   const removeCombatant = (id: string) => {
     setCombatants(prev => prev.filter(c => c.id !== id));
-    // Adjust current turn if needed
     if (started) {
       const idx = sorted.findIndex(c => c.id === id);
       if (idx >= 0 && idx < currentTurn) {
@@ -208,6 +208,13 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
         setRound(r => r + 1);
       }
     }
+  };
+
+  const applyHpInput = (id: string, isHeal: boolean) => {
+    const n = parseInt(hpInputs[id] ?? '', 10);
+    if (isNaN(n) || n <= 0) return;
+    applyHpDelta(id, isHeal ? n : -n);
+    setHpInputs(prev => ({ ...prev, [id]: '' }));
   };
 
   const addNewCombatant = () => {
@@ -230,251 +237,296 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
   };
 
   const allHaveInitiative = combatants.every(c => c.initiative !== null);
-
-  // Current combatant
   const currentCombatant = started ? sorted[currentTurn] ?? null : null;
 
   return (
-    <div className="flex flex-col h-full" style={{ color: '#e8d5b0' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#15120e', color: '#e8dcc4' }}>
+
       {/* ── Header ── */}
-      <div
-        className="flex items-center justify-between px-4 py-3 shrink-0"
-        style={{ borderBottom: '1px solid #3a3660', backgroundColor: '#14132a' }}
-      >
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold" style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}>
-            {encounter.name}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        gap: '24px',
+        padding: '28px 32px 20px',
+        borderBottom: '1px solid #2e2820',
+        flexShrink: 0,
+      }}>
+        <div>
+          <div style={{
+            color: '#897f68',
+            fontSize: '0.6rem',
+            fontWeight: 700,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            fontFamily: 'var(--mono)',
+            marginBottom: '4px',
+          }}>
+            Theater-of-the-Mind
+          </div>
+          <h2 style={{
+            color: '#e8dcc4',
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            fontFamily: 'var(--display)',
+            margin: 0,
+            lineHeight: 1.2,
+          }}>
+            {started
+              ? `Round ${round} · turn ${currentTurn + 1}/${sorted.length}`
+              : encounter.name}
           </h2>
-          {started && (
-            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#2a2040', color: '#c9a84c' }}>
-              Round {round}
-            </span>
+          {started && currentCombatant && (
+            <div style={{ color: '#897f68', fontSize: '0.78rem', marginTop: '4px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
+              {currentCombatant.name}'s turn
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {!started ? (
             <>
-              <Button variant="secondary" size="sm" onClick={rollNPCInitiatives}>
-                Roll NPCs
-              </Button>
-              <Button variant="secondary" size="sm" onClick={rollAllInitiatives}>
-                Roll All
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
+              <button onClick={rollNPCInitiatives} style={ghostBtn}>Roll NPCs</button>
+              <button onClick={rollAllInitiatives} style={ghostBtn}>Roll All</button>
+              <button
                 onClick={startCombat}
                 disabled={!allHaveInitiative}
+                style={{ ...primaryBtn, opacity: allHaveInitiative ? 1 : 0.4 }}
               >
                 Start Combat
-              </Button>
+              </button>
             </>
           ) : (
             <>
-              <Button variant="secondary" size="sm" onClick={prevTurn}>
-                ← Prev
-              </Button>
-              <Button variant="primary" size="sm" onClick={nextTurn}>
-                Next →
-              </Button>
+              <button onClick={resetCombat} style={ghostBtn}>Reset</button>
+              <button onClick={nextTurn} style={primaryBtn}>Next turn ▶</button>
             </>
           )}
-          <Button variant="ghost" size="sm" onClick={onClose} style={{ color: '#6a6490' }}>
-            ✕ End
-          </Button>
+          <button onClick={onClose} style={exitBtn}>✕ End</button>
         </div>
       </div>
 
-      {/* ── Turn order list ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
+      {/* ── Combatant list ── */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {sorted.map((c, idx) => {
           const isCurrent = started && idx === currentTurn;
-          const isDead = c.currentHp === 0 && !c.isPC;
-          const hpPct = c.maxHp > 0 ? (c.currentHp / c.maxHp) * 100 : 100;
-          const hpColor = hpPct > 50 ? '#6ab87a' : hpPct > 25 ? '#e0a060' : '#e05c5c';
+          const isDown = c.currentHp === 0 && !c.isPC;
+          const hpPct = c.maxHp > 0 ? Math.max(0, (c.currentHp / c.maxHp) * 100) : 100;
+          const showHpBar = !c.isPC && c.maxHp > 0;
 
           return (
-            <div
-              key={c.id}
-              className="rounded-lg border p-3 transition-all"
-              style={{
-                backgroundColor: isCurrent ? '#1a1a3a' : isDead ? '#12111e' : '#1a1828',
-                borderColor: isCurrent ? '#c9a84c' : '#2e2c4a',
-                opacity: isDead ? 0.5 : 1,
-                boxShadow: isCurrent ? '0 0 12px rgba(201, 168, 76, 0.15)' : 'none',
-              }}
-            >
-              <div className="flex items-center gap-3">
+            <div key={c.id}>
+              {/* ── Row ── */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '40px 24px 1fr 80px min-content',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: isCurrent ? '12px 14px 12px 11px' : '12px 14px',
+                  borderBottom: '1px solid #1e1a14',
+                  borderLeft: isCurrent ? '3px solid #c9a84c' : '3px solid transparent',
+                  backgroundColor: isCurrent ? '#1c1814' : 'transparent',
+                  opacity: isDown ? 0.45 : 1,
+                  transition: 'background 0.15s, opacity 0.2s',
+                }}
+              >
                 {/* Initiative */}
-                <div className="w-10 text-center shrink-0">
+                <div style={{ textAlign: 'center' }}>
                   {!started ? (
                     <input
                       type="number"
                       value={c.initiative ?? ''}
                       onChange={e => setInitiative(c.id, e.target.value ? parseInt(e.target.value, 10) : null)}
-                      className="w-10 text-center text-sm rounded outline-none"
                       style={{
-                        backgroundColor: '#0f0e17',
-                        color: '#c9a84c',
-                        border: '1px solid #3a3660',
+                        width: '40px',
+                        textAlign: 'center',
+                        fontSize: '1rem',
                         fontWeight: 700,
-                        padding: '2px',
+                        color: '#c9a84c',
+                        backgroundColor: '#1e1a14',
+                        border: '1px solid #2e2820',
+                        borderRadius: '3px',
+                        padding: '2px 4px',
+                        outline: 'none',
+                        fontFamily: 'var(--mono)',
                       }}
                       placeholder="—"
                     />
                   ) : (
-                    <span
-                      className="text-lg font-bold"
-                      style={{ color: isCurrent ? '#c9a84c' : '#6a6490' }}
-                    >
+                    <span style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 700,
+                      color: isCurrent ? '#c9a84c' : '#5a5040',
+                      fontFamily: 'var(--mono)',
+                    }}>
                       {c.initiative ?? '—'}
                     </span>
                   )}
                 </div>
 
-                {/* Turn indicator */}
-                {isCurrent && (
-                  <span className="text-xs" style={{ color: '#c9a84c' }}>▶</span>
-                )}
+                {/* Glyph */}
+                <div style={{
+                  fontSize: '1.1rem',
+                  textAlign: 'center',
+                  color: c.isPC ? '#c9a84c' : isCurrent ? '#897f68' : '#3a3020',
+                }}>
+                  {kindGlyph(c.isPC)}
+                </div>
 
-                {/* Name + info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
+                {/* Name + conditions + HP bar */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: showHpBar ? '4px' : 0 }}>
                     <span
-                      className="font-semibold text-sm cursor-pointer"
                       style={{
-                        color: c.isPC ? '#70a0e0' : '#e8d5b0',
-                        fontFamily: 'Georgia, Cambria, serif',
+                        color: isCurrent ? '#e8dcc4' : isDown ? '#897f68' : c.isPC ? '#c9b88a' : '#c9b88a',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        fontFamily: 'var(--display)',
+                        cursor: c.statblock ? 'pointer' : 'default',
                         textDecoration: c.statblock ? 'underline dotted' : 'none',
                         textUnderlineOffset: '3px',
+                        textDecorationColor: '#3e3428',
                       }}
                       onClick={() => c.statblock && setViewingStatblock(c.statblock)}
-                      title={c.statblock ? 'View stat block' : undefined}
                     >
                       {c.name}
                     </span>
-                    {c.isPC && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#1a2a4a', color: '#70a0e0', fontSize: '0.6rem' }}>
-                        PC
+                    {/* Condition pills */}
+                    {[...c.conditions].map(cond => (
+                      <span
+                        key={cond}
+                        onClick={() => toggleCondition(c.id, cond)}
+                        style={{
+                          fontSize: '0.58rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.1em',
+                          color: conditionColors[cond] ?? '#897f68',
+                          backgroundColor: `${conditionColors[cond] ?? '#897f68'}22`,
+                          border: `1px solid ${conditionColors[cond] ?? '#897f68'}55`,
+                          borderRadius: '2px',
+                          padding: '2px 6px',
+                          cursor: 'pointer',
+                          fontFamily: 'var(--mono)',
+                        }}
+                        title={`Remove ${cond}`}
+                      >
+                        {cond}
                       </span>
-                    )}
-                    {c.ac != null && (
-                      <span className="text-xs" style={{ color: '#6a6490' }}>
-                        AC {c.ac}
-                      </span>
-                    )}
+                    ))}
                   </div>
-
-                  {/* Conditions */}
-                  {c.conditions.size > 0 && (
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {[...c.conditions].map(cond => (
-                        <span
-                          key={cond}
-                          className="text-xs px-1.5 py-0.5 rounded cursor-pointer capitalize"
-                          style={{
-                            backgroundColor: '#0f0e17',
-                            color: conditionColors[cond] ?? '#9990b0',
-                            border: `1px solid ${conditionColors[cond] ?? '#3a3660'}40`,
-                          }}
-                          onClick={() => toggleCondition(c.id, cond)}
-                          title={`Remove ${cond}`}
-                        >
-                          {cond} ✕
-                        </span>
-                      ))}
+                  {/* HP bar */}
+                  {showHpBar && (
+                    <div style={{ height: '3px', background: '#26211a', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${hpPct}%`,
+                        background: hpBarColor(hpPct),
+                        transition: 'width 0.25s ease',
+                        borderRadius: '2px',
+                      }} />
                     </div>
                   )}
                 </div>
 
-                {/* HP bar (NPCs only) */}
-                {!c.isPC && (
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* HP display + bar */}
-                    <div className="w-24">
-                      <div className="flex items-center justify-between text-xs mb-0.5">
-                        <span style={{ color: hpColor, fontWeight: 600 }}>
-                          {c.currentHp}
-                        </span>
-                        <span style={{ color: '#4a4470' }}>/ {c.maxHp}</span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: '#0f0e17' }}>
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{ width: `${hpPct}%`, backgroundColor: hpColor }}
-                        />
-                      </div>
-                    </div>
+                {/* HP text */}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  {(!c.isPC || c.maxHp > 0) && (
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '0.75rem', color: '#897f68' }}>
+                      <span style={{ color: isDown ? '#e05c5c' : '#b9ac90', fontWeight: 600 }}>{c.currentHp}</span>
+                      {c.maxHp > 0 && <span style={{ color: '#3a3020' }}>/{c.maxHp}</span>}
+                    </span>
+                  )}
+                </div>
 
-                    {/* Damage / Heal inputs */}
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        value={hpInput[c.id] ?? ''}
-                        onChange={e => setHpInput(prev => ({ ...prev, [c.id]: e.target.value }))}
-                        className="w-12 text-center text-xs rounded outline-none"
-                        style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', padding: '3px 2px' }}
-                        placeholder="#"
-                        min={0}
-                      />
-                      <button
-                        onClick={() => applyHp(c.id, -(parseInt(hpInput[c.id] || '0', 10)))}
-                        className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ backgroundColor: '#3a1a1a', color: '#e05c5c', border: '1px solid #5a2a2a' }}
-                        title="Deal damage"
-                      >
-                        −
-                      </button>
-                      <button
-                        onClick={() => applyHp(c.id, parseInt(hpInput[c.id] || '0', 10))}
-                        className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ backgroundColor: '#1a2a1a', color: '#6ab87a', border: '1px solid #2a5a2a' }}
-                        title="Heal"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0">
+                {/* Tools */}
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                  <input
+                    type="number"
+                    min={1}
+                    value={hpInputs[c.id] ?? ''}
+                    onChange={e => setHpInputs(prev => ({ ...prev, [c.id]: e.target.value }))}
+                    placeholder="—"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') applyHpInput(c.id, false);
+                    }}
+                    style={{
+                      width: '44px',
+                      fontSize: '0.78rem',
+                      fontFamily: 'var(--mono)',
+                      color: '#e8dcc4',
+                      backgroundColor: '#1e1a14',
+                      border: '1px solid #2e2820',
+                      borderRadius: '3px',
+                      padding: '3px 5px',
+                      outline: 'none',
+                      textAlign: 'center',
+                    }}
+                  />
+                  <button onClick={() => applyHpInput(c.id, false)} style={dmgBtn} title="Apply damage">DMG</button>
+                  <button onClick={() => applyHpInput(c.id, true)} style={healBtn} title="Apply healing">HEAL</button>
                   <button
                     onClick={() => setConditionMenuId(conditionMenuId === c.id ? null : c.id)}
-                    className="text-xs px-1.5 py-0.5 rounded"
-                    style={{ backgroundColor: '#22203a', color: '#9990b0', border: '1px solid #3a3660' }}
                     title="Conditions"
+                    style={{
+                      color: c.conditions.size > 0 ? '#c9a84c' : '#3a3020',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.82rem',
+                      padding: '2px 4px',
+                    }}
                   >
                     ◉
                   </button>
                   <button
                     onClick={() => removeCombatant(c.id)}
-                    className="text-xs px-1.5 py-0.5 rounded"
-                    style={{ backgroundColor: '#22203a', color: '#e05c5c', border: '1px solid #3a3660' }}
                     title="Remove"
+                    style={{
+                      color: '#2e2820',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.7rem',
+                      padding: '2px 3px',
+                    }}
                   >
                     ✕
                   </button>
                 </div>
               </div>
 
-              {/* Condition picker dropdown */}
+              {/* Condition picker */}
               {conditionMenuId === c.id && (
-                <div
-                  className="mt-2 pt-2 flex flex-wrap gap-1"
-                  style={{ borderTop: '1px solid #2e2c4a' }}
-                >
+                <div style={{
+                  margin: '0 14px',
+                  padding: '10px 0',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '4px',
+                  borderBottom: '1px solid #1e1a14',
+                }}>
                   {CONDITIONS.map(cond => {
                     const active = c.conditions.has(cond);
                     return (
                       <button
                         key={cond}
                         onClick={() => toggleCondition(c.id, cond)}
-                        className="text-xs px-2 py-1 rounded capitalize transition-colors"
                         style={{
-                          backgroundColor: active ? '#2a2040' : '#0f0e17',
-                          color: active ? (conditionColors[cond] ?? '#c9a84c') : '#6a6490',
-                          border: `1px solid ${active ? (conditionColors[cond] ?? '#c9a84c') + '60' : '#2e2c4a'}`,
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                          padding: '3px 8px',
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                          fontFamily: 'var(--mono)',
+                          backgroundColor: active ? `${conditionColors[cond] ?? '#c9a84c'}18` : 'transparent',
+                          color: active ? (conditionColors[cond] ?? '#c9a84c') : '#897f68',
+                          border: `1px solid ${active ? (conditionColors[cond] ?? '#c9a84c') + '55' : '#26211a'}`,
+                          transition: 'all 0.1s',
                         }}
                       >
                         {cond}
@@ -487,33 +539,50 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
           );
         })}
 
-        {/* Add combatant */}
-        <div className="pt-2">
+        {/* ── Add combatant ── */}
+        <div style={{ padding: '12px 14px' }}>
           {addingCombatant ? (
-            <div className="flex items-center gap-2">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
                 type="text"
                 value={newCombatantName}
                 onChange={e => setNewCombatantName(e.target.value)}
-                placeholder="Combatant name..."
+                placeholder="Combatant name…"
                 autoFocus
-                className="flex-1 text-sm rounded outline-none px-2 py-1"
-                style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660' }}
+                style={{
+                  flex: 1,
+                  fontSize: '0.85rem',
+                  color: '#e8dcc4',
+                  backgroundColor: '#1e1a14',
+                  border: '1px solid #2e2820',
+                  borderRadius: '3px',
+                  padding: '6px 10px',
+                  outline: 'none',
+                  fontFamily: 'var(--serif)',
+                }}
                 onKeyDown={e => {
                   if (e.key === 'Enter') addNewCombatant();
                   if (e.key === 'Escape') setAddingCombatant(false);
                 }}
               />
-              <Button variant="primary" size="sm" onClick={addNewCombatant}>Add</Button>
-              <Button variant="ghost" size="sm" onClick={() => setAddingCombatant(false)}>Cancel</Button>
+              <button onClick={addNewCombatant} style={primaryBtn}>Add</button>
+              <button onClick={() => setAddingCombatant(false)} style={ghostBtn}>Cancel</button>
             </div>
           ) : (
             <button
               onClick={() => setAddingCombatant(true)}
-              className="text-xs w-full py-2 rounded border border-dashed transition-colors"
-              style={{ color: '#6a6490', borderColor: '#3a3660', backgroundColor: 'transparent' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#c9a84c'; e.currentTarget.style.borderColor = '#c9a84c'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#6a6490'; e.currentTarget.style.borderColor = '#3a3660'; }}
+              style={{
+                color: '#3a3020',
+                fontSize: '0.72rem',
+                fontFamily: 'var(--mono)',
+                backgroundColor: 'transparent',
+                border: '1px dashed #26211a',
+                borderRadius: '3px',
+                padding: '6px 16px',
+                cursor: 'pointer',
+                width: '100%',
+                letterSpacing: '0.08em',
+              }}
             >
               + Add Combatant
             </button>
@@ -521,31 +590,34 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
         </div>
       </div>
 
-      {/* ── Stat block viewer (side panel style) ── */}
+      {/* ── Stat block viewer ── */}
       {viewingStatblock && (
-        <div
-          className="shrink-0 overflow-y-auto px-4 py-3"
-          style={{
-            borderTop: '1px solid #3a3660',
-            backgroundColor: '#14132a',
-            maxHeight: '40vh',
-          }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-sm" style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}>
-              {viewingStatblock.name}
-            </h3>
-            <button
-              onClick={() => setViewingStatblock(null)}
-              className="text-xs"
-              style={{ color: '#6a6490', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              ✕ Close
+        <div style={{
+          flexShrink: 0,
+          overflowY: 'auto',
+          padding: '16px 32px',
+          borderTop: '1px solid #2e2820',
+          backgroundColor: '#1c1814',
+          maxHeight: '38vh',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div>
+              <div style={{ color: '#897f68', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: 'var(--mono)', marginBottom: '2px' }}>
+                Stat Sheet
+              </div>
+              <h3 style={{ color: '#c9a84c', fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--display)', margin: 0 }}>
+                {viewingStatblock.name}
+              </h3>
+            </div>
+            <button onClick={() => setViewingStatblock(null)}
+              style={{ color: '#897f68', background: 'none', border: '1px solid #2e2820', cursor: 'pointer', fontSize: '0.7rem', padding: '4px 10px', borderRadius: '3px', fontFamily: 'var(--serif)' }}>
+              Close
             </button>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap text-xs mb-2" style={{ color: '#6a6490' }}>
-            {viewingStatblock.creature_type && <span className="capitalize">{viewingStatblock.creature_type}</span>}
+          {/* Meta */}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.75rem', color: '#897f68', marginBottom: '12px', fontFamily: 'var(--mono)' }}>
+            {viewingStatblock.creature_type && <span style={{ textTransform: 'capitalize' }}>{viewingStatblock.creature_type}</span>}
             {viewingStatblock.challenge_rating && <span>CR {viewingStatblock.challenge_rating}</span>}
             {viewingStatblock.armor_class != null && <span>AC {viewingStatblock.armor_class}{viewingStatblock.ac_descriptor ? ` (${viewingStatblock.ac_descriptor})` : ''}</span>}
             {viewingStatblock.hit_points != null && <span>HP {viewingStatblock.hit_points}{viewingStatblock.hit_dice ? ` (${viewingStatblock.hit_dice})` : ''}</span>}
@@ -553,55 +625,59 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
           </div>
 
           {/* Ability scores */}
-          <div className="grid grid-cols-6 gap-1 text-center mb-3" style={{ fontSize: '0.7rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', marginBottom: '12px' }}>
             {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map(ab => {
               const val = viewingStatblock[ab];
               const mod = abilityMod(val);
               return (
-                <div key={ab} className="rounded py-1" style={{ backgroundColor: '#0f0e17', border: '1px solid #2e2c4a' }}>
-                  <div style={{ color: '#c9a84c', fontWeight: 700, textTransform: 'uppercase' }}>{ab}</div>
-                  <div style={{ color: '#e8d5b0', fontWeight: 600 }}>{val ?? '—'}</div>
-                  <div style={{ color: '#6a6490' }}>({mod >= 0 ? '+' : ''}{mod})</div>
+                <div key={ab} style={{
+                  backgroundColor: '#15120e',
+                  border: '1px solid #2e2820',
+                  borderRadius: '3px',
+                  padding: '6px 4px',
+                  textAlign: 'center',
+                  fontFamily: 'var(--mono)',
+                  fontSize: '0.68rem',
+                }}>
+                  <div style={{ color: '#c9a84c', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>{ab}</div>
+                  <div style={{ color: '#e8dcc4', fontWeight: 600 }}>{val ?? '—'}</div>
+                  <div style={{ color: '#897f68' }}>{mod >= 0 ? '+' : ''}{mod}</div>
                 </div>
               );
             })}
           </div>
 
-          {/* Stat details */}
-          {viewingStatblock.saving_throws && (
-            <div className="text-xs mb-1"><span style={{ color: '#c9a84c', fontWeight: 600 }}>Saves:</span> <span style={{ color: '#c9b88a' }}>{viewingStatblock.saving_throws}</span></div>
-          )}
-          {viewingStatblock.skills && (
-            <div className="text-xs mb-1"><span style={{ color: '#c9a84c', fontWeight: 600 }}>Skills:</span> <span style={{ color: '#c9b88a' }}>{viewingStatblock.skills}</span></div>
-          )}
-          {viewingStatblock.damage_resistances && (
-            <div className="text-xs mb-1"><span style={{ color: '#c9a84c', fontWeight: 600 }}>Resistances:</span> <span style={{ color: '#c9b88a' }}>{viewingStatblock.damage_resistances}</span></div>
-          )}
-          {viewingStatblock.damage_immunities && (
-            <div className="text-xs mb-1"><span style={{ color: '#c9a84c', fontWeight: 600 }}>Immunities:</span> <span style={{ color: '#c9b88a' }}>{viewingStatblock.damage_immunities}</span></div>
-          )}
-          {viewingStatblock.condition_immunities && (
-            <div className="text-xs mb-1"><span style={{ color: '#c9a84c', fontWeight: 600 }}>Cond. Immunities:</span> <span style={{ color: '#c9b88a' }}>{viewingStatblock.condition_immunities}</span></div>
-          )}
-          {viewingStatblock.senses && (
-            <div className="text-xs mb-1"><span style={{ color: '#c9a84c', fontWeight: 600 }}>Senses:</span> <span style={{ color: '#c9b88a' }}>{viewingStatblock.senses}</span></div>
-          )}
-          {viewingStatblock.languages && (
-            <div className="text-xs mb-1"><span style={{ color: '#c9a84c', fontWeight: 600 }}>Languages:</span> <span style={{ color: '#c9b88a' }}>{viewingStatblock.languages}</span></div>
-          )}
+          {/* Traits */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '10px' }}>
+            {[
+              ['Saving Throws', viewingStatblock.saving_throws],
+              ['Skills', viewingStatblock.skills],
+              ['Resistances', viewingStatblock.damage_resistances],
+              ['Immunities', viewingStatblock.damage_immunities],
+              ['Cond. Immunities', viewingStatblock.condition_immunities],
+              ['Senses', viewingStatblock.senses],
+              ['Languages', viewingStatblock.languages],
+            ].filter(([, v]) => !!v).map(([label, value]) => (
+              <div key={label as string} style={{ fontSize: '0.72rem' }}>
+                <span style={{ color: '#c9a84c', fontWeight: 700, fontFamily: 'var(--mono)' }}>{label}: </span>
+                <span style={{ color: '#b9ac90' }}>{value}</span>
+              </div>
+            ))}
+          </div>
 
-          {/* Actions content */}
           {viewingStatblock.content && (
-            <pre
-              className="text-xs whitespace-pre-wrap mt-2 p-2 rounded"
-              style={{
-                backgroundColor: '#0f0e17',
-                color: '#c9b88a',
-                lineHeight: '1.6',
-                fontFamily: 'Georgia, serif',
-                border: '1px solid #2e2c4a',
-              }}
-            >
+            <pre style={{
+              fontSize: '0.72rem',
+              whiteSpace: 'pre-wrap',
+              padding: '10px 12px',
+              borderRadius: '3px',
+              backgroundColor: '#15120e',
+              color: '#b9ac90',
+              lineHeight: '1.65',
+              fontFamily: 'var(--mono)',
+              border: '1px solid #2e2820',
+              margin: 0,
+            }}>
               {viewingStatblock.content}
             </pre>
           )}
@@ -610,3 +686,64 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
     </div>
   );
 }
+
+// ─── Button style helpers ─────────────────────────────────────────────────────
+const primaryBtn: React.CSSProperties = {
+  fontSize: '0.78rem',
+  fontWeight: 600,
+  color: '#15120e',
+  backgroundColor: '#c9a84c',
+  border: '1px solid #c9a84c',
+  borderRadius: '3px',
+  padding: '6px 14px',
+  cursor: 'pointer',
+  fontFamily: 'var(--serif)',
+};
+
+const ghostBtn: React.CSSProperties = {
+  fontSize: '0.78rem',
+  fontWeight: 500,
+  color: '#b9ac90',
+  backgroundColor: 'transparent',
+  border: '1px solid #2e2820',
+  borderRadius: '3px',
+  padding: '6px 12px',
+  cursor: 'pointer',
+  fontFamily: 'var(--serif)',
+};
+
+const exitBtn: React.CSSProperties = {
+  fontSize: '0.78rem',
+  color: '#e05c5c',
+  backgroundColor: 'transparent',
+  border: '1px solid #4a2020',
+  borderRadius: '3px',
+  cursor: 'pointer',
+  padding: '6px 12px',
+  fontFamily: 'var(--serif)',
+  marginLeft: '4px',
+};
+
+const dmgBtn: React.CSSProperties = {
+  fontSize: '0.65rem',
+  fontWeight: 700,
+  color: '#e05c5c',
+  backgroundColor: '#1e1014',
+  border: '1px solid #3a1a1a',
+  borderRadius: '2px',
+  padding: '3px 7px',
+  cursor: 'pointer',
+  fontFamily: 'var(--mono)',
+};
+
+const healBtn: React.CSSProperties = {
+  fontSize: '0.65rem',
+  fontWeight: 700,
+  color: '#6ab87a',
+  backgroundColor: '#141e14',
+  border: '1px solid #1a3a1a',
+  borderRadius: '2px',
+  padding: '3px 7px',
+  cursor: 'pointer',
+  fontFamily: 'var(--mono)',
+};

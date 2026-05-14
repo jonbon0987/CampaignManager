@@ -87,8 +87,8 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
               display: 'inline-flex',
               alignItems: 'center',
               gap: 2,
-              backgroundColor: '#22203a',
-              color: '#9990b0',
+              backgroundColor: 'var(--paper-2)',
+              color: 'var(--ink-2)',
               border: '1px dashed #3a3660',
               borderRadius: 4,
               padding: '2px 6px',
@@ -101,7 +101,7 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
           </button>
         )}
         {selected.length === 0 && unselected.length === 0 && (
-          <span style={{ fontSize: 12, color: '#6a6490', fontStyle: 'italic' }}>
+          <span style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>
             No factions available
           </span>
         )}
@@ -113,7 +113,7 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
             top: '100%',
             left: 0,
             marginTop: 4,
-            backgroundColor: '#1a1828',
+            backgroundColor: 'var(--paper)',
             border: '1px solid #3a3660',
             borderRadius: 4,
             padding: 4,
@@ -138,14 +138,14 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
                   width: '100%',
                   background: 'none',
                   border: 'none',
-                  color: '#e8d5b0',
+                  color: 'var(--ink)',
                   textAlign: 'left',
                   padding: '6px 8px',
                   fontSize: 13,
                   cursor: 'pointer',
                   borderRadius: 3,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#22203a'; }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--paper-2)'; }}
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 <span

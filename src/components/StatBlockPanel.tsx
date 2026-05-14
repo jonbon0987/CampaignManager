@@ -31,8 +31,8 @@ export default function StatBlockPanel() {
           top: 0,
           right: 0,
           height: '100vh',
-          backgroundColor: '#0a0918',
-          borderLeft: '1px solid #3a3660',
+          backgroundColor: 'var(--bg)',
+          borderLeft: '1px solid var(--rule)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 998,
@@ -48,11 +48,11 @@ export default function StatBlockPanel() {
       <div
         style={{
           padding: '16px 20px',
-          borderBottom: '1px solid #3a3660',
+          borderBottom: '1px solid var(--rule)',
           display: 'flex',
           alignItems: 'flex-start',
           gap: '10px',
-          backgroundColor: '#0f0e17',
+          backgroundColor: 'var(--bg-2)',
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -60,10 +60,10 @@ export default function StatBlockPanel() {
             <>
               <div
                 style={{
-                  fontFamily: 'Georgia, serif',
+                  fontFamily: 'var(--display)',
                   fontWeight: 600,
                   fontSize: '1.05rem',
-                  color: '#c9a84c',
+                  color: 'var(--gold)',
                   lineHeight: '1.3',
                   marginBottom: '6px',
                 }}
@@ -99,14 +99,14 @@ export default function StatBlockPanel() {
                   </span>
                 )}
                 {statblock.tags && (
-                  <span style={{ fontSize: '0.7rem', color: '#6a6490', width: '100%' }}>{statblock.tags}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-3)', width: '100%' }}>{statblock.tags}</span>
                 )}
               </div>
             </>
           ) : open ? (
-            <div style={{ color: '#e05c5c', fontSize: '0.9rem' }}>Stat sheet not found</div>
+            <div style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>Stat sheet not found</div>
           ) : (
-            <div style={{ color: '#6a6490', fontSize: '0.9rem' }}>Stat Block</div>
+            <div style={{ color: 'var(--ink-3)', fontSize: '0.9rem' }}>Stat Block</div>
           )}
         </div>
         <button
@@ -114,7 +114,7 @@ export default function StatBlockPanel() {
           style={{
             background: 'none',
             border: 'none',
-            color: '#6a6490',
+            color: 'var(--ink-3)',
             fontSize: '1.2rem',
             cursor: 'pointer',
             padding: '0 4px',
@@ -142,13 +142,13 @@ export default function StatBlockPanel() {
           <>
             <StatBlockBody m={statblock} />
             {isStatBlockEmpty(statblock) && (
-              <p style={{ color: '#6a6490', fontSize: '0.875rem', fontStyle: 'italic' }}>
+              <p style={{ color: 'var(--ink-3)', fontSize: '0.875rem', fontStyle: 'italic' }}>
                 No content for this stat sheet yet.
               </p>
             )}
           </>
         ) : open ? (
-          <p style={{ color: '#e05c5c', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: '0.875rem' }}>
             This stat sheet no longer exists. It may have been deleted.
           </p>
         ) : null}
@@ -159,9 +159,9 @@ export default function StatBlockPanel() {
         <div
           style={{
             padding: '10px 20px',
-            borderTop: '1px solid #2a2640',
+            borderTop: '1px solid var(--rule-soft)',
             fontSize: '0.7rem',
-            color: '#4a4470',
+            color: 'var(--ink-3)',
           }}
         >
           Edit this stat sheet in the Stat Sheets tab.

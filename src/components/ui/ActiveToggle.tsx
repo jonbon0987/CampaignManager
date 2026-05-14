@@ -13,11 +13,11 @@ export function ActiveToggle({ isActive, onChange }: ActiveToggleProps) {
           padding: '4px 12px',
           fontSize: 12,
           fontWeight: 600,
-          fontFamily: 'Georgia, Cambria, serif',
+          fontFamily: 'var(--serif)',
           border: 'none',
           cursor: 'pointer',
-          backgroundColor: isActive ? '#2a4a35' : '#22203a',
-          color: isActive ? '#7dce82' : '#6a6490',
+          backgroundColor: isActive ? '#2a4a35' : 'var(--paper-2)',
+          color: isActive ? '#7dce82' : 'var(--ink-3)',
           transition: 'all 0.15s',
         }}
       >
@@ -30,12 +30,12 @@ export function ActiveToggle({ isActive, onChange }: ActiveToggleProps) {
           padding: '4px 12px',
           fontSize: 12,
           fontWeight: 600,
-          fontFamily: 'Georgia, Cambria, serif',
+          fontFamily: 'var(--serif)',
           border: 'none',
           borderLeft: '1px solid #3a3660',
           cursor: 'pointer',
-          backgroundColor: !isActive ? '#3a2a2a' : '#22203a',
-          color: !isActive ? '#e05c5c' : '#6a6490',
+          backgroundColor: !isActive ? '#3a2a2a' : 'var(--paper-2)',
+          color: !isActive ? '#e05c5c' : 'var(--ink-3)',
           transition: 'all 0.15s',
         }}
       >

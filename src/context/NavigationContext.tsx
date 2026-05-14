@@ -5,12 +5,12 @@ import type { EntityType } from '../components/ui/StatBlockText';
 
 /** Maps entity types to their corresponding sidebar tabs */
 const ENTITY_TAB_MAP: Record<EntityType, Tab> = {
-  creature: 'creatures',
-  npc: 'characters',
-  location: 'lore',
+  creature: 'combat',
+  npc: 'cast',
+  location: 'world',
   session: 'sessions',
-  faction: 'factions',
-  hook: 'hooks',
+  faction: 'cast',
+  hook: 'sessions',
 };
 
 interface NavigationContextValue {

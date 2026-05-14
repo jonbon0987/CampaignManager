@@ -164,8 +164,8 @@ export default function Factions() {
                   onClick={() => setFilterType(t)}
                   className="text-xs px-2.5 py-1 rounded transition-colors"
                   style={{
-                    backgroundColor: filterType === t ? '#3a3660' : '#22203a',
-                    color: filterType === t ? '#e8d5b0' : '#9990b0',
+                    backgroundColor: filterType === t ? 'var(--rule)' : 'var(--paper-2)',
+                    color: filterType === t ? 'var(--ink)' : 'var(--ink-2)',
                     border: '1px solid #3a3660',
                   }}
                 >
@@ -196,8 +196,8 @@ export default function Factions() {
                 data-entity-id={faction.id}
                 className="rounded-lg border overflow-hidden transition-colors duration-150"
                 style={{
-                  backgroundColor: '#1a1828',
-                  borderColor: isEditing ? '#c9a84c' : '#2e2c4a',
+                  backgroundColor: 'var(--paper)',
+                  borderColor: isEditing ? 'var(--gold)' : 'var(--rule)',
                 }}
               >
                 {/* Header row */}
@@ -209,7 +209,7 @@ export default function Factions() {
                   }}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <h3 className="font-bold text-sm truncate" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif' }}>
+                    <h3 className="font-bold text-sm truncate" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)' }}>
                       {faction.name}
                     </h3>
                     <Badge label={formatType(faction.faction_type)} color={badgeColor} size="xs" />
@@ -232,7 +232,7 @@ export default function Factions() {
                     >
                       ×
                     </Button>
-                    <span className="text-xs ml-1" style={{ color: '#6a6490' }}>
+                    <span className="text-xs ml-1" style={{ color: 'var(--ink-3)' }}>
                       {isExpanded ? '▲' : '▼'}
                     </span>
                   </div>
@@ -244,7 +244,7 @@ export default function Factions() {
                     {isEditing && editForm ? (
                       <div className="flex flex-col gap-3">
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                          <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Name
                           </label>
                           <input
@@ -253,11 +253,11 @@ export default function Factions() {
                             onChange={e => setEditForm(prev => prev ? { ...prev, name: e.target.value } : prev)}
                             autoFocus
                             className="w-full px-2 py-1.5 rounded text-sm outline-none"
-                            style={{ backgroundColor: '#0f0e17', color: '#e8d5b0', border: '1px solid #3a3660', fontFamily: 'Georgia, Cambria, serif' }}
+                            style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid #3a3660', fontFamily: 'var(--serif)' }}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                          <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Type
                           </label>
                           <div className="flex gap-1 flex-wrap">
@@ -267,7 +267,7 @@ export default function Factions() {
                                 onClick={() => setEditForm(prev => prev ? { ...prev, faction_type: t } : prev)}
                                 className="text-xs px-3 py-1 rounded transition-colors"
                                 style={{
-                                  backgroundColor: editForm.faction_type === t ? typeColors[t].bg : '#22203a',
+                                  backgroundColor: editForm.faction_type === t ? typeColors[t].bg : 'var(--paper-2)',
                                   color: typeColors[t].text,
                                   border: `1px solid ${typeColors[t].border}`,
                                   fontWeight: editForm.faction_type === t ? 600 : 400,
@@ -279,36 +279,36 @@ export default function Factions() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                          <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Overview
                           </label>
                           <MarkdownEditor value={editForm.overview ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, overview: v || null } : prev)} placeholder="Describe this faction's purpose, history, and public face…" minHeight="100px" textareaRef={editOverviewRef} />
                           <EntityLinkToolbar textareaRef={editOverviewRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, overview: insertAtCursor(editOverviewRef, prev.overview ?? '', markup) } : prev)} />
                         </div>
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                          <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Key Figures
                           </label>
                           <MarkdownEditor value={editForm.key_figures ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, key_figures: v || null } : prev)} placeholder="Notable members, leaders, agents…" minHeight="60px" />
                         </div>
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                          <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Agenda
                           </label>
                           <MarkdownEditor value={editForm.agenda ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, agenda: v || null } : prev)} placeholder="Goals, plans, and public agenda…" minHeight="60px" />
                         </div>
                         <div
                           className="rounded border p-3"
-                          style={{ borderColor: '#5a3060', backgroundColor: '#1a1020' }}
+                          style={{ borderColor: 'var(--rule)', backgroundColor: 'var(--bg-2)' }}
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            <Eye size={12} strokeWidth={1.8} style={{ color: '#b070b0' }} />
-                            <label className="text-xs font-medium" style={{ color: '#b070b0', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.65rem' }}>
+                            <Eye size={12} strokeWidth={1.8} style={{ color: 'var(--accent)' }} />
+                            <label className="text-xs font-medium" style={{ color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.65rem' }}>
                               DM Notes (Hidden Agendas / Secrets)
                             </label>
                             <span
                               className="text-[9px] px-1.5 py-0.5 rounded ml-auto"
-                              style={{ backgroundColor: '#2a1a2a', color: '#b070b0', border: '1px solid #5a3060' }}
+                              style={{ backgroundColor: 'var(--highlight)', color: 'var(--accent)', border: '1px solid #5a3060' }}
                             >
                               DM Only
                             </span>
@@ -328,46 +328,46 @@ export default function Factions() {
                       <div className="flex flex-col gap-3">
                         {faction.overview ? (
                           <div>
-                            <p className="text-xs font-medium mb-1" style={{ color: '#6a6490', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>Overview</p>
-                            <MarkdownContent text={faction.overview} className="text-sm" style={{ color: '#e8d5b0', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                            <p className="text-xs font-medium mb-1" style={{ color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>Overview</p>
+                            <MarkdownContent text={faction.overview} className="text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
                           </div>
                         ) : null}
 
                         {faction.key_figures ? (
                           <div>
-                            <p className="text-xs font-medium mb-1" style={{ color: '#6a6490', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>Key Figures</p>
-                            <MarkdownContent text={faction.key_figures} className="text-sm" style={{ color: '#c9b88a', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                            <p className="text-xs font-medium mb-1" style={{ color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>Key Figures</p>
+                            <MarkdownContent text={faction.key_figures} className="text-sm" style={{ color: 'var(--ink-2)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
                           </div>
                         ) : null}
 
                         {faction.agenda ? (
                           <div>
-                            <p className="text-xs font-medium mb-1" style={{ color: '#6a6490', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>Agenda</p>
-                            <MarkdownContent text={faction.agenda} className="text-sm" style={{ color: '#c9b88a', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                            <p className="text-xs font-medium mb-1" style={{ color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>Agenda</p>
+                            <MarkdownContent text={faction.agenda} className="text-sm" style={{ color: 'var(--ink-2)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
                           </div>
                         ) : null}
 
                         {faction.dm_notes ? (
                           <div
                             className="rounded border p-3 mt-1"
-                            style={{ borderColor: '#5a3060', backgroundColor: '#1a1020' }}
+                            style={{ borderColor: 'var(--rule)', backgroundColor: 'var(--bg-2)' }}
                           >
                             <div className="flex items-center gap-2 mb-1">
-                              <Eye size={10} strokeWidth={1.8} style={{ color: '#b070b0' }} />
-                              <p className="text-xs font-medium" style={{ color: '#b070b0', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>DM Notes</p>
+                              <Eye size={10} strokeWidth={1.8} style={{ color: 'var(--accent)' }} />
+                              <p className="text-xs font-medium" style={{ color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>DM Notes</p>
                               <span
                                 className="text-[9px] px-1.5 py-0.5 rounded ml-auto"
-                                style={{ backgroundColor: '#2a1a2a', color: '#b070b0', border: '1px solid #5a3060' }}
+                                style={{ backgroundColor: 'var(--highlight)', color: 'var(--accent)', border: '1px solid #5a3060' }}
                               >
                                 DM Only
                               </span>
                             </div>
-                            <MarkdownContent text={faction.dm_notes} className="text-sm" style={{ color: '#c9b88a', fontFamily: 'Georgia, Cambria, serif', lineHeight: '1.7' }} />
+                            <MarkdownContent text={faction.dm_notes} className="text-sm" style={{ color: 'var(--ink-2)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
                           </div>
                         ) : null}
 
                         {!faction.overview && !faction.key_figures && !faction.agenda && !faction.dm_notes && (
-                          <p className="text-sm" style={{ color: '#6a6490', fontStyle: 'italic' }}>No details recorded for this faction.</p>
+                          <p className="text-sm" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>No details recorded for this faction.</p>
                         )}
                       </div>
                     )}
@@ -404,7 +404,7 @@ export default function Factions() {
                 onClick={() => setForm(prev => ({ ...prev, faction_type: t }))}
                 className="text-sm px-3 py-1.5 rounded flex-1 transition-colors"
                 style={{
-                  backgroundColor: form.faction_type === t ? typeColors[t].bg : '#22203a',
+                  backgroundColor: form.faction_type === t ? typeColors[t].bg : 'var(--paper-2)',
                   color: typeColors[t].text,
                   border: `1px solid ${typeColors[t].border}`,
                   fontWeight: form.faction_type === t ? 600 : 400,
