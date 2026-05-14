@@ -117,7 +117,7 @@ export default function Sidebar({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="cm-side-eyebrow">Chronicle</div>
             <div className="cm-side-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {selectedCampaign?.name || 'Campaign Manager'}
+              {selectedCampaign?.name || 'DM Lair'}
             </div>
           </div>
           {!isMobile && !collapsed && (

@@ -246,9 +246,9 @@ function LoginScreen() {
           className="text-3xl font-bold mb-2"
           style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
         >
-          Campaign Manager
+          DM Lair
         </h1>
-        <p className="text-sm" style={{ color: 'var(--ink-3)' }}>D&D Campaign Manager</p>
+        <p className="text-sm" style={{ color: 'var(--ink-3)' }}>Where every campaign comes to life</p>
       </div>
 
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
