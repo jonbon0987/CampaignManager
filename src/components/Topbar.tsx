@@ -51,7 +51,7 @@ export default function Topbar({
 
       {/* Breadcrumb */}
       <div className="cm-top-crumbs">
-        <span className="cm-top-crumb cm-top-crumb-root" style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>
+        <span className="cm-top-crumb cm-top-crumb-root" style={{ position: 'relative', display: 'inline-block' }}>
           <CampaignSelector compact />
         </span>
         <span className="cm-top-crumb-sep">/</span>

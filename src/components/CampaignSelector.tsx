@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useCampaign } from '../context/CampaignContext';
 import { Modal } from './Modal';
 import { FormField, inputStyle, textareaStyle } from './FormField';
@@ -15,12 +16,24 @@ export default function CampaignSelector() {
   const [editDescription, setEditDescription] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+
+  // Position dropdown below the trigger button
+  useEffect(() => {
+    if (!dropdownOpen || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setDropdownPos({ top: r.bottom + 4, left: r.left });
+  }, [dropdownOpen]);
 
   // Close dropdown on outside click
   useEffect(() => {
     if (!dropdownOpen) return;
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideTrigger = triggerRef.current?.contains(target);
+      const insideDropdown = dropdownRef.current?.contains(target);
+      if (!insideTrigger && !insideDropdown) {
         setDropdownOpen(false);
       }
     };
@@ -64,7 +77,7 @@ export default function CampaignSelector() {
   const displayName = selectedCampaign?.name || 'New Campaign';
 
   return (
-    <div className="flex-1 relative" ref={dropdownRef}>
+    <div className="flex-1 relative" ref={triggerRef}>
       {/* Campaign name row */}
       <div className="flex items-center gap-1 group">
         <button
@@ -99,11 +112,11 @@ export default function CampaignSelector() {
         </button>
       </div>
 
-      {/* Dropdown */}
-      {dropdownOpen && (
+      {/* Dropdown — rendered via portal to escape overflow:hidden ancestors */}
+      {dropdownOpen && dropdownPos && createPortal(
         <div
-          className="absolute left-0 top-full mt-1 rounded-lg border z-50 py-1"
-          style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: '200px', maxWidth: 'calc(100vw - 2rem)' }}
+          ref={dropdownRef}
+          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999, backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', border: '1px solid var(--rule)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: '200px', maxWidth: 'calc(100vw - 2rem)', padding: '4px 0' }}
         >
           {campaigns.map(campaign => (
             <div
@@ -149,7 +162,8 @@ export default function CampaignSelector() {
           >
             + New Campaign
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Create Campaign Modal */}
