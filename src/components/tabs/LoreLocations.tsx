@@ -150,7 +150,17 @@ export default function LoreLocations() {
           )
         }
         detail={
-          selected ? (
+          creating === 'location' ? (
+            <LocationCreatePanel
+              onCancel={() => setCreating(null)}
+              onCreate={async (loc) => { await upsertLocation(loc); setCreating(null); }}
+            />
+          ) : creating === 'lore' ? (
+            <LoreCreatePanel
+              onCancel={() => setCreating(null)}
+              onCreate={async (l) => { await upsertLore(l); setCreating(null); }}
+            />
+          ) : selected ? (
             selected.kind === 'location' ? (
               <LocationDetail
                 location={selected.raw as Location}
@@ -168,16 +178,6 @@ export default function LoreLocations() {
                 }}
               />
             )
-          ) : creating === 'location' ? (
-            <LocationCreatePanel
-              onCancel={() => setCreating(null)}
-              onCreate={async (loc) => { await upsertLocation(loc); setCreating(null); }}
-            />
-          ) : creating === 'lore' ? (
-            <LoreCreatePanel
-              onCancel={() => setCreating(null)}
-              onCreate={async (l) => { await upsertLore(l); setCreating(null); }}
-            />
           ) : (
             <EmptyDetail>Select an entry from the list</EmptyDetail>
           )

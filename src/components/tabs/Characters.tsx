@@ -183,7 +183,17 @@ function CastList() {
           )
         }
         detail={
-          selected ? (
+          creating === 'npc' ? (
+            <NPCCreatePanel
+              onCancel={() => setCreating(null)}
+              onCreate={async (npc) => { await upsertNPC(npc); setCreating(null); }}
+            />
+          ) : creating === 'faction' ? (
+            <FactionCreatePanel
+              onCancel={() => setCreating(null)}
+              onCreate={async (f) => { await upsertFaction(f); setCreating(null); }}
+            />
+          ) : selected ? (
             <CastDetail
               item={selected}
               onEditPC={() => setPcEditId(selected.id)}
@@ -200,16 +210,6 @@ function CastList() {
               factions={factions}
               statblocks={monsterStatblocks}
               openStatBlock={openStatBlock}
-            />
-          ) : creating === 'npc' ? (
-            <NPCCreatePanel
-              onCancel={() => setCreating(null)}
-              onCreate={async (npc) => { await upsertNPC(npc); setCreating(null); }}
-            />
-          ) : creating === 'faction' ? (
-            <FactionCreatePanel
-              onCancel={() => setCreating(null)}
-              onCreate={async (f) => { await upsertFaction(f); setCreating(null); }}
             />
           ) : (
             <EmptyDetail>Select an entry from the list</EmptyDetail>
