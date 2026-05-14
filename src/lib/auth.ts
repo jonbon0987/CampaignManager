@@ -48,9 +48,29 @@ export async function getCurrentUser(): Promise<User | null> {
  * const unsubscribe = onAuthStateChange((user) => setUser(user));
  * return () => unsubscribe();
  */
-export function onAuthStateChange(callback: (user: User | null) => void): () => void {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
+export function onAuthStateChange(
+  callback: (user: User | null, event?: string) => void
+): () => void {
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session?.user ?? null, event);
   });
   return () => data.subscription.unsubscribe();
+}
+
+/**
+ * Send a password reset email. Supabase will redirect to the app with a token.
+ */
+export async function resetPasswordForEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Update the current user's password. Call this after PASSWORD_RECOVERY event.
+ */
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
 }

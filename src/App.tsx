@@ -19,7 +19,7 @@ import SearchOverlay from './components/SearchOverlay';
 import DiceRoller from './components/DiceRoller';
 import { StatBlockPanelProvider } from './context/StatBlockPanelContext';
 import { NavigationProvider } from './context/NavigationContext';
-import { signInWithEmail, onAuthStateChange } from './lib/auth';
+import { signInWithEmail, onAuthStateChange, resetPasswordForEmail, updatePassword } from './lib/auth';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ToastProvider } from './context/ToastContext';
 import useLocalStorage from './hooks/useLocalStorage';
@@ -132,6 +132,7 @@ function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'signin' | 'forgot' | 'forgot-sent'>('signin');
 
   async function handleEmailSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
@@ -145,6 +146,23 @@ function LoginScreen() {
       setLoading(false);
     }
   }
+
+  async function handleForgotSubmit(e: { preventDefault(): void }) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await resetPasswordForEmail(email);
+      setMode('forgot-sent');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const inputStyle = { backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660' };
+  const linkStyle = { color: '#c9a84c', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' };
 
   return (
     <div
@@ -163,36 +181,166 @@ function LoginScreen() {
       </div>
 
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
-        <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            className="px-4 py-2 rounded text-sm outline-none"
-            style={{ backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660' }}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            className="px-4 py-2 rounded text-sm outline-none"
-            style={{ backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660' }}
-          />
-          {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-            style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
-          >
-            {loading ? '…' : 'Sign in'}
-          </button>
-        </form>
+        {mode === 'signin' && (
+          <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className="px-4 py-2 rounded text-sm outline-none"
+              style={inputStyle}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              className="px-4 py-2 rounded text-sm outline-none"
+              style={inputStyle}
+            />
+            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
+              style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+            >
+              {loading ? '…' : 'Sign in'}
+            </button>
+            <div className="text-center">
+              <button type="button" style={linkStyle} onClick={() => { setError(''); setMode('forgot'); }}>
+                Forgot password?
+              </button>
+            </div>
+          </form>
+        )}
 
+        {mode === 'forgot' && (
+          <form onSubmit={handleForgotSubmit} className="flex flex-col gap-3">
+            <p className="text-xs text-center" style={{ color: '#a09080' }}>
+              Enter your email and we'll send you a reset link.
+            </p>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className="px-4 py-2 rounded text-sm outline-none"
+              style={inputStyle}
+            />
+            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
+              style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+            >
+              {loading ? '…' : 'Send reset link'}
+            </button>
+            <div className="text-center">
+              <button type="button" style={linkStyle} onClick={() => { setError(''); setMode('signin'); }}>
+                Back to sign in
+              </button>
+            </div>
+          </form>
+        )}
+
+        {mode === 'forgot-sent' && (
+          <div className="flex flex-col gap-3 text-center">
+            <p className="text-sm" style={{ color: '#e8d5b0' }}>
+              Check your email — a reset link is on its way.
+            </p>
+            <button type="button" style={linkStyle} onClick={() => { setError(''); setMode('signin'); }}>
+              Back to sign in
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function handleSubmit(e: { preventDefault(): void }) {
+    e.preventDefault();
+    if (password !== confirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      await updatePassword(password);
+      setDone(true);
+      setTimeout(onDone, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const inputStyle = { backgroundColor: '#1a1830', color: '#e8d5b0', border: '1px solid #3a3660' };
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-8"
+      style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}
+    >
+      <div className="text-center">
+        <div className="text-5xl mb-4 select-none">⚔️</div>
+        <h1
+          className="text-3xl font-bold mb-2"
+          style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+        >
+          Set New Password
+        </h1>
+      </div>
+      <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
+        {done ? (
+          <p className="text-sm text-center" style={{ color: '#7db87d' }}>Password updated! Signing you in…</p>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <input
+              type="password"
+              placeholder="New password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="px-4 py-2 rounded text-sm outline-none"
+              style={inputStyle}
+            />
+            <input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              required
+              className="px-4 py-2 rounded text-sm outline-none"
+              style={inputStyle}
+            />
+            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
+              style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+            >
+              {loading ? '…' : 'Update password'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -201,11 +349,15 @@ function LoginScreen() {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((u) => {
+    const unsubscribe = onAuthStateChange((u, event) => {
       setUser(u);
       setLoading(false);
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecovery(true);
+      }
     });
     return unsubscribe;
   }, []);
@@ -219,6 +371,10 @@ export default function App() {
         Loading…
       </div>
     );
+  }
+
+  if (passwordRecovery && user) {
+    return <SetNewPasswordScreen onDone={() => setPasswordRecovery(false)} />;
   }
 
   if (!user) return <LoginScreen />;
