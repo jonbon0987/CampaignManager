@@ -8,7 +8,7 @@
  * without duplicating provider-selection logic.
  */
 
-import './_env';
+import './_env.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI, type GenerateContentRequest, type Part } from '@google/generative-ai';
 

@@ -1,8 +1,8 @@
-import './_env';
+import './_env.js';
 import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mammoth from 'mammoth';
-import { resolveProvider, streamSummary, structuredExtract, friendlyError, type AIProvider } from './_ai';
+import { resolveProvider, streamSummary, structuredExtract, friendlyError, type AIProvider } from './_ai.js';
 
 type RequestBody = {
   kind: 'text' | 'docx' | 'pdf' | 'gdocs-url';
