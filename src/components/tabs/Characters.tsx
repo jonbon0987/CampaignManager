@@ -1,15 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { ListDetail, ListRow, DetailPanel, DetailSection, Pill, FilterSep, EmptyDetail } from '../ui/ListDetail';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { PCEditModal } from '../PCEditModal';
-import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { FactionPillSelector } from '../ui/FactionPillSelector';
-import { SearchableSelect } from '../ui/SearchableSelect';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
 import { getFactionTypeStyle } from '../../lib/theme';
@@ -17,8 +15,15 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../Sidebar';
 import CharacterWeb from './CharacterWeb';
+import { VoiceCard } from '../ui/VoiceCard';
 import type { NPC, Faction } from '../../lib/database.types';
 import { useRef } from 'react';
+
+// ── Voice data stored in localStorage keyed by NPC id ────────────────────────
+interface VoiceData { accent?: string; patterns?: string; phrase?: string; tics?: string; }
+const VOICE_KEY = (id: string) => `npc-voice-${id}`;
+function loadVoice(id: string): VoiceData { try { return JSON.parse(localStorage.getItem(VOICE_KEY(id)) ?? '{}'); } catch { return {}; } }
+function saveVoice(id: string, v: VoiceData) { localStorage.setItem(VOICE_KEY(id), JSON.stringify(v)); }
 
 type CastKind = 'pc' | 'npc' | 'faction';
 type FilterType = 'all' | CastKind;
@@ -36,33 +41,11 @@ interface CastItem {
 
 const GLYPHS: Record<CastKind, string> = { pc: '◈', npc: '◇', faction: '⬡' };
 
-type CastSubTab = 'list' | 'web';
-
-const CAST_TABS: { id: CastSubTab; label: string }[] = [
-  { id: 'list', label: 'Cast' },
-  { id: 'web',  label: 'Relationship Web' },
-];
-
-export default function Characters() {
-  const [activeSubTab, setActiveSubTab] = useState<CastSubTab>('list');
-
+export default function Characters({ viewMode = 'list' }: { viewMode?: string; setViewMode?: (v: string) => void }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="cm-subtabs">
-        {CAST_TABS.map(tab => (
-          <button
-            key={tab.id}
-            className={`cm-subtab${activeSubTab === tab.id ? ' is-active' : ''}`}
-            onClick={() => setActiveSubTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ flex: 1, minHeight: 0, overflow: activeSubTab === 'list' ? 'hidden' : 'auto' }}>
-        {activeSubTab === 'list' && <CastList />}
-        {activeSubTab === 'web'  && <CharacterWeb />}
-      </div>
+    <div style={{ height: '100%', overflow: viewMode === 'list' ? 'hidden' : 'auto' }}>
+      {viewMode === 'list' && <CastList />}
+      {viewMode === 'web'  && <CharacterWeb />}
     </div>
   );
 }
@@ -81,11 +64,11 @@ function CastList() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [metFilter, setMetFilter] = useState<MetFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 'npc' | 'faction' | null — shows an inline create form in the detail panel
+  const [creating, setCreating] = useState<'npc' | 'faction' | null>(null);
 
-  // Edit modals
+  // PC edit modal (PCs have a richer dedicated modal)
   const [pcEditId, setPcEditId] = useState<string | null>(null);
-  const [npcModalOpen, setNpcModalOpen] = useState(false);
-  const [factionModalOpen, setFactionModalOpen] = useState(false);
 
   // Build unified list
   const all = useMemo<CastItem[]>(() => {
@@ -143,9 +126,11 @@ function CastList() {
 
   const handleAdd = () => {
     if (filter === 'faction') {
-      setFactionModalOpen(true);
+      setCreating('faction');
+      setSelectedId(null);
     } else if (filter === 'npc') {
-      setNpcModalOpen(true);
+      setCreating('npc');
+      setSelectedId(null);
     } else {
       setPcEditId('__new__');
     }
@@ -216,32 +201,28 @@ function CastList() {
               statblocks={monsterStatblocks}
               openStatBlock={openStatBlock}
             />
+          ) : creating === 'npc' ? (
+            <NPCCreatePanel
+              onCancel={() => setCreating(null)}
+              onCreate={async (npc) => { await upsertNPC(npc); setCreating(null); }}
+            />
+          ) : creating === 'faction' ? (
+            <FactionCreatePanel
+              onCancel={() => setCreating(null)}
+              onCreate={async (f) => { await upsertFaction(f); setCreating(null); }}
+            />
           ) : (
             <EmptyDetail>Select an entry from the list</EmptyDetail>
           )
         }
       />
 
-      {/* PC Edit Modal */}
+      {/* PC Edit Modal (PCs have a richer dedicated modal) */}
       <PCEditModal
         isOpen={!!pcEditId}
         pcId={pcEditId === '__new__' ? null : pcEditId}
         onClose={() => setPcEditId(null)}
       />
-
-      {/* Quick NPC Create Modal */}
-      {npcModalOpen && (
-        <NPCCreateModal
-          onClose={() => setNpcModalOpen(false)}
-        />
-      )}
-
-      {/* Quick Faction Create Modal */}
-      {factionModalOpen && (
-        <FactionCreateModal
-          onClose={() => setFactionModalOpen(false)}
-        />
-      )}
     </>
   );
 }
@@ -361,7 +342,16 @@ function PCDetail({ item, onEdit }: { item: CastItem; onEdit: () => void }) {
   );
 }
 
-/* ── NPC Detail ── */
+/* ── NPC Detail (tabbed) ── */
+
+type NPCTab = 'profile' | 'voice' | 'connections' | 'history';
+
+const NPC_TABS: { id: NPCTab; label: string }[] = [
+  { id: 'profile',     label: 'Profile' },
+  { id: 'voice',       label: 'Voice' },
+  { id: 'connections', label: 'Connections' },
+  { id: 'history',     label: 'History' },
+];
 
 function NPCDetail({
   item,
@@ -380,29 +370,24 @@ function NPCDetail({
 }) {
   const npc = item.raw as NPC;
   const npcFactions = factions.filter(f => npc.faction_ids?.includes(f.id));
+  const statusBadge: Record<NPC['status'], 'green' | 'red' | 'gold'> = { active: 'green', deceased: 'red', unknown: 'gold' };
 
-  const statusBadge: Record<NPC['status'], 'green' | 'red' | 'gold'> = {
-    active: 'green', deceased: 'red', unknown: 'gold',
-  };
-
+  const [tab, setTab] = useState<NPCTab>('profile');
   const [editing, setEditing] = useState(false);
   const [editNpc, setEditNpc] = useState<Partial<NPC>>({});
   const descRef = useRef<HTMLTextAreaElement>(null);
 
+  // Reset tab & edit state when NPC changes
+  useEffect(() => { setTab('profile'); setEditing(false); }, [npc.id]);
+
+  // Voice state
+  const [voice, setVoice] = useState<VoiceData>(() => loadVoice(npc.id));
+  const [editingVoice, setEditingVoice] = useState(false);
+  const [editVoice, setEditVoice] = useState<VoiceData>({});
+  useEffect(() => { setVoice(loadVoice(npc.id)); setEditingVoice(false); }, [npc.id]);
+
   const startEdit = () => {
-    setEditNpc({
-      name: npc.name,
-      role: npc.role,
-      affiliation: npc.affiliation,
-      status: npc.status,
-      description: npc.description,
-      hooks_motivations: npc.hooks_motivations,
-      dm_notes: npc.dm_notes,
-      location: npc.location,
-      met_by_pcs: npc.met_by_pcs,
-      faction_ids: npc.faction_ids,
-      statblock_id: npc.statblock_id,
-    });
+    setEditNpc({ name: npc.name, role: npc.role, affiliation: npc.affiliation, status: npc.status, description: npc.description, hooks_motivations: npc.hooks_motivations, dm_notes: npc.dm_notes, location: npc.location, met_by_pcs: npc.met_by_pcs, faction_ids: npc.faction_ids, statblock_id: npc.statblock_id });
     setEditing(true);
   };
 
@@ -411,32 +396,25 @@ function NPCDetail({
     setEditing(false);
   };
 
+  const startVoiceEdit = () => { setEditVoice({ ...voice }); setEditingVoice(true); };
+  const saveVoiceEdit = () => { saveVoice(npc.id, editVoice); setVoice(editVoice); setEditingVoice(false); };
+
   if (editing) {
     return (
       <DetailPanel eyebrow="NPC" title="Editing" subtitle={editNpc.name || npc.name}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Name">
-              <input style={inputStyle} value={editNpc.name ?? ''} onChange={e => setEditNpc(p => ({ ...p, name: e.target.value }))} />
-            </FormField>
-            <FormField label="Role">
-              <input style={inputStyle} value={editNpc.role ?? ''} onChange={e => setEditNpc(p => ({ ...p, role: e.target.value || null }))} placeholder="e.g. Tavern keeper" />
-            </FormField>
+            <FormField label="Name"><input style={inputStyle} value={editNpc.name ?? ''} onChange={e => setEditNpc(p => ({ ...p, name: e.target.value }))} /></FormField>
+            <FormField label="Role"><input style={inputStyle} value={editNpc.role ?? ''} onChange={e => setEditNpc(p => ({ ...p, role: e.target.value || null }))} placeholder="e.g. Tavern keeper" /></FormField>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Affiliation">
-              <input style={inputStyle} value={editNpc.affiliation ?? ''} onChange={e => setEditNpc(p => ({ ...p, affiliation: e.target.value || null }))} />
-            </FormField>
-            <FormField label="Location">
-              <input style={inputStyle} value={editNpc.location ?? ''} onChange={e => setEditNpc(p => ({ ...p, location: e.target.value || null }))} />
-            </FormField>
+            <FormField label="Affiliation"><input style={inputStyle} value={editNpc.affiliation ?? ''} onChange={e => setEditNpc(p => ({ ...p, affiliation: e.target.value || null }))} /></FormField>
+            <FormField label="Location"><input style={inputStyle} value={editNpc.location ?? ''} onChange={e => setEditNpc(p => ({ ...p, location: e.target.value || null }))} /></FormField>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <FormField label="Status">
               <select style={inputStyle} value={editNpc.status ?? 'active'} onChange={e => setEditNpc(p => ({ ...p, status: e.target.value as NPC['status'] }))}>
-                <option value="active">Active</option>
-                <option value="deceased">Deceased</option>
-                <option value="unknown">Unknown</option>
+                <option value="active">Active</option><option value="deceased">Deceased</option><option value="unknown">Unknown</option>
               </select>
             </FormField>
             <FormField label="Met by PCs">
@@ -447,35 +425,16 @@ function NPCDetail({
             </FormField>
           </div>
           <FormField label="Description">
-            <MarkdownEditor
-              value={editNpc.description ?? ''}
-              onChange={v => setEditNpc(p => ({ ...p, description: v || null }))}
-              placeholder="Physical appearance, personality, quirks..."
-              minHeight="120px"
-              textareaRef={descRef}
-            />
+            <MarkdownEditor value={editNpc.description ?? ''} onChange={v => setEditNpc(p => ({ ...p, description: v || null }))} placeholder="Physical appearance, personality, quirks..." minHeight="120px" textareaRef={descRef} />
             <EntityLinkToolbar textareaRef={descRef} onInsert={markup => setEditNpc(p => ({ ...p, description: insertAtCursor(descRef, p.description ?? '', markup) }))} />
           </FormField>
           <FormField label="Hooks & Motivations">
-            <MarkdownEditor
-              value={editNpc.hooks_motivations ?? ''}
-              onChange={v => setEditNpc(p => ({ ...p, hooks_motivations: v || null }))}
-              placeholder="What drives this NPC? What plot hooks do they offer?"
-              minHeight="80px"
-            />
+            <MarkdownEditor value={editNpc.hooks_motivations ?? ''} onChange={v => setEditNpc(p => ({ ...p, hooks_motivations: v || null }))} placeholder="What drives this NPC? What plot hooks do they offer?" minHeight="80px" />
           </FormField>
           <FormField label="DM Notes">
-            <MarkdownEditor
-              value={editNpc.dm_notes ?? ''}
-              onChange={v => setEditNpc(p => ({ ...p, dm_notes: v || null }))}
-              placeholder="Private DM notes..."
-              minHeight="80px"
-            />
+            <MarkdownEditor value={editNpc.dm_notes ?? ''} onChange={v => setEditNpc(p => ({ ...p, dm_notes: v || null }))} placeholder="Private DM notes..." minHeight="80px" />
           </FormField>
-          <FactionPillSelector
-            selectedIds={editNpc.faction_ids ?? []}
-            onChange={ids => setEditNpc(p => ({ ...p, faction_ids: ids }))}
-          />
+          <FactionPillSelector selectedIds={editNpc.faction_ids ?? []} onChange={ids => setEditNpc(p => ({ ...p, faction_ids: ids }))} />
           <div style={{ display: 'flex', gap: '8px' }}>
             <Button variant="primary" size="sm" onClick={saveNpcEdit}>Save</Button>
             <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
@@ -486,76 +445,101 @@ function NPCDetail({
   }
 
   return (
-    <DetailPanel
-      eyebrow="NPC"
-      title={npc.name}
-      subtitle={[npc.role, npc.affiliation].filter(Boolean).join(' · ')}
-    >
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <Badge color={statusBadge[npc.status]}>{npc.status}</Badge>
-        {npc.met_by_pcs && <Badge color="blue">Met by PCs</Badge>}
-        <div style={{ flex: 1 }} />
-        <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
-        <Button variant="secondary" size="sm" onClick={() => onDelete(npc.id)}>Delete</Button>
+    <DetailPanel eyebrow="NPC" title={npc.name} subtitle={[npc.role, npc.affiliation].filter(Boolean).join(' · ')}>
+      {/* Detail tabs */}
+      <div className="cm-subtabs" style={{ marginBottom: '12px' }}>
+        {NPC_TABS.map(t => (
+          <button key={t.id} className={`cm-subtab${tab === t.id ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {npc.location && (
-        <div className="cm-stat-strip">
-          <span className="ds">
-            <span className="ds-label">Location</span>
-            <span className="ds-value">{npc.location}</span>
-          </span>
-          {npc.first_session && (
-            <span className="ds">
-              <span className="ds-label">First Session</span>
-              <span className="ds-value">#{npc.first_session}</span>
-            </span>
-          )}
-        </div>
-      )}
-
-      {npc.description && (
-        <DetailSection title="Description">
-          <MarkdownContent content={npc.description} />
-        </DetailSection>
-      )}
-
-      {npc.hooks_motivations && (
-        <DetailSection title="Hooks & Motivations">
-          <MarkdownContent content={npc.hooks_motivations} />
-        </DetailSection>
-      )}
-
-      {npcFactions.length > 0 && (
-        <DetailSection title="Factions">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {npcFactions.map(f => {
-              const style = getFactionTypeStyle(f.faction_type);
-              return (
-                <span key={f.id} className="cm-chip" style={{ borderColor: style.border, color: style.text }}>
-                  {f.name}
-                </span>
-              );
-            })}
+      {/* Profile tab */}
+      {tab === 'profile' && (
+        <>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
+            <Badge color={statusBadge[npc.status]}>{npc.status}</Badge>
+            {npc.met_by_pcs && <Badge color="blue">Met by PCs</Badge>}
+            <div style={{ flex: 1 }} />
+            <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
+            <Button variant="secondary" size="sm" onClick={() => onDelete(npc.id)}>Delete</Button>
           </div>
-        </DetailSection>
+          {(npc.location || npc.first_session) && (
+            <div className="cm-stat-strip">
+              {npc.location && <span className="ds"><span className="ds-label">Location</span><span className="ds-value">{npc.location}</span></span>}
+              {npc.first_session && <span className="ds"><span className="ds-label">First Session</span><span className="ds-value">#{npc.first_session}</span></span>}
+            </div>
+          )}
+          {npc.description && <DetailSection title="Description"><MarkdownContent content={npc.description} /></DetailSection>}
+          {npc.hooks_motivations && <DetailSection title="Hooks & Motivations"><MarkdownContent content={npc.hooks_motivations} /></DetailSection>}
+          {npc.dm_notes && <DetailSection title="DM Notes"><MarkdownContent content={npc.dm_notes} /></DetailSection>}
+        </>
       )}
 
-      {npc.statblock_id && (
-        <DetailSection title="Stat Block">
-          <button
-            className="cm-pill is-active"
-            onClick={() => openStatBlock(npc.statblock_id!)}
-          >
-            {statblocks.find(s => s.id === npc.statblock_id)?.name ?? 'View Stat Block'}
-          </button>
-        </DetailSection>
+      {/* Voice tab */}
+      {tab === 'voice' && (
+        <>
+          {editingVoice ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <FormField label="Accent & Delivery"><input style={inputStyle} value={editVoice.accent ?? ''} onChange={e => setEditVoice(p => ({ ...p, accent: e.target.value || undefined }))} placeholder="e.g. Gravelly baritone, speaks slowly" /></FormField>
+              <FormField label="Speech Patterns"><input style={inputStyle} value={editVoice.patterns ?? ''} onChange={e => setEditVoice(p => ({ ...p, patterns: e.target.value || undefined }))} placeholder="e.g. Never finishes sentences, asks questions" /></FormField>
+              <FormField label="Signature Phrase"><input style={inputStyle} value={editVoice.phrase ?? ''} onChange={e => setEditVoice(p => ({ ...p, phrase: e.target.value || undefined }))} placeholder='e.g. "The gods have long ears..."' /></FormField>
+              <FormField label="Personality Tics"><input style={inputStyle} value={editVoice.tics ?? ''} onChange={e => setEditVoice(p => ({ ...p, tics: e.target.value || undefined }))} placeholder="e.g. Drums fingers, avoids eye contact" /></FormField>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button variant="primary" size="sm" onClick={saveVoiceEdit}>Save</Button>
+                <Button variant="secondary" size="sm" onClick={() => setEditingVoice(false)}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <VoiceCard voice={voice} npcName={npc.name} onGenerate={startVoiceEdit} />
+              {(voice.accent || voice.patterns || voice.phrase || voice.tics) && (
+                <div style={{ marginTop: '12px' }}>
+                  <Button variant="secondary" size="sm" onClick={startVoiceEdit}>Edit voice notes</Button>
+                </div>
+              )}
+            </>
+          )}
+        </>
       )}
 
-      {npc.dm_notes && (
-        <DetailSection title="DM Notes">
-          <MarkdownContent content={npc.dm_notes} />
-        </DetailSection>
+      {/* Connections tab */}
+      {tab === 'connections' && (
+        <>
+          {npcFactions.length > 0 && (
+            <DetailSection title="Factions">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {npcFactions.map(f => {
+                  const style = getFactionTypeStyle(f.faction_type);
+                  return <span key={f.id} className="cm-chip" style={{ borderColor: style.border, color: style.text }}>{f.name}</span>;
+                })}
+              </div>
+            </DetailSection>
+          )}
+          {npc.statblock_id && (
+            <DetailSection title="Stat Block">
+              <button className="cm-pill is-active" onClick={() => openStatBlock(npc.statblock_id!)}>
+                {statblocks.find(s => s.id === npc.statblock_id)?.name ?? 'View Stat Block'}
+              </button>
+            </DetailSection>
+          )}
+          {npcFactions.length === 0 && !npc.statblock_id && (
+            <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13, padding: '24px 0' }}>No connections recorded yet.</div>
+          )}
+        </>
+      )}
+
+      {/* History tab */}
+      {tab === 'history' && (
+        <>
+          <div className="cm-stat-strip" style={{ marginBottom: '16px' }}>
+            <span className="ds"><span className="ds-label">Status</span><span className="ds-value"><Badge color={statusBadge[npc.status]}>{npc.status}</Badge></span></span>
+            <span className="ds"><span className="ds-label">Met by PCs</span><span className="ds-value">{npc.met_by_pcs ? 'Yes' : 'Not yet'}</span></span>
+            {npc.first_session && <span className="ds"><span className="ds-label">First Session</span><span className="ds-value">#{npc.first_session}</span></span>}
+          </div>
+          <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13 }}>Full session history coming soon.</div>
+        </>
       )}
     </DetailPanel>
   );
@@ -668,92 +652,69 @@ function FactionDetail({
   );
 }
 
-/* ── Quick Create Modals ── */
+/* ── Inline Create Panels ── */
 
-function NPCCreateModal({ onClose }: { onClose: () => void }) {
-  const { upsertNPC } = useCampaign();
+function NPCCreatePanel({ onCancel, onCreate }: { onCancel: () => void; onCreate: (npc: Parameters<ReturnType<typeof useCampaign>['upsertNPC']>[0]) => Promise<void> }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
-    await upsertNPC({
-      name: name.trim(),
-      role: role || null,
-      affiliation: null,
-      status: 'active',
-      description: null,
-      hooks_motivations: null,
-      dm_notes: null,
-      location: null,
-      first_session: null,
-      met_by_pcs: false,
-      faction_ids: [],
-      statblock_id: null,
-    });
-    onClose();
+    setSaving(true);
+    await onCreate({ name: name.trim(), role: role || null, affiliation: null, status: 'active', description: description || null, hooks_motivations: null, dm_notes: null, location: null, first_session: null, met_by_pcs: false, faction_ids: [], statblock_id: null });
+    setSaving(false);
   };
 
   return (
-    <Modal title="New NPC" onClose={onClose}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <FormField label="Name">
-          <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus />
-        </FormField>
-        <FormField label="Role">
-          <input style={inputStyle} value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Tavern keeper, Court wizard" />
-        </FormField>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleCreate} disabled={!name.trim()}>Create</Button>
+    <DetailPanel eyebrow="NPC" title="New NPC" subtitle="Fill in the details below">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <FormField label="Name"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus placeholder="NPC name" /></FormField>
+          <FormField label="Role"><input style={inputStyle} value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Tavern keeper" /></FormField>
+        </div>
+        <FormField label="Description"><MarkdownEditor value={description} onChange={setDescription} placeholder="First impressions, appearance..." minHeight="100px" /></FormField>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="primary" size="sm" onClick={handleCreate} disabled={!name.trim() || saving}>{saving ? 'Creating…' : 'Create NPC'}</Button>
+          <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
         </div>
       </div>
-    </Modal>
+    </DetailPanel>
   );
 }
 
-function FactionCreateModal({ onClose }: { onClose: () => void }) {
-  const { upsertFaction } = useCampaign();
+function FactionCreatePanel({ onCancel, onCreate }: { onCancel: () => void; onCreate: (f: Parameters<ReturnType<typeof useCampaign>['upsertFaction']>[0]) => Promise<void> }) {
   const [name, setName] = useState('');
   const [factionType, setFactionType] = useState('guild');
-
+  const [overview, setOverview] = useState('');
+  const [saving, setSaving] = useState(false);
   const TYPES = ['guild', 'government', 'religious', 'criminal', 'military', 'arcane', 'merchant', 'other'];
 
   const handleCreate = async () => {
     if (!name.trim()) return;
-    await upsertFaction({
-      name: name.trim(),
-      faction_type: factionType,
-      overview: null,
-      key_figures: null,
-      agenda: null,
-      dm_notes: null,
-    });
-    onClose();
+    setSaving(true);
+    await onCreate({ name: name.trim(), faction_type: factionType, overview: overview || null, key_figures: null, agenda: null, dm_notes: null });
+    setSaving(false);
   };
 
   return (
-    <Modal title="New Faction" onClose={onClose}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <FormField label="Name">
-          <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus />
-        </FormField>
-        <FormField label="Type">
-          <select
-            style={inputStyle}
-            value={factionType}
-            onChange={e => setFactionType(e.target.value)}
-          >
-            {TYPES.map(t => (
-              <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-            ))}
-          </select>
-        </FormField>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleCreate} disabled={!name.trim()}>Create</Button>
+    <DetailPanel eyebrow="Faction" title="New Faction" subtitle="Fill in the details below">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <FormField label="Name"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus placeholder="Faction name" /></FormField>
+          <FormField label="Type">
+            <select style={inputStyle} value={factionType} onChange={e => setFactionType(e.target.value)}>
+              {TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+            </select>
+          </FormField>
+        </div>
+        <FormField label="Overview"><MarkdownEditor value={overview} onChange={setOverview} placeholder="What is this faction about?" minHeight="100px" /></FormField>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="primary" size="sm" onClick={handleCreate} disabled={!name.trim() || saving}>{saving ? 'Creating…' : 'Create Faction'}</Button>
+          <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
         </div>
       </div>
-    </Modal>
+    </DetailPanel>
   );
 }

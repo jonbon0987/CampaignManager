@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
 import { MarkdownContent } from '../ui/MarkdownContent';
@@ -344,7 +343,7 @@ function SessionLog() {
   const { sessions, upsertSession } = useCampaign();
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<SessionForm>(emptyForm());
   const newSummaryRef = useRef<HTMLTextAreaElement>(null);
 
@@ -371,7 +370,8 @@ function SessionLog() {
       ? Math.max(...sessions.map(s => s.session_number)) + 1
       : 1;
     setForm({ ...emptyForm(), session_number: nextNumber });
-    setModalOpen(true);
+    setSelectedId(null);
+    setCreating(true);
   };
 
   const handleCreate = async () => {
@@ -384,7 +384,7 @@ function SessionLog() {
       hooks_notes: form.hooks_notes,
       dm_notes: form.dm_notes,
     });
-    setModalOpen(false);
+    setCreating(false);
   };
 
   return (
@@ -450,7 +450,47 @@ function SessionLog() {
 
       {/* Right: detail */}
       <div className="cm-md-detail">
-        {selected ? (
+        {creating ? (
+          <div className="cm-detail">
+            <div className="cm-detail-head">
+              <div className="cm-detail-eyebrow">New Session</div>
+              <h1 className="cm-detail-title">Session #{form.session_number}</h1>
+            </div>
+            <div className="cm-detail-body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <FormField label="Session #">
+                  <input type="number" value={form.session_number} onChange={e => setForm(prev => ({ ...prev, session_number: parseInt(e.target.value) || 1 }))} min={1} style={inputStyle} />
+                </FormField>
+                <FormField label="Date">
+                  <input type="date" value={form.session_date ?? ''} onChange={e => setForm(prev => ({ ...prev, session_date: e.target.value || null }))} style={{ ...inputStyle, colorScheme: 'dark' }} />
+                </FormField>
+              </div>
+              <div className="cm-section">
+                <SectionLabel label="Session Notes" />
+                <MarkdownEditor value={form.summary ?? ''} onChange={v => setForm(prev => ({ ...prev, summary: v || null }))} placeholder="What happened this session..." minHeight="200px" textareaRef={newSummaryRef} />
+                <EntityLinkToolbar textareaRef={newSummaryRef} onInsert={markup => setForm(prev => ({ ...prev, summary: insertAtCursor(newSummaryRef, prev.summary ?? '', markup) }))} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <SessionSection icon={Swords} label="Combat Summary">
+                  <MarkdownEditor value={form.combats ?? ''} onChange={v => setForm(prev => ({ ...prev, combats: v || null }))} placeholder="Describe combats that took place…" minHeight="80px" />
+                </SessionSection>
+                <SessionSection icon={Gift} label="Loot &amp; Rewards">
+                  <MarkdownEditor value={form.loot_rewards ?? ''} onChange={v => setForm(prev => ({ ...prev, loot_rewards: v || null }))} placeholder="Items, gold, or rewards gained…" minHeight="60px" />
+                </SessionSection>
+                <SessionSection icon={Lightbulb} label="Hook Follow-ups">
+                  <MarkdownEditor value={form.hooks_notes ?? ''} onChange={v => setForm(prev => ({ ...prev, hooks_notes: v || null }))} placeholder="Which hooks were advanced or introduced…" minHeight="60px" />
+                </SessionSection>
+                <SessionSection icon={Eye} label="DM Notes" dmOnly>
+                  <MarkdownEditor value={form.dm_notes ?? ''} onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))} placeholder="Private notes, reminders, secrets…" minHeight="60px" />
+                </SessionSection>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <button className="cm-md-add" onClick={handleCreate}>Save Session</button>
+                <button className="cm-md-add" onClick={() => setCreating(false)} style={{ color: 'var(--ink-3)' }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        ) : selected ? (
           <SessionDetail
             key={selected.id}
             session={selected}
@@ -469,82 +509,6 @@ function SessionLog() {
           </div>
         )}
       </div>
-
-      {/* Create modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="New Session"
-        onSave={handleCreate}
-        wide
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Session #">
-            <input
-              type="number"
-              value={form.session_number}
-              onChange={e => setForm(prev => ({ ...prev, session_number: parseInt(e.target.value) || 1 }))}
-              min={1}
-              style={inputStyle}
-            />
-          </FormField>
-          <FormField label="Date">
-            <input
-              type="date"
-              value={form.session_date ?? ''}
-              onChange={e => setForm(prev => ({ ...prev, session_date: e.target.value || null }))}
-              style={inputStyle}
-            />
-          </FormField>
-        </div>
-        <FormField label="Session Notes">
-          <MarkdownEditor
-            value={form.summary ?? ''}
-            onChange={v => setForm(prev => ({ ...prev, summary: v || null }))}
-            placeholder="What happened this session..."
-            minHeight="200px"
-            textareaRef={newSummaryRef}
-          />
-          <EntityLinkToolbar
-            textareaRef={newSummaryRef}
-            onInsert={markup => setForm(prev => ({ ...prev, summary: insertAtCursor(newSummaryRef, prev.summary ?? '', markup) }))}
-          />
-        </FormField>
-        <div className="flex flex-col gap-2 mt-1">
-          <SessionSection icon={Swords} label="Combat Summary">
-            <MarkdownEditor
-              value={form.combats ?? ''}
-              onChange={v => setForm(prev => ({ ...prev, combats: v || null }))}
-              placeholder="Describe combats that took place…"
-              minHeight="80px"
-            />
-          </SessionSection>
-          <SessionSection icon={Gift} label="Loot &amp; Rewards">
-            <MarkdownEditor
-              value={form.loot_rewards ?? ''}
-              onChange={v => setForm(prev => ({ ...prev, loot_rewards: v || null }))}
-              placeholder="Items, gold, or rewards gained…"
-              minHeight="60px"
-            />
-          </SessionSection>
-          <SessionSection icon={Lightbulb} label="Hook Follow-ups">
-            <MarkdownEditor
-              value={form.hooks_notes ?? ''}
-              onChange={v => setForm(prev => ({ ...prev, hooks_notes: v || null }))}
-              placeholder="Which hooks were advanced or introduced…"
-              minHeight="60px"
-            />
-          </SessionSection>
-          <SessionSection icon={Eye} label="DM Notes" dmOnly>
-            <MarkdownEditor
-              value={form.dm_notes ?? ''}
-              onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))}
-              placeholder="Private notes, reminders, secrets…"
-              minHeight="60px"
-            />
-          </SessionSection>
-        </div>
-      </Modal>
     </div>
   );
 }
@@ -804,39 +768,15 @@ function SessionPrepView() {
   );
 }
 
-// ─── shell with sub-tabs ──────────────────────────────────────────────────────
+// ─── shell ────────────────────────────────────────────────────────────────────
 
-type SubTab = 'log' | 'timeline' | 'prep' | 'hooks';
-
-const SUB_TABS: { id: SubTab; label: string }[] = [
-  { id: 'log',      label: 'Session Log' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'prep',     label: 'Session Prep' },
-  { id: 'hooks',    label: 'Hooks & Ideas' },
-];
-
-export default function SessionNotes() {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('log');
-
+export default function SessionNotes({ viewMode = 'log' }: { viewMode?: string; setViewMode?: (v: string) => void }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="cm-subtabs">
-        {SUB_TABS.map(tab => (
-          <button
-            key={tab.id}
-            className={`cm-subtab${activeSubTab === tab.id ? ' is-active' : ''}`}
-            onClick={() => setActiveSubTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-        {activeSubTab === 'log'      && <SessionLog />}
-        {activeSubTab === 'timeline' && <SessionTimeline />}
-        {activeSubTab === 'prep'     && <SessionPrepView />}
-        {activeSubTab === 'hooks'    && <HooksIdeasLazy />}
-      </div>
+    <div style={{ height: '100%', overflow: 'hidden' }}>
+      {viewMode === 'log'      && <SessionLog />}
+      {viewMode === 'timeline' && <SessionTimeline />}
+      {viewMode === 'prep'     && <SessionPrepView />}
+      {viewMode === 'hooks'    && <HooksIdeasLazy />}
     </div>
   );
 }
