@@ -136,8 +136,8 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   const [activeSection, setActiveSection] = useState<'submodules' | 'overview' | 'dependencies'>('submodules');
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
 
-  // Module edit modal
-  const [moduleModalOpen, setModuleModalOpen] = useState(false);
+  // Module inline edit
+  const [moduleEditing, setModuleEditing] = useState(false);
   const [moduleForm, setModuleForm] = useState<ModuleForm>(emptyModuleForm());
 
   // Submodule modal
@@ -231,7 +231,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
       faction_id: mod.faction_id,
       node_role: mod.node_role,
     });
-    setModuleModalOpen(true);
+    setModuleEditing(true);
   };
 
   const handleSaveModule = async () => {
@@ -240,7 +240,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
       ...moduleForm,
       played_session: mod.played_session ?? null,
     });
-    setModuleModalOpen(false);
+    setModuleEditing(false);
   };
 
   const handleDeleteModule = async () => {
@@ -460,6 +460,72 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   // ----------------------------------------------------------------
   // RENDER
   // ----------------------------------------------------------------
+
+  if (moduleEditing) {
+    return (
+      <div className="cm-detail">
+        <div style={{ marginBottom: 20 }}>
+          <Breadcrumb segments={[{ label: 'Modules', onClick: onBack }, { label: mod.chapter ? `${mod.chapter}: ${mod.title}` : mod.title }, { label: 'Edit' }]} />
+        </div>
+        <div className="cm-detail-head">
+          <div className="cm-detail-eyebrow">Module · Editing</div>
+          <h2 className="cm-detail-title">{moduleForm.title || mod.title || 'Untitled'}</h2>
+        </div>
+        <div className="cm-detail-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Module ID">
+              <input type="number" value={moduleForm.chapter ?? ''} onChange={e => setModuleForm(p => ({ ...p, chapter: e.target.value }))} placeholder="e.g., 1" style={inputStyle} autoFocus />
+            </FormField>
+            <FormField label="Status">
+              <select value={moduleForm.status} onChange={e => setModuleForm(p => ({ ...p, status: e.target.value as Module['status'] }))} style={inputStyle}>
+                <option value="planned">Planned</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Name">
+            <input type="text" value={moduleForm.title} onChange={e => setModuleForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Train Heist" style={inputStyle} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Faction / Storyline">
+              <select value={moduleForm.faction_id ?? ''} onChange={e => setModuleForm(p => ({ ...p, faction_id: e.target.value || null }))} style={inputStyle}>
+                <option value="">-- No Faction --</option>
+                {factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Node Role">
+              <select value={moduleForm.node_role ?? ''} onChange={e => setModuleForm(p => ({ ...p, node_role: (e.target.value || null) as 'start' | 'boss' | null }))} style={inputStyle}>
+                <option value="">Normal</option>
+                <option value="start">Starting Mission</option>
+                <option value="boss">Final Boss</option>
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Synopsis">
+            <MarkdownEditor value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(p => ({ ...p, synopsis: v }))} placeholder="Overview of this chapter's events, goals, and themes..." minHeight="80px" textareaRef={modSynopsisRef} />
+            <EntityLinkToolbar textareaRef={modSynopsisRef} onInsert={markup => setModuleForm(p => ({ ...p, synopsis: insertAtCursor(modSynopsisRef, p.synopsis ?? '', markup) }))} />
+          </FormField>
+          <FormField label="Encounters & Story Beats">
+            <MarkdownEditor value={moduleForm.encounters ?? ''} onChange={v => setModuleForm(p => ({ ...p, encounters: v }))} placeholder="Key scenes, encounters, revelations, branching paths..." minHeight="120px" textareaRef={modEncountersRef} />
+            <EntityLinkToolbar textareaRef={modEncountersRef} onInsert={markup => setModuleForm(p => ({ ...p, encounters: insertAtCursor(modEncountersRef, p.encounters ?? '', markup) }))} />
+          </FormField>
+          <FormField label="Rewards">
+            <MarkdownEditor value={moduleForm.rewards ?? ''} onChange={v => setModuleForm(p => ({ ...p, rewards: v }))} placeholder="Loot, level-ups, plot rewards..." minHeight="60px" textareaRef={modRewardsRef} />
+            <EntityLinkToolbar textareaRef={modRewardsRef} onInsert={markup => setModuleForm(p => ({ ...p, rewards: insertAtCursor(modRewardsRef, p.rewards ?? '', markup) }))} />
+          </FormField>
+          <FormField label="DM Notes">
+            <MarkdownEditor value={moduleForm.dm_notes ?? ''} onChange={v => setModuleForm(p => ({ ...p, dm_notes: v }))} placeholder="Hidden information, fallbacks, secret motives..." minHeight="60px" textareaRef={modDmNotesRef} />
+            <EntityLinkToolbar textareaRef={modDmNotesRef} onInsert={markup => setModuleForm(p => ({ ...p, dm_notes: insertAtCursor(modDmNotesRef, p.dm_notes ?? '', markup) }))} />
+          </FormField>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button variant="primary" size="sm" onClick={handleSaveModule}>Save</Button>
+            <Button variant="secondary" size="sm" onClick={() => setModuleEditing(false)}>Cancel</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cm-detail">
@@ -1175,79 +1241,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
         )}
       </Modal>
 
-      {/* ================================================================
-          MODULE EDIT MODAL
-      ================================================================ */}
-      <Modal
-        isOpen={moduleModalOpen}
-        onClose={() => setModuleModalOpen(false)}
-        title="Edit Module"
-        onSave={handleSaveModule}
-        wide
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Module ID">
-            <input
-              type="number"
-              value={moduleForm.chapter ?? ''}
-              onChange={e => setModuleForm(prev => ({ ...prev, chapter: e.target.value }))}
-              placeholder="e.g., 1"
-              style={inputStyle}
-            />
-          </FormField>
-          <FormField label="Status">
-            <select
-              value={moduleForm.status}
-              onChange={e => setModuleForm(prev => ({ ...prev, status: e.target.value as Module['status'] }))}
-              style={inputStyle}
-            >
-              <option value="planned">Planned</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-            </select>
-          </FormField>
-        </div>
-        <FormField label="Name">
-          <input
-            type="text"
-            value={moduleForm.title}
-            onChange={e => setModuleForm(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="e.g., The Train Heist"
-            style={inputStyle}
-          />
-        </FormField>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Faction / Storyline">
-            <select value={moduleForm.faction_id ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, faction_id: e.target.value || null }))} style={inputStyle}>
-              <option value="">-- No Faction --</option>
-              {factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Node Role">
-            <select value={moduleForm.node_role ?? ''} onChange={e => setModuleForm(prev => ({ ...prev, node_role: (e.target.value || null) as 'start' | 'boss' | null }))} style={inputStyle}>
-              <option value="">Normal</option>
-              <option value="start">Starting Mission</option>
-              <option value="boss">Final Boss</option>
-            </select>
-          </FormField>
-        </div>
-        <FormField label="Synopsis">
-          <MarkdownEditor value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, synopsis: v }))} placeholder="Overview of this chapter's events, goals, and themes..." minHeight="80px" textareaRef={modSynopsisRef} />
-          <EntityLinkToolbar textareaRef={modSynopsisRef} onInsert={markup => setModuleForm(prev => ({ ...prev, synopsis: insertAtCursor(modSynopsisRef, prev.synopsis ?? '', markup) }))} />
-        </FormField>
-        <FormField label="Encounters & Story Beats">
-          <MarkdownEditor value={moduleForm.encounters ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, encounters: v }))} placeholder="Key scenes, encounters, revelations, branching paths..." minHeight="120px" textareaRef={modEncountersRef} />
-          <EntityLinkToolbar textareaRef={modEncountersRef} onInsert={markup => setModuleForm(prev => ({ ...prev, encounters: insertAtCursor(modEncountersRef, prev.encounters ?? '', markup) }))} />
-        </FormField>
-        <FormField label="Rewards">
-          <MarkdownEditor value={moduleForm.rewards ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, rewards: v }))} placeholder="Loot, level-ups, plot rewards..." minHeight="60px" textareaRef={modRewardsRef} />
-          <EntityLinkToolbar textareaRef={modRewardsRef} onInsert={markup => setModuleForm(prev => ({ ...prev, rewards: insertAtCursor(modRewardsRef, prev.rewards ?? '', markup) }))} />
-        </FormField>
-        <FormField label="DM Notes">
-          <MarkdownEditor value={moduleForm.dm_notes ?? ''} onChange={v => setModuleForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden information, fallbacks, secret motives..." minHeight="60px" textareaRef={modDmNotesRef} />
-          <EntityLinkToolbar textareaRef={modDmNotesRef} onInsert={markup => setModuleForm(prev => ({ ...prev, dm_notes: insertAtCursor(modDmNotesRef, prev.dm_notes ?? '', markup) }))} />
-        </FormField>
-      </Modal>
 
       {/* ================================================================
           SUBMODULE MODAL
