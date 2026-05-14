@@ -4,10 +4,11 @@ import { ListDetail, ListRow, DetailPanel, DetailSection, Pill, FilterSep, Empty
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { PCEditModal } from '../PCEditModal';
 import { FormField, inputStyle } from '../FormField';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { FactionPillSelector } from '../ui/FactionPillSelector';
+import { SearchableSelect } from '../ui/SearchableSelect';
+import { ActiveToggle } from '../ui/ActiveToggle';
 import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { insertAtCursor } from '../../lib/textUtils';
 import { getFactionTypeStyle } from '../../lib/theme';
@@ -16,7 +17,7 @@ import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../Sidebar';
 import CharacterWeb from './CharacterWeb';
 import { VoiceCard } from '../ui/VoiceCard';
-import type { NPC, Faction } from '../../lib/database.types';
+import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 import { useRef } from 'react';
 
 // ── Voice data stored in localStorage keyed by NPC id ────────────────────────
@@ -53,6 +54,7 @@ export default function Characters({ viewMode = 'list' }: { viewMode?: string; s
 function CastList() {
   const {
     pcs, npcs, factions,
+    upsertPC,
     upsertNPC, deleteNPC,
     upsertFaction, deleteFaction,
     monsterStatblocks,
@@ -64,11 +66,8 @@ function CastList() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [metFilter, setMetFilter] = useState<MetFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // 'npc' | 'faction' | null — shows an inline create form in the detail panel
-  const [creating, setCreating] = useState<'npc' | 'faction' | null>(null);
-
-  // PC edit modal (PCs have a richer dedicated modal)
-  const [pcEditId, setPcEditId] = useState<string | null>(null);
+  // 'npc' | 'faction' | 'pc' | null — shows an inline create form in the detail panel
+  const [creating, setCreating] = useState<'npc' | 'faction' | 'pc' | null>(null);
 
   // Build unified list
   const all = useMemo<CastItem[]>(() => {
@@ -127,13 +126,12 @@ function CastList() {
   const handleAdd = () => {
     if (filter === 'faction') {
       setCreating('faction');
-      setSelectedId(null);
     } else if (filter === 'npc') {
       setCreating('npc');
-      setSelectedId(null);
     } else {
-      setPcEditId('__new__');
+      setCreating('pc');
     }
+    setSelectedId(null);
   };
 
   return (
@@ -183,7 +181,12 @@ function CastList() {
           )
         }
         detail={
-          creating === 'npc' ? (
+          creating === 'pc' ? (
+            <PCCreatePanel
+              onCancel={() => setCreating(null)}
+              onCreate={async (pc) => { await upsertPC(pc); setCreating(null); }}
+            />
+          ) : creating === 'npc' ? (
             <NPCCreatePanel
               onCancel={() => setCreating(null)}
               onCreate={async (npc) => { await upsertNPC(npc); setCreating(null); }}
@@ -196,7 +199,10 @@ function CastList() {
           ) : selected ? (
             <CastDetail
               item={selected}
-              onEditPC={() => setPcEditId(selected.id)}
+              onDeletePC={async (id) => {
+                const yes = await confirm('Delete this character? This cannot be undone.');
+                if (yes) { setSelectedId(null); }
+              }}
               onEditNPC={async (npc) => { await upsertNPC(npc); }}
               onDeleteNPC={async (id) => {
                 const yes = await confirm('Delete this NPC?', 'This cannot be undone.');
@@ -216,13 +222,6 @@ function CastList() {
           )
         }
       />
-
-      {/* PC Edit Modal (PCs have a richer dedicated modal) */}
-      <PCEditModal
-        isOpen={!!pcEditId}
-        pcId={pcEditId === '__new__' ? null : pcEditId}
-        onClose={() => setPcEditId(null)}
-      />
     </>
   );
 }
@@ -231,7 +230,7 @@ function CastList() {
 
 interface CastDetailProps {
   item: CastItem;
-  onEditPC: () => void;
+  onDeletePC: (id: string) => Promise<void>;
   onEditNPC: (npc: Partial<NPC> & { id: string; name: string }) => Promise<void>;
   onDeleteNPC: (id: string) => Promise<void>;
   onEditFaction: (f: Partial<Faction> & { id?: string; name: string }) => Promise<void>;
@@ -243,7 +242,7 @@ interface CastDetailProps {
 
 function CastDetail({
   item,
-  onEditPC,
+  onDeletePC,
   onEditNPC,
   onDeleteNPC,
   onEditFaction,
@@ -252,7 +251,7 @@ function CastDetail({
   statblocks,
   openStatBlock,
 }: CastDetailProps) {
-  if (item.kind === 'pc') return <PCDetail item={item} onEdit={onEditPC} />;
+  if (item.kind === 'pc') return <PCDetail item={item} onDelete={onDeletePC} />;
   if (item.kind === 'npc') return (
     <NPCDetail
       item={item}
@@ -274,10 +273,138 @@ function CastDetail({
 
 /* ── PC Detail ── */
 
-function PCDetail({ item, onEdit }: { item: CastItem; onEdit: () => void }) {
-  const pc = item.raw as import('../../lib/database.types').PlayerCharacter;
-  const { factions } = useCampaign();
+type PCForm = {
+  character_name: string;
+  player_name: string;
+  race: string;
+  class: string;
+  background: string;
+  story_hooks: string;
+  key_npcs: string;
+  dm_notes: string;
+  is_active: boolean;
+  faction_ids: string[];
+  statblock_id: string | null;
+};
+
+function PCDetail({ item, onDelete }: { item: CastItem; onDelete: (id: string) => Promise<void> }) {
+  const pc = item.raw as PlayerCharacter;
+  const { factions, monsterStatblocks, upsertPC, deletePC } = useCampaign();
+  const confirm = useConfirm();
   const pcFactions = factions.filter(f => pc.faction_ids?.includes(f.id));
+
+  const [editing, setEditing] = useState(false);
+  const [editPc, setEditPc] = useState<PCForm>({
+    character_name: '', player_name: '', race: '', class: '',
+    background: '', story_hooks: '', key_npcs: '', dm_notes: '',
+    is_active: true, faction_ids: [], statblock_id: null,
+  });
+  const [saving, setSaving] = useState(false);
+  const bgRef = useRef<HTMLTextAreaElement>(null);
+  const hooksRef = useRef<HTMLTextAreaElement>(null);
+  const npcsRef = useRef<HTMLTextAreaElement>(null);
+  const dmNotesRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { setEditing(false); }, [pc.id]);
+
+  const startEdit = () => {
+    setEditPc({
+      character_name: pc.character_name,
+      player_name: pc.player_name ?? '',
+      race: pc.race ?? '',
+      class: pc.class ?? '',
+      background: pc.background ?? '',
+      story_hooks: pc.story_hooks ?? '',
+      key_npcs: pc.key_npcs ?? '',
+      dm_notes: pc.dm_notes ?? '',
+      is_active: pc.is_active,
+      faction_ids: pc.faction_ids ?? [],
+      statblock_id: pc.statblock_id ?? null,
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editPc.character_name.trim()) return;
+    setSaving(true);
+    await upsertPC({
+      id: pc.id,
+      character_name: editPc.character_name.trim(),
+      player_name: editPc.player_name || null,
+      race: editPc.race || null,
+      class: editPc.class || null,
+      background: editPc.background || null,
+      story_hooks: editPc.story_hooks || null,
+      key_npcs: editPc.key_npcs || null,
+      dm_notes: editPc.dm_notes || null,
+      is_active: editPc.is_active,
+      faction_ids: editPc.faction_ids,
+      statblock_id: editPc.statblock_id,
+    });
+    setSaving(false);
+    setEditing(false);
+  };
+
+  const handleDelete = async () => {
+    if (await confirm('Delete this character? This cannot be undone.')) {
+      await deletePC(pc.id);
+      await onDelete(pc.id);
+    }
+  };
+
+  const statblockOptions = monsterStatblocks.map(m => ({ id: m.id, label: m.name }));
+
+  if (editing) {
+    return (
+      <DetailPanel eyebrow="Player Character" title="Editing" subtitle={editPc.character_name || pc.character_name}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <FormField label="Character Name">
+              <input style={inputStyle} value={editPc.character_name} onChange={e => setEditPc(p => ({ ...p, character_name: e.target.value }))} autoFocus />
+            </FormField>
+            <FormField label="Player Name">
+              <input style={inputStyle} value={editPc.player_name} onChange={e => setEditPc(p => ({ ...p, player_name: e.target.value }))} placeholder="e.g. John" />
+            </FormField>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <FormField label="Race">
+              <input style={inputStyle} value={editPc.race} onChange={e => setEditPc(p => ({ ...p, race: e.target.value }))} placeholder="e.g. Dwarf" />
+            </FormField>
+            <FormField label="Class">
+              <input style={inputStyle} value={editPc.class} onChange={e => setEditPc(p => ({ ...p, class: e.target.value }))} placeholder="e.g. Fighter" />
+            </FormField>
+          </div>
+          <FormField label="Status">
+            <ActiveToggle isActive={editPc.is_active} onChange={v => setEditPc(p => ({ ...p, is_active: v }))} />
+          </FormField>
+          <FormField label="Background">
+            <MarkdownEditor value={editPc.background} onChange={v => setEditPc(p => ({ ...p, background: v }))} placeholder="Character background and history..." minHeight="100px" textareaRef={bgRef} />
+            <EntityLinkToolbar textareaRef={bgRef} onInsert={markup => setEditPc(p => ({ ...p, background: insertAtCursor(bgRef, p.background, markup) }))} />
+          </FormField>
+          <FormField label="Story Hooks">
+            <MarkdownEditor value={editPc.story_hooks} onChange={v => setEditPc(p => ({ ...p, story_hooks: v }))} placeholder="Personal quests, motivations..." minHeight="80px" textareaRef={hooksRef} />
+            <EntityLinkToolbar textareaRef={hooksRef} onInsert={markup => setEditPc(p => ({ ...p, story_hooks: insertAtCursor(hooksRef, p.story_hooks, markup) }))} />
+          </FormField>
+          <FormField label="Key NPCs">
+            <MarkdownEditor value={editPc.key_npcs} onChange={v => setEditPc(p => ({ ...p, key_npcs: v }))} placeholder="Relationships with NPCs..." minHeight="80px" textareaRef={npcsRef} />
+            <EntityLinkToolbar textareaRef={npcsRef} onInsert={markup => setEditPc(p => ({ ...p, key_npcs: insertAtCursor(npcsRef, p.key_npcs, markup) }))} />
+          </FormField>
+          <FormField label="DM Notes">
+            <MarkdownEditor value={editPc.dm_notes} onChange={v => setEditPc(p => ({ ...p, dm_notes: v }))} placeholder="Private notes, secrets, plans..." minHeight="80px" textareaRef={dmNotesRef} />
+            <EntityLinkToolbar textareaRef={dmNotesRef} onInsert={markup => setEditPc(p => ({ ...p, dm_notes: insertAtCursor(dmNotesRef, p.dm_notes, markup) }))} />
+          </FormField>
+          <FactionPillSelector selectedIds={editPc.faction_ids} onChange={ids => setEditPc(p => ({ ...p, faction_ids: ids }))} factions={factions} />
+          <FormField label="Linked Stat Sheet">
+            <SearchableSelect value={editPc.statblock_id} onChange={id => setEditPc(p => ({ ...p, statblock_id: id }))} options={statblockOptions} placeholder="Select stat sheet..." searchPlaceholder="Search stat sheets..." />
+          </FormField>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button variant="primary" size="sm" onClick={saveEdit} disabled={!editPc.character_name.trim() || saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </div>
+      </DetailPanel>
+    );
+  }
 
   return (
     <DetailPanel
@@ -286,7 +413,8 @@ function PCDetail({ item, onEdit }: { item: CastItem; onEdit: () => void }) {
       subtitle={[pc.race, pc.class].filter(Boolean).join(' · ')}
     >
       <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-        <Button variant="secondary" size="sm" onClick={onEdit}>Edit</Button>
+        <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
+        <Button variant="secondary" size="sm" onClick={handleDelete}>Delete</Button>
         {!pc.is_active && <Badge color="muted">Inactive</Badge>}
       </div>
 
@@ -434,7 +562,7 @@ function NPCDetail({
           <FormField label="DM Notes">
             <MarkdownEditor value={editNpc.dm_notes ?? ''} onChange={v => setEditNpc(p => ({ ...p, dm_notes: v || null }))} placeholder="Private DM notes..." minHeight="80px" />
           </FormField>
-          <FactionPillSelector selectedIds={editNpc.faction_ids ?? []} onChange={ids => setEditNpc(p => ({ ...p, faction_ids: ids }))} />
+          <FactionPillSelector selectedIds={editNpc.faction_ids ?? []} onChange={ids => setEditNpc(p => ({ ...p, faction_ids: ids }))} factions={factions} />
           <div style={{ display: 'flex', gap: '8px' }}>
             <Button variant="primary" size="sm" onClick={saveNpcEdit}>Save</Button>
             <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
@@ -653,6 +781,47 @@ function FactionDetail({
 }
 
 /* ── Inline Create Panels ── */
+
+function PCCreatePanel({ onCancel, onCreate }: { onCancel: () => void; onCreate: (pc: Parameters<ReturnType<typeof useCampaign>['upsertPC']>[0]) => Promise<void> }) {
+  const [name, setName] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const [race, setRace] = useState('');
+  const [cls, setCls] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onCreate({
+      character_name: name.trim(),
+      player_name: playerName || null,
+      race: race || null,
+      class: cls || null,
+      background: null, story_hooks: null, key_npcs: null, dm_notes: null,
+      is_active: true, faction_ids: [], statblock_id: null,
+    });
+    setSaving(false);
+  };
+
+  return (
+    <DetailPanel eyebrow="Player Character" title="New Character" subtitle="Fill in the details below">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <FormField label="Character Name"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus placeholder="e.g. Thorin Ironforge" /></FormField>
+          <FormField label="Player Name"><input style={inputStyle} value={playerName} onChange={e => setPlayerName(e.target.value)} placeholder="e.g. John" /></FormField>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <FormField label="Race"><input style={inputStyle} value={race} onChange={e => setRace(e.target.value)} placeholder="e.g. Dwarf" /></FormField>
+          <FormField label="Class"><input style={inputStyle} value={cls} onChange={e => setCls(e.target.value)} placeholder="e.g. Fighter" /></FormField>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="primary" size="sm" onClick={handleCreate} disabled={!name.trim() || saving}>{saving ? 'Creating…' : 'Create Character'}</Button>
+          <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
+        </div>
+      </div>
+    </DetailPanel>
+  );
+}
 
 function NPCCreatePanel({ onCancel, onCreate }: { onCancel: () => void; onCreate: (npc: Parameters<ReturnType<typeof useCampaign>['upsertNPC']>[0]) => Promise<void> }) {
   const [name, setName] = useState('');

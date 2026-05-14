@@ -736,7 +736,172 @@ For each combatant: if it matches a creature in the saved library (same name), s
           RIGHT DETAIL PANEL
       ============================================================ */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
-        {!selectedEnc ? (
+        {modalOpen ? (
+          <div style={{ maxWidth: '700px' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ color: '#897f68', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px' }}>
+                Encounter
+              </div>
+              <h1 style={{ color: '#e8dcc4', fontSize: '1.6rem', fontWeight: 700, fontFamily: 'var(--display)', margin: 0 }}>
+                {editing ? `Edit: ${editing.name}` : 'New Encounter'}
+              </h1>
+            </div>
+            <div className="space-y-4">
+              <FormField label="Encounter Name">
+                <input type="text" value={form.name}
+                  onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Ambush at Darkwood Crossing" style={inputStyle} autoFocus />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Difficulty">
+                  <select value={form.difficulty} onChange={e => setForm(prev => ({ ...prev, difficulty: e.target.value }))} style={inputStyle}>
+                    <option value="">— none —</option>
+                    {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+                  </select>
+                </FormField>
+                <FormField label="Environment">
+                  <select value={form.environment} onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))} style={inputStyle}>
+                    <option value="">— none —</option>
+                    {ENVIRONMENTS.map(env => <option key={env} value={env}>{env.charAt(0).toUpperCase() + env.slice(1)}</option>)}
+                  </select>
+                </FormField>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <FormField label="Party Size">
+                  <input type="number" min={1} max={10} value={form.party_size}
+                    onChange={e => setForm(prev => ({ ...prev, party_size: e.target.value }))}
+                    placeholder="e.g. 4" style={inputStyle} />
+                </FormField>
+                <FormField label="Avg Party Level">
+                  <input type="number" min={1} max={20} value={form.party_level}
+                    onChange={e => setForm(prev => ({ ...prev, party_level: e.target.value }))}
+                    placeholder="e.g. 5" style={inputStyle} />
+                </FormField>
+                <FormField label="Status">
+                  <select value={form.status} onChange={e => setForm(prev => ({ ...prev, status: e.target.value as typeof form.status }))} style={inputStyle}>
+                    {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </FormField>
+              </div>
+
+              <FormField label="Description">
+                <MarkdownEditor value={form.description} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Scene-setting description for the encounter…" minHeight="72px" textareaRef={descRef} />
+                <EntityLinkToolbar textareaRef={descRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(descRef, prev.description, markup) }))} />
+              </FormField>
+
+              {/* Combatants */}
+              <div>
+                <div style={sectionLabel}>Combatants</div>
+                <div className="space-y-2 mb-3">
+                  {combatants.length === 0 && (
+                    <p className="text-xs" style={{ color: '#897f68' }}>No combatants added yet.</p>
+                  )}
+                  {combatants.map(c => {
+                    const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;
+                    return (
+                      <CombatantRow
+                        key={c.id} c={c} statblockName={sb?.name ?? null}
+                        onCountChange={delta => updateCombatantCount(c.id, delta)}
+                        onNotesChange={notes => updateCombatantNotes(c.id, notes)}
+                        onRemove={() => removeCombatant(c.id)}
+                        onViewSheet={sb ? () => setViewingStatblock(sb) : undefined}
+                      />
+                    );
+                  })}
+                </div>
+
+                {addCreatureMode === null && (
+                  <div className="flex gap-2">
+                    {monsterStatblocks.length > 0 && (
+                      <button onClick={() => setAddCreatureMode('saved')} className="text-xs px-3 py-1.5 rounded"
+                        style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', border: '1px solid #2a4a7a' }}>
+                        + From Library
+                      </button>
+                    )}
+                    <button onClick={() => setAddCreatureMode('custom')} className="text-xs px-3 py-1.5 rounded"
+                      style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}>
+                      + Custom Creature
+                    </button>
+                  </div>
+                )}
+
+                {addCreatureMode === 'saved' && (
+                  <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
+                    <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Select from Library</p>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {monsterStatblocks.map(m => (
+                        <button key={m.id} onClick={() => addSavedCombatant(m.id)}
+                          className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
+                          style={{ backgroundColor: '#1c1814', color: '#e8dcc4', border: '1px solid #26211a' }}>
+                          <span className="flex-1">{m.name}</span>
+                          {m.challenge_rating && <span style={{ color: '#c08060' }}>CR {m.challenge_rating}</span>}
+                          {m.creature_type && <span className="capitalize" style={{ color: '#897f68' }}>{m.creature_type}</span>}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
+                      style={{ color: '#897f68', border: '1px solid #2e2820' }}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {addCreatureMode === 'custom' && (
+                  <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
+                    <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Add Custom Creature</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-3">
+                        <input type="text" value={customCreatureName} onChange={e => setCustomCreatureName(e.target.value)}
+                          placeholder="Creature name *"
+                          style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }}
+                          autoFocus onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomCombatant(); }}} />
+                      </div>
+                      <input type="text" value={customCreatureType} onChange={e => setCustomCreatureType(e.target.value)}
+                        placeholder="Type (optional)" style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }} />
+                      <input type="text" value={customCreatureCR} onChange={e => setCustomCreatureCR(e.target.value)}
+                        placeholder="CR (optional)" style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }} />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded"
+                        style={{ backgroundColor: '#a07830', color: '#e8dcc4' }}>Add</button>
+                      <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
+                        style={{ color: '#897f68', border: '1px solid #2e2820' }}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <FormField label="DM Notes">
+                <MarkdownEditor value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, pacing tips, dramatic moments…" minHeight="72px" textareaRef={dmNotesRef} />
+                <EntityLinkToolbar textareaRef={dmNotesRef} onInsert={markup => setForm(prev => ({ ...prev, dm_notes: insertAtCursor(dmNotesRef, prev.dm_notes, markup) }))} />
+              </FormField>
+
+              {saving && saveStatus && (
+                <p className="text-sm" style={{ color: '#b9ac90', fontStyle: 'italic' }}>{saveStatus}</p>
+              )}
+
+              <div style={{ display: 'flex', gap: '8px', paddingTop: '8px' }}>
+                <button
+                  onClick={saving ? undefined : handleSave}
+                  disabled={!!saving || !form.name.trim()}
+                  className="text-sm px-4 py-2 rounded font-semibold disabled:opacity-50"
+                  style={{ backgroundColor: '#a07830', color: '#e8dcc4', border: 'none', cursor: saving ? 'default' : 'pointer', fontFamily: 'var(--serif)' }}
+                >
+                  {saving ? saveStatus || 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => { if (!saving) setModalOpen(false); }}
+                  className="text-sm px-4 py-2 rounded font-semibold"
+                  style={{ color: '#b9ac90', border: '1px solid #2e2820', background: 'none', cursor: 'pointer', fontFamily: 'var(--serif)' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : !selectedEnc ? (
           <div style={{ color: '#897f68', fontSize: '0.85rem', marginTop: '60px', textAlign: 'center' }}>
             Select an encounter to view details.
           </div>
@@ -854,154 +1019,6 @@ For each combatant: if it matches a creature in the saved library (same name), s
         </div>
       </Modal>
 
-      {/* ================================================================
-          ADD / EDIT MODAL
-      ================================================================ */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => { if (!saving) setModalOpen(false); }}
-        title={editing ? `Edit: ${editing.name}` : 'New Encounter'}
-        onSave={saving ? undefined : handleSave}
-        saveLabel={saving ? saveStatus || 'Saving…' : 'Save'}
-        wide
-      >
-        <div className="space-y-4">
-          <FormField label="Encounter Name">
-            <input type="text" value={form.name}
-              onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="e.g. Ambush at Darkwood Crossing" style={inputStyle} autoFocus />
-          </FormField>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Difficulty">
-              <select value={form.difficulty} onChange={e => setForm(prev => ({ ...prev, difficulty: e.target.value }))} style={inputStyle}>
-                <option value="">— none —</option>
-                {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-              </select>
-            </FormField>
-            <FormField label="Environment">
-              <select value={form.environment} onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))} style={inputStyle}>
-                <option value="">— none —</option>
-                {ENVIRONMENTS.map(env => <option key={env} value={env}>{env.charAt(0).toUpperCase() + env.slice(1)}</option>)}
-              </select>
-            </FormField>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <FormField label="Party Size">
-              <input type="number" min={1} max={10} value={form.party_size}
-                onChange={e => setForm(prev => ({ ...prev, party_size: e.target.value }))}
-                placeholder="e.g. 4" style={inputStyle} />
-            </FormField>
-            <FormField label="Avg Party Level">
-              <input type="number" min={1} max={20} value={form.party_level}
-                onChange={e => setForm(prev => ({ ...prev, party_level: e.target.value }))}
-                placeholder="e.g. 5" style={inputStyle} />
-            </FormField>
-            <FormField label="Status">
-              <select value={form.status} onChange={e => setForm(prev => ({ ...prev, status: e.target.value as typeof form.status }))} style={inputStyle}>
-                {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
-            </FormField>
-          </div>
-
-          <FormField label="Description">
-            <MarkdownEditor value={form.description} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Scene-setting description for the encounter…" minHeight="72px" textareaRef={descRef} />
-            <EntityLinkToolbar textareaRef={descRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(descRef, prev.description, markup) }))} />
-          </FormField>
-
-          {/* Combatants */}
-          <div>
-            <div style={sectionLabel}>Combatants</div>
-            <div className="space-y-2 mb-3">
-              {combatants.length === 0 && (
-                <p className="text-xs" style={{ color: '#897f68' }}>No combatants added yet.</p>
-              )}
-              {combatants.map(c => {
-                const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;
-                return (
-                  <CombatantRow
-                    key={c.id} c={c} statblockName={sb?.name ?? null}
-                    onCountChange={delta => updateCombatantCount(c.id, delta)}
-                    onNotesChange={notes => updateCombatantNotes(c.id, notes)}
-                    onRemove={() => removeCombatant(c.id)}
-                    onViewSheet={sb ? () => setViewingStatblock(sb) : undefined}
-                  />
-                );
-              })}
-            </div>
-
-            {addCreatureMode === null && (
-              <div className="flex gap-2">
-                {monsterStatblocks.length > 0 && (
-                  <button onClick={() => setAddCreatureMode('saved')} className="text-xs px-3 py-1.5 rounded"
-                    style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', border: '1px solid #2a4a7a' }}>
-                    + From Library
-                  </button>
-                )}
-                <button onClick={() => setAddCreatureMode('custom')} className="text-xs px-3 py-1.5 rounded"
-                  style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}>
-                  + Custom Creature
-                </button>
-              </div>
-            )}
-
-            {addCreatureMode === 'saved' && (
-              <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
-                <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Select from Library</p>
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  {monsterStatblocks.map(m => (
-                    <button key={m.id} onClick={() => addSavedCombatant(m.id)}
-                      className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
-                      style={{ backgroundColor: '#1c1814', color: '#e8dcc4', border: '1px solid #26211a' }}>
-                      <span className="flex-1">{m.name}</span>
-                      {m.challenge_rating && <span style={{ color: '#c08060' }}>CR {m.challenge_rating}</span>}
-                      {m.creature_type && <span className="capitalize" style={{ color: '#897f68' }}>{m.creature_type}</span>}
-                    </button>
-                  ))}
-                </div>
-                <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
-                  style={{ color: '#897f68', border: '1px solid #2e2820' }}>
-                  Cancel
-                </button>
-              </div>
-            )}
-
-            {addCreatureMode === 'custom' && (
-              <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
-                <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Add Custom Creature</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-3">
-                    <input type="text" value={customCreatureName} onChange={e => setCustomCreatureName(e.target.value)}
-                      placeholder="Creature name *"
-                      style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }}
-                      autoFocus onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomCombatant(); }}} />
-                  </div>
-                  <input type="text" value={customCreatureType} onChange={e => setCustomCreatureType(e.target.value)}
-                    placeholder="Type (optional)" style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }} />
-                  <input type="text" value={customCreatureCR} onChange={e => setCustomCreatureCR(e.target.value)}
-                    placeholder="CR (optional)" style={{ ...inputStyle, fontSize: '0.75rem', padding: '0.3rem 0.5rem' }} />
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded"
-                    style={{ backgroundColor: '#a07830', color: '#e8dcc4' }}>Add</button>
-                  <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
-                    style={{ color: '#897f68', border: '1px solid #2e2820' }}>Cancel</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <FormField label="DM Notes">
-            <MarkdownEditor value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, pacing tips, dramatic moments…" minHeight="72px" textareaRef={dmNotesRef} />
-            <EntityLinkToolbar textareaRef={dmNotesRef} onInsert={markup => setForm(prev => ({ ...prev, dm_notes: insertAtCursor(dmNotesRef, prev.dm_notes, markup) }))} />
-          </FormField>
-
-          {saving && saveStatus && (
-            <p className="text-sm" style={{ color: '#b9ac90', fontStyle: 'italic' }}>{saveStatus}</p>
-          )}
-        </div>
-      </Modal>
 
       {/* ================================================================
           CREATURE SHEET VIEWER
