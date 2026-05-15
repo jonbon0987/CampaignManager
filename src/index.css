@@ -2359,3 +2359,327 @@ input:focus, textarea:focus, select:focus {
 .cm-subtab { padding: 12px 20px; background: transparent; border: none; cursor: pointer; font-family: var(--serif); font-size: 14px; color: var(--ink-3); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .12s, border-color .12s; white-space: nowrap; }
 .cm-subtab:hover { color: var(--ink); }
 .cm-subtab.is-active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* ═══ Autosave Editing — shared styles ═══ */
+
+/* Action bar (save indicator + overflow menu) */
+.as-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  min-height: 28px;
+}
+.as-spacer { flex: 1; }
+
+/* Title input — mirrors .cm-detail-title */
+.as-title {
+  display: block;
+  width: 100%;
+  font-family: var(--display);
+  font-size: 44px;
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  outline: none;
+  padding: 0 0 2px;
+  margin: 0 0 8px;
+  transition: border-color .15s;
+}
+.as-title:hover { border-bottom-color: var(--rule-soft); }
+.as-title:focus { border-bottom-color: var(--gold); }
+.as-title::placeholder { color: var(--ink-3); }
+
+/* Sub-title input — mirrors .cm-detail-sub */
+.as-sub {
+  display: block;
+  width: 100%;
+  font-family: var(--serif);
+  font-size: 17px;
+  font-style: italic;
+  color: var(--ink-2);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  outline: none;
+  padding: 0 0 2px;
+  margin: 0 0 4px;
+  transition: border-color .15s;
+}
+.as-sub:hover { border-bottom-color: var(--rule-soft); }
+.as-sub:focus { border-bottom-color: var(--gold); }
+.as-sub::placeholder { color: var(--ink-3); font-style: italic; }
+
+/* Short inline input (for metadata grid) */
+.as-input {
+  width: 100%;
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color .15s;
+}
+.as-input:focus { border-color: var(--gold); }
+.as-input::placeholder { color: var(--ink-3); }
+
+/* Select */
+.as-select {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.as-select:focus { border-color: var(--gold); }
+
+/* Toggle button (met / status toggle) */
+.as-tog {
+  padding: 4px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--serif);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .12s;
+}
+.as-tog.is-on {
+  background: var(--gold);
+  color: #1a1410;
+  border-color: var(--gold);
+}
+
+/* Field label */
+.as-fl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+.as-ll {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* 2-column metadata grid */
+.as-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+/* Horizontal meta strip */
+.as-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.as-mi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.as-ml {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Pill toggle set */
+.as-pills {
+  display: flex;
+  gap: 4px;
+}
+.as-pill-opt {
+  padding: 4px 12px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--serif);
+  font-size: 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .12s;
+}
+.as-pill-opt.is-active {
+  background: var(--gold);
+  color: #1a1410;
+  border-color: var(--gold);
+}
+
+/* Textarea wrapper with @ button */
+.as-tw {
+  position: relative;
+}
+.as-ta {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 8px 34px 8px 0;
+  outline: none;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 72px;
+  transition: border-color .15s, background .15s;
+}
+.as-ta:hover { border-color: var(--rule-soft); background: var(--bg); }
+.as-ta:focus { border-color: var(--gold); background: var(--bg); padding-right: 34px; }
+.as-ta::placeholder { color: var(--ink-3); font-style: italic; }
+
+/* @ mention button inside textarea wrapper */
+.as-at {
+  position: absolute;
+  bottom: 8px;
+  right: 6px;
+  padding: 2px 6px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gold);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s;
+  pointer-events: none;
+}
+.as-tw:hover .as-at,
+.as-tw:focus-within .as-at {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* @ mention popup */
+.as-pop {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  width: 260px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 200;
+  overflow: hidden;
+}
+.as-pop-s input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid var(--rule-soft);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 14px;
+  outline: none;
+}
+.as-pop-l {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.as-pop-i {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink);
+  text-align: left;
+  transition: background .1s;
+}
+.as-pop-i:hover { background: var(--paper-2); }
+.as-pop-kind {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-3);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-left: auto;
+}
+
+/* Overflow menu (···) */
+.as-ov {
+  position: relative;
+}
+.as-ov-btn {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all .12s;
+}
+.as-ov-btn:hover {
+  color: var(--ink);
+  border-color: var(--rule);
+  background: var(--paper);
+}
+.as-ov-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 160px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 200;
+  overflow: hidden;
+}
+.as-ov-item {
+  display: block;
+  width: 100%;
+  padding: 9px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: left;
+  transition: background .1s, color .1s;
+}
+.as-ov-item:hover { background: var(--paper-2); color: var(--ink); }
+.as-ov-item.is-danger { color: #e05c5c; }
+.as-ov-item.is-danger:hover { background: rgba(224,92,92,0.08); color: #e05c5c; }
+.as-ov-sep {
+  height: 1px;
+  background: var(--rule-soft);
+  margin: 2px 0;
+}
