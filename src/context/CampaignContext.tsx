@@ -81,28 +81,28 @@ interface CampaignContextType {
   error: string | null;
 
   // Sessions
-  upsertSession: (s: Omit<SessionInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  upsertSession: (s: Omit<SessionInsert, 'campaign_id'> & { id?: string }) => Promise<Session>;
   deleteSession: (id: string) => Promise<void>;
 
   // Player Characters
-  upsertPC: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  upsertPC: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<PlayerCharacter>;
   upsertPCSilent: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
   deletePC: (id: string) => Promise<void>;
 
   // NPCs — scope: 'campaign' creates campaign-specific, 'global' creates in global pool
-  upsertNPC: (npc: Omit<NPCInsert, 'campaign_id'> & { id?: string }, scope?: 'campaign' | 'global') => Promise<void>;
+  upsertNPC: (npc: Omit<NPCInsert, 'campaign_id'> & { id?: string }, scope?: 'campaign' | 'global') => Promise<NPC>;
   deleteNPC: (id: string) => Promise<void>;
   linkNPCToCampaign: (npcId: string) => Promise<void>;
   unlinkNPCFromCampaign: (npcId: string) => Promise<void>;
 
   // Locations
-  upsertLocation: (loc: Omit<LocationInsert, 'campaign_id'> & { id?: string }, scope?: 'campaign' | 'global') => Promise<void>;
+  upsertLocation: (loc: Omit<LocationInsert, 'campaign_id'> & { id?: string }, scope?: 'campaign' | 'global') => Promise<Location>;
   deleteLocation: (id: string) => Promise<void>;
   linkLocationToCampaign: (locationId: string) => Promise<void>;
   unlinkLocationFromCampaign: (locationId: string) => Promise<void>;
 
   // Factions
-  upsertFaction: (f: Omit<FactionInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  upsertFaction: (f: Omit<FactionInsert, 'campaign_id'> & { id?: string }) => Promise<Faction>;
   deleteFaction: (id: string) => Promise<void>;
 
   // Hooks / ideas
@@ -110,7 +110,7 @@ interface CampaignContextType {
   deleteHook: (id: string) => Promise<void>;
 
   // Lore entries (global)
-  upsertLore: (e: LoreEntryInsert & { id?: string }) => Promise<void>;
+  upsertLore: (e: LoreEntryInsert & { id?: string }) => Promise<LoreEntry>;
   deleteLore: (id: string) => Promise<void>;
 
   // Modules
@@ -146,7 +146,7 @@ interface CampaignContextType {
 
   // Encounters
   encounters: Encounter[];
-  upsertEncounter: (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  upsertEncounter: (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => Promise<Encounter>;
   deleteEncounter: (id: string) => Promise<void>;
 
   // Session Prep
@@ -419,9 +419,10 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
   // ---- Sessions ----
   const upsertSession = useCallback(async (s: Omit<SessionInsert, 'campaign_id'> & { id?: string }) => {
-    if (!selectedCampaignId) return;
-    await SessionsDB.upsert({ ...s, campaign_id: selectedCampaignId });
+    if (!selectedCampaignId) return {} as Session;
+    const result = await SessionsDB.upsert({ ...s, campaign_id: selectedCampaignId });
     setSessions(await SessionsDB.getAll(selectedCampaignId));
+    return result;
   }, [selectedCampaignId]);
 
   const deleteSession = useCallback(async (id: string) => {
@@ -432,9 +433,10 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
   // ---- Player Characters ----
   const upsertPC = useCallback(async (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => {
-    if (!selectedCampaignId) return;
-    await PlayerCharactersDB.upsert({ ...pc, campaign_id: selectedCampaignId });
+    if (!selectedCampaignId) return {} as PlayerCharacter;
+    const result = await PlayerCharactersDB.upsert({ ...pc, campaign_id: selectedCampaignId });
     setPCs(await PlayerCharactersDB.getAll(selectedCampaignId));
+    return result;
   }, [selectedCampaignId]);
 
   const deletePC = useCallback(async (id: string) => {
@@ -459,10 +461,11 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     npc: Omit<NPCInsert, 'campaign_id'> & { id?: string },
     scope: 'campaign' | 'global' = 'campaign'
   ) => {
-    if (!selectedCampaignId) return;
+    if (!selectedCampaignId) return {} as NPC;
     const campaign_id = scope === 'campaign' ? selectedCampaignId : null;
-    await NPCsDB.upsert({ ...npc, campaign_id });
+    const result = await NPCsDB.upsert({ ...npc, campaign_id });
     await refreshNPCs(selectedCampaignId);
+    return result;
   }, [selectedCampaignId, refreshNPCs]);
 
   const deleteNPC = useCallback(async (id: string) => {
@@ -499,10 +502,11 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     loc: Omit<LocationInsert, 'campaign_id'> & { id?: string },
     scope: 'campaign' | 'global' = 'campaign'
   ) => {
-    if (!selectedCampaignId) return;
+    if (!selectedCampaignId) return {} as Location;
     const campaign_id = scope === 'campaign' ? selectedCampaignId : null;
-    await LocationsDB.upsert({ ...loc, campaign_id });
+    const result = await LocationsDB.upsert({ ...loc, campaign_id });
     await refreshLocations(selectedCampaignId);
+    return result;
   }, [selectedCampaignId, refreshLocations]);
 
   const deleteLocation = useCallback(async (id: string) => {
@@ -525,9 +529,10 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
   // ---- Factions ----
   const upsertFaction = useCallback(async (f: Omit<FactionInsert, 'campaign_id'> & { id?: string }) => {
-    if (!selectedCampaignId) return;
-    await FactionsDB.upsert({ ...f, campaign_id: selectedCampaignId });
+    if (!selectedCampaignId) return {} as Faction;
+    const result = await FactionsDB.upsert({ ...f, campaign_id: selectedCampaignId });
     setFactions(await FactionsDB.getAll(selectedCampaignId));
+    return result;
   }, [selectedCampaignId]);
 
   const deleteFaction = useCallback(async (id: string) => {
@@ -551,8 +556,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
   // ---- Lore ----
   const upsertLore = useCallback(async (e: LoreEntryInsert & { id?: string }) => {
-    await LoreDB.upsert(e);
+    const result = await LoreDB.upsert(e);
     setLore(await LoreDB.getAll());
+    return result;
   }, []);
 
   const deleteLore = useCallback(async (id: string) => {
@@ -634,9 +640,10 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
   // ---- Encounters ----
   const upsertEncounter = useCallback(async (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => {
-    if (!selectedCampaignId) return;
-    await EncountersDB.upsert({ ...e, campaign_id: selectedCampaignId });
+    if (!selectedCampaignId) return {} as Encounter;
+    const result = await EncountersDB.upsert({ ...e, campaign_id: selectedCampaignId });
     setEncounters(await EncountersDB.getAll(selectedCampaignId));
+    return result;
   }, [selectedCampaignId]);
 
   const deleteEncounter = useCallback(async (id: string) => {

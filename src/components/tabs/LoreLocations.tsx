@@ -1,13 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { ListDetail, ListRow, DetailPanel, DetailSection, Pill, EmptyDetail } from '../ui/ListDetail';
-import { MarkdownContent } from '../ui/MarkdownContent';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { FormField, inputStyle } from '../FormField';
 import { pushRecent } from '../Sidebar';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { OverflowMenu } from '../ui/OverflowMenu';
+import { AutosaveTextarea } from '../ui/MentionButton';
+import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { Location, LoreEntry } from '../../lib/database.types';
 
 type WorldKind = 'location' | 'lore';
@@ -26,6 +26,7 @@ interface WorldItem {
 const GLYPHS: Record<WorldKind, string> = { location: '✦', lore: '❧' };
 
 const LOCATION_TYPES = ['city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
+const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
 
 const typeBadgeColor: Record<string, 'blue' | 'green' | 'red' | 'gold' | 'muted'> = {
   city: 'blue', town: 'green', dungeon: 'red', faction_hq: 'gold', landmark: 'blue', other: 'muted',
@@ -51,9 +52,6 @@ export default function LoreLocations() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // In-panel creation: 'location' | 'lore' | null
-  const [creating, setCreating] = useState<'location' | 'lore' | null>(null);
 
   // Build unified list
   const all = useMemo<WorldItem[]>(() => {
@@ -95,13 +93,17 @@ export default function LoreLocations() {
     pushRecent({ kind: item.kind, id: item.id, label: item.name, tab: 'world' });
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (filter === 'lore') {
-      setCreating('lore');
-      setSelectedId(null);
+      const result = await upsertLore({ title: '', category: null, content: null, dm_only: false, tags: [] });
+      setSelectedId(result.id);
     } else {
-      setCreating('location');
-      setSelectedId(null);
+      const result = await upsertLocation({
+        name: '', location_type: 'landmark', region: null,
+        description: null, notes: null, dm_notes: null,
+        history: null, population: null, status: null,
+      });
+      setSelectedId(result.id);
     }
   };
 
@@ -150,19 +152,10 @@ export default function LoreLocations() {
           )
         }
         detail={
-          creating === 'location' ? (
-            <LocationCreatePanel
-              onCancel={() => setCreating(null)}
-              onCreate={async (loc) => { await upsertLocation(loc); setCreating(null); }}
-            />
-          ) : creating === 'lore' ? (
-            <LoreCreatePanel
-              onCancel={() => setCreating(null)}
-              onCreate={async (l) => { await upsertLore(l); setCreating(null); }}
-            />
-          ) : selected ? (
+          selected ? (
             selected.kind === 'location' ? (
               <LocationDetail
+                key={selected.id}
                 location={selected.raw as Location}
                 onDelete={async () => {
                   const yes = await confirm('Delete this location?', 'This cannot be undone.');
@@ -171,6 +164,7 @@ export default function LoreLocations() {
               />
             ) : (
               <LoreDetail
+                key={selected.id}
                 entry={selected.raw as LoreEntry}
                 onDelete={async () => {
                   const yes = await confirm('Delete this lore entry?', 'This cannot be undone.');
@@ -187,212 +181,262 @@ export default function LoreLocations() {
   );
 }
 
-/* ── Location Detail ── */
+/* ── Location Detail (autosave) ── */
+
+interface LocationForm {
+  name: string;
+  region: string;
+  location_type: string;
+  population: string;
+  status: string;
+  description: string;
+  history: string;
+  dm_notes: string;
+}
+
+function locationToForm(loc: Location): LocationForm {
+  return {
+    name: loc.name ?? '',
+    region: loc.region ?? '',
+    location_type: loc.location_type ?? 'landmark',
+    population: loc.population ?? '',
+    status: loc.status ?? 'active',
+    description: loc.description ?? '',
+    history: loc.history ?? '',
+    dm_notes: loc.dm_notes ?? '',
+  };
+}
 
 function LocationDetail({ location, onDelete }: { location: Location; onDelete: () => void }) {
   const { upsertLocation } = useCampaign();
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Partial<Location>>({});
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<LocationForm>(() => locationToForm(location));
 
-  const startEdit = () => {
-    setForm({ name: location.name, region: location.region, location_type: location.location_type, population: location.population, status: location.status, description: location.description, history: location.history, dm_notes: location.dm_notes });
-    setEditing(true);
-  };
-  const save = async () => {
-    setSaving(true);
-    await upsertLocation({ id: location.id, name: form.name || location.name, ...form });
-    setSaving(false);
-    setEditing(false);
-  };
+  // Reset form when switching to a different location
+  useEffect(() => {
+    setForm(locationToForm(location));
+  }, [location.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (editing) {
-    return (
-      <DetailPanel eyebrow="Location" title="Editing" subtitle={form.name || location.name}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Name"><input style={inputStyle} value={form.name ?? ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></FormField>
-            <FormField label="Type">
-              <select style={inputStyle} value={form.location_type ?? 'other'} onChange={e => setForm(p => ({ ...p, location_type: e.target.value }))}>
-                {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
-              </select>
-            </FormField>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Region"><input style={inputStyle} value={form.region ?? ''} onChange={e => setForm(p => ({ ...p, region: e.target.value || null }))} placeholder="e.g. Northern Reaches" /></FormField>
-            <FormField label="Population"><input style={inputStyle} value={form.population ?? ''} onChange={e => setForm(p => ({ ...p, population: e.target.value || null }))} placeholder="e.g. ~12,000" /></FormField>
-          </div>
-          <FormField label="Status">
-            <select style={inputStyle} value={form.status ?? 'active'} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
-              <option value="active">Active</option><option value="destroyed">Destroyed</option><option value="unknown">Unknown</option><option value="compromised">Compromised</option>
-            </select>
-          </FormField>
-          <FormField label="Description"><MarkdownEditor value={form.description ?? ''} onChange={v => setForm(p => ({ ...p, description: v || null }))} placeholder="Describe this place..." minHeight="100px" /></FormField>
-          <FormField label="History"><MarkdownEditor value={form.history ?? ''} onChange={v => setForm(p => ({ ...p, history: v || null }))} placeholder="Historical events..." minHeight="80px" /></FormField>
-          <FormField label="DM Notes"><MarkdownEditor value={form.dm_notes ?? ''} onChange={v => setForm(p => ({ ...p, dm_notes: v || null }))} placeholder="Private DM notes..." minHeight="60px" /></FormField>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="primary" size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-            <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
-          </div>
-        </div>
-      </DetailPanel>
-    );
-  }
+  const { status, saveNow } = useAutoSave<LocationForm>({
+    data: form,
+    onSave: async (data) => {
+      await upsertLocation({
+        id: location.id,
+        name: data.name || 'Unnamed Location',
+        region: data.region || null,
+        location_type: data.location_type || null,
+        population: data.population || null,
+        status: data.status || null,
+        description: data.description || null,
+        history: data.history || null,
+        dm_notes: data.dm_notes || null,
+        notes: location.notes ?? null,
+      });
+    },
+    delay: 800,
+    enabled: true,
+  });
+
+  const set = <K extends keyof LocationForm>(key: K, value: LocationForm[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
 
   return (
-    <DetailPanel eyebrow="Location" title={location.name} subtitle={[formatType(location.location_type), location.region].filter(Boolean).join(' · ')}>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {location.status && (
-          <Badge color={location.status === 'active' ? 'green' : location.status === 'destroyed' ? 'red' : 'gold'}>{location.status}</Badge>
-        )}
-        {location.population && <span style={{ fontSize: '13px', color: 'var(--ink-3)' }}>Pop. {location.population}</span>}
-        <div style={{ flex: 1 }} />
-        <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
-        <Button variant="secondary" size="sm" onClick={onDelete}>Delete</Button>
+    <DetailPanel eyebrow="Location" title="">
+      {/* Action bar */}
+      <div className="as-bar">
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <div className="as-spacer" />
+        <OverflowMenu items={[
+          { label: 'Delete Location', danger: true, onClick: onDelete },
+        ]} />
       </div>
-      {location.description && <DetailSection title="Description"><MarkdownContent content={location.description} /></DetailSection>}
-      {location.history && <DetailSection title="History"><MarkdownContent content={location.history} /></DetailSection>}
-      {location.dm_notes && <DetailSection title="DM Notes"><MarkdownContent content={location.dm_notes} /></DetailSection>}
+
+      {/* Title + region */}
+      <input
+        className="as-title"
+        value={form.name}
+        onChange={e => set('name', e.target.value)}
+        placeholder="Location name…"
+      />
+      <input
+        className="as-sub"
+        value={form.region}
+        onChange={e => set('region', e.target.value)}
+        placeholder="Region…"
+      />
+
+      {/* Meta strip */}
+      <div className="as-meta">
+        <div className="as-mi">
+          <span className="as-ml">Type</span>
+          <select
+            className="as-select"
+            value={form.location_type}
+            onChange={e => set('location_type', e.target.value)}
+          >
+            {LOCATION_TYPES.map(t => (
+              <option key={t} value={t}>{formatType(t)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="as-mi">
+          <span className="as-ml">Status</span>
+          <select
+            className="as-select"
+            value={form.status}
+            onChange={e => set('status', e.target.value)}
+          >
+            <option value="active">Active</option>
+            <option value="destroyed">Destroyed</option>
+            <option value="unknown">Unknown</option>
+            <option value="compromised">Compromised</option>
+          </select>
+        </div>
+        <div className="as-mi">
+          <span className="as-ml">Population</span>
+          <input
+            className="as-input"
+            value={form.population}
+            onChange={e => set('population', e.target.value)}
+            placeholder="e.g. ~12,000"
+          />
+        </div>
+      </div>
+
+      {/* Description */}
+      <DetailSection title="Description">
+        <AutosaveTextarea
+          value={form.description}
+          onChange={v => set('description', v)}
+          placeholder="Describe this place…"
+          rows={4}
+        />
+      </DetailSection>
+
+      {/* History */}
+      <DetailSection title="History">
+        <AutosaveTextarea
+          value={form.history}
+          onChange={v => set('history', v)}
+          placeholder="Historical events…"
+          rows={4}
+        />
+      </DetailSection>
+
+      {/* DM Notes */}
+      <DetailSection title="DM Notes">
+        <AutosaveTextarea
+          value={form.dm_notes}
+          onChange={v => set('dm_notes', v)}
+          placeholder="Private DM notes…"
+          rows={3}
+        />
+      </DetailSection>
     </DetailPanel>
   );
 }
 
-/* ── Lore Detail ── */
+/* ── Lore Detail (autosave) ── */
+
+interface LoreForm {
+  title: string;
+  category: string;
+  dm_only: boolean;
+  content: string;
+}
+
+function loreToForm(entry: LoreEntry): LoreForm {
+  return {
+    title: entry.title ?? '',
+    category: entry.category ?? 'history',
+    dm_only: entry.dm_only ?? false,
+    content: entry.content ?? '',
+  };
+}
 
 function LoreDetail({ entry, onDelete }: { entry: LoreEntry; onDelete: () => void }) {
   const { upsertLore } = useCampaign();
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Partial<LoreEntry>>({});
-  const [saving, setSaving] = useState(false);
-  const CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'];
+  const [form, setForm] = useState<LoreForm>(() => loreToForm(entry));
 
-  const startEdit = () => {
-    setForm({ title: entry.title, category: entry.category, content: entry.content, dm_only: entry.dm_only });
-    setEditing(true);
-  };
-  const save = async () => {
-    setSaving(true);
-    await upsertLore({ id: entry.id, title: form.title || entry.title, ...form });
-    setSaving(false);
-    setEditing(false);
-  };
+  // Reset form when switching to a different entry
+  useEffect(() => {
+    setForm(loreToForm(entry));
+  }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (editing) {
-    return (
-      <DetailPanel eyebrow="Lore" title="Editing" subtitle={form.title || entry.title}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Title"><input style={inputStyle} value={form.title ?? ''} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} /></FormField>
-            <FormField label="Category">
-              <select style={inputStyle} value={form.category ?? 'history'} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-              </select>
-            </FormField>
+  const { status, saveNow } = useAutoSave<LoreForm>({
+    data: form,
+    onSave: async (data) => {
+      await upsertLore({
+        id: entry.id,
+        title: data.title || 'Untitled Entry',
+        category: data.category || null,
+        dm_only: data.dm_only,
+        content: data.content || null,
+        tags: entry.tags ?? [],
+      });
+    },
+    delay: 800,
+    enabled: true,
+  });
+
+  const set = <K extends keyof LoreForm>(key: K, value: LoreForm[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+
+  return (
+    <DetailPanel eyebrow="Lore" title="">
+      {/* Action bar */}
+      <div className="as-bar">
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <div className="as-spacer" />
+        <OverflowMenu items={[
+          { label: 'Delete entry', danger: true, onClick: onDelete },
+        ]} />
+      </div>
+
+      {/* Title */}
+      <input
+        className="as-title"
+        value={form.title}
+        onChange={e => set('title', e.target.value)}
+        placeholder="Entry title…"
+      />
+
+      {/* Meta strip */}
+      <div className="as-meta">
+        <div className="as-mi">
+          <span className="as-ml">Category</span>
+          <select
+            className="as-select"
+            value={form.category}
+            onChange={e => set('category', e.target.value)}
+          >
+            {LORE_CATEGORIES.map(c => (
+              <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="as-mi">
+          <span className="as-ml">DM Only</span>
+          <div className="as-pills">
+            <button
+              type="button"
+              className={`as-pill-opt${form.dm_only ? ' is-active' : ''}`}
+              onClick={() => set('dm_only', !form.dm_only)}
+            >
+              {form.dm_only ? 'Hidden from players' : 'Visible to players'}
+            </button>
           </div>
-          <FormField label="DM Only">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-2)', fontSize: '14px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.dm_only ?? false} onChange={e => setForm(p => ({ ...p, dm_only: e.target.checked }))} style={{ accentColor: 'var(--gold)' }} />
-              Hidden from players
-            </label>
-          </FormField>
-          <FormField label="Content"><MarkdownEditor value={form.content ?? ''} onChange={v => setForm(p => ({ ...p, content: v || null }))} placeholder="Lore content..." minHeight="180px" /></FormField>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="primary" size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-            <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
-          </div>
-        </div>
-      </DetailPanel>
-    );
-  }
-
-  return (
-    <DetailPanel eyebrow="Lore" title={entry.title} subtitle={entry.category ? entry.category.charAt(0).toUpperCase() + entry.category.slice(1) : undefined}>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {entry.dm_only && <Badge color="gold">DM Only</Badge>}
-        <div style={{ flex: 1 }} />
-        <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
-        <Button variant="secondary" size="sm" onClick={onDelete}>Delete</Button>
-      </div>
-      {entry.content && <DetailSection title="Content"><MarkdownContent content={entry.content} /></DetailSection>}
-    </DetailPanel>
-  );
-}
-
-/* ── Inline Create Panels ── */
-
-function LocationCreatePanel({ onCancel, onCreate }: {
-  onCancel: () => void;
-  onCreate: (loc: Parameters<ReturnType<typeof useCampaign>['upsertLocation']>[0]) => Promise<void>;
-}) {
-  const [name, setName] = useState('');
-  const [locationType, setLocationType] = useState('other');
-  const [region, setRegion] = useState('');
-  const [description, setDescription] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const handleCreate = async () => {
-    if (!name.trim()) return;
-    setSaving(true);
-    await onCreate({ name: name.trim(), region: region || null, location_type: locationType, population: null, status: 'active', description: description || null, history: null, dm_notes: null });
-    setSaving(false);
-  };
-
-  return (
-    <DetailPanel eyebrow="Location" title="New Location" subtitle="Fill in the details below">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <FormField label="Name"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus placeholder="Location name" /></FormField>
-          <FormField label="Type">
-            <select style={inputStyle} value={locationType} onChange={e => setLocationType(e.target.value)}>
-              {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
-            </select>
-          </FormField>
-        </div>
-        <FormField label="Region"><input style={inputStyle} value={region} onChange={e => setRegion(e.target.value)} placeholder="e.g. Northern Reaches" /></FormField>
-        <FormField label="Description"><MarkdownEditor value={description} onChange={setDescription} placeholder="What is this place like?" minHeight="100px" /></FormField>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="primary" size="sm" onClick={handleCreate} disabled={!name.trim() || saving}>{saving ? 'Creating…' : 'Create Location'}</Button>
-          <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
         </div>
       </div>
-    </DetailPanel>
-  );
-}
 
-function LoreCreatePanel({ onCancel, onCreate }: {
-  onCancel: () => void;
-  onCreate: (l: Parameters<ReturnType<typeof useCampaign>['upsertLore']>[0]) => Promise<void>;
-}) {
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('history');
-  const [content, setContent] = useState('');
-  const [saving, setSaving] = useState(false);
-  const CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'];
-
-  const handleCreate = async () => {
-    if (!title.trim()) return;
-    setSaving(true);
-    await onCreate({ title: title.trim(), category, content: content || null, dm_only: false });
-    setSaving(false);
-  };
-
-  return (
-    <DetailPanel eyebrow="Lore" title="New Lore Entry" subtitle="Fill in the details below">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <FormField label="Title"><input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder="Entry title" /></FormField>
-          <FormField label="Category">
-            <select style={inputStyle} value={category} onChange={e => setCategory(e.target.value)}>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-            </select>
-          </FormField>
-        </div>
-        <FormField label="Content"><MarkdownEditor value={content} onChange={setContent} placeholder="What does this lore entry describe?" minHeight="120px" /></FormField>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="primary" size="sm" onClick={handleCreate} disabled={!title.trim() || saving}>{saving ? 'Creating…' : 'Create Lore Entry'}</Button>
-          <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
-        </div>
-      </div>
+      {/* Content */}
+      <DetailSection title="Content">
+        <AutosaveTextarea
+          value={form.content}
+          onChange={v => set('content', v)}
+          placeholder="Lore content…"
+          rows={8}
+        />
+      </DetailSection>
     </DetailPanel>
   );
 }
