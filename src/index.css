@@ -2359,3 +2359,81 @@ input:focus, textarea:focus, select:focus {
 .cm-subtab { padding: 12px 20px; background: transparent; border: none; cursor: pointer; font-family: var(--serif); font-size: 14px; color: var(--ink-3); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .12s, border-color .12s; white-space: nowrap; }
 .cm-subtab:hover { color: var(--ink); }
 .cm-subtab.is-active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* ═══ Autosave Edit System (v5) ═══ */
+
+/* Save bar */
+.as-bar { display: flex; align-items: center; gap: 8px; padding: 0 0 12px; margin-bottom: 16px; border-bottom: 1px solid var(--rule-soft); flex-shrink: 0; }
+.as-bar-spacer { flex: 1; }
+.as-status { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; display: flex; align-items: center; gap: 5px; transition: color 0.2s; }
+.as-status.is-saved, .as-status.is-idle { color: var(--moss, #5a8a5a); }
+.as-status.is-saving { color: var(--gold); animation: as-pulse 1s ease-in-out infinite; }
+.as-status.is-unsaved { color: var(--ink-3); }
+.as-status.is-error { color: var(--accent); }
+@keyframes as-pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+/* Overflow menu */
+.as-overflow { position: relative; }
+.as-overflow-btn { background: transparent; border: none; color: var(--ink-3); font-size: 16px; width: 28px; height: 28px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; line-height: 1; letter-spacing: 2px; }
+.as-overflow-btn:hover { background: var(--paper-2); color: var(--ink); }
+.as-overflow-menu { position: absolute; top: 32px; right: 0; width: 180px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg, 8px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 100; overflow: hidden; }
+.as-overflow-item { display: flex; align-items: center; padding: 9px 14px; width: 100%; background: transparent; border: none; cursor: pointer; font-family: var(--serif); font-size: 13px; color: var(--ink-2); text-align: left; }
+.as-overflow-item:hover { background: var(--paper-2); color: var(--ink); }
+.as-overflow-item.is-danger { color: var(--accent, #c05050); }
+.as-overflow-item.is-danger:hover { background: color-mix(in oklab, var(--accent, #c05050) 12%, var(--paper)); }
+.as-overflow-sep { height: 1px; background: var(--rule-soft); margin: 4px 0; }
+
+/* Always-editable title */
+.as-title { background: transparent; border: none; padding: 2px 6px; margin: -2px -6px; font-family: var(--display); font-size: 32px; font-weight: 500; color: var(--ink); width: calc(100% + 12px); outline: none; border-radius: var(--radius); transition: background 0.15s; }
+.as-title::placeholder { color: var(--ink-3); font-style: italic; font-weight: 400; }
+.as-title:hover { background: var(--paper-2); }
+.as-title:focus { background: var(--bg-2); box-shadow: inset 0 -2px 0 var(--gold); }
+
+/* Always-editable subtitle */
+.as-sub { background: transparent; border: none; padding: 2px 6px; margin: -2px -6px; font-family: var(--serif); font-size: 17px; font-style: italic; color: var(--ink-2); width: calc(100% + 12px); outline: none; border-radius: var(--radius); transition: background 0.15s; }
+.as-sub::placeholder { color: var(--ink-3); }
+.as-sub:hover { background: var(--paper-2); }
+.as-sub:focus { background: var(--bg-2); box-shadow: inset 0 -1px 0 var(--gold); }
+
+/* Section divider */
+.as-sec { margin: 20px 0 8px; }
+.as-sec-row { display: flex; align-items: center; gap: 10px; }
+.as-sec-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.as-sec-rule { flex: 1; height: 1px; background: var(--rule-soft); }
+
+/* Field label */
+.as-field { display: flex; flex-direction: column; gap: 4px; }
+.as-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-3); }
+
+/* Inline short input (fluid) */
+.as-inp { background: transparent; border: 1px solid transparent; padding: 6px 10px; font-family: var(--serif); font-size: 15px; color: var(--ink); width: 100%; outline: none; border-radius: var(--radius); transition: all 0.15s; }
+.as-inp::placeholder { color: var(--ink-3); font-style: italic; }
+.as-inp:hover { background: var(--paper-2); border-color: var(--rule-soft); }
+.as-inp:focus { background: var(--bg-2); border-color: var(--rule); box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold) 8%, transparent); }
+
+/* Select (fluid) */
+.as-sel { background: transparent; border: 1px solid var(--rule); padding: 5px 10px; font-family: var(--serif); font-size: 14px; color: var(--ink); border-radius: var(--radius); cursor: pointer; outline: none; width: 100%; }
+.as-sel:focus { border-color: var(--gold); }
+
+/* Toggle button */
+.as-tog { padding: 4px 12px; border: 1px solid var(--rule); background: var(--paper-2); color: var(--ink-2); font-family: var(--serif); font-size: 13px; cursor: pointer; border-radius: 999px; transition: all 0.12s; }
+.as-tog:hover { border-color: var(--ink-3); }
+.as-tog.is-on { border-color: var(--moss, #5a8a5a); background: color-mix(in oklab, var(--moss, #5a8a5a) 12%, var(--paper)); color: var(--moss, #5a8a5a); }
+
+/* Inline textarea (fluid) */
+.as-ta { background: transparent; border: 1px solid transparent; padding: 6px 0; font-family: var(--serif); font-size: 15px; color: var(--ink); width: 100%; line-height: 1.7; resize: vertical; min-height: 72px; outline: none; border-radius: var(--radius); transition: all 0.15s; }
+.as-ta::placeholder { color: var(--ink-3); font-style: italic; }
+.as-ta:hover { background: var(--paper-2); border-color: var(--rule-soft); padding: 6px 10px; }
+.as-ta:focus { background: var(--bg-2); border-color: var(--rule); padding: 8px 12px; box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold) 8%, transparent); }
+
+/* Eyebrow (entity type label) */
+.as-ey { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+
+/* Meta row */
+.as-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 0; }
+.as-meta-item { display: flex; align-items: center; gap: 6px; }
+.as-meta-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+
+/* 2-col grid for fields */
+.as-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+

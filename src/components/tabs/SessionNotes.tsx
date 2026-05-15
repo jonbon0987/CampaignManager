@@ -3,11 +3,9 @@ import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { FormField, inputStyle } from '../FormField';
-import { Button } from '../ui/Button';
-import { MarkdownContent } from '../ui/MarkdownContent';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
-import { insertAtCursor } from '../../lib/textUtils';
+import { SaveBar } from '../ui/SaveBar';
+import { useAutoSave } from '../../hooks/useAutoSave';
 import type { Session } from '../../lib/database.types';
 
 type SessionForm = {
@@ -95,9 +93,8 @@ function SessionDetail({
 }) {
   const { upsertSession, deleteSession } = useCampaign();
   const confirm = useConfirm();
-  const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState<SessionForm>({
+
+  const [form, setForm] = useState<SessionForm>({
     session_number: session.session_number,
     session_date: session.session_date,
     summary: session.summary,
@@ -106,36 +103,23 @@ function SessionDetail({
     hooks_notes: session.hooks_notes,
     dm_notes: session.dm_notes,
   });
-  const summaryRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync form when session changes
-  const startEdit = () => {
-    setEditForm({
-      session_number: session.session_number,
-      session_date: session.session_date,
-      summary: session.summary,
-      combats: session.combats,
-      loot_rewards: session.loot_rewards,
-      hooks_notes: session.hooks_notes,
-      dm_notes: session.dm_notes,
-    });
-    setIsEditing(true);
-  };
-
-  const saveEdit = async () => {
-    setSaving(true);
-    await upsertSession({
-      session_number: editForm.session_number,
-      session_date: editForm.session_date,
-      summary: editForm.summary,
-      combats: editForm.combats,
-      loot_rewards: editForm.loot_rewards,
-      hooks_notes: editForm.hooks_notes,
-      dm_notes: editForm.dm_notes,
-    });
-    setSaving(false);
-    setIsEditing(false);
-  };
+  const { status } = useAutoSave({
+    data: form,
+    onSave: async (data) => {
+      await upsertSession({
+        id: session.id,
+        session_number: data.session_number,
+        session_date: data.session_date,
+        summary: data.summary,
+        combats: data.combats,
+        loot_rewards: data.loot_rewards,
+        hooks_notes: data.hooks_notes,
+        dm_notes: data.dm_notes,
+      });
+    },
+    delay: 800,
+  });
 
   const handleDelete = async () => {
     if (await confirm('Delete this session?')) {
@@ -144,195 +128,77 @@ function SessionDetail({
     }
   };
 
-  const inputFieldStyle: React.CSSProperties = {
-    backgroundColor: 'var(--bg)',
-    color: 'var(--ink)',
-    border: '1px solid var(--rule)',
-    fontFamily: 'var(--serif)',
-    fontSize: '0.875rem',
-    borderRadius: 'var(--radius)',
-    padding: '6px 10px',
-    width: '100%',
-    outline: 'none',
-  };
-
-  const fieldLabelStyle: React.CSSProperties = {
-    color: 'var(--gold)',
-    fontSize: '0.65rem',
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-    display: 'block',
-    marginBottom: 4,
-  };
-
   return (
     <div className="cm-detail">
-      <div className="cm-detail-head">
-        <div className="cm-detail-eyebrow">Session #{session.session_number}</div>
-        <h1 className="cm-detail-title">
-          {session.session_date
-            ? new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-            : `Session ${session.session_number}`}
-        </h1>
-        {session.session_date && (
-          <div className="cm-detail-sub">{session.session_date}</div>
-        )}
-      </div>
-
-      {/* Action row */}
-      <div className="flex items-center gap-2 mb-6">
-        {!isEditing ? (
-          <>
-            <button
-              onClick={startEdit}
-              className="cm-md-add"
-            >
-              Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              className="cm-md-add"
-              style={{ color: 'var(--accent)', borderColor: 'var(--accent-2)' }}
-            >
-              Delete
-            </button>
-          </>
-        ) : (
-          <>
-            <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setIsEditing(false)} disabled={saving}>
-              Cancel
-            </Button>
-          </>
-        )}
+      <SaveBar status={status} onDelete={handleDelete} label="session" />
+      <div className="as-ey">Session #{form.session_number}</div>
+      <div className="as-grid2" style={{ marginBottom: 12 }}>
+        <div className="as-field">
+          <label className="as-label">Session #</label>
+          <input
+            className="as-inp"
+            type="number"
+            value={form.session_number}
+            onChange={e => setForm(p => ({ ...p, session_number: parseInt(e.target.value) || 1 }))}
+            min={1}
+            style={{ colorScheme: 'dark' }}
+          />
+        </div>
+        <div className="as-field">
+          <label className="as-label">Date</label>
+          <input
+            className="as-inp"
+            type="date"
+            value={form.session_date ?? ''}
+            onChange={e => setForm(p => ({ ...p, session_date: e.target.value || null }))}
+            style={{ colorScheme: 'dark' }}
+          />
+        </div>
       </div>
 
       <div className="cm-detail-body">
-        {isEditing ? (
-          <>
-            {/* Edit: number + date */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={fieldLabelStyle}>Session #</label>
-                <input
-                  type="number"
-                  value={editForm.session_number}
-                  onChange={e => setEditForm(prev => ({ ...prev, session_number: parseInt(e.target.value) || 1 }))}
-                  min={1}
-                  style={{ ...inputFieldStyle, colorScheme: 'dark' }}
-                />
-              </div>
-              <div>
-                <label style={fieldLabelStyle}>Date</label>
-                <input
-                  type="date"
-                  value={editForm.session_date ?? ''}
-                  onChange={e => setEditForm(prev => ({ ...prev, session_date: e.target.value || null }))}
-                  style={{ ...inputFieldStyle, colorScheme: 'dark' }}
-                />
-              </div>
-            </div>
+        <div className="as-sec"><div className="as-sec-row"><span className="as-sec-label">Session Notes</span><span className="as-sec-rule"/></div></div>
+        <MarkdownEditor
+          value={form.summary ?? ''}
+          onChange={v => setForm(p => ({ ...p, summary: v || null }))}
+          placeholder="What happened this session…"
+          minHeight="200px"
+        />
 
-            {/* Summary */}
-            <div className="cm-section">
-              <SectionLabel label="Session Notes" />
-              <MarkdownEditor
-                value={editForm.summary ?? ''}
-                onChange={v => setEditForm(prev => ({ ...prev, summary: v || null }))}
-                placeholder="What happened this session..."
-                minHeight="200px"
-                textareaRef={summaryRef}
-              />
-              <EntityLinkToolbar
-                textareaRef={summaryRef}
-                onInsert={markup => setEditForm(prev => ({ ...prev, summary: insertAtCursor(summaryRef, prev.summary ?? '', markup) }))}
-              />
-            </div>
-
-            {/* Structured fields */}
-            <div className="flex flex-col gap-2">
-              <SessionSection icon={Swords} label="Combat Summary">
-                <MarkdownEditor
-                  value={editForm.combats ?? ''}
-                  onChange={v => setEditForm(prev => ({ ...prev, combats: v || null }))}
-                  placeholder="Describe combats that took place…"
-                  minHeight="80px"
-                />
-              </SessionSection>
-              <SessionSection icon={Gift} label="Loot &amp; Rewards">
-                <MarkdownEditor
-                  value={editForm.loot_rewards ?? ''}
-                  onChange={v => setEditForm(prev => ({ ...prev, loot_rewards: v || null }))}
-                  placeholder="Items, gold, or rewards gained…"
-                  minHeight="60px"
-                />
-              </SessionSection>
-              <SessionSection icon={Lightbulb} label="Hook Follow-ups">
-                <MarkdownEditor
-                  value={editForm.hooks_notes ?? ''}
-                  onChange={v => setEditForm(prev => ({ ...prev, hooks_notes: v || null }))}
-                  placeholder="Which hooks were advanced or introduced…"
-                  minHeight="60px"
-                />
-              </SessionSection>
-              <SessionSection icon={Eye} label="DM Notes" dmOnly>
-                <MarkdownEditor
-                  value={editForm.dm_notes ?? ''}
-                  onChange={v => setEditForm(prev => ({ ...prev, dm_notes: v || null }))}
-                  placeholder="Private notes, reminders, secrets…"
-                  minHeight="60px"
-                />
-              </SessionSection>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* View: recap */}
-            <div className="cm-section">
-              <SectionLabel label="Recap" />
-              {session.summary ? (
-                <MarkdownContent
-                  text={session.summary}
-                  className="text-sm"
-                  style={{ color: 'var(--ink)', fontFamily: 'var(--serif)', lineHeight: '1.7' }}
-                />
-              ) : (
-                <p style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 14 }}>
-                  No notes recorded for this session.
-                </p>
-              )}
-            </div>
-
-            {/* Structured fields — only when content exists */}
-            {(session.combats || session.loot_rewards || session.hooks_notes || session.dm_notes) && (
-              <div className="flex flex-col gap-2">
-                {session.combats && (
-                  <SessionSection icon={Swords} label="Combat Summary">
-                    <MarkdownContent text={session.combats} className="text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
-                  </SessionSection>
-                )}
-                {session.loot_rewards && (
-                  <SessionSection icon={Gift} label="Loot & Rewards">
-                    <MarkdownContent text={session.loot_rewards} className="text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
-                  </SessionSection>
-                )}
-                {session.hooks_notes && (
-                  <SessionSection icon={Lightbulb} label="Hook Follow-ups">
-                    <MarkdownContent text={session.hooks_notes} className="text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
-                  </SessionSection>
-                )}
-                {session.dm_notes && (
-                  <SessionSection icon={Eye} label="DM Notes" dmOnly>
-                    <MarkdownContent text={session.dm_notes} className="text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)', lineHeight: '1.7' }} />
-                  </SessionSection>
-                )}
-              </div>
-            )}
-          </>
-        )}
+        <div className="flex flex-col gap-2" style={{ marginTop: 12 }}>
+          <SessionSection icon={Swords} label="Combat Summary">
+            <MarkdownEditor
+              value={form.combats ?? ''}
+              onChange={v => setForm(p => ({ ...p, combats: v || null }))}
+              placeholder="Describe combats that took place…"
+              minHeight="80px"
+            />
+          </SessionSection>
+          <SessionSection icon={Gift} label="Loot &amp; Rewards">
+            <MarkdownEditor
+              value={form.loot_rewards ?? ''}
+              onChange={v => setForm(p => ({ ...p, loot_rewards: v || null }))}
+              placeholder="Items, gold, or rewards gained…"
+              minHeight="60px"
+            />
+          </SessionSection>
+          <SessionSection icon={Lightbulb} label="Hook Follow-ups">
+            <MarkdownEditor
+              value={form.hooks_notes ?? ''}
+              onChange={v => setForm(p => ({ ...p, hooks_notes: v || null }))}
+              placeholder="Which hooks were advanced or introduced…"
+              minHeight="60px"
+            />
+          </SessionSection>
+          <SessionSection icon={Eye} label="DM Notes" dmOnly>
+            <MarkdownEditor
+              value={form.dm_notes ?? ''}
+              onChange={v => setForm(p => ({ ...p, dm_notes: v || null }))}
+              placeholder="Private notes, reminders, secrets…"
+              minHeight="60px"
+            />
+          </SessionSection>
+        </div>
       </div>
     </div>
   );
@@ -468,7 +334,6 @@ function SessionLog() {
               <div className="cm-section">
                 <SectionLabel label="Session Notes" />
                 <MarkdownEditor value={form.summary ?? ''} onChange={v => setForm(prev => ({ ...prev, summary: v || null }))} placeholder="What happened this session..." minHeight="200px" textareaRef={newSummaryRef} />
-                <EntityLinkToolbar textareaRef={newSummaryRef} onInsert={markup => setForm(prev => ({ ...prev, summary: insertAtCursor(newSummaryRef, prev.summary ?? '', markup) }))} />
               </div>
               <div className="flex flex-col gap-2">
                 <SessionSection icon={Swords} label="Combat Summary">
@@ -596,7 +461,6 @@ const PREP_STEPS = [
   { id: 'encounters', label: 'Encounters',      glyph: '⚔' },
   { id: 'loose',      label: 'Loose Threads',   glyph: '⚠' },
 ] as const;
-type PrepStep = (typeof PREP_STEPS)[number]['id'];
 
 function SessionPrepView() {
   const { sessions, hooks, encounters, sessionPreps, upsertSessionPrep } = useCampaign();
@@ -625,7 +489,7 @@ function SessionPrepView() {
   };
 
   const activeHooks = hooks.filter(h => h.is_active);
-  const plannedEncounters = encounters.filter(e => e.status === 'planned');
+  const plannedEncounters = encounters.filter(e => e.status === 'draft' || e.status === 'ready');
 
   return (
     <div className="pw">
@@ -688,10 +552,6 @@ function SessionPrepView() {
               placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
               minHeight="240px"
               textareaRef={notesRef}
-            />
-            <EntityLinkToolbar
-              textareaRef={notesRef}
-              onInsert={markup => setPrepText(prev => insertAtCursor(notesRef, prev, markup))}
             />
             <div>
               <button className="pw-action pw-action-primary" onClick={savePrep} disabled={savingPrep}>

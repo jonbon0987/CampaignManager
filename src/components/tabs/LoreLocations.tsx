@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { ListDetail, ListRow, DetailPanel, DetailSection, Pill, EmptyDetail } from '../ui/ListDetail';
-import { MarkdownContent } from '../ui/MarkdownContent';
+import { ListDetail, ListRow, Pill, EmptyDetail } from '../ui/ListDetail';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
 import { FormField, inputStyle } from '../FormField';
+import { SaveBar } from '../ui/SaveBar';
+import { useAutoSave } from '../../hooks/useAutoSave';
 import { pushRecent } from '../Sidebar';
 import type { Location, LoreEntry } from '../../lib/database.types';
 
@@ -165,7 +165,7 @@ export default function LoreLocations() {
               <LocationDetail
                 location={selected.raw as Location}
                 onDelete={async () => {
-                  const yes = await confirm('Delete this location?', 'This cannot be undone.');
+                  const yes = await confirm('Delete this location?');
                   if (yes) { await deleteLocation(selected.id); setSelectedId(null); }
                 }}
               />
@@ -173,7 +173,7 @@ export default function LoreLocations() {
               <LoreDetail
                 entry={selected.raw as LoreEntry}
                 onDelete={async () => {
-                  const yes = await confirm('Delete this lore entry?', 'This cannot be undone.');
+                  const yes = await confirm('Delete this lore entry?');
                   if (yes) { await deleteLore(selected.id); setSelectedId(null); }
                 }}
               />
@@ -189,132 +189,168 @@ export default function LoreLocations() {
 
 /* ── Location Detail ── */
 
+type LocationForm = {
+  name: string;
+  location_type: string;
+  region: string;
+  population: string;
+  status: string;
+  description: string;
+  history: string;
+  dm_notes: string;
+};
+
 function LocationDetail({ location, onDelete }: { location: Location; onDelete: () => void }) {
   const { upsertLocation } = useCampaign();
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Partial<Location>>({});
-  const [saving, setSaving] = useState(false);
 
-  const startEdit = () => {
-    setForm({ name: location.name, region: location.region, location_type: location.location_type, population: location.population, status: location.status, description: location.description, history: location.history, dm_notes: location.dm_notes });
-    setEditing(true);
-  };
-  const save = async () => {
-    setSaving(true);
-    await upsertLocation({ id: location.id, name: form.name || location.name, ...form });
-    setSaving(false);
-    setEditing(false);
-  };
+  const [form, setForm] = useState<LocationForm>({
+    name: location.name,
+    location_type: location.location_type ?? 'other',
+    region: location.region ?? '',
+    population: location.population ?? '',
+    status: location.status ?? 'active',
+    description: location.description ?? '',
+    history: location.history ?? '',
+    dm_notes: location.dm_notes ?? '',
+  });
 
-  if (editing) {
-    return (
-      <DetailPanel eyebrow="Location" title="Editing" subtitle={form.name || location.name}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Name"><input style={inputStyle} value={form.name ?? ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></FormField>
-            <FormField label="Type">
-              <select style={inputStyle} value={form.location_type ?? 'other'} onChange={e => setForm(p => ({ ...p, location_type: e.target.value }))}>
-                {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
-              </select>
-            </FormField>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Region"><input style={inputStyle} value={form.region ?? ''} onChange={e => setForm(p => ({ ...p, region: e.target.value || null }))} placeholder="e.g. Northern Reaches" /></FormField>
-            <FormField label="Population"><input style={inputStyle} value={form.population ?? ''} onChange={e => setForm(p => ({ ...p, population: e.target.value || null }))} placeholder="e.g. ~12,000" /></FormField>
-          </div>
-          <FormField label="Status">
-            <select style={inputStyle} value={form.status ?? 'active'} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
-              <option value="active">Active</option><option value="destroyed">Destroyed</option><option value="unknown">Unknown</option><option value="compromised">Compromised</option>
-            </select>
-          </FormField>
-          <FormField label="Description"><MarkdownEditor value={form.description ?? ''} onChange={v => setForm(p => ({ ...p, description: v || null }))} placeholder="Describe this place..." minHeight="100px" /></FormField>
-          <FormField label="History"><MarkdownEditor value={form.history ?? ''} onChange={v => setForm(p => ({ ...p, history: v || null }))} placeholder="Historical events..." minHeight="80px" /></FormField>
-          <FormField label="DM Notes"><MarkdownEditor value={form.dm_notes ?? ''} onChange={v => setForm(p => ({ ...p, dm_notes: v || null }))} placeholder="Private DM notes..." minHeight="60px" /></FormField>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="primary" size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-            <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
-          </div>
-        </div>
-      </DetailPanel>
-    );
-  }
+  const { status } = useAutoSave({
+    data: form,
+    onSave: async (data) => {
+      await upsertLocation({
+        id: location.id,
+        name: data.name.trim() || location.name,
+        location_type: data.location_type,
+        region: data.region || null,
+        population: data.population || null,
+        status: data.status,
+        description: data.description || null,
+        history: data.history || null,
+        dm_notes: data.dm_notes || null,
+      });
+    },
+    delay: 800,
+  });
 
   return (
-    <DetailPanel eyebrow="Location" title={location.name} subtitle={[formatType(location.location_type), location.region].filter(Boolean).join(' · ')}>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {location.status && (
-          <Badge color={location.status === 'active' ? 'green' : location.status === 'destroyed' ? 'red' : 'gold'}>{location.status}</Badge>
-        )}
-        {location.population && <span style={{ fontSize: '13px', color: 'var(--ink-3)' }}>Pop. {location.population}</span>}
-        <div style={{ flex: 1 }} />
-        <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
-        <Button variant="secondary" size="sm" onClick={onDelete}>Delete</Button>
+    <div className="cm-detail">
+      <SaveBar status={status} onDelete={onDelete} label="location" />
+      <div className="as-ey">Location</div>
+      <input
+        className="as-title"
+        value={form.name}
+        onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+        placeholder="Location name…"
+      />
+
+      <div className="as-meta">
+        <div className="as-meta-item">
+          <span className="as-meta-label">Type</span>
+          <select className="as-sel" style={{ width: 'auto' }} value={form.location_type} onChange={e => setForm(p => ({ ...p, location_type: e.target.value }))}>
+            {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
+          </select>
+        </div>
+        <div className="as-meta-item">
+          <span className="as-meta-label">Status</span>
+          <select className="as-sel" style={{ width: 'auto' }} value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+            <option value="active">Active</option>
+            <option value="destroyed">Destroyed</option>
+            <option value="unknown">Unknown</option>
+            <option value="compromised">Compromised</option>
+          </select>
+        </div>
       </div>
-      {location.description && <DetailSection title="Description"><MarkdownContent content={location.description} /></DetailSection>}
-      {location.history && <DetailSection title="History"><MarkdownContent content={location.history} /></DetailSection>}
-      {location.dm_notes && <DetailSection title="DM Notes"><MarkdownContent content={location.dm_notes} /></DetailSection>}
-    </DetailPanel>
+
+      <div className="as-grid2" style={{ marginBottom: 12 }}>
+        <div className="as-field">
+          <label className="as-label">Region</label>
+          <input className="as-inp" value={form.region} onChange={e => setForm(p => ({ ...p, region: e.target.value }))} placeholder="e.g. Northern Reaches" />
+        </div>
+        <div className="as-field">
+          <label className="as-label">Population</label>
+          <input className="as-inp" value={form.population} onChange={e => setForm(p => ({ ...p, population: e.target.value }))} placeholder="e.g. ~12,000" />
+        </div>
+      </div>
+
+      <div className="as-sec"><div className="as-sec-row"><span className="as-sec-label">Description</span><span className="as-sec-rule"/></div></div>
+      <MarkdownEditor value={form.description} onChange={v => setForm(p => ({ ...p, description: v }))} placeholder="Describe this place…" minHeight="80px" />
+
+      <div className="as-sec"><div className="as-sec-row"><span className="as-sec-label">History</span><span className="as-sec-rule"/></div></div>
+      <MarkdownEditor value={form.history} onChange={v => setForm(p => ({ ...p, history: v }))} placeholder="Historical events…" minHeight="60px" />
+
+      <div className="as-sec"><div className="as-sec-row"><span className="as-sec-label">DM Notes</span><span className="as-sec-rule"/></div></div>
+      <MarkdownEditor value={form.dm_notes} onChange={v => setForm(p => ({ ...p, dm_notes: v }))} placeholder="Private DM notes…" minHeight="60px" />
+    </div>
   );
 }
 
 /* ── Lore Detail ── */
 
+const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'];
+
+type LoreForm = {
+  title: string;
+  category: string;
+  content: string;
+  dm_only: boolean;
+};
+
 function LoreDetail({ entry, onDelete }: { entry: LoreEntry; onDelete: () => void }) {
   const { upsertLore } = useCampaign();
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Partial<LoreEntry>>({});
-  const [saving, setSaving] = useState(false);
-  const CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'];
 
-  const startEdit = () => {
-    setForm({ title: entry.title, category: entry.category, content: entry.content, dm_only: entry.dm_only });
-    setEditing(true);
-  };
-  const save = async () => {
-    setSaving(true);
-    await upsertLore({ id: entry.id, title: form.title || entry.title, ...form });
-    setSaving(false);
-    setEditing(false);
-  };
+  const [form, setForm] = useState<LoreForm>({
+    title: entry.title,
+    category: entry.category ?? 'history',
+    content: entry.content ?? '',
+    dm_only: entry.dm_only ?? false,
+  });
 
-  if (editing) {
-    return (
-      <DetailPanel eyebrow="Lore" title="Editing" subtitle={form.title || entry.title}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <FormField label="Title"><input style={inputStyle} value={form.title ?? ''} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} /></FormField>
-            <FormField label="Category">
-              <select style={inputStyle} value={form.category ?? 'history'} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-              </select>
-            </FormField>
-          </div>
-          <FormField label="DM Only">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-2)', fontSize: '14px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.dm_only ?? false} onChange={e => setForm(p => ({ ...p, dm_only: e.target.checked }))} style={{ accentColor: 'var(--gold)' }} />
-              Hidden from players
-            </label>
-          </FormField>
-          <FormField label="Content"><MarkdownEditor value={form.content ?? ''} onChange={v => setForm(p => ({ ...p, content: v || null }))} placeholder="Lore content..." minHeight="180px" /></FormField>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="primary" size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-            <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
-          </div>
-        </div>
-      </DetailPanel>
-    );
-  }
+  const { status } = useAutoSave({
+    data: form,
+    onSave: async (data) => {
+      await upsertLore({
+        id: entry.id,
+        title: data.title.trim() || entry.title,
+        category: data.category,
+        content: data.content || null,
+        dm_only: data.dm_only,
+      });
+    },
+    delay: 800,
+  });
 
   return (
-    <DetailPanel eyebrow="Lore" title={entry.title} subtitle={entry.category ? entry.category.charAt(0).toUpperCase() + entry.category.slice(1) : undefined}>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {entry.dm_only && <Badge color="gold">DM Only</Badge>}
-        <div style={{ flex: 1 }} />
-        <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
-        <Button variant="secondary" size="sm" onClick={onDelete}>Delete</Button>
+    <div className="cm-detail">
+      <SaveBar status={status} onDelete={onDelete} label="lore entry" />
+      <div className="as-ey">Lore</div>
+      <input
+        className="as-title"
+        value={form.title}
+        onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+        placeholder="Lore entry title…"
+      />
+
+      <div className="as-meta">
+        <div className="as-meta-item">
+          <span className="as-meta-label">Category</span>
+          <select className="as-sel" style={{ width: 'auto' }} value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+            {LORE_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+          </select>
+        </div>
+        <div className="as-meta-item">
+          <span className="as-meta-label">DM Only</span>
+          <button
+            className={`as-tog${form.dm_only ? ' is-on' : ''}`}
+            onClick={() => setForm(p => ({ ...p, dm_only: !p.dm_only }))}
+          >
+            {form.dm_only ? 'Yes' : 'No'}
+          </button>
+        </div>
       </div>
-      {entry.content && <DetailSection title="Content"><MarkdownContent content={entry.content} /></DetailSection>}
-    </DetailPanel>
+
+      <div className="as-sec"><div className="as-sec-row"><span className="as-sec-label">Content</span><span className="as-sec-rule"/></div></div>
+      <MarkdownEditor value={form.content} onChange={v => setForm(p => ({ ...p, content: v }))} placeholder="What does this lore entry describe?" minHeight="200px" />
+    </div>
   );
 }
 
@@ -338,8 +374,9 @@ function LocationCreatePanel({ onCancel, onCreate }: {
   };
 
   return (
-    <DetailPanel eyebrow="Location" title="New Location" subtitle="Fill in the details below">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div className="cm-detail">
+      <div className="as-ey">Location</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <FormField label="Name"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus placeholder="Location name" /></FormField>
           <FormField label="Type">
@@ -351,11 +388,11 @@ function LocationCreatePanel({ onCancel, onCreate }: {
         <FormField label="Region"><input style={inputStyle} value={region} onChange={e => setRegion(e.target.value)} placeholder="e.g. Northern Reaches" /></FormField>
         <FormField label="Description"><MarkdownEditor value={description} onChange={setDescription} placeholder="What is this place like?" minHeight="100px" /></FormField>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="primary" size="sm" onClick={handleCreate} disabled={!name.trim() || saving}>{saving ? 'Creating…' : 'Create Location'}</Button>
-          <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
+          <button className="text-sm px-4 py-2 rounded font-semibold" style={{ backgroundColor: '#a07830', color: '#e8dcc4', border: 'none', cursor: 'pointer', fontFamily: 'var(--serif)' }} onClick={handleCreate} disabled={!name.trim() || saving}>{saving ? 'Creating…' : 'Create Location'}</button>
+          <button className="text-sm px-4 py-2 rounded" style={{ color: '#b9ac90', border: '1px solid #2e2820', background: 'none', cursor: 'pointer' }} onClick={onCancel}>Cancel</button>
         </div>
       </div>
-    </DetailPanel>
+    </div>
   );
 }
 
@@ -377,8 +414,9 @@ function LoreCreatePanel({ onCancel, onCreate }: {
   };
 
   return (
-    <DetailPanel eyebrow="Lore" title="New Lore Entry" subtitle="Fill in the details below">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div className="cm-detail">
+      <div className="as-ey">Lore</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <FormField label="Title"><input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} autoFocus placeholder="Entry title" /></FormField>
           <FormField label="Category">
@@ -389,10 +427,10 @@ function LoreCreatePanel({ onCancel, onCreate }: {
         </div>
         <FormField label="Content"><MarkdownEditor value={content} onChange={setContent} placeholder="What does this lore entry describe?" minHeight="120px" /></FormField>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="primary" size="sm" onClick={handleCreate} disabled={!title.trim() || saving}>{saving ? 'Creating…' : 'Create Lore Entry'}</Button>
-          <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
+          <button className="text-sm px-4 py-2 rounded font-semibold" style={{ backgroundColor: '#a07830', color: '#e8dcc4', border: 'none', cursor: 'pointer', fontFamily: 'var(--serif)' }} onClick={handleCreate} disabled={!title.trim() || saving}>{saving ? 'Creating…' : 'Create Lore Entry'}</button>
+          <button className="text-sm px-4 py-2 rounded" style={{ color: '#b9ac90', border: '1px solid #2e2820', background: 'none', cursor: 'pointer' }} onClick={onCancel}>Cancel</button>
         </div>
       </div>
-    </DetailPanel>
+    </div>
   );
 }
