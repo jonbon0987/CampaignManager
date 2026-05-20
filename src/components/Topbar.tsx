@@ -15,6 +15,9 @@ interface TopbarProps {
   onOpenInbox: () => void;
   onOpenCapture: () => void;
   onToggleRun: () => void;
+  onToggleScratch: () => void;
+  onToggleShortcuts: () => void;
+  scratchOpen: boolean;
   runMode: boolean;
   isMobile: boolean;
   proposalCount?: number;
@@ -33,6 +36,9 @@ export default function Topbar({
   onOpenInbox,
   onOpenCapture,
   onToggleRun,
+  onToggleScratch,
+  onToggleShortcuts,
+  scratchOpen,
   runMode,
   isMobile,
   proposalCount = 0,
@@ -88,6 +94,27 @@ export default function Topbar({
             <span className="cm-top-btn-glyph">✎</span>
             {!isMobile && <span>Proposals</span>}
             <span className="cm-top-badge">{proposalCount}</span>
+          </button>
+        )}
+
+        {/* Scratchpad */}
+        {!isMobile && (
+          <button
+            onClick={onToggleScratch}
+            className={`cm-top-btn${scratchOpen ? ' is-on' : ''}`}
+            title="Scratchpad (⌘.)"
+          >
+            <span className="cm-top-btn-glyph">✎</span>
+            <span>Notes</span>
+            <kbd>⌘.</kbd>
+          </button>
+        )}
+
+        {/* Keyboard shortcuts */}
+        {!isMobile && (
+          <button onClick={onToggleShortcuts} className="cm-top-btn" title="Keyboard shortcuts (?)">
+            <span className="cm-top-btn-glyph">⌨</span>
+            <kbd>?</kbd>
           </button>
         )}
 
