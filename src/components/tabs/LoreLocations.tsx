@@ -8,6 +8,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { AutosaveTextarea } from '../ui/MentionButton';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { ListRowWithHover } from '../HoverPreview';
 import type { Location, LoreEntry } from '../../lib/database.types';
 
 type WorldKind = 'location' | 'lore';
@@ -128,26 +129,31 @@ export default function LoreLocations() {
             <div className="cm-empty is-inline">No entries match your filters</div>
           ) : (
             all.map(item => (
-              <ListRow
+              <ListRowWithHover
                 key={item.id}
-                active={selected?.id === item.id}
-                onClick={() => handleSelect(item)}
-                glyph={item.glyph}
-                title={item.name}
-                subtitle={item.subtitle}
-                meta={item.meta}
-                badges={
-                  item.kind === 'location' && (item.raw as Location).location_type
-                    ? <Badge color={typeBadgeColor[(item.raw as Location).location_type!] ?? 'muted'}>
-                        {formatType((item.raw as Location).location_type)}
-                      </Badge>
-                    : item.kind === 'lore' && (item.raw as LoreEntry).category
-                    ? <Badge color={categoryBadgeColor[(item.raw as LoreEntry).category!] ?? 'muted'}>
-                        {((item.raw as LoreEntry).category ?? '').charAt(0).toUpperCase() + ((item.raw as LoreEntry).category ?? '').slice(1)}
-                      </Badge>
-                    : undefined
-                }
-              />
+                entity={item.raw as Location | LoreEntry}
+                kind={item.kind}
+              >
+                <ListRow
+                  active={selected?.id === item.id}
+                  onClick={() => handleSelect(item)}
+                  glyph={item.glyph}
+                  title={item.name}
+                  subtitle={item.subtitle}
+                  meta={item.meta}
+                  badges={
+                    item.kind === 'location' && (item.raw as Location).location_type
+                      ? <Badge color={typeBadgeColor[(item.raw as Location).location_type!] ?? 'muted'}>
+                          {formatType((item.raw as Location).location_type)}
+                        </Badge>
+                      : item.kind === 'lore' && (item.raw as LoreEntry).category
+                      ? <Badge color={categoryBadgeColor[(item.raw as LoreEntry).category!] ?? 'muted'}>
+                          {((item.raw as LoreEntry).category ?? '').charAt(0).toUpperCase() + ((item.raw as LoreEntry).category ?? '').slice(1)}
+                        </Badge>
+                      : undefined
+                  }
+                />
+              </ListRowWithHover>
             ))
           )
         }

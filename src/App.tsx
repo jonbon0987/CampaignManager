@@ -15,6 +15,8 @@ import ProposalsInbox from './components/ProposalsInbox';
 import StatBlockPanel from './components/StatBlockPanel';
 import SearchOverlay from './components/SearchOverlay';
 import DiceRoller from './components/DiceRoller';
+import Scratchpad from './components/Scratchpad';
+import ShortcutsOverlay from './components/ShortcutsOverlay';
 import SessionBar from './components/SessionBar';
 import { PostSessionCapture } from './components/ui/PostSessionCapture';
 import SettingsView from './components/tabs/SettingsView';
@@ -53,6 +55,8 @@ function AppInner({ user }: { user: User }) {
   const [runMode, setRunMode] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [scratchOpen, setScratchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
@@ -71,12 +75,36 @@ function AppInner({ user }: { user: User }) {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Cmd+K / Ctrl+K to open search
+  // Global keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable;
+
+      // ⌘K → search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(prev => !prev);
+        return;
+      }
+
+      // ⌘. → scratchpad
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        setScratchOpen(prev => !prev);
+        return;
+      }
+
+      // ? → shortcuts overlay (only when not typing)
+      if (e.key === '?' && !isInput && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsOpen(prev => !prev);
+        return;
+      }
+
+      // Esc → close overlays
+      if (e.key === 'Escape') {
+        setShortcutsOpen(false);
       }
     };
     window.addEventListener('keydown', handler);
@@ -132,6 +160,9 @@ function AppInner({ user }: { user: User }) {
             onOpenAI={() => setAiOpen(true)}
             onOpenInbox={() => setInboxOpen(true)}
             onOpenCapture={() => setCaptureOpen(true)}
+            onToggleScratch={() => setScratchOpen(prev => !prev)}
+            onToggleShortcuts={() => setShortcutsOpen(prev => !prev)}
+            scratchOpen={scratchOpen}
             onToggleRun={() => {
               const next = !runMode;
               setRunMode(next);
@@ -211,6 +242,8 @@ function AppInner({ user }: { user: User }) {
         {inboxOpen && (
           <ProposalsInbox chat={chat} onClose={() => setInboxOpen(false)} />
         )}
+        <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
+        <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       </div>
     </NavigationProvider>
   );

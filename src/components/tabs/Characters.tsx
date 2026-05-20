@@ -13,6 +13,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { AutosaveTextarea } from '../ui/MentionButton';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { ListRowWithHover } from '../HoverPreview';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 
 // ── Voice data stored in localStorage keyed by NPC id ────────────────────────
@@ -156,20 +157,25 @@ function CastList() {
           <div className="cm-empty is-inline">No entries match your filters</div>
         ) : (
           all.map(item => (
-            <ListRow
+            <ListRowWithHover
               key={item.id}
-              active={selected?.id === item.id}
-              onClick={() => handleSelect(item)}
-              glyph={item.glyph}
-              title={item.name}
-              subtitle={item.subtitle}
-              meta={item.meta}
-              badges={
-                item.kind === 'npc' && (item.raw as NPC).met_by_pcs
-                  ? <Badge color="green">Met</Badge>
-                  : undefined
-              }
-            />
+              entity={item.raw as NPC | PlayerCharacter | Faction}
+              kind={item.kind}
+            >
+              <ListRow
+                active={selected?.id === item.id}
+                onClick={() => handleSelect(item)}
+                glyph={item.glyph}
+                title={item.name}
+                subtitle={item.subtitle}
+                meta={item.meta}
+                badges={
+                  item.kind === 'npc' && (item.raw as NPC).met_by_pcs
+                    ? <Badge color="green">Met</Badge>
+                    : undefined
+                }
+              />
+            </ListRowWithHover>
           ))
         )
       }
