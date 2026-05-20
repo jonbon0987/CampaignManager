@@ -81,16 +81,16 @@ input:focus, textarea:focus, select:focus {
 /* ═══ Shell Layout — sidebar + main + optional AI rail ═══ */
 .cm-shell {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 260px 1fr;
   height: 100vh;
   width: 100%;
   overflow: hidden;
 }
 .cm-shell.has-rail {
-  grid-template-columns: 200px 1fr 340px;
+  grid-template-columns: 260px 1fr 340px;
 }
 .cm-shell.has-strip {
-  grid-template-columns: 200px 1fr 44px;
+  grid-template-columns: 260px 1fr 44px;
 }
 /* Collapsed sidebar variants */
 .cm-shell.side-collapsed {
