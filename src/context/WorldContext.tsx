@@ -1,18 +1,30 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import type { World, WorldCampaign, WorldTab } from '../types/world';
+import type {
+  World, WorldCampaign, WorldTab,
+  WorldNPC, WorldFaction, WorldLocation, WorldLoreEntry,
+  WorldBestiaryEntry, WorldEncounter, WorldTimelineEvent,
+} from '../types/world';
 import {
-  WORLD_NPCS, WORLD_FACTIONS, WORLD_LOCATIONS,
-  WORLD_LORE, WORLD_BESTIARY, WORLD_ENCOUNTERS, WORLD_TIMELINE,
+  WORLD_ENCOUNTERS, WORLD_TIMELINE,
   TIMELINE_TYPE_CONFIG, ERA_CONFIG,
-  WORLD_NPC_BY_ID, WORLD_LOC_BY_ID, WORLD_LORE_BY_ID,
-  WORLD_FAC_BY_ID, WORLD_SB_BY_ID,
 } from '../data/worldMockData';
-import { Worlds as WorldsDB, Campaigns as CampaignsDB } from '../lib/db';
-import type { DbWorld, Campaign } from '../lib/database.types';
+import {
+  Worlds as WorldsDB,
+  Campaigns as CampaignsDB,
+  NPCs as NPCsDB,
+  Factions as FactionsDB,
+  Locations as LocationsDB,
+  Lore as LoreDB,
+  MonsterStatblocks as MonsterStatblocksDB,
+} from '../lib/db';
+import type {
+  DbWorld, Campaign,
+  NPC, Faction, Location as DBLocation, LoreEntry, MonsterStatblock,
+} from '../lib/database.types';
 import useLocalStorage from '../hooks/useLocalStorage';
 
-// --------------- Mappers ---------------
+// --------------- Mappers: DB → World types ---------------
 
 function dbToWorld(w: DbWorld, campaignIds: string[]): World {
   return {
@@ -31,10 +43,77 @@ function dbToWorldCampaign(c: Campaign): WorldCampaign {
     id: c.id,
     worldId: c.world_id ?? '',
     name: c.name,
-    sessions: 0, // derived from sessions table when needed
+    sessions: 0,
     party: c.party ?? '',
     lastPlayed: c.last_played ?? '',
     status: c.status ?? 'active',
+  };
+}
+
+function dbNPCToWorldNPC(n: NPC): WorldNPC {
+  return {
+    id: n.id,
+    worldId: n.world_id ?? '',
+    name: n.name,
+    role: n.role ?? '',
+    status: n.status as WorldNPC['status'],
+    desc: n.description ?? '',
+    factions: n.faction_ids ?? [],
+    location: n.location,
+    era: '',
+    tags: [],
+  };
+}
+
+function dbFactionToWorldFaction(f: Faction): WorldFaction {
+  return {
+    id: f.id,
+    worldId: f.world_id ?? '',
+    name: f.name,
+    type: f.faction_type ?? '',
+    tone: '',
+    desc: f.overview ?? '',
+  };
+}
+
+function dbLocationToWorldLocation(l: DBLocation): WorldLocation {
+  return {
+    id: l.id,
+    worldId: l.world_id ?? '',
+    name: l.name,
+    type: l.location_type ?? '',
+    desc: l.description ?? '',
+    tags: [],
+    parent: null,
+  };
+}
+
+function dbLoreToWorldLore(e: LoreEntry): WorldLoreEntry {
+  return {
+    id: e.id,
+    worldId: e.world_id ?? '',
+    title: e.title,
+    desc: e.content ?? '',
+    tags: e.category ? [e.category] : [],
+  };
+}
+
+function dbStatblockToWorldBestiary(s: MonsterStatblock): WorldBestiaryEntry {
+  let tags: string[] = [];
+  if (s.tags) {
+    try { tags = JSON.parse(s.tags); }
+    catch { tags = s.tags.split(',').map(t => t.trim()).filter(Boolean); }
+  }
+  return {
+    id: s.id,
+    worldId: s.world_id ?? '',
+    name: s.name,
+    cr: s.challenge_rating ?? '',
+    type: s.creature_type ?? '',
+    hp: s.hit_points ?? 0,
+    ac: s.armor_class ?? 0,
+    desc: s.content ?? '',
+    tags,
   };
 }
 
@@ -57,7 +136,7 @@ interface WorldContextType {
   updateCampaign: (id: string, changes: Partial<WorldCampaign>) => Promise<void>;
   deleteCampaign: (id: string) => Promise<void>;
 
-  // Navigation mode
+  // Navigation
   activeCampaignId: string | null;
   activeCampaign: WorldCampaign | null;
   openCampaign: (id: string) => void;
@@ -67,23 +146,23 @@ interface WorldContextType {
   worldTab: WorldTab;
   setWorldTab: (tab: WorldTab) => void;
 
-  // World data (mock — will move to DB later)
-  npcs: typeof WORLD_NPCS;
-  factions: typeof WORLD_FACTIONS;
-  locations: typeof WORLD_LOCATIONS;
-  lore: typeof WORLD_LORE;
-  bestiary: typeof WORLD_BESTIARY;
-  encounters: typeof WORLD_ENCOUNTERS;
-  timeline: typeof WORLD_TIMELINE;
+  // World entities (DB-backed)
+  npcs: WorldNPC[];
+  factions: WorldFaction[];
+  locations: WorldLocation[];
+  lore: WorldLoreEntry[];
+  bestiary: WorldBestiaryEntry[];
+  encounters: WorldEncounter[];
+  timeline: WorldTimelineEvent[];
   timelineTypeConfig: typeof TIMELINE_TYPE_CONFIG;
   eraConfig: typeof ERA_CONFIG;
 
-  // Lookup maps
-  npcById: typeof WORLD_NPC_BY_ID;
-  locById: typeof WORLD_LOC_BY_ID;
-  loreById: typeof WORLD_LORE_BY_ID;
-  facById: typeof WORLD_FAC_BY_ID;
-  sbById: typeof WORLD_SB_BY_ID;
+  // Lookup maps (derived from fetched data)
+  npcById: Record<string, WorldNPC>;
+  locById: Record<string, WorldLocation>;
+  loreById: Record<string, WorldLoreEntry>;
+  facById: Record<string, WorldFaction>;
+  sbById: Record<string, WorldBestiaryEntry>;
 
   // Selection state for world sub-tabs
   selected: Record<string, string>;
@@ -101,14 +180,16 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const [activeWorldId, setActiveWorldId] = useLocalStorage('dnd-active-world', '');
   const [worldTab, setWorldTab] = useState<WorldTab>('overview');
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
-  const [selected, setSelectedState] = useState<Record<string, string>>({
-    npcs: 'wn1',
-    locations: 'wl-velden',
-    lore: 'wlr-1',
-    combat: 'wsb-1',
-  });
+  const [selected, setSelectedState] = useState<Record<string, string>>({});
 
-  // Load worlds and campaigns from Supabase on mount
+  // World entity state (DB-backed)
+  const [npcs, setNpcs] = useState<WorldNPC[]>([]);
+  const [factions, setFactions] = useState<WorldFaction[]>([]);
+  const [locations, setLocations] = useState<WorldLocation[]>([]);
+  const [lore, setLore] = useState<WorldLoreEntry[]>([]);
+  const [bestiary, setBestiary] = useState<WorldBestiaryEntry[]>([]);
+
+  // Load worlds and campaigns on mount
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -119,23 +200,19 @@ export function WorldProvider({ children }: { children: ReactNode }) {
         ]);
         if (cancelled) return;
 
-        // Build campaignIds per world
         const mapped: World[] = dbWorlds.map(w => dbToWorld(
           w,
           dbCampaigns.filter(c => c.world_id === w.id).map(c => c.id),
         ));
-        const mappedCampaigns: WorldCampaign[] = dbCampaigns.map(dbToWorldCampaign);
-
         setWorlds(mapped);
-        setAllCampaigns(mappedCampaigns);
+        setAllCampaigns(dbCampaigns.map(dbToWorldCampaign));
 
-        // If stored activeWorldId is gone (e.g. deleted), fall back to first world
         setActiveWorldId(prev =>
           mapped.length === 0 ? '' :
           mapped.some(w => w.id === prev) ? prev : mapped[0].id
         );
       } catch (e) {
-        console.error('WorldContext: failed to load from DB', e);
+        console.error('WorldContext: failed to load worlds', e);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -144,10 +221,51 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
+  // Load world entities whenever the active world changes
+  useEffect(() => {
+    if (!activeWorldId) {
+      setNpcs([]); setFactions([]); setLocations([]); setLore([]); setBestiary([]);
+      return;
+    }
+    let cancelled = false;
+    async function loadEntities() {
+      try {
+        const [dbNpcs, dbFactions, dbLocations, dbLore, dbBestiary] = await Promise.all([
+          NPCsDB.getByWorld(activeWorldId),
+          FactionsDB.getByWorld(activeWorldId),
+          LocationsDB.getByWorld(activeWorldId),
+          LoreDB.getByWorld(activeWorldId),
+          MonsterStatblocksDB.getByWorld(activeWorldId),
+        ]);
+        if (cancelled) return;
+        setNpcs(dbNpcs.map(dbNPCToWorldNPC));
+        setFactions(dbFactions.map(dbFactionToWorldFaction));
+        setLocations(dbLocations.map(dbLocationToWorldLocation));
+        setLore(dbLore.map(dbLoreToWorldLore));
+        setBestiary(dbBestiary.map(dbStatblockToWorldBestiary));
+      } catch (e) {
+        console.error('WorldContext: failed to load world entities', e);
+      }
+    }
+    loadEntities();
+    return () => { cancelled = true; };
+  }, [activeWorldId]);
+
   const activeWorld = useMemo(
     () => worlds.find(w => w.id === activeWorldId) ?? null,
     [activeWorldId, worlds],
   );
+
+  // Lookup maps derived from fetched data
+  const npcById  = useMemo(() => Object.fromEntries(npcs.map(n => [n.id, n])),      [npcs]);
+  const locById  = useMemo(() => Object.fromEntries(locations.map(l => [l.id, l])), [locations]);
+  const loreById = useMemo(() => Object.fromEntries(lore.map(e => [e.id, e])),      [lore]);
+  const facById  = useMemo(() => Object.fromEntries(factions.map(f => [f.id, f])),  [factions]);
+  const sbById   = useMemo(() => Object.fromEntries(bestiary.map(b => [b.id, b])),  [bestiary]);
+
+  // Timeline and encounters have no world-level DB table yet — kept as empty
+  const encounters = useMemo(() => WORLD_ENCOUNTERS.filter(() => false), []);
+  const timeline   = useMemo(() => WORLD_TIMELINE.filter(() => false),   []);
 
   const createWorld = useCallback(async (name: string, tagline: string) => {
     const dbWorld = await WorldsDB.upsert({
@@ -166,9 +284,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   }, [setActiveWorldId]);
 
   const updateWorld = useCallback(async (id: string, changes: Partial<World>) => {
-    // Optimistic update
     setWorlds(prev => prev.map(w => w.id === id ? { ...w, ...changes } : w));
-    // Persist — map World fields back to DB shape
     const { name, tagline, era, calendar, year } = changes;
     const dbPatch: Partial<DbWorld> = {};
     if (name !== undefined) dbPatch.name = name;
@@ -182,7 +298,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteWorld = useCallback(async (id: string) => {
-    if (worlds.length <= 1) return; // never delete last world
+    if (worlds.length <= 1) return;
     await WorldsDB.delete(id);
     setWorlds(prev => {
       const next = prev.filter(w => w.id !== id);
@@ -208,7 +324,6 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     });
     const newCampaign = dbToWorldCampaign(dbCampaign);
     setAllCampaigns(prev => [...prev, newCampaign]);
-    // Attach campaign id to world in local state
     setWorlds(prev => prev.map(w =>
       w.id === activeWorldId
         ? { ...w, campaignIds: [...w.campaignIds, newCampaign.id] }
@@ -217,9 +332,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   }, [activeWorldId]);
 
   const updateCampaign = useCallback(async (id: string, changes: Partial<WorldCampaign>) => {
-    // Optimistic update
     setAllCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...changes } : c));
-    // Persist — map WorldCampaign fields back to DB shape
     const dbPatch: Partial<Campaign> = {};
     if (changes.name !== undefined) dbPatch.name = changes.name;
     if (changes.party !== undefined) dbPatch.party = changes.party;
@@ -250,8 +363,8 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     [activeCampaignId, campaigns],
   );
 
-  const openCampaign = useCallback((id: string) => setActiveCampaignId(id), []);
-  const backToWorld = useCallback(() => setActiveCampaignId(null), []);
+  const openCampaign  = useCallback((id: string) => setActiveCampaignId(id), []);
+  const backToWorld   = useCallback(() => setActiveCampaignId(null), []);
 
   const handleSetWorldTab = useCallback((tab: WorldTab) => {
     setActiveCampaignId(null);
@@ -261,14 +374,6 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const setSelected = useCallback((tab: string, id: string) => {
     setSelectedState(prev => ({ ...prev, [tab]: id }));
   }, []);
-
-  const npcs       = useMemo(() => WORLD_NPCS.filter(x => x.worldId === activeWorldId),       [activeWorldId]);
-  const factions   = useMemo(() => WORLD_FACTIONS.filter(x => x.worldId === activeWorldId),   [activeWorldId]);
-  const locations  = useMemo(() => WORLD_LOCATIONS.filter(x => x.worldId === activeWorldId),  [activeWorldId]);
-  const lore       = useMemo(() => WORLD_LORE.filter(x => x.worldId === activeWorldId),       [activeWorldId]);
-  const bestiary   = useMemo(() => WORLD_BESTIARY.filter(x => x.worldId === activeWorldId),   [activeWorldId]);
-  const encounters = useMemo(() => WORLD_ENCOUNTERS.filter(x => x.worldId === activeWorldId), [activeWorldId]);
-  const timeline   = useMemo(() => WORLD_TIMELINE.filter(x => x.worldId === activeWorldId),   [activeWorldId]);
 
   const value = useMemo<WorldContextType>(() => ({
     worlds,
@@ -298,11 +403,11 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     timeline,
     timelineTypeConfig: TIMELINE_TYPE_CONFIG,
     eraConfig: ERA_CONFIG,
-    npcById: WORLD_NPC_BY_ID,
-    locById: WORLD_LOC_BY_ID,
-    loreById: WORLD_LORE_BY_ID,
-    facById: WORLD_FAC_BY_ID,
-    sbById: WORLD_SB_BY_ID,
+    npcById,
+    locById,
+    loreById,
+    facById,
+    sbById,
     selected,
     setSelected,
   }), [
@@ -312,6 +417,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     activeCampaignId, activeCampaign, openCampaign, backToWorld,
     worldTab, handleSetWorldTab,
     npcs, factions, locations, lore, bestiary, encounters, timeline,
+    npcById, locById, loreById, facById, sbById,
     selected, setSelected,
   ]);
 
