@@ -298,6 +298,18 @@ export const NPCs = {
     return data;
   },
 
+  // World-level NPCs (global pool scoped to a specific world)
+  async getByWorld(worldId: string): Promise<NPC[]> {
+    const { data, error } = await supabase
+      .from('npcs')
+      .select('*')
+      .is('campaign_id', null)
+      .eq('world_id', worldId)
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
   // Campaign-specific NPCs (created directly in a campaign)
   async getByCampaign(campaignId: string): Promise<NPC[]> {
     const { data, error } = await supabase
@@ -352,6 +364,18 @@ export const Locations = {
     return data;
   },
 
+  // World-level locations (global pool scoped to a specific world)
+  async getByWorld(worldId: string): Promise<Location[]> {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('*')
+      .is('campaign_id', null)
+      .eq('world_id', worldId)
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
   // Campaign-specific locations
   async getByCampaign(campaignId: string): Promise<Location[]> {
     const { data, error } = await supabase
@@ -390,6 +414,18 @@ export const Factions = {
       .from('factions')
       .select('*')
       .eq('campaign_id', campaignId)
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  // World-level factions (not tied to any campaign)
+  async getByWorld(worldId: string): Promise<Faction[]> {
+    const { data, error } = await supabase
+      .from('factions')
+      .select('*')
+      .is('campaign_id', null)
+      .eq('world_id', worldId)
       .order('name');
     if (error) throw error;
     return data;
@@ -464,6 +500,17 @@ export const Lore = {
     const { data, error } = await supabase
       .from('lore_entries')
       .select('*')
+      .order('title');
+    if (error) throw error;
+    return data;
+  },
+
+  // World-scoped lore entries
+  async getByWorld(worldId: string): Promise<LoreEntry[]> {
+    const { data, error } = await supabase
+      .from('lore_entries')
+      .select('*')
+      .eq('world_id', worldId)
       .order('title');
     if (error) throw error;
     return data;
@@ -645,6 +692,18 @@ export const MonsterStatblocks = {
       .from('monster_statblocks')
       .select('*')
       .eq('campaign_id', campaignId)
+      .order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  // World bestiary — statblocks not tied to any campaign
+  async getByWorld(worldId: string): Promise<MonsterStatblock[]> {
+    const { data, error } = await supabase
+      .from('monster_statblocks')
+      .select('*')
+      .is('campaign_id', null)
+      .eq('world_id', worldId)
       .order('name');
     if (error) throw error;
     return data;

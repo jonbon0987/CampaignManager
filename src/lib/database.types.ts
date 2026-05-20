@@ -115,6 +115,7 @@ export interface NPC {
   id: string;
   user_id: string;
   campaign_id: string | null;        // NULL = global pool, non-null = campaign-specific
+  world_id: string | null;           // NULL = unscoped; set for world-level NPCs
   name: string;
   role: string | null;
   affiliation: string | null;
@@ -135,6 +136,7 @@ export interface Location {
   id: string;
   user_id: string;
   campaign_id: string | null;        // NULL = global pool, non-null = campaign-specific
+  world_id: string | null;           // NULL = unscoped; set for world-level locations
   name: string;
   region: string | null;
   location_type: string | null;      // city | town | dungeon | faction_hq | landmark
@@ -150,7 +152,8 @@ export interface Location {
 export interface Faction {
   id: string;
   user_id: string;
-  campaign_id: string;
+  campaign_id: string | null;        // NULL = world-level faction, non-null = campaign-specific
+  world_id: string | null;           // NULL = unscoped; set for world-level factions
   name: string;
   faction_type: string | null;
   overview: string | null;
@@ -178,6 +181,7 @@ export interface Hook {
 export interface LoreEntry {
   id: string;
   user_id: string;
+  world_id: string | null;           // NULL = unscoped; set to scope to a specific world
   title: string;
   category: string | null;           // history | artifact | creature | magic | religion
   content: string | null;
@@ -273,7 +277,8 @@ export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updat
 export interface MonsterStatblock {
   id: string;
   user_id: string;
-  campaign_id: string;
+  campaign_id: string | null;        // NULL = world bestiary, non-null = campaign-specific
+  world_id: string | null;           // NULL = unscoped; set for world-level bestiary entries
   name: string;
   creature_type: string | null;
   challenge_rating: string | null;
