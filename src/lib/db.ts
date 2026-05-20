@@ -505,12 +505,24 @@ export const Lore = {
     return data;
   },
 
-  // World-scoped lore entries
+  // World-scoped lore (campaign_id IS NULL)
   async getByWorld(worldId: string): Promise<LoreEntry[]> {
     const { data, error } = await supabase
       .from('lore_entries')
       .select('*')
       .eq('world_id', worldId)
+      .is('campaign_id', null)
+      .order('title');
+    if (error) throw error;
+    return data;
+  },
+
+  // Campaign-scoped lore
+  async getByCampaign(campaignId: string): Promise<LoreEntry[]> {
+    const { data, error } = await supabase
+      .from('lore_entries')
+      .select('*')
+      .eq('campaign_id', campaignId)
       .order('title');
     if (error) throw error;
     return data;

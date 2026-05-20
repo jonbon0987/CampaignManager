@@ -181,7 +181,8 @@ export interface Hook {
 export interface LoreEntry {
   id: string;
   user_id: string;
-  world_id: string | null;           // NULL = unscoped; set to scope to a specific world
+  world_id: string | null;           // NULL = unscoped; set for world-level lore
+  campaign_id: string | null;        // NULL = world-level; set for campaign-specific lore
   title: string;
   category: string | null;           // history | artifact | creature | magic | religion
   content: string | null;
