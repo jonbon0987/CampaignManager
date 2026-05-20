@@ -156,7 +156,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       era: 'First Age',
       calendar: 'Year (Y)',
       year: 1,
-      sort_order: Date.now(),
+      sort_order: Math.floor(Date.now() / 1000),
     });
     const newWorld = dbToWorld(dbWorld, []);
     setWorlds(prev => [...prev, newWorld]);
@@ -204,7 +204,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       party: '',
       status: 'active',
       last_played: '',
-      sort_order: Date.now(),
+      sort_order: Math.floor(Date.now() / 1000),
     });
     const newCampaign = dbToWorldCampaign(dbCampaign);
     setAllCampaigns(prev => [...prev, newCampaign]);
