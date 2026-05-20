@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
+import { WorldProvider, useWorld } from './context/WorldContext';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import Overview from './components/tabs/Overview';
@@ -26,6 +27,12 @@ import { signInWithEmail, onAuthStateChange, resetPasswordForEmail, updatePasswo
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ToastProvider } from './context/ToastContext';
 import useLocalStorage from './hooks/useLocalStorage';
+import WorldSidebar from './components/world/WorldSidebar';
+import WorldTopbar from './components/world/WorldTopbar';
+import WorldOverview from './components/world/WorldOverview';
+import { WorldNPCsView, WorldLocationsView, WorldLoreView, WorldCombatView } from './components/world/WorldViews';
+import WorldTimeline from './components/world/WorldTimeline';
+import WorldImportDrawer from './components/world/WorldImportDrawer';
 
 // Consolidated from 10 tabs to 6 + settings (Scriptorium redesign)
 // cast = PCs + NPCs + Factions, world = Locations + Lore, combat = Stat Sheets + Encounters
@@ -57,6 +64,8 @@ function AppInner({ user }: { user: User }) {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [scratchOpen, setScratchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importType, setImportType] = useState('all');
 
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
@@ -174,6 +183,7 @@ function AppInner({ user }: { user: User }) {
             viewMode={activeViewMode}
             setViewMode={setViewMode}
             viewOptions={TAB_VIEW_OPTIONS[activeTab]}
+            onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }}
           />
 
           <div className="cm-canvas">
@@ -244,6 +254,12 @@ function AppInner({ user }: { user: User }) {
         )}
         <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
         <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+        <WorldImportDrawer
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          entityType={importType}
+          onImport={() => setImportOpen(false)}
+        />
       </div>
     </NavigationProvider>
   );
@@ -255,6 +271,22 @@ function LoginScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'signin' | 'forgot' | 'forgot-sent'>('signin');
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('auto-login')) return;
+    const e2eEmail = import.meta.env.VITE_E2E_USER_EMAIL as string | undefined;
+    const e2ePassword = import.meta.env.VITE_E2E_USER_PASSWORD as string | undefined;
+    if (!e2eEmail || !e2ePassword) {
+      setError('auto-login: VITE_E2E_USER_EMAIL and VITE_E2E_USER_PASSWORD must be set in .env.local');
+      return;
+    }
+    setLoading(true);
+    signInWithEmail(e2eEmail, e2ePassword)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Auto-login failed.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   async function handleEmailSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
@@ -304,7 +336,7 @@ function LoginScreen() {
 
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
         {mode === 'signin' && (
-          <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3">
+          <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3" data-testid="login-form">
             <input
               type="email"
               placeholder="Email"
@@ -313,6 +345,7 @@ function LoginScreen() {
               required
               className="px-4 py-2 rounded text-sm outline-none"
               style={inputStyle}
+              data-testid="login-email"
             />
             <input
               type="password"
@@ -322,13 +355,15 @@ function LoginScreen() {
               required
               className="px-4 py-2 rounded text-sm outline-none"
               style={inputStyle}
+              data-testid="login-password"
             />
-            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            {error && <p className="text-xs" data-testid="login-error" style={{ color: '#e05c5c' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
+              data-testid="login-submit"
             >
               {loading ? '…' : 'Sign in'}
             </button>
@@ -468,6 +503,88 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
+function WorldContent() {
+  const { worldTab } = useWorld();
+  switch (worldTab) {
+    case 'overview': return <WorldOverview />;
+    case 'npcs': return <WorldNPCsView />;
+    case 'locations': return <WorldLocationsView />;
+    case 'lore': return <WorldLoreView />;
+    case 'combat': return <WorldCombatView />;
+    case 'timeline': return <WorldTimeline />;
+    default: return <WorldOverview />;
+  }
+}
+
+function WorldShell() {
+  const [importOpen, setImportOpen] = useState(false);
+  const [importType, setImportType] = useState('all');
+  const [scratchOpen, setScratchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable;
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        setScratchOpen(prev => !prev);
+        return;
+      }
+      if (e.key === '?' && !isInput && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsOpen(prev => !prev);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShortcutsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  return (
+    <div className="cm-shell">
+      <WorldSidebar />
+      <div className="cm-main">
+        <WorldTopbar
+          onToggleScratch={() => setScratchOpen(prev => !prev)}
+          onToggleShortcuts={() => setShortcutsOpen(prev => !prev)}
+          scratchOpen={scratchOpen}
+        />
+        <div className="cm-canvas">
+          <WorldContent />
+        </div>
+      </div>
+      <WorldImportDrawer
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityType={importType}
+        onImport={() => setImportOpen(false)}
+      />
+      <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+    </div>
+  );
+}
+
+function WorldRoot({ user }: { user: User }) {
+  const { activeCampaignId } = useWorld();
+
+  if (activeCampaignId) {
+    return (
+      <CampaignProvider>
+        <StatBlockPanelProvider>
+          <AppInner user={user} />
+        </StatBlockPanelProvider>
+      </CampaignProvider>
+    );
+  }
+
+  return <WorldShell />;
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -504,11 +621,9 @@ export default function App() {
   return (
     <ToastProvider>
       <ConfirmProvider>
-        <CampaignProvider>
-          <StatBlockPanelProvider>
-            <AppInner user={user} />
-          </StatBlockPanelProvider>
-        </CampaignProvider>
+        <WorldProvider>
+          <WorldRoot user={user} />
+        </WorldProvider>
       </ConfirmProvider>
     </ToastProvider>
   );
