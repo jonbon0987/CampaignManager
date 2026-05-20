@@ -1,0 +1,257 @@
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useWorld } from '../../context/WorldContext';
+import type { WorldTab } from '../../types/world';
+
+interface WorldNavItem {
+  id: WorldTab;
+  label: string;
+  glyph: string;
+}
+
+const WORLD_TABS: WorldNavItem[] = [
+  { id: 'overview',  label: 'Overview',   glyph: '❖' },
+  { id: 'lore',      label: 'Lore',       glyph: '❦' },
+  { id: 'locations', label: 'Locations',  glyph: '✦' },
+  { id: 'npcs',      label: 'NPCs',       glyph: '◇' },
+  { id: 'combat',    label: 'Combat',     glyph: '⚔' },
+  { id: 'timeline',  label: 'Timeline',   glyph: '⏤' },
+];
+
+function WorldSelector() {
+  const { worlds, activeWorldId, setActiveWorldId, createWorld } = useWorld();
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newTagline, setNewTagline] = useState('');
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const active = worlds.find(w => w.id === activeWorldId);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        buttonRef.current && !buttonRef.current.contains(target) &&
+        dropRef.current && !dropRef.current.contains(target)
+      ) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const handleToggle = () => {
+    if (!open && buttonRef.current) {
+      const r = buttonRef.current.getBoundingClientRect();
+      setDropPos({ top: r.bottom + 6, left: r.left, width: r.width });
+    }
+    setOpen(o => !o);
+  };
+
+  const handleCreate = () => {
+    if (!newName.trim()) return;
+    createWorld(newName.trim(), newTagline.trim());
+    setNewName('');
+    setNewTagline('');
+    setCreating(false);
+    setOpen(false);
+  };
+
+  const cancelCreate = () => {
+    setCreating(false);
+    setNewName('');
+    setNewTagline('');
+  };
+
+  return (
+    <>
+      <button ref={buttonRef} className="ws-selector" onClick={handleToggle}>
+        <span className="ws-selector-glyph">⊕</span>
+        <span className="ws-selector-name">{active?.name || 'Select World'}</span>
+        <span className="ws-selector-caret">▾</span>
+      </button>
+      {open && createPortal(
+        <div
+          ref={dropRef}
+          className="ws-drop"
+          style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+        >
+          <div className="ws-drop-label">Your Worlds</div>
+          {worlds.map(w => (
+            <button
+              key={w.id}
+              className={`ws-drop-item ${w.id === activeWorldId ? 'is-active' : ''}`}
+              onClick={() => { setActiveWorldId(w.id); setOpen(false); }}
+            >
+              <span className="ws-drop-item-glyph">⊕</span>
+              <div className="ws-drop-item-body">
+                <div className="ws-drop-item-name">{w.name}</div>
+                <div className="ws-drop-item-sub">
+                  {w.era} · {w.campaignIds.length} campaign{w.campaignIds.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+            </button>
+          ))}
+          <div className="ws-drop-sep" />
+          {!creating ? (
+            <button className="ws-drop-new" onClick={() => setCreating(true)}>
+              <span>+</span> Create new world
+            </button>
+          ) : (
+            <div className="ws-create-form">
+              <input
+                autoFocus
+                className="ws-create-input"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') cancelCreate(); }}
+                placeholder="World name…"
+              />
+              <input
+                className="ws-create-input ws-create-tagline"
+                value={newTagline}
+                onChange={e => setNewTagline(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') cancelCreate(); }}
+                placeholder="A brief tagline…"
+              />
+              <div className="ws-create-actions">
+                <button className="ws-create-cancel" onClick={cancelCreate}>Cancel</button>
+                <button
+                  className="ws-create-submit"
+                  onClick={handleCreate}
+                  disabled={!newName.trim()}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+export default function WorldSidebar() {
+  const {
+    activeWorld, campaigns, worldTab, setWorldTab,
+    activeCampaignId, openCampaign, updateCampaign,
+    npcs, factions, locations, lore, bestiary, encounters, timeline,
+  } = useWorld();
+
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [editCampName, setEditCampName] = useState('');
+
+  const startEditCampaign = (id: string, name: string) => {
+    setEditCampName(name);
+    setEditingCampaignId(id);
+  };
+  const saveCampaignName = (id: string) => {
+    if (editCampName.trim()) updateCampaign(id, { name: editCampName.trim() });
+    setEditingCampaignId(null);
+  };
+
+  const counts: Partial<Record<WorldTab, number>> = {
+    timeline: timeline.length,
+    npcs: npcs.length + factions.length,
+    locations: locations.length,
+    lore: lore.length,
+    combat: bestiary.length + encounters.length,
+  };
+
+  return (
+    <aside className="w-side">
+      <div className="w-side-head">
+        <div className="w-side-scope">
+          <span className="w-side-scope-dot" />
+          <span>World</span>
+        </div>
+        <WorldSelector />
+      </div>
+
+      <div className="w-side-scroll">
+      <nav className="w-nav">
+        <div className="w-nav-section">World</div>
+        {WORLD_TABS.map(t => (
+          <button
+            key={t.id}
+            className={`w-nav-item ${worldTab === t.id && !activeCampaignId ? 'is-active' : ''}`}
+            onClick={() => setWorldTab(t.id)}
+          >
+            <span className="w-nav-glyph">{t.glyph}</span>
+            <span className="cm-nav-label">{t.label}</span>
+            {counts[t.id] != null && (
+              <span className="w-nav-count">{counts[t.id]}</span>
+            )}
+          </button>
+        ))}
+
+        <div className="w-nav-section" style={{ marginTop: 8 }}>Campaigns</div>
+      </nav>
+
+      <div className="w-camp-list">
+        {campaigns.map(c => (
+          editingCampaignId === c.id ? (
+            <div key={c.id} className="w-camp-card w-camp-card-editing">
+              <span className="w-camp-glyph">❧</span>
+              <div className="w-camp-body">
+                <input
+                  autoFocus
+                  className="w-camp-name-input"
+                  value={editCampName}
+                  onChange={e => setEditCampName(e.target.value)}
+                  onBlur={() => saveCampaignName(c.id)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') saveCampaignName(c.id);
+                    if (e.key === 'Escape') setEditingCampaignId(null);
+                  }}
+                />
+                <div className="w-camp-meta">{c.party} · {c.sessions} sessions</div>
+              </div>
+            </div>
+          ) : (
+            <div
+              key={c.id}
+              role="button"
+              tabIndex={0}
+              className={`w-camp-card ${activeCampaignId === c.id ? 'is-active' : ''}`}
+              onClick={() => openCampaign(c.id)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCampaign(c.id); }}
+            >
+              <span className="w-camp-glyph">❧</span>
+              <div className="w-camp-body">
+                <div className="w-camp-name">{c.name}</div>
+                <div className="w-camp-meta">{c.party} · {c.sessions} sessions</div>
+              </div>
+              <span className={`w-camp-status w-camp-status-${c.status}`}>{c.status}</span>
+              <button
+                className="w-camp-edit"
+                onClick={e => { e.stopPropagation(); startEditCampaign(c.id, c.name); }}
+                title="Rename campaign"
+              >✎</button>
+            </div>
+          )
+        ))}
+        <button
+          className="w-camp-card"
+          style={{ justifyContent: 'center', color: 'var(--ink-3)', borderStyle: 'dashed' }}
+        >
+          <span style={{ color: 'var(--gold)' }}>+</span>
+          <span style={{ fontFamily: 'var(--serif)', fontSize: 13 }}>New campaign</span>
+        </button>
+      </div>
+
+      </div>
+
+      <div className="cm-side-foot">
+        <div className="cm-side-meta">
+          <div>{activeWorld.name} · {activeWorld.era}</div>
+          <div className="cm-side-meta-sub">{activeWorld.calendar} {activeWorld.year}</div>
+        </div>
+      </div>
+    </aside>
+  );
+}

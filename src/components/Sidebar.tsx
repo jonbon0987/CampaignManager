@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import type { Tab } from '../App';
 import { useCampaign } from '../context/CampaignContext';
+import { useWorld } from '../context/WorldContext';
 
 interface NavItem {
   id: Tab;
@@ -63,6 +64,7 @@ export default function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const { selectedCampaign } = useCampaign();
+  const { backToWorld, activeWorld } = useWorld();
   const collapsed = !isOpen && !isMobile;
 
   const handleNavClick = (tab: Tab) => {
@@ -130,6 +132,13 @@ export default function Sidebar({
             </button>
           )}
         </div>
+
+        {/* Back to World */}
+        {!collapsed && (
+          <button className="w-back-btn" onClick={backToWorld} style={{ margin: '8px 12px 0', width: 'calc(100% - 24px)' }}>
+            <span>←</span> {activeWorld.name}
+          </button>
+        )}
 
         {/* Navigation */}
         <nav className="cm-nav">

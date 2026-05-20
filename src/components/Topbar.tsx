@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js';
 import type { Tab } from '../App';
 import CampaignSelector from './CampaignSelector';
+import { useWorld } from '../context/WorldContext';
 
 interface ViewOption { id: string; label: string; }
 
@@ -24,7 +25,14 @@ interface TopbarProps {
   viewMode?: string;
   setViewMode?: (v: string) => void;
   viewOptions?: ViewOption[];
+  onImportFromWorld?: (type: string) => void;
 }
+
+const IMPORT_MAP: Partial<Record<Tab, string>> = {
+  cast: 'npc',
+  world: 'location',
+  combat: 'bestiary',
+};
 
 export default function Topbar({
   activeTab,
@@ -45,7 +53,11 @@ export default function Topbar({
   viewMode,
   setViewMode,
   viewOptions,
+  onImportFromWorld,
 }: TopbarProps) {
+  const { activeWorld, backToWorld } = useWorld();
+  const importType = IMPORT_MAP[activeTab];
+
   return (
     <header className="cm-top">
       {/* Mobile hamburger */}
@@ -55,9 +67,22 @@ export default function Topbar({
         </button>
       )}
 
-      {/* Breadcrumb */}
+      {/* Breadcrumb — World / Campaign / Tab */}
       <div className="cm-top-crumbs">
-        <span className="cm-top-crumb cm-top-crumb-root" style={{ position: 'relative', display: 'inline-block' }}>
+        <button
+          className="cm-top-crumb cm-top-crumb-root"
+          onClick={backToWorld}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 0, fontFamily: 'var(--display)', fontSize: 17,
+            color: 'var(--ink-3)',
+          }}
+          title="Back to world"
+        >
+          {activeWorld.name}
+        </button>
+        <span className="cm-top-crumb-sep">/</span>
+        <span className="cm-top-crumb" style={{ position: 'relative', display: 'inline-block' }}>
           <CampaignSelector compact />
         </span>
         <span className="cm-top-crumb-sep">/</span>
@@ -83,6 +108,18 @@ export default function Topbar({
 
       {/* Right cluster */}
       <div className="cm-top-actions">
+        {/* Import from World — contextual on Cast/World/Combat */}
+        {importType && onImportFromWorld && (
+          <button
+            onClick={() => onImportFromWorld(importType)}
+            className="cm-top-btn"
+            title="Import from World"
+          >
+            <span className="cm-top-btn-glyph">⊕</span>
+            <span>Import</span>
+          </button>
+        )}
+
         {/* Proposals */}
         {proposalCount > 0 && (
           <button
@@ -151,6 +188,11 @@ export default function Topbar({
         >
           <span className="cm-top-btn-glyph">⚜</span>
           <span>{runMode ? 'Exit' : 'Run Session'}</span>
+        </button>
+
+        {/* Back to World */}
+        <button className="w-back-btn" onClick={backToWorld}>
+          <span>←</span> Back to World
         </button>
       </div>
     </header>
