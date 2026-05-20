@@ -66,6 +66,17 @@
 .ws-drop-item-body { flex: 1; min-width: 0; }
 .ws-drop-item-name { font-family: var(--display); font-size: 15px; }
 .ws-drop-item-sub { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-top: 1px; }
+.ws-drop-item-delete {
+  display: none;
+  background: transparent; border: none;
+  color: var(--ink-3); font-size: 12px;
+  padding: 2px 5px; cursor: pointer;
+  border-radius: var(--radius);
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.ws-drop-item:hover .ws-drop-item-delete { display: block; }
+.ws-drop-item-delete:hover { color: #e05c5c; }
 .ws-drop-sep { height: 1px; background: var(--rule-soft); margin: 4px 8px; }
 .ws-drop-new {
   display: flex; align-items: center; gap: 8px;
@@ -150,6 +161,11 @@
   padding: 10px 10px;
   display: flex; flex-direction: column; gap: 1px;
 }
+.w-nav-loading {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--ink-3); padding: 16px 14px;
+  opacity: .6;
+}
 .w-nav-section {
   font-family: var(--mono); font-size: 9px;
   letter-spacing: .22em; text-transform: uppercase;
@@ -209,17 +225,24 @@
 }
 .w-camp-status-active { color: #6b9a4a; border-color: rgba(107,154,74,0.3); }
 .w-camp-status-paused { color: var(--ink-3); }
-/* Edit pencil — hidden until hover */
-.w-camp-edit {
+/* Campaign action buttons (edit + delete) — hidden until hover */
+.w-camp-actions {
   display: none;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.w-camp-card:hover .w-camp-actions { display: flex; }
+.w-camp-edit, .w-camp-delete {
+  display: block;
   background: transparent; border: none;
   color: var(--ink-3); font-size: 13px;
   padding: 2px 4px; cursor: pointer;
   border-radius: var(--radius);
-  flex: 0 0 auto;
+  line-height: 1;
 }
 .w-camp-edit:hover { color: var(--gold); }
-.w-camp-card:hover .w-camp-edit { display: block; }
+.w-camp-delete:hover { color: #e05c5c; }
 /* Editing state — no hover highlight on the wrapper div */
 .w-camp-card-editing { cursor: default; }
 .w-camp-card-editing:hover { border-color: var(--rule-soft); background: transparent; }
@@ -230,6 +253,12 @@
   color: var(--ink);
   font-family: var(--display); font-size: 13px;
   outline: none; padding: 0 0 2px;
+}
+.w-camp-new-form {
+  padding: 10px 12px;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: 8px;
 }
 
 /* ── World Overview ── */
@@ -301,6 +330,28 @@
 
 /* Overview grid */
 .w-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* Overview summary cards */
+.cm-card {
+  background: var(--paper-2);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius-lg, 10px);
+  padding: 18px 20px;
+}
+.cm-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cm-card-title {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.cm-card-arrow {
+  font-size: 16px; color: var(--ink-3);
+  line-height: 1;
+}
+.cm-card-body { display: flex; flex-direction: column; }
 
 /* Overview row items */
 .w-ov-row {

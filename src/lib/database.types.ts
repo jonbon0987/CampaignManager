@@ -8,18 +8,40 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
+// --------------- World ---------------
+
+export interface DbWorld {
+  id: string;
+  user_id: string;
+  name: string;
+  tagline: string;
+  era: string;
+  calendar: string;
+  year: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DbWorldInsert = Omit<DbWorld, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 // --------------- Campaign ---------------
 
 export interface Campaign {
   id: string;
   user_id: string;
-  name: string;            // Short display name for the campaign list
+  world_id: string | null;       // FK to worlds — null for campaigns not yet linked
+  name: string;                  // Short display name for the campaign list
   description: string | null;
   // Overview fields (moved from localStorage)
   title: string | null;
   plot_summary: string | null;
   major_characters: string | null;
   world_info: string | null;
+  // World-level display fields
+  party: string;
+  status: 'active' | 'paused' | 'completed';
+  last_played: string;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -365,6 +387,12 @@ export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at
 export interface Database {
   public: {
     Tables: {
+      worlds: {
+        Row: DbWorld;
+        Insert: Omit<DbWorld, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<DbWorld, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
       campaigns: {
         Row: Campaign;
         Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at'> & { id?: string };

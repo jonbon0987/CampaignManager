@@ -44,7 +44,7 @@ export default function WorldTimeline() {
     <div className="tl-wrap">
       <div className="tl-head">
         <div>
-          <div className="tl-eyebrow">{filtered.length} events · {activeWorld.calendar}</div>
+          <div className="tl-eyebrow">{filtered.length} events · {activeWorld?.calendar ?? ''}</div>
           <h2 className="tl-title">World Timeline</h2>
         </div>
         <button className="cm-md-add" onClick={() => setAddOpen(true)}>+ New Event</button>
@@ -91,7 +91,7 @@ export default function WorldTimeline() {
                   config={cfg}
                   expanded={isExpanded}
                   onToggle={() => setExpanded(isExpanded ? null : ev.id)}
-                  calendar={activeWorld.calendar}
+                  calendar={activeWorld?.calendar ?? ''}
                 />
               );
             })}
@@ -105,7 +105,7 @@ export default function WorldTimeline() {
 
       {addOpen && (
         <NewEventModal
-          calendar={activeWorld.calendar}
+          calendar={activeWorld?.calendar ?? ''}
           eras={eras}
           onSave={handleAddEvent}
           onClose={() => setAddOpen(false)}

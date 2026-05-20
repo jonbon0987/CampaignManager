@@ -78,6 +78,8 @@ function InlineEdit({
 export default function WorldOverview() {
   const { activeWorld, campaigns, timeline, factions, lore, locations, openCampaign, setWorldTab, timelineTypeConfig, updateWorld } = useWorld();
 
+  if (!activeWorld) return null;
+
   const recentEvents = timeline
     .filter(e => e.era === 'Fourth Silence')
     .slice(-4)

@@ -18,7 +18,7 @@ export default function WorldTopbar({ onToggleScratch, onToggleShortcuts, scratc
   return (
     <header className="cm-top">
       <div className="cm-top-crumbs">
-        <span className="cm-top-crumb cm-top-crumb-root">{activeWorld.name}</span>
+        <span className="cm-top-crumb cm-top-crumb-root">{activeWorld?.name ?? ''}</span>
         <span className="cm-top-crumb-sep">/</span>
         <span className="cm-top-crumb">{WORLD_TAB_LABELS[worldTab] ?? ''}</span>
         <span className="w-scope-pill" style={{ marginLeft: 8 }}>⊕ World</span>

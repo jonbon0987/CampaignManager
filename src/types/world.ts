@@ -10,6 +10,7 @@ export interface World {
 
 export interface WorldFaction {
   id: string;
+  worldId: string;
   name: string;
   type: string;
   tone: string;
@@ -18,6 +19,7 @@ export interface WorldFaction {
 
 export interface WorldNPC {
   id: string;
+  worldId: string;
   name: string;
   role: string;
   status: 'active' | 'deceased' | 'mythic' | 'unknown';
@@ -30,6 +32,7 @@ export interface WorldNPC {
 
 export interface WorldLocation {
   id: string;
+  worldId: string;
   name: string;
   type: string;
   desc: string;
@@ -39,6 +42,7 @@ export interface WorldLocation {
 
 export interface WorldLoreEntry {
   id: string;
+  worldId: string;
   title: string;
   desc: string;
   tags: string[];
@@ -46,6 +50,7 @@ export interface WorldLoreEntry {
 
 export interface WorldBestiaryEntry {
   id: string;
+  worldId: string;
   name: string;
   cr: string;
   type: string;
@@ -57,6 +62,7 @@ export interface WorldBestiaryEntry {
 
 export interface WorldEncounter {
   id: string;
+  worldId: string;
   name: string;
   difficulty: string;
   status: string;
@@ -68,6 +74,7 @@ export type TimelineEventType = 'cataclysm' | 'founding' | 'treaty' | 'war' | 'p
 
 export interface WorldTimelineEvent {
   id: string;
+  worldId: string;
   date: string;
   year: number;
   title: string;

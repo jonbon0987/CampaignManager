@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase';
 import type {
+  DbWorld, DbWorldInsert,
   Campaign, CampaignInsert,
   Session, SessionInsert,
   SessionPrep, SessionPrepInsert,
@@ -36,15 +37,48 @@ async function getUserId(): Promise<string> {
 }
 
 // ============================================================
+// WORLDS
+// ============================================================
+
+export const Worlds = {
+  async getAll(): Promise<DbWorld[]> {
+    const { data, error } = await supabase
+      .from('worlds')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(world: DbWorldInsert & { id?: string }): Promise<DbWorld> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('worlds')
+      .upsert({ ...world, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('worlds').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
 // CAMPAIGNS
 // ============================================================
 
 export const Campaigns = {
-  async getAll(): Promise<Campaign[]> {
-    const { data, error } = await supabase
+  async getAll(worldId?: string): Promise<Campaign[]> {
+    let query = supabase
       .from('campaigns')
       .select('*')
       .order('sort_order', { ascending: true });
+    if (worldId) query = query.eq('world_id', worldId);
+    const { data, error } = await query;
     if (error) throw error;
     return data;
   },

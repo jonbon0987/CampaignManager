@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWorld } from '../../context/WorldContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import type { WorldTab } from '../../types/world';
 
 interface WorldNavItem {
@@ -19,7 +20,8 @@ const WORLD_TABS: WorldNavItem[] = [
 ];
 
 function WorldSelector() {
-  const { worlds, activeWorldId, setActiveWorldId, createWorld } = useWorld();
+  const { worlds, activeWorldId, setActiveWorldId, createWorld, deleteWorld } = useWorld();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -50,13 +52,26 @@ function WorldSelector() {
     setOpen(o => !o);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newName.trim()) return;
-    createWorld(newName.trim(), newTagline.trim());
+    await createWorld(newName.trim(), newTagline.trim());
     setNewName('');
     setNewTagline('');
     setCreating(false);
     setOpen(false);
+  };
+
+  const handleDeleteWorld = async (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation();
+    const ok = await confirm({
+      title: 'Delete world',
+      message: `Delete "${name}" and all its campaigns? This cannot be undone.`,
+      danger: true,
+    });
+    if (ok) {
+      await deleteWorld(id);
+      setOpen(false);
+    }
   };
 
   const cancelCreate = () => {
@@ -80,10 +95,13 @@ function WorldSelector() {
         >
           <div className="ws-drop-label">Your Worlds</div>
           {worlds.map(w => (
-            <button
+            <div
               key={w.id}
+              role="button"
+              tabIndex={0}
               className={`ws-drop-item ${w.id === activeWorldId ? 'is-active' : ''}`}
               onClick={() => { setActiveWorldId(w.id); setOpen(false); }}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setActiveWorldId(w.id); setOpen(false); } }}
             >
               <span className="ws-drop-item-glyph">⊕</span>
               <div className="ws-drop-item-body">
@@ -92,7 +110,14 @@ function WorldSelector() {
                   {w.era} · {w.campaignIds.length} campaign{w.campaignIds.length !== 1 ? 's' : ''}
                 </div>
               </div>
-            </button>
+              {worlds.length > 1 && (
+                <button
+                  className="ws-drop-item-delete"
+                  onClick={e => handleDeleteWorld(e, w.id, w.name)}
+                  title="Delete world"
+                >✕</button>
+              )}
+            </div>
           ))}
           <div className="ws-drop-sep" />
           {!creating ? (
@@ -137,21 +162,40 @@ function WorldSelector() {
 
 export default function WorldSidebar() {
   const {
-    activeWorld, campaigns, worldTab, setWorldTab,
-    activeCampaignId, openCampaign, updateCampaign,
+    activeWorld, campaigns, worldTab, setWorldTab, loading,
+    activeCampaignId, openCampaign, createCampaign, updateCampaign, deleteCampaign,
     npcs, factions, locations, lore, bestiary, encounters, timeline,
   } = useWorld();
+  const confirm = useConfirm();
 
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [editCampName, setEditCampName] = useState('');
+  const [creatingCampaign, setCreatingCampaign] = useState(false);
+  const [newCampName, setNewCampName] = useState('');
 
   const startEditCampaign = (id: string, name: string) => {
     setEditCampName(name);
     setEditingCampaignId(id);
   };
-  const saveCampaignName = (id: string) => {
-    if (editCampName.trim()) updateCampaign(id, { name: editCampName.trim() });
+  const saveCampaignName = async (id: string) => {
+    if (editCampName.trim()) await updateCampaign(id, { name: editCampName.trim() });
     setEditingCampaignId(null);
+  };
+  const submitNewCampaign = async () => {
+    if (!newCampName.trim()) return;
+    await createCampaign(newCampName.trim());
+    setNewCampName('');
+    setCreatingCampaign(false);
+  };
+
+  const handleDeleteCampaign = async (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation();
+    const ok = await confirm({
+      title: 'Delete campaign',
+      message: `Delete "${name}"? This cannot be undone.`,
+      danger: true,
+    });
+    if (ok) await deleteCampaign(id);
   };
 
   const counts: Partial<Record<WorldTab, number>> = {
@@ -173,6 +217,9 @@ export default function WorldSidebar() {
       </div>
 
       <div className="w-side-scroll">
+      {loading && (
+        <div className="w-nav-loading">Loading worlds…</div>
+      )}
       <nav className="w-nav">
         <div className="w-nav-section">World</div>
         {WORLD_TABS.map(t => (
@@ -227,29 +274,57 @@ export default function WorldSidebar() {
                 <div className="w-camp-meta">{c.party} · {c.sessions} sessions</div>
               </div>
               <span className={`w-camp-status w-camp-status-${c.status}`}>{c.status}</span>
-              <button
-                className="w-camp-edit"
-                onClick={e => { e.stopPropagation(); startEditCampaign(c.id, c.name); }}
-                title="Rename campaign"
-              >✎</button>
+              <div className="w-camp-actions">
+                <button
+                  className="w-camp-edit"
+                  onClick={e => { e.stopPropagation(); startEditCampaign(c.id, c.name); }}
+                  title="Rename campaign"
+                >✎</button>
+                <button
+                  className="w-camp-delete"
+                  onClick={e => handleDeleteCampaign(e, c.id, c.name)}
+                  title="Delete campaign"
+                >✕</button>
+              </div>
             </div>
           )
         ))}
-        <button
-          className="w-camp-card"
-          style={{ justifyContent: 'center', color: 'var(--ink-3)', borderStyle: 'dashed' }}
-        >
-          <span style={{ color: 'var(--gold)' }}>+</span>
-          <span style={{ fontFamily: 'var(--serif)', fontSize: 13 }}>New campaign</span>
-        </button>
+        {creatingCampaign ? (
+          <div className="w-camp-new-form">
+            <input
+              autoFocus
+              className="w-camp-name-input"
+              value={newCampName}
+              onChange={e => setNewCampName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') submitNewCampaign();
+                if (e.key === 'Escape') { setCreatingCampaign(false); setNewCampName(''); }
+              }}
+              placeholder="Campaign name…"
+            />
+            <div className="ws-create-actions">
+              <button className="ws-create-cancel" onClick={() => { setCreatingCampaign(false); setNewCampName(''); }}>Cancel</button>
+              <button className="ws-create-submit" onClick={submitNewCampaign} disabled={!newCampName.trim()}>Create</button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="w-camp-card"
+            style={{ justifyContent: 'center', color: 'var(--ink-3)', borderStyle: 'dashed' }}
+            onClick={() => setCreatingCampaign(true)}
+          >
+            <span style={{ color: 'var(--gold)' }}>+</span>
+            <span style={{ fontFamily: 'var(--serif)', fontSize: 13 }}>New campaign</span>
+          </button>
+        )}
       </div>
 
       </div>
 
       <div className="cm-side-foot">
         <div className="cm-side-meta">
-          <div>{activeWorld.name} · {activeWorld.era}</div>
-          <div className="cm-side-meta-sub">{activeWorld.calendar} {activeWorld.year}</div>
+          <div>{activeWorld?.name ?? '—'} · {activeWorld?.era ?? ''}</div>
+          <div className="cm-side-meta-sub">{activeWorld?.calendar ?? ''} {activeWorld?.year ?? ''}</div>
         </div>
       </div>
     </aside>
