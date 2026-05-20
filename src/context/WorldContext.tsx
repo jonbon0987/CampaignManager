@@ -19,7 +19,7 @@ import {
   MonsterStatblocks as MonsterStatblocksDB,
 } from '../lib/db';
 import type {
-  DbWorld, Campaign,
+  DbWorld, Campaign, CampaignWithCount,
   NPC, Faction, Location as DBLocation, LoreEntry, MonsterStatblock,
 } from '../lib/database.types';
 import useLocalStorage from '../hooks/useLocalStorage';
@@ -38,12 +38,12 @@ function dbToWorld(w: DbWorld, campaignIds: string[]): World {
   };
 }
 
-function dbToWorldCampaign(c: Campaign): WorldCampaign {
+function dbToWorldCampaign(c: CampaignWithCount | Campaign): WorldCampaign {
   return {
     id: c.id,
     worldId: c.world_id ?? '',
     name: c.name,
-    sessions: 0,
+    sessions: (c as CampaignWithCount).session_count ?? 0,
     party: c.party ?? '',
     lastPlayed: c.last_played ?? '',
     status: c.status ?? 'active',

@@ -180,20 +180,6 @@ export default function Topbar({
           {!isMobile && <span>Session Tools</span>}
         </button>
 
-        {/* Run Session — primary gold button */}
-        <button
-          onClick={onToggleRun}
-          className={`cm-top-btn cm-top-btn-primary ${runMode ? 'is-on' : ''}`}
-          title={runMode ? 'Exit Session' : 'Run Session'}
-        >
-          <span className="cm-top-btn-glyph">⚜</span>
-          <span>{runMode ? 'Exit' : 'Run Session'}</span>
-        </button>
-
-        {/* Back to World */}
-        <button className="w-back-btn" onClick={backToWorld}>
-          <span>←</span> Back to World
-        </button>
       </div>
     </header>
   );

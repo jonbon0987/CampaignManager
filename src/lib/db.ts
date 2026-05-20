@@ -8,7 +8,7 @@
 import { supabase } from './supabase';
 import type {
   DbWorld, DbWorldInsert,
-  Campaign, CampaignInsert,
+  Campaign, CampaignInsert, CampaignWithCount,
   Session, SessionInsert,
   SessionPrep, SessionPrepInsert,
   PlayerCharacter, PlayerCharacterInsert,
@@ -72,15 +72,18 @@ export const Worlds = {
 // ============================================================
 
 export const Campaigns = {
-  async getAll(worldId?: string): Promise<Campaign[]> {
+  async getAll(worldId?: string): Promise<CampaignWithCount[]> {
     let query = supabase
       .from('campaigns')
-      .select('*')
+      .select('*, sessions(count)')
       .order('sort_order', { ascending: true });
     if (worldId) query = query.eq('world_id', worldId);
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    return (data ?? []).map((c: any) => ({
+      ...c,
+      session_count: (c.sessions as { count: number }[])?.[0]?.count ?? 0,
+    }));
   },
 
   async upsert(campaign: CampaignInsert & { id?: string }): Promise<Campaign> {
@@ -298,12 +301,11 @@ export const NPCs = {
     return data;
   },
 
-  // World-level NPCs (global pool scoped to a specific world)
+  // World-level NPCs (all NPCs scoped to a specific world)
   async getByWorld(worldId: string): Promise<NPC[]> {
     const { data, error } = await supabase
       .from('npcs')
       .select('*')
-      .is('campaign_id', null)
       .eq('world_id', worldId)
       .order('name');
     if (error) throw error;
@@ -364,12 +366,11 @@ export const Locations = {
     return data;
   },
 
-  // World-level locations (global pool scoped to a specific world)
+  // World-level locations (all locations scoped to a specific world)
   async getByWorld(worldId: string): Promise<Location[]> {
     const { data, error } = await supabase
       .from('locations')
       .select('*')
-      .is('campaign_id', null)
       .eq('world_id', worldId)
       .order('name');
     if (error) throw error;
@@ -419,12 +420,11 @@ export const Factions = {
     return data;
   },
 
-  // World-level factions (not tied to any campaign)
+  // World-level factions (all factions scoped to a specific world)
   async getByWorld(worldId: string): Promise<Faction[]> {
     const { data, error } = await supabase
       .from('factions')
       .select('*')
-      .is('campaign_id', null)
       .eq('world_id', worldId)
       .order('name');
     if (error) throw error;
@@ -505,7 +505,7 @@ export const Lore = {
     return data;
   },
 
-  // World-scoped lore (campaign_id IS NULL)
+  // World-scoped lore — world_id matches AND not campaign-specific
   async getByWorld(worldId: string): Promise<LoreEntry[]> {
     const { data, error } = await supabase
       .from('lore_entries')
@@ -709,12 +709,11 @@ export const MonsterStatblocks = {
     return data;
   },
 
-  // World bestiary — statblocks not tied to any campaign
+  // World bestiary — all statblocks scoped to a specific world
   async getByWorld(worldId: string): Promise<MonsterStatblock[]> {
     const { data, error } = await supabase
       .from('monster_statblocks')
       .select('*')
-      .is('campaign_id', null)
       .eq('world_id', worldId)
       .order('name');
     if (error) throw error;

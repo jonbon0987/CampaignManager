@@ -49,6 +49,9 @@ export interface Campaign {
 
 export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+// Campaigns fetched with an embedded session count (via PostgREST select)
+export type CampaignWithCount = Campaign & { session_count: number };
+
 // Join tables for linking global NPCs/Locations to campaigns
 export interface CampaignNPC {
   campaign_id: string;
@@ -114,8 +117,8 @@ export interface PlayerCharacter {
 export interface NPC {
   id: string;
   user_id: string;
-  campaign_id: string | null;        // NULL = global pool, non-null = campaign-specific
-  world_id: string | null;           // NULL = unscoped; set for world-level NPCs
+  campaign_id: string | null;        // Optional FK to campaign — independent of world_id
+  world_id: string | null;           // Optional FK to world — both can be set simultaneously
   name: string;
   role: string | null;
   affiliation: string | null;
@@ -135,8 +138,8 @@ export interface NPC {
 export interface Location {
   id: string;
   user_id: string;
-  campaign_id: string | null;        // NULL = global pool, non-null = campaign-specific
-  world_id: string | null;           // NULL = unscoped; set for world-level locations
+  campaign_id: string | null;        // Optional FK to campaign — independent of world_id
+  world_id: string | null;           // Optional FK to world — both can be set simultaneously
   name: string;
   region: string | null;
   location_type: string | null;      // city | town | dungeon | faction_hq | landmark
@@ -152,8 +155,8 @@ export interface Location {
 export interface Faction {
   id: string;
   user_id: string;
-  campaign_id: string | null;        // NULL = world-level faction, non-null = campaign-specific
-  world_id: string | null;           // NULL = unscoped; set for world-level factions
+  campaign_id: string | null;        // Optional FK to campaign — independent of world_id
+  world_id: string | null;           // Optional FK to world — both can be set simultaneously
   name: string;
   faction_type: string | null;
   overview: string | null;
@@ -181,8 +184,8 @@ export interface Hook {
 export interface LoreEntry {
   id: string;
   user_id: string;
-  world_id: string | null;           // NULL = unscoped; set for world-level lore
-  campaign_id: string | null;        // NULL = world-level; set for campaign-specific lore
+  world_id: string | null;           // Optional FK to world — independent of campaign_id
+  campaign_id: string | null;        // Optional FK to campaign — both can be set simultaneously
   title: string;
   category: string | null;           // history | artifact | creature | magic | religion
   content: string | null;

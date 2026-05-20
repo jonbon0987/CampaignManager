@@ -96,6 +96,10 @@ input:focus, textarea:focus, select:focus {
 .cm-shell.side-collapsed {
   grid-template-columns: 56px 1fr;
 }
+/* World sidebar collapsed */
+.cm-shell.w-side-collapsed {
+  grid-template-columns: 48px 1fr;
+}
 .cm-shell.side-collapsed.has-rail {
   grid-template-columns: 56px 1fr 340px;
 }
