@@ -371,7 +371,8 @@ export interface EncounterCombatant {
 export interface Encounter {
   id: string;
   user_id: string;
-  campaign_id: string;
+  campaign_id: string | null;   // Optional FK — null for world-level encounter templates
+  world_id: string | null;      // Optional FK — set for world-level encounter templates
   name: string;
   description: string | null;
   environment: string | null;   // dungeon | forest | urban | cave | open | etc.

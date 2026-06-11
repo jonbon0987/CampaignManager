@@ -4,7 +4,7 @@ import CreatureStatblocks from './CreatureStatblocks';
 
 type SubTab = 'encounters' | 'statblocks';
 
-export default function CombatView() {
+export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('encounters');
 
   return (
@@ -49,7 +49,7 @@ export default function CombatView() {
       {/* Sub-tab content */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {activeSubTab === 'encounters' && <EncounterBuilder />}
-        {activeSubTab === 'statblocks' && <CreatureStatblocks />}
+        {activeSubTab === 'statblocks' && <CreatureStatblocks onImportFromWorld={onImportFromWorld} />}
       </div>
     </div>
   );

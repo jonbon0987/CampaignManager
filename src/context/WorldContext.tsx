@@ -6,7 +6,7 @@ import type {
   WorldBestiaryEntry, WorldEncounter, WorldTimelineEvent,
 } from '../types/world';
 import {
-  WORLD_ENCOUNTERS, WORLD_TIMELINE,
+  WORLD_TIMELINE,
   TIMELINE_TYPE_CONFIG, ERA_CONFIG,
 } from '../data/worldMockData';
 import {
@@ -17,11 +17,13 @@ import {
   Locations as LocationsDB,
   Lore as LoreDB,
   MonsterStatblocks as MonsterStatblocksDB,
+  Encounters as EncountersDB,
 } from '../lib/db';
 import type {
   DbWorld, Campaign, CampaignWithCount,
-  NPC, Faction, Location as DBLocation, LoreEntry, MonsterStatblock,
+  NPC, Faction, Location as DBLocation, LoreEntry, MonsterStatblock, MonsterStatblockInsert, Encounter,
 } from '../lib/database.types';
+import type { EncounterSaveData } from '../components/ui/EncounterDetail';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 // --------------- Mappers: DB → World types ---------------
@@ -117,6 +119,25 @@ function dbStatblockToWorldBestiary(s: MonsterStatblock): WorldBestiaryEntry {
   };
 }
 
+function dbEncounterToWorldEncounter(e: Encounter): WorldEncounter {
+  let creatures: string[] = [];
+  if (e.combatants) {
+    try {
+      const parsed = JSON.parse(e.combatants) as Array<{ statblock_id?: string | null }>;
+      creatures = parsed.map(c => c.statblock_id).filter(Boolean) as string[];
+    } catch { /* malformed JSON — ignore */ }
+  }
+  return {
+    id: e.id,
+    worldId: e.world_id ?? '',
+    name: e.name,
+    difficulty: e.difficulty ?? 'medium',
+    status: e.status,
+    creatures,
+    notes: e.dm_notes ?? '',
+  };
+}
+
 // --------------- Context type ---------------
 
 interface WorldContextType {
@@ -153,6 +174,15 @@ interface WorldContextType {
   lore: WorldLoreEntry[];
   bestiary: WorldBestiaryEntry[];
   encounters: WorldEncounter[];
+  // Raw DB records — needed by EncounterDetail which expects Encounter / MonsterStatblock directly
+  worldStatblocks: MonsterStatblock[];
+  worldEncounters: Encounter[];
+  createBestiaryEntry: () => Promise<string | null>;
+  upsertWorldStatblock: (data: Omit<MonsterStatblockInsert, 'world_id' | 'campaign_id'> & { id?: string }) => Promise<MonsterStatblock>;
+  deleteBestiaryEntry: (id: string) => Promise<void>;
+  createEncounter: () => Promise<string | null>;
+  deleteEncounter: (id: string) => Promise<void>;
+  upsertWorldEncounter: (data: EncounterSaveData) => Promise<Encounter>;
   timeline: WorldTimelineEvent[];
   timelineTypeConfig: typeof TIMELINE_TYPE_CONFIG;
   eraConfig: typeof ERA_CONFIG;
@@ -187,7 +217,9 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const [factions, setFactions] = useState<WorldFaction[]>([]);
   const [locations, setLocations] = useState<WorldLocation[]>([]);
   const [lore, setLore] = useState<WorldLoreEntry[]>([]);
-  const [bestiary, setBestiary] = useState<WorldBestiaryEntry[]>([]);
+  // Raw DB records — source of truth; mapped types are derived below
+  const [rawStatblocks, setRawStatblocks] = useState<MonsterStatblock[]>([]);
+  const [rawEncounters, setRawEncounters] = useState<Encounter[]>([]);
 
   // Load worlds and campaigns on mount
   useEffect(() => {
@@ -224,25 +256,28 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   // Load world entities whenever the active world changes
   useEffect(() => {
     if (!activeWorldId) {
-      setNpcs([]); setFactions([]); setLocations([]); setLore([]); setBestiary([]);
+      setNpcs([]); setFactions([]); setLocations([]); setLore([]);
+      setRawStatblocks([]); setRawEncounters([]);
       return;
     }
     let cancelled = false;
     async function loadEntities() {
       try {
-        const [dbNpcs, dbFactions, dbLocations, dbLore, dbBestiary] = await Promise.all([
+        const [dbNpcs, dbFactions, dbLocations, dbLore, dbBestiary, dbEncounters] = await Promise.all([
           NPCsDB.getByWorld(activeWorldId),
           FactionsDB.getByWorld(activeWorldId),
           LocationsDB.getByWorld(activeWorldId),
           LoreDB.getByWorld(activeWorldId),
           MonsterStatblocksDB.getByWorld(activeWorldId),
+          EncountersDB.getByWorld(activeWorldId),
         ]);
         if (cancelled) return;
         setNpcs(dbNpcs.map(dbNPCToWorldNPC));
         setFactions(dbFactions.map(dbFactionToWorldFaction));
         setLocations(dbLocations.map(dbLocationToWorldLocation));
         setLore(dbLore.map(dbLoreToWorldLore));
-        setBestiary(dbBestiary.map(dbStatblockToWorldBestiary));
+        setRawStatblocks(dbBestiary);
+        setRawEncounters(dbEncounters);
       } catch (e) {
         console.error('WorldContext: failed to load world entities', e);
       }
@@ -256,6 +291,10 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     [activeWorldId, worlds],
   );
 
+  // Derived mapped types from raw DB records
+  const bestiary  = useMemo(() => rawStatblocks.map(dbStatblockToWorldBestiary), [rawStatblocks]);
+  const encounters = useMemo(() => rawEncounters.map(dbEncounterToWorldEncounter), [rawEncounters]);
+
   // Lookup maps derived from fetched data
   const npcById  = useMemo(() => Object.fromEntries(npcs.map(n => [n.id, n])),      [npcs]);
   const locById  = useMemo(() => Object.fromEntries(locations.map(l => [l.id, l])), [locations]);
@@ -263,9 +302,8 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const facById  = useMemo(() => Object.fromEntries(factions.map(f => [f.id, f])),  [factions]);
   const sbById   = useMemo(() => Object.fromEntries(bestiary.map(b => [b.id, b])),  [bestiary]);
 
-  // Timeline and encounters have no world-level DB table yet — kept as empty
-  const encounters = useMemo(() => WORLD_ENCOUNTERS.filter(() => false), []);
-  const timeline   = useMemo(() => WORLD_TIMELINE.filter(() => false),   []);
+  // Timeline has no world-level DB table yet — kept as empty
+  const timeline = useMemo(() => WORLD_TIMELINE.filter(() => false), []);
 
   const createWorld = useCallback(async (name: string, tagline: string) => {
     const dbWorld = await WorldsDB.upsert({
@@ -375,6 +413,104 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     setSelectedState(prev => ({ ...prev, [tab]: id }));
   }, []);
 
+  const createBestiaryEntry = useCallback(async (): Promise<string | null> => {
+    if (!activeWorldId) return null;
+    const dbEntry = await MonsterStatblocksDB.upsert({
+      name: 'New Creature',
+      world_id: activeWorldId,
+      campaign_id: null,
+      creature_type: 'beast',
+      challenge_rating: '1',
+      hit_points: 10,
+      armor_class: 10,
+      ac_descriptor: null,
+      hit_dice: null,
+      speed: null,
+      str: null, dex: null, con: null, int: null, wis: null, cha: null,
+      saving_throws: null,
+      skills: null,
+      damage_resistances: null,
+      damage_immunities: null,
+      condition_immunities: null,
+      senses: null,
+      languages: null,
+      content: null,
+      dm_notes: null,
+      tags: null,
+      sort_order: Math.floor(Date.now() / 1000),
+    });
+    setRawStatblocks(prev => [...prev, dbEntry]);
+    return dbEntry.id;
+  }, [activeWorldId]);
+
+  const upsertWorldStatblock = useCallback(async (
+    data: Omit<MonsterStatblockInsert, 'world_id' | 'campaign_id'> & { id?: string },
+  ): Promise<MonsterStatblock> => {
+    const dbEntry = await MonsterStatblocksDB.upsert({
+      ...data,
+      world_id: activeWorldId,
+      campaign_id: null,
+    });
+    setRawStatblocks(prev => {
+      const idx = prev.findIndex(s => s.id === dbEntry.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = dbEntry;
+        return next;
+      }
+      return [...prev, dbEntry];
+    });
+    return dbEntry;
+  }, [activeWorldId]);
+
+  const deleteBestiaryEntry = useCallback(async (id: string): Promise<void> => {
+    await MonsterStatblocksDB.delete(id);
+    setRawStatblocks(prev => prev.filter(b => b.id !== id));
+  }, []);
+
+  const createEncounter = useCallback(async (): Promise<string | null> => {
+    if (!activeWorldId) return null;
+    const dbEncounter = await EncountersDB.upsert({
+      name: 'New Encounter',
+      campaign_id: null,
+      world_id: activeWorldId,
+      description: null,
+      environment: null,
+      difficulty: 'medium',
+      party_size: null,
+      party_level: null,
+      combatants: '[]',
+      dm_notes: null,
+      status: 'draft',
+      sort_order: Math.floor(Date.now() / 1000),
+    });
+    setRawEncounters(prev => [...prev, dbEncounter]);
+    return dbEncounter.id;
+  }, [activeWorldId]);
+
+  const deleteEncounter = useCallback(async (id: string): Promise<void> => {
+    await EncountersDB.delete(id);
+    setRawEncounters(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  const upsertWorldEncounter = useCallback(async (data: EncounterSaveData): Promise<Encounter> => {
+    const dbEncounter = await EncountersDB.upsert({
+      ...data,
+      campaign_id: null,
+      world_id: activeWorldId,
+    });
+    setRawEncounters(prev => {
+      const idx = prev.findIndex(e => e.id === dbEncounter.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = dbEncounter;
+        return next;
+      }
+      return [...prev, dbEncounter];
+    });
+    return dbEncounter;
+  }, [activeWorldId]);
+
   const value = useMemo<WorldContextType>(() => ({
     worlds,
     activeWorldId,
@@ -400,7 +536,15 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     lore,
     bestiary,
     encounters,
+    worldStatblocks: rawStatblocks,
+    worldEncounters: rawEncounters,
     timeline,
+    createBestiaryEntry,
+    upsertWorldStatblock,
+    deleteBestiaryEntry,
+    createEncounter,
+    deleteEncounter,
+    upsertWorldEncounter,
     timelineTypeConfig: TIMELINE_TYPE_CONFIG,
     eraConfig: ERA_CONFIG,
     npcById,
@@ -416,7 +560,9 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     campaigns, createCampaign, updateCampaign, deleteCampaign,
     activeCampaignId, activeCampaign, openCampaign, backToWorld,
     worldTab, handleSetWorldTab,
-    npcs, factions, locations, lore, bestiary, encounters, timeline,
+    npcs, factions, locations, lore, bestiary, encounters,
+    rawStatblocks, rawEncounters, timeline,
+    createBestiaryEntry, upsertWorldStatblock, deleteBestiaryEntry, createEncounter, deleteEncounter, upsertWorldEncounter,
     npcById, locById, loreById, facById, sbById,
     selected, setSelected,
   ]);

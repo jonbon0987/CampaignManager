@@ -1,13 +1,9 @@
-import type { User } from '@supabase/supabase-js';
-import type { Tab } from '../App';
 import CampaignSelector from './CampaignSelector';
 import { useWorld } from '../context/WorldContext';
 
 interface ViewOption { id: string; label: string; }
 
 interface TopbarProps {
-  user: User;
-  activeTab: Tab;
   tabLabel: string;
   onOpenMobileMenu: () => void;
   onOpenSearch: () => void;
@@ -25,17 +21,9 @@ interface TopbarProps {
   viewMode?: string;
   setViewMode?: (v: string) => void;
   viewOptions?: ViewOption[];
-  onImportFromWorld?: (type: string) => void;
 }
 
-const IMPORT_MAP: Partial<Record<Tab, string>> = {
-  cast: 'npc',
-  world: 'location',
-  combat: 'bestiary',
-};
-
 export default function Topbar({
-  activeTab,
   tabLabel,
   onOpenMobileMenu,
   onOpenSearch,
@@ -53,10 +41,8 @@ export default function Topbar({
   viewMode,
   setViewMode,
   viewOptions,
-  onImportFromWorld,
 }: TopbarProps) {
   const { activeWorld, backToWorld } = useWorld();
-  const importType = IMPORT_MAP[activeTab];
 
   return (
     <header className="cm-top">
@@ -108,18 +94,6 @@ export default function Topbar({
 
       {/* Right cluster */}
       <div className="cm-top-actions">
-        {/* Import from World — contextual on Cast/World/Combat */}
-        {importType && onImportFromWorld && (
-          <button
-            onClick={() => onImportFromWorld(importType)}
-            className="cm-top-btn"
-            title="Import from World"
-          >
-            <span className="cm-top-btn-glyph">⊕</span>
-            <span>Import</span>
-          </button>
-        )}
-
         {/* Proposals */}
         {proposalCount > 0 && (
           <button

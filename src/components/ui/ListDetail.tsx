@@ -7,6 +7,10 @@ interface ListDetailProps {
   onSearchChange: (value: string) => void;
   onAdd?: () => void;
   addLabel?: string;
+  onImport?: () => void;
+  importLabel?: string;
+  onGenerate?: () => void;
+  generateLabel?: string;
   filters?: ReactNode;
   list: ReactNode;
   detail: ReactNode;
@@ -23,6 +27,10 @@ export function ListDetail({
   onSearchChange,
   onAdd,
   addLabel = '+ New',
+  onImport,
+  importLabel = '⊕ Import',
+  onGenerate,
+  generateLabel = '✦ Generate',
   filters,
   list,
   detail,
@@ -37,11 +45,23 @@ export function ListDetail({
             </div>
             <h2 className="cm-md-title">{title}</h2>
           </div>
-          {onAdd && (
-            <button className="cm-md-add" onClick={onAdd}>
-              {addLabel}
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            {onGenerate && (
+              <button className="cm-md-add cm-md-generate" onClick={onGenerate}>
+                {generateLabel}
+              </button>
+            )}
+            {onImport && (
+              <button className="cm-md-add cm-md-import" onClick={onImport}>
+                {importLabel}
+              </button>
+            )}
+            {onAdd && (
+              <button className="cm-md-add" onClick={onAdd}>
+                {addLabel}
+              </button>
+            )}
+          </div>
         </div>
         <div className="cm-md-search">
           <span className="cm-md-search-glyph">&#x2315;</span>
