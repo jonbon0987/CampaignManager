@@ -293,6 +293,25 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink-3);
   letter-spacing: .04em;
 }
+.cm-logout-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: transparent;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius);
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: all .15s;
+  width: 100%;
+}
+.cm-logout-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(201,122,85,0.06);
+}
+.cm-logout-glyph { font-size: 14px; }
 
 /* ═══ Topbar ═══ */
 .cm-top {
@@ -503,6 +522,15 @@ input:focus, textarea:focus, select:focus {
 .cm-md-add:hover {
   color: var(--ink);
   border-color: var(--ink-3);
+}
+.cm-md-import {
+  color: var(--ink-3);
+  background: transparent;
+}
+.cm-md-generate {
+  color: #c060d0;
+  background: #2a1a3a;
+  border-color: #5a2a7a !important;
 }
 
 /* Search in list */
@@ -2545,7 +2573,7 @@ input:focus, textarea:focus, select:focus {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
-  padding: 8px 34px 8px 0;
+  padding: 8px 34px 8px 10px;
   outline: none;
   line-height: 1.6;
   resize: vertical;

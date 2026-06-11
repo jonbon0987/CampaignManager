@@ -42,7 +42,7 @@ function formatType(t: string | null) {
   return t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-export default function LoreLocations() {
+export default function LoreLocations({ onImportFromWorld }: { onImportFromWorld?: (type: string) => void }) {
   const {
     locations, lore,
     upsertLocation, deleteLocation,
@@ -117,6 +117,8 @@ export default function LoreLocations() {
         onSearchChange={setSearch}
         onAdd={handleAdd}
         addLabel={filter === 'lore' ? '+ Lore' : '+ Location'}
+        onImport={onImportFromWorld ? () => onImportFromWorld(filter === 'lore' ? 'lore' : 'location') : undefined}
+        importLabel={filter === 'lore' ? '⊕ Import Lore' : '⊕ Import Location'}
         filters={
           <>
             <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>

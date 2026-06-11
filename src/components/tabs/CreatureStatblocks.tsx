@@ -14,7 +14,7 @@ import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
 
-type MonsterForm = {
+export type MonsterForm = {
   name: string;
   creature_type: string;
   challenge_rating: string;
@@ -41,7 +41,7 @@ type MonsterForm = {
   tags: string;
 };
 
-const emptyMonsterForm = (): MonsterForm => ({
+export const emptyMonsterForm = (): MonsterForm => ({
   name: '',
   creature_type: 'monstrosity',
   challenge_rating: '',
@@ -70,7 +70,7 @@ const emptyMonsterForm = (): MonsterForm => ({
 
 // --------------- Helpers ---------------
 
-function abilityMod(score: number): string {
+export function abilityMod(score: number): string {
   const mod = Math.floor((score - 10) / 2);
   return mod >= 0 ? `+${mod}` : `${mod}`;
 }
@@ -112,7 +112,7 @@ const sectionLabel = {
   marginBottom: '0.4rem',
 };
 
-const CREATURE_TYPES = [
+export const CREATURE_TYPES = [
   'aberration', 'beast', 'celestial', 'construct', 'dragon',
   'elemental', 'fey', 'fiend', 'giant', 'humanoid',
   'monstrosity', 'ooze', 'plant', 'undead', 'other',
@@ -126,7 +126,7 @@ const VALID_CRS = new Set([
   '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
 ]);
 
-const ABILITY_KEYS: Array<{ key: keyof MonsterForm; label: string }> = [
+export const ABILITY_KEYS: Array<{ key: keyof MonsterForm; label: string }> = [
   { key: 'str', label: 'STR' },
   { key: 'dex', label: 'DEX' },
   { key: 'con', label: 'CON' },
@@ -309,7 +309,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 // MAIN COMPONENT
 // ================================================================
 
-export default function CreatureStatblocks() {
+export default function CreatureStatblocks({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
   const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, sessions, lore, locations, overview } = useCampaign();
   const confirm = useConfirm();
 
@@ -600,6 +600,15 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         >
           ✦ Generate
         </button>
+        {onImportFromWorld && (
+          <button
+            onClick={onImportFromWorld}
+            className="inline-flex items-center justify-center gap-1.5 rounded border font-medium transition-colors duration-150 px-3 py-1.5 text-sm"
+            style={{ backgroundColor: 'transparent', color: 'var(--ink-2)', borderColor: 'var(--border)', fontFamily: 'var(--serif)' }}
+          >
+            ⊕ Import
+          </button>
+        )}
         <button
           onClick={openAdd}
           className="inline-flex items-center justify-center gap-1.5 rounded border font-medium transition-colors duration-150 px-3 py-1.5 text-sm"

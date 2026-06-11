@@ -160,8 +160,6 @@ function AppInner({ user }: { user: User }) {
         {/* Main column */}
         <div className="cm-main">
           <Topbar
-            user={user}
-            activeTab={activeTab}
             tabLabel={TAB_LABELS[activeTab]}
             onOpenMobileMenu={() => setMobileMenuOpen(true)}
             onOpenSearch={() => setSearchOpen(true)}
@@ -183,7 +181,6 @@ function AppInner({ user }: { user: User }) {
             viewMode={activeViewMode}
             setViewMode={setViewMode}
             viewOptions={TAB_VIEW_OPTIONS[activeTab]}
-            onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }}
           />
 
           <div className="cm-canvas">
@@ -197,11 +194,11 @@ function AppInner({ user }: { user: User }) {
             ) : (
               <>
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
-                {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} />}
-                {activeTab === 'world'     && <LoreLocations />}
+                {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} />}
+                {activeTab === 'world'     && <LoreLocations onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} />}
-                {activeTab === 'combat'    && <CombatView />}
+                {activeTab === 'combat'    && <CombatView onImportFromWorld={() => { setImportType('bestiary'); setImportOpen(true); }} />}
                 {activeTab === 'settings'  && <SettingsView />}
               </>
             )}

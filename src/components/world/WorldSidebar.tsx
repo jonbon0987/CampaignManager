@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { signOut } from '../../lib/auth';
 import useLocalStorage from '../../hooks/useLocalStorage';
-import type { WorldCampaign, WorldTab } from '../../types/world';
+import type { WorldTab } from '../../types/world';
 
 interface WorldNavItem {
   id: WorldTab;
@@ -205,14 +206,12 @@ function CampaignFlyout({ campaigns, activeCampaignId, openCampaign }: CampaignF
 export default function WorldSidebar() {
   const {
     activeWorld, campaigns, worldTab, setWorldTab, loading,
-    activeCampaignId, openCampaign, createCampaign, updateCampaign, deleteCampaign,
+    activeCampaignId, openCampaign, createCampaign, deleteCampaign,
     npcs, factions, locations, lore, bestiary, encounters, timeline,
   } = useWorld();
   const confirm = useConfirm();
 
   const [collapsed, setCollapsed] = useLocalStorage('world-side-collapsed', false);
-  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
-  const [editCampName, setEditCampName] = useState('');
   const [creatingCampaign, setCreatingCampaign] = useState(false);
   const [newCampName, setNewCampName] = useState('');
 
@@ -223,11 +222,6 @@ export default function WorldSidebar() {
     return () => { shell?.classList.remove('w-side-collapsed'); };
   }, [collapsed]);
 
-  const startEditCampaign = (id: string, name: string) => { setEditCampName(name); setEditingCampaignId(id); };
-  const saveCampaignName = async (id: string) => {
-    if (editCampName.trim()) await updateCampaign(id, { name: editCampName.trim() });
-    setEditingCampaignId(null);
-  };
   const submitNewCampaign = async () => {
     if (!newCampName.trim()) return;
     await createCampaign(newCampName.trim());
@@ -320,42 +314,23 @@ export default function WorldSidebar() {
 
         <div className="w-camp-list">
           {campaigns.map(c => (
-            editingCampaignId === c.id ? (
-              <div key={c.id} className="w-camp-card w-camp-card-editing">
-                <span className="w-camp-glyph">❧</span>
-                <div className="w-camp-body">
-                  <input autoFocus className="w-camp-name-input" value={editCampName}
-                    onChange={e => setEditCampName(e.target.value)}
-                    onBlur={() => saveCampaignName(c.id)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') saveCampaignName(c.id);
-                      if (e.key === 'Escape') setEditingCampaignId(null);
-                    }} />
-                  <div className="w-camp-meta">{c.party} · {c.sessions} sessions</div>
-                </div>
+            <div key={c.id} role="button" tabIndex={0}
+              className={`w-camp-card ${activeCampaignId === c.id ? 'is-active' : ''}`}
+              onClick={() => openCampaign(c.id)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCampaign(c.id); }}
+            >
+              <span className="w-camp-glyph">❧</span>
+              <div className="w-camp-body">
+                <div className="w-camp-name">{c.name}</div>
+                <div className="w-camp-meta">{c.party} · {c.sessions} sessions</div>
               </div>
-            ) : (
-              <div key={c.id} role="button" tabIndex={0}
-                className={`w-camp-card ${activeCampaignId === c.id ? 'is-active' : ''}`}
-                onClick={() => openCampaign(c.id)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCampaign(c.id); }}
-              >
-                <span className="w-camp-glyph">❧</span>
-                <div className="w-camp-body">
-                  <div className="w-camp-name">{c.name}</div>
-                  <div className="w-camp-meta">{c.party} · {c.sessions} sessions</div>
-                </div>
-                <span className={`w-camp-status w-camp-status-${c.status}`}>{c.status}</span>
-                <div className="w-camp-actions">
-                  <button className="w-camp-edit"
-                    onClick={e => { e.stopPropagation(); startEditCampaign(c.id, c.name); }}
-                    title="Rename campaign">✎</button>
-                  <button className="w-camp-delete"
-                    onClick={e => handleDeleteCampaign(e, c.id, c.name)}
-                    title="Delete campaign">✕</button>
-                </div>
+              <span className={`w-camp-status w-camp-status-${c.status}`}>{c.status}</span>
+              <div className="w-camp-actions">
+                <button className="w-camp-delete"
+                  onClick={e => handleDeleteCampaign(e, c.id, c.name)}
+                  title="Delete campaign">✕</button>
               </div>
-            )
+            </div>
           ))}
           {creatingCampaign ? (
             <div className="w-camp-new-form">
@@ -388,6 +363,13 @@ export default function WorldSidebar() {
           <div>{activeWorld?.name ?? '—'} · {activeWorld?.era ?? ''}</div>
           <div className="cm-side-meta-sub">{activeWorld?.calendar ?? ''} {activeWorld?.year ?? ''}</div>
         </div>
+        <button className="cm-logout-btn" onClick={async () => {
+          const ok = await confirm({ title: 'Log out', message: 'Log out of Campaign Manager?' });
+          if (ok) signOut();
+        }}>
+          <span className="cm-logout-glyph">⎋</span>
+          <span>Log out</span>
+        </button>
       </div>
     </aside>
   );

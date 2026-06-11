@@ -752,6 +752,17 @@ export const Encounters = {
     return data;
   },
 
+  async getByWorld(worldId: string): Promise<Encounter[]> {
+    const { data, error } = await supabase
+      .from('encounters')
+      .select('*')
+      .eq('world_id', worldId)
+      .is('campaign_id', null)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
   async upsert(encounter: EncounterInsert & { id?: string }): Promise<Encounter> {
     const user_id = await getUserId();
     const { data, error } = await supabase

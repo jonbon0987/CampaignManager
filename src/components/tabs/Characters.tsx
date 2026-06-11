@@ -38,16 +38,16 @@ interface CastItem {
 
 const GLYPHS: Record<CastKind, string> = { pc: '◈', npc: '◇', faction: '⬡' };
 
-export default function Characters({ viewMode = 'list' }: { viewMode?: string; setViewMode?: (v: string) => void }) {
+export default function Characters({ viewMode = 'list', onImportFromWorld }: { viewMode?: string; setViewMode?: (v: string) => void; onImportFromWorld?: () => void }) {
   return (
     <div style={{ height: '100%', overflow: viewMode === 'list' ? 'hidden' : 'auto' }}>
-      {viewMode === 'list' && <CastList />}
+      {viewMode === 'list' && <CastList onImportFromWorld={onImportFromWorld} />}
       {viewMode === 'web'  && <CharacterWeb />}
     </div>
   );
 }
 
-function CastList() {
+function CastList({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
   const {
     pcs, npcs, factions,
     upsertPC,
@@ -137,6 +137,8 @@ function CastList() {
       onSearchChange={setSearch}
       onAdd={handleAdd}
       addLabel={filter === 'faction' ? '+ Faction' : filter === 'npc' ? '+ NPC' : '+ New'}
+      onImport={onImportFromWorld && (filter === 'all' || filter === 'npc') ? onImportFromWorld : undefined}
+      importLabel="⊕ Import NPC"
       filters={
         <>
           <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
