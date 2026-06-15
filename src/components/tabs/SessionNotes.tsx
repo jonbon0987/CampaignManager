@@ -504,11 +504,11 @@ function SessionPrepView() {
             <h3 className="pw-title">Last time…</h3>
             {lastSession ? (
               <>
-                <div className="pw-card" style={{ cursor: 'default' }}>
+                <div className="pw-card" style={{ cursor: 'default', maxHeight: 300, overflowY: 'auto' }}>
                   <div className="pw-card-eyebrow">Session #{lastSession.session_number} · {lastSession.session_date ?? '—'}</div>
                   <p className="pw-card-body" style={{ marginTop: 0 }}>
                     {lastSession.summary
-                      ? lastSession.summary.replace(/[#*_`]/g, '').slice(0, 400) + (lastSession.summary.length > 400 ? '…' : '')
+                      ? lastSession.summary.replace(/[#*_`]/g, '')
                       : <em style={{ color: 'var(--ink-3)' }}>No summary recorded.</em>}
                   </p>
                 </div>
