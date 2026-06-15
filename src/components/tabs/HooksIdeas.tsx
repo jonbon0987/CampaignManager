@@ -5,6 +5,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { SectionHeader } from '../ui/SectionHeader';
+import { SearchBar } from '../ui/SearchBar';
 import { InlineEditCard } from '../ui/InlineEditCard';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -63,6 +64,7 @@ export default function HooksIdeas() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<HookForm>(emptyForm());
   const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
+  const [search, setSearch] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export default function HooksIdeas() {
   const filtered = hooks.filter(h => {
     if (!showInactive && !h.is_active) return false;
     if (filterCategory !== 'all' && h.category !== filterCategory) return false;
+    if (search && !h.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -146,6 +149,9 @@ export default function HooksIdeas() {
         addLabel="Add Idea"
         extra={
           <div className="flex flex-wrap gap-2 items-center">
+            <div style={{ width: 200 }}>
+              <SearchBar value={search} onChange={setSearch} placeholder="Search hooks…" />
+            </div>
             <div className="flex gap-1 flex-wrap">
               {(['all', ...CATEGORIES] as const).map(c => (
                 <button
@@ -234,22 +240,24 @@ export default function HooksIdeas() {
                   /* View mode */
                   <div
                     className="flex flex-col"
-                    style={{ opacity: hook.is_active ? 1 : 0.55 }}
+                    style={{ opacity: hook.is_active ? 1 : 0.55, height: 220 }}
                   >
-                    <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="flex items-start justify-between mb-2 gap-2" style={{ flexShrink: 0 }}>
                       <h3 className="font-bold flex-1 text-sm" style={{ color: hook.is_active ? 'var(--ink)' : 'var(--ink-3)', fontFamily: 'var(--serif)' }}>
                         {hook.title || 'Untitled Idea'}
                       </h3>
                       <Badge label={formatCategory(hook.category)} color={badgeColor} size="xs" />
                     </div>
 
-                    {hook.description ? (
-                      <MarkdownContent text={hook.description} className="text-sm flex-1 mb-4" style={{ color: hook.is_active ? 'var(--ink-2)' : 'var(--ink-3)', lineHeight: '1.6' }} />
-                    ) : (
-                      <p className="text-sm flex-1 mb-4" style={{ color: 'var(--ink-3)', lineHeight: '1.6', fontStyle: 'italic' }}>No details written.</p>
-                    )}
+                    <div className="flex-1 min-h-0 overflow-y-auto mb-4" style={{ scrollbarWidth: 'thin' }}>
+                      {hook.description ? (
+                        <MarkdownContent text={hook.description} className="text-sm" style={{ color: hook.is_active ? 'var(--ink-2)' : 'var(--ink-3)', lineHeight: '1.6' }} />
+                      ) : (
+                        <p className="text-sm" style={{ color: 'var(--ink-3)', lineHeight: '1.6', fontStyle: 'italic' }}>No details written.</p>
+                      )}
+                    </div>
 
-                    <div className="flex gap-2 mt-auto">
+                    <div className="flex gap-2" style={{ flexShrink: 0 }}>
                       <Button
                         variant="secondary"
                         size="sm"

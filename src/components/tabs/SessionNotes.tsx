@@ -441,6 +441,9 @@ function SessionPrepView() {
   const existingPrep = sessionPreps.find(p => p.session_number === nextNum) ?? null;
   const [prepText, setPrepText] = useState(existingPrep?.notes ?? '');
   const [savingPrep, setSavingPrep] = useState(false);
+  const [dangledIds, setDangledIds] = useState<string[]>(existingPrep?.dangled_hook_ids ?? []);
+  const [hookPickerOpen, setHookPickerOpen] = useState(false);
+  const [savingHooks, setSavingHooks] = useState(false);
 
   const savePrep = async () => {
     setSavingPrep(true);
@@ -448,11 +451,26 @@ function SessionPrepView() {
       session_number: nextNum,
       prep_date: new Date().toISOString().split('T')[0],
       notes: prepText || null,
+      dangled_hook_ids: dangledIds,
     });
     setSavingPrep(false);
   };
 
+  const saveDangledHooks = async (ids: string[]) => {
+    setDangledIds(ids);
+    setSavingHooks(true);
+    await upsertSessionPrep({
+      session_number: nextNum,
+      prep_date: existingPrep?.prep_date ?? new Date().toISOString().split('T')[0],
+      notes: prepText || null,
+      dangled_hook_ids: ids,
+    });
+    setSavingHooks(false);
+  };
+
   const activeHooks = hooks.filter(h => h.is_active);
+  const availableHooks = activeHooks.filter(h => !dangledIds.includes(h.id));
+  const dangledHooks = dangledIds.map(id => hooks.find(h => h.id === id)).filter((h): h is typeof hooks[number] => !!h && h.is_active);
   const plannedEncounters = encounters.filter(e => e.status === 'planned');
 
   return (
@@ -486,11 +504,11 @@ function SessionPrepView() {
             <h3 className="pw-title">Last time…</h3>
             {lastSession ? (
               <>
-                <div className="pw-card" style={{ cursor: 'default' }}>
+                <div className="pw-card" style={{ cursor: 'default', maxHeight: 300, overflowY: 'auto' }}>
                   <div className="pw-card-eyebrow">Session #{lastSession.session_number} · {lastSession.session_date ?? '—'}</div>
                   <p className="pw-card-body" style={{ marginTop: 0 }}>
                     {lastSession.summary
-                      ? lastSession.summary.replace(/[#*_`]/g, '').slice(0, 400) + (lastSession.summary.length > 400 ? '…' : '')
+                      ? lastSession.summary.replace(/[#*_`]/g, '')
                       : <em style={{ color: 'var(--ink-3)' }}>No summary recorded.</em>}
                   </p>
                 </div>
@@ -532,24 +550,69 @@ function SessionPrepView() {
         {step === 2 && (
           <div className="pw-section">
             <h3 className="pw-title">Hooks to Dangle</h3>
-            {activeHooks.length === 0 ? (
-              <p className="pw-empty">No active hooks. Add some in the Hooks & Ideas tab.</p>
-            ) : activeHooks.map(h => (
+            <p style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
+              Pick which hooks you plan to dangle this session.
+            </p>
+
+            {dangledHooks.length > 0 ? dangledHooks.map(h => (
               <div key={h.id} className="pw-hook">
                 <span className="pw-hook-glyph">❂</span>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div className="pw-hook-title">{h.title}</div>
                   {h.description && <div className="pw-hook-desc">{h.description.replace(/[#*_`]/g, '').slice(0, 120)}</div>}
                 </div>
                 <button
-                  className={`pw-action${done[h.id] ? '' : ''}`}
-                  style={done[h.id] ? { color: 'var(--moss)', borderColor: 'var(--moss)' } : {}}
-                  onClick={() => setDone(d => ({ ...d, [h.id]: !d[h.id] }))}
+                  className="pw-action"
+                  style={{ color: 'var(--ink-3)', borderColor: 'var(--rule)', fontSize: 11 }}
+                  onClick={() => saveDangledHooks(dangledIds.filter(id => id !== h.id))}
                 >
-                  {done[h.id] ? '✓ done' : 'mark done'}
+                  ✕ remove
                 </button>
               </div>
-            ))}
+            )) : (
+              <p className="pw-empty">No hooks selected yet. Add hooks you want to dangle below.</p>
+            )}
+
+            {hookPickerOpen ? (
+              <div style={{ marginTop: 12, border: '1px solid var(--rule)', borderRadius: 8, padding: 8, backgroundColor: 'var(--paper)' }}>
+                {availableHooks.length === 0 ? (
+                  <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
+                    {activeHooks.length === 0 ? 'No active hooks. Add some in the Hooks & Ideas tab.' : 'All active hooks already added.'}
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
+                    {availableHooks.map(h => (
+                      <button
+                        key={h.id}
+                        onClick={() => { saveDangledHooks([...dangledIds, h.id]); setHookPickerOpen(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, border: 'none', background: 'none', color: 'var(--ink)', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)')}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <span style={{ color: 'var(--gold)' }}>❂</span>
+                        <span style={{ fontFamily: 'var(--serif)' }}>{h.title}</span>
+                        {h.category && <span style={{ fontSize: 10, color: 'var(--ink-3)', marginLeft: 'auto' }}>{h.category.replace('_', ' ')}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={() => setHookPickerOpen(false)}
+                  style={{ fontSize: 11, color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4 }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                className="pw-action"
+                style={{ marginTop: 12, color: 'var(--gold)', borderColor: 'var(--rule)', borderStyle: 'dashed' }}
+                onClick={() => setHookPickerOpen(true)}
+                disabled={savingHooks}
+              >
+                + Add hook
+              </button>
+            )}
           </div>
         )}
 
@@ -604,7 +667,7 @@ export default function SessionNotes({ viewMode = 'log' }: { viewMode?: string; 
       {viewMode === 'log'      && <SessionLog />}
       {viewMode === 'timeline' && <SessionTimeline />}
       {viewMode === 'prep'     && <SessionPrepView />}
-      {viewMode === 'hooks'    && <HooksIdeasLazy />}
+      {viewMode === 'hooks'    && <div style={{ height: '100%', overflowY: 'auto' }}><HooksIdeasLazy /></div>}
     </div>
   );
 }

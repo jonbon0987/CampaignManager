@@ -91,6 +91,7 @@ export interface SessionPrep {
   session_number: number;
   prep_date: string | null;
   notes: string | null;
+  dangled_hook_ids: string[];
   created_at: string;
   updated_at: string;
 }
