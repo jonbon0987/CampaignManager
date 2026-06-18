@@ -96,12 +96,12 @@ export default function LoreLocations({ onImportFromWorld }: { onImportFromWorld
 
   const handleAdd = async () => {
     if (filter === 'lore') {
-      const result = await upsertLore({ title: '', category: null, content: null, dm_only: false, tags: [] });
+      const result = await upsertLore({ title: '', category: null, content: null, dm_only: false });
       setSelectedId(result.id);
     } else {
       const result = await upsertLocation({
         name: '', location_type: 'landmark', region: null,
-        description: null, notes: null, dm_notes: null,
+        description: null, dm_notes: null,
         history: null, population: null, status: null,
       });
       setSelectedId(result.id);
@@ -237,7 +237,6 @@ function LocationDetail({ location, onDelete }: { location: Location; onDelete: 
         description: data.description || null,
         history: data.history || null,
         dm_notes: data.dm_notes || null,
-        notes: location.notes ?? null,
       });
     },
     delay: 800,
@@ -379,7 +378,6 @@ function LoreDetail({ entry, onDelete }: { entry: LoreEntry; onDelete: () => voi
         category: data.category || null,
         dm_only: data.dm_only,
         content: data.content || null,
-        tags: entry.tags ?? [],
       });
     },
     delay: 800,

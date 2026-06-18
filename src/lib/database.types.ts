@@ -195,6 +195,23 @@ export interface LoreEntry {
   updated_at: string;
 }
 
+export interface TimelineEvent {
+  id: string;
+  user_id: string;
+  world_id: string | null;
+  title: string;
+  description: string | null;
+  year: number;
+  display_date: string;
+  event_type: string;
+  era: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TimelineEventInsert = Omit<TimelineEvent, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 export interface Module {
   id: string;
   user_id: string;

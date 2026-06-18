@@ -81,11 +81,8 @@ export default function WorldOverview() {
   if (!activeWorld) return null;
 
   const recentEvents = timeline
-    .filter(e => e.era === 'Fourth Silence')
     .slice(-4)
     .reverse();
-
-  const calendarAbbr = activeWorld.calendar.split('(')[1]?.replace(')', '') || 'CR';
 
   return (
     <div className="w-overview">
@@ -106,8 +103,6 @@ export default function WorldOverview() {
           onSave={v => updateWorld(activeWorld.id, { tagline: v })}
         />
         <div className="w-hero-stats">
-          <Stat label="Era" value={activeWorld.era} />
-          <Stat label="Year" value={`${calendarAbbr} ${activeWorld.year}`} />
           <Stat label="Campaigns" value={campaigns.length} />
           <Stat label="Locations" value={locations.length} />
         </div>

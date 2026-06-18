@@ -777,6 +777,23 @@
 }
 .ne-btn-primary:hover { opacity: 0.9; }
 .ne-btn-primary:disabled { opacity: 0.4; cursor: default; }
+.ne-btn-danger {
+  background: transparent; color: var(--ember);
+  border-color: color-mix(in oklab, var(--ember) 40%, transparent);
+}
+.ne-btn-danger:hover { background: color-mix(in oklab, var(--ember) 12%, transparent); border-color: var(--ember); }
+
+.tl-edit-form {
+  flex: 1; display: flex; flex-direction: column; gap: 8px;
+  padding: 8px 0;
+}
+.tl-edit-actions {
+  display: flex; gap: 8px; align-items: center;
+}
+.tl-event-editing {
+  border: 1px solid var(--ink-2); border-radius: 8px;
+  padding: 12px; background: color-mix(in oklab, var(--bg) 95%, var(--ink));
+}
 
 /* ── Detail inherited indicator ── */
 .w-inherited {
