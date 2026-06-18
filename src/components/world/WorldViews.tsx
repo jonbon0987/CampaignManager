@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { ListDetail, ListRow, DetailPanel, DetailSection, Pill, EmptyDetail } from '../ui/ListDetail';
@@ -11,6 +11,10 @@ import { authHeaders } from '../../lib/apiClient';
 import { StatBlockBody, emptyMonsterForm, CREATURE_TYPES, ABILITY_KEYS, abilityMod } from '../tabs/CreatureStatblocks';
 import type { MonsterForm } from '../tabs/CreatureStatblocks';
 import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { OverflowMenu } from '../ui/OverflowMenu';
+import { AutosaveTextarea } from '../ui/MentionButton';
+import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
 import type { ReactNode } from 'react';
 
@@ -51,7 +55,7 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
 // ═══════════════════════════════════════════
 
 export function WorldNPCsView() {
-  const { npcs, factions, facById, locById, selected, setSelected } = useWorld();
+  const { npcs, factions, facById, locById, selected, setSelected, createNPC } = useWorld();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'npc' | 'faction'>('all');
 
@@ -81,7 +85,7 @@ export function WorldNPCsView() {
       count={items.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={() => {}}
+      onAdd={async () => { const id = await createNPC(); if (id) setSelected('npcs', id); }}
       filters={
         <>
           <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
@@ -98,12 +102,12 @@ export function WorldNPCsView() {
               onClick={() => setSelected('npcs', x.id)}
               glyph={x.kind === 'faction' ? '❖' : '◇'}
               title={x.name}
-              subtitle={x.kind === 'npc' ? x.role : x.type}
+              subtitle={x.kind === 'npc' ? x.role : formatType(x.type)}
               badges={
                 <>
                   {x.kind === 'npc' && x.status && <Tag kind={x.status}>{x.status}</Tag>}
                   {x.kind === 'npc' && x.era && <SubtleTag>{x.era}</SubtleTag>}
-                  {x.kind === 'faction' && <SubtleTag>{x.type}</SubtleTag>}
+                  {x.kind === 'faction' && <SubtleTag>{formatType(x.type)}</SubtleTag>}
                 </>
               }
             />
@@ -115,16 +119,27 @@ export function WorldNPCsView() {
   );
 }
 
+const NPC_STATUSES = ['active', 'deceased', 'unknown'] as const;
+
+interface NPCForm {
+  name: string;
+  role: string;
+  status: string;
+  description: string;
+  dm_notes: string;
+}
+
 function WorldNPCDetail({ entity }: { entity: any }) {
-  const { npcs, facById, locById } = useWorld();
+  const { npcs, facById, locById, upsertWorldNPC, deleteWorldNPC } = useWorld();
+  const confirm = useConfirm();
 
   if (entity.kind === 'faction') {
     const members = npcs.filter(n => n.factions?.includes(entity.id));
     return (
-      <DetailPanel eyebrow={`World Faction · ${entity.type}`} title={entity.name} subtitle={entity.desc}>
+      <DetailPanel eyebrow={`World Faction · ${formatType(entity.type)}`} title={entity.name} subtitle={entity.desc}>
         <WorldBadge />
         <div className="cm-stat-strip">
-          <Stat label="Type" value={entity.type} />
+          <Stat label="Type" value={formatType(entity.type)} />
           <Stat label="Members" value={members.length} />
         </div>
         <DetailSection title="Known Members">
@@ -144,36 +159,79 @@ function WorldNPCDetail({ entity }: { entity: any }) {
     );
   }
 
-  const entityFactions = (entity.factions || []).map((id: string) => facById[id]).filter(Boolean);
-  const loc = entity.location ? locById[entity.location] : null;
+  return <WorldNPCEditDetail key={entity.id} entity={entity} />;
+}
+
+function WorldNPCEditDetail({ entity }: { entity: any }) {
+  const { upsertWorldNPC, deleteWorldNPC, locations } = useWorld();
+  const confirm = useConfirm();
+
+  const [form, setForm] = useState<NPCForm>(() => ({
+    name: entity.name ?? '',
+    role: entity.role ?? '',
+    status: entity.status ?? 'active',
+    description: entity.desc ?? '',
+    dm_notes: '',
+  }));
+
+  useEffect(() => {
+    setForm({
+      name: entity.name ?? '',
+      role: entity.role ?? '',
+      status: entity.status ?? 'active',
+      description: entity.desc ?? '',
+      dm_notes: '',
+    });
+  }, [entity.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { status, saveNow } = useAutoSave<NPCForm>({
+    data: form,
+    onSave: async (data) => {
+      await upsertWorldNPC({
+        id: entity.id,
+        name: data.name || 'Unnamed NPC',
+        role: data.role || null,
+        status: (data.status as 'active' | 'deceased' | 'unknown') || null,
+        description: data.description || null,
+        dm_notes: data.dm_notes || null,
+      });
+    },
+    delay: 800,
+    enabled: true,
+  });
+
+  const set = <K extends keyof NPCForm>(key: K, value: NPCForm[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
 
   return (
-    <DetailPanel eyebrow="World Character" title={entity.name} subtitle={entity.role}>
-      <WorldBadge />
-      <div className="cm-stat-strip">
-        <Stat label="Status" value={<Tag kind={entity.status}>{entity.status}</Tag>} />
-        <Stat label="Era" value={entity.era || '—'} />
-        <Stat label="Location" value={loc ? loc.name : '—'} />
+    <DetailPanel eyebrow="Character" title="">
+      <div className="as-bar">
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <div className="as-spacer" />
+        <OverflowMenu items={[
+          { label: 'Delete NPC', danger: true, onClick: async () => {
+            if (await confirm('Delete this NPC?', 'This cannot be undone.')) {
+              await deleteWorldNPC(entity.id);
+            }
+          }},
+        ]} />
       </div>
-      {entityFactions.length > 0 && (
-        <div className="cm-pill-row">
-          {entityFactions.map((f: any) => (
-            <span key={f.id} className="cm-faction-pill" style={{ '--faction-tone': f.tone } as React.CSSProperties}>
-              <span className="cm-pill-glyph">❖</span>{f.name}
-            </span>
-          ))}
+      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="NPC name…" />
+      <input className="as-sub" value={form.role} onChange={e => set('role', e.target.value)} placeholder="Role…" />
+      <div className="as-meta">
+        <div className="as-mi">
+          <span className="as-ml">Status</span>
+          <select className="as-select" value={form.status} onChange={e => set('status', e.target.value)}>
+            {NPC_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+          </select>
         </div>
-      )}
+      </div>
       <DetailSection title="Description">
-        <p className="cm-prose">{entity.desc}</p>
+        <AutosaveTextarea value={form.description} onChange={v => set('description', v)} placeholder="Describe this character…" rows={5} mention={false} />
       </DetailSection>
-      {entity.tags?.length > 0 && (
-        <DetailSection title="Tags">
-          <div className="cm-chip-list">
-            {entity.tags.map((t: string) => <span key={t} className="cm-tag is-subtle">{t}</span>)}
-          </div>
-        </DetailSection>
-      )}
+      <DetailSection title="DM Notes">
+        <AutosaveTextarea value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" rows={3} mention={false} />
+      </DetailSection>
     </DetailPanel>
   );
 }
@@ -183,7 +241,7 @@ function WorldNPCDetail({ entity }: { entity: any }) {
 // ═══════════════════════════════════════════
 
 export function WorldLocationsView() {
-  const { locations, npcs, locById, selected, setSelected } = useWorld();
+  const { locations, npcs, locById, selected, setSelected, createLocation } = useWorld();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
@@ -205,12 +263,12 @@ export function WorldLocationsView() {
       count={items.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={() => {}}
+      onAdd={async () => { const id = await createLocation(); if (id) setSelected('locations', id); }}
       filters={
         <>
           <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
           {types.map(t => (
-            <Pill key={t} active={filter === t} onClick={() => setFilter(filter === t ? 'all' : t)}>{t}</Pill>
+            <Pill key={t} active={filter === t} onClick={() => setFilter(filter === t ? 'all' : t)}>{formatType(t)}</Pill>
           ))}
         </>
       }
@@ -225,7 +283,7 @@ export function WorldLocationsView() {
                 onClick={() => setSelected('locations', x.id)}
                 glyph="✦"
                 title={x.name}
-                subtitle={parent ? `${x.type} · in ${parent.name}` : x.type}
+                subtitle={parent ? `${formatType(x.type)} · in ${parent.name}` : formatType(x.type)}
                 badges={x.tags.slice(0, 2).map(t => <SubtleTag key={t}>{t}</SubtleTag>)}
               />
             );
@@ -237,46 +295,120 @@ export function WorldLocationsView() {
   );
 }
 
+const LOCATION_TYPES = ['city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
+const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
+
+function formatType(t: string | null) {
+  if (!t) return '';
+  return t.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bHq\b/, 'HQ');
+}
+
+interface LocForm {
+  name: string;
+  region: string;
+  location_type: string;
+  population: string;
+  status: string;
+  description: string;
+  history: string;
+  dm_notes: string;
+}
+
 function WorldLocationDetail({ loc }: { loc: any }) {
-  const { locations, npcs, locById } = useWorld();
-  const children = locations.filter(l => l.parent === loc.id);
-  const npcsHere = npcs.filter(n => n.location === loc.id);
-  const parent = loc.parent ? locById[loc.parent] : null;
+  const { upsertWorldLocation, deleteWorldLocation } = useWorld();
+  const confirm = useConfirm();
+
+  const [form, setForm] = useState<LocForm>(() => ({
+    name: loc.name ?? '',
+    region: '',
+    location_type: loc.type ?? 'landmark',
+    population: '',
+    status: 'active',
+    description: loc.desc ?? '',
+    history: '',
+    dm_notes: '',
+  }));
+
+  useEffect(() => {
+    setForm({
+      name: loc.name ?? '',
+      region: '',
+      location_type: loc.type ?? 'landmark',
+      population: '',
+      status: 'active',
+      description: loc.desc ?? '',
+      history: '',
+      dm_notes: '',
+    });
+  }, [loc.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { status, saveNow } = useAutoSave<LocForm>({
+    data: form,
+    onSave: async (data) => {
+      await upsertWorldLocation({
+        id: loc.id,
+        name: data.name || 'Unnamed Location',
+        region: data.region || null,
+        location_type: data.location_type || null,
+        population: data.population || null,
+        status: data.status || null,
+        description: data.description || null,
+        history: data.history || null,
+        dm_notes: data.dm_notes || null,
+      });
+    },
+    delay: 800,
+    enabled: true,
+  });
+
+  const set = <K extends keyof LocForm>(key: K, value: LocForm[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
 
   return (
-    <DetailPanel eyebrow={`World Location · ${loc.type}`} title={loc.name} subtitle={loc.tags.map((t: string) => `#${t}`).join('  ')}>
-      <WorldBadge />
-      <div className="cm-stat-strip">
-        <Stat label="Type" value={loc.type} />
-        <Stat label="Parent" value={parent ? parent.name : '—'} />
-        <Stat label="Sub-locations" value={children.length} />
-        <Stat label="NPCs Here" value={npcsHere.length} />
+    <DetailPanel eyebrow="Location" title="">
+      <div className="as-bar">
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <div className="as-spacer" />
+        <OverflowMenu items={[
+          { label: 'Delete Location', danger: true, onClick: async () => {
+            if (await confirm('Delete this location?', 'This cannot be undone.')) {
+              await deleteWorldLocation(loc.id);
+            }
+          }},
+        ]} />
+      </div>
+      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" />
+      <input className="as-sub" value={form.region} onChange={e => set('region', e.target.value)} placeholder="Region…" />
+      <div className="as-meta">
+        <div className="as-mi">
+          <span className="as-ml">Type</span>
+          <select className="as-select" value={form.location_type} onChange={e => set('location_type', e.target.value)}>
+            {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
+          </select>
+        </div>
+        <div className="as-mi">
+          <span className="as-ml">Status</span>
+          <select className="as-select" value={form.status} onChange={e => set('status', e.target.value)}>
+            <option value="active">Active</option>
+            <option value="destroyed">Destroyed</option>
+            <option value="unknown">Unknown</option>
+            <option value="compromised">Compromised</option>
+          </select>
+        </div>
+        <div className="as-mi">
+          <span className="as-ml">Population</span>
+          <input className="as-input" value={form.population} onChange={e => set('population', e.target.value)} placeholder="e.g. ~12,000" />
+        </div>
       </div>
       <DetailSection title="Description">
-        <p className="cm-prose">{loc.desc}</p>
+        <AutosaveTextarea value={form.description} onChange={v => set('description', v)} placeholder="Describe this place…" rows={4} mention={false} />
       </DetailSection>
-      {children.length > 0 && (
-        <DetailSection title="Sub-locations">
-          <div className="cm-chip-list">
-            {children.map(c => (
-              <span key={c.id} className="cm-chip">
-                <span className="cm-chip-glyph" style={{ color: 'var(--gold)' }}>✦</span>{c.name}
-              </span>
-            ))}
-          </div>
-        </DetailSection>
-      )}
-      {npcsHere.length > 0 && (
-        <DetailSection title="Who's Here">
-          <div className="cm-chip-list">
-            {npcsHere.map(n => (
-              <span key={n.id} className="cm-chip">
-                <span className="cm-chip-glyph">◇</span>{n.name}
-              </span>
-            ))}
-          </div>
-        </DetailSection>
-      )}
+      <DetailSection title="History">
+        <AutosaveTextarea value={form.history} onChange={v => set('history', v)} placeholder="Historical events…" rows={4} mention={false} />
+      </DetailSection>
+      <DetailSection title="DM Notes">
+        <AutosaveTextarea value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" rows={3} mention={false} />
+      </DetailSection>
     </DetailPanel>
   );
 }
@@ -286,7 +418,7 @@ function WorldLocationDetail({ loc }: { loc: any }) {
 // ═══════════════════════════════════════════
 
 export function WorldLoreView() {
-  const { lore, selected, setSelected } = useWorld();
+  const { lore, selected, setSelected, createLoreEntry } = useWorld();
   const [search, setSearch] = useState('');
 
   const items = useMemo(() => {
@@ -304,7 +436,7 @@ export function WorldLoreView() {
       count={items.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={() => {}}
+      onAdd={async () => { const id = await createLoreEntry(); if (id) setSelected('lore', id); }}
       list={
         <div>
           {items.map(x => (
@@ -314,21 +446,96 @@ export function WorldLoreView() {
               onClick={() => setSelected('lore', x.id)}
               glyph="❦"
               title={x.title}
-              subtitle="lore"
-              badges={x.tags.slice(0, 2).map(t => <SubtleTag key={t}>{t}</SubtleTag>)}
+              subtitle="Lore"
+              badges={x.tags.slice(0, 2).map(t => <SubtleTag key={t}>{formatType(t)}</SubtleTag>)}
             />
           ))}
         </div>
       }
-      detail={sel ? (
-        <DetailPanel eyebrow="World Lore" title={sel.title} subtitle={sel.tags.map(t => `#${t}`).join('  ')}>
-          <WorldBadge />
-          <DetailSection title="Content">
-            <p className="cm-prose">{sel.desc}</p>
-          </DetailSection>
-        </DetailPanel>
-      ) : <EmptyDetail>Select a lore entry.</EmptyDetail>}
+      detail={sel ? <WorldLoreDetail key={sel.id} entry={sel} /> : <EmptyDetail>Select a lore entry.</EmptyDetail>}
     />
+  );
+}
+
+interface LoreForm {
+  title: string;
+  category: string;
+  dm_only: boolean;
+  content: string;
+}
+
+function WorldLoreDetail({ entry }: { entry: any }) {
+  const { upsertWorldLore, deleteWorldLore } = useWorld();
+  const confirm = useConfirm();
+
+  const [form, setForm] = useState<LoreForm>(() => ({
+    title: entry.title ?? '',
+    category: entry.tags?.[0] ?? 'history',
+    dm_only: false,
+    content: entry.desc ?? '',
+  }));
+
+  useEffect(() => {
+    setForm({
+      title: entry.title ?? '',
+      category: entry.tags?.[0] ?? 'history',
+      dm_only: false,
+      content: entry.desc ?? '',
+    });
+  }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { status, saveNow } = useAutoSave<LoreForm>({
+    data: form,
+    onSave: async (data) => {
+      await upsertWorldLore({
+        id: entry.id,
+        title: data.title || 'Untitled Entry',
+        category: data.category || null,
+        dm_only: data.dm_only,
+        content: data.content || null,
+      });
+    },
+    delay: 800,
+    enabled: true,
+  });
+
+  const set = <K extends keyof LoreForm>(key: K, value: LoreForm[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+
+  return (
+    <DetailPanel eyebrow="Lore" title="">
+      <div className="as-bar">
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <div className="as-spacer" />
+        <OverflowMenu items={[
+          { label: 'Delete entry', danger: true, onClick: async () => {
+            if (await confirm('Delete this lore entry?', 'This cannot be undone.')) {
+              await deleteWorldLore(entry.id);
+            }
+          }},
+        ]} />
+      </div>
+      <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" />
+      <div className="as-meta">
+        <div className="as-mi">
+          <span className="as-ml">Category</span>
+          <select className="as-select" value={form.category} onChange={e => set('category', e.target.value)}>
+            {LORE_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+          </select>
+        </div>
+        <div className="as-mi">
+          <span className="as-ml">DM Only</span>
+          <div className="as-pills">
+            <button type="button" className={`as-pill-opt${form.dm_only ? ' is-active' : ''}`} onClick={() => set('dm_only', !form.dm_only)}>
+              {form.dm_only ? 'Hidden from players' : 'Visible to players'}
+            </button>
+          </div>
+        </div>
+      </div>
+      <DetailSection title="Content">
+        <AutosaveTextarea value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" rows={8} mention={false} />
+      </DetailSection>
+    </DetailPanel>
   );
 }
 

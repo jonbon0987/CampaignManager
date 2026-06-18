@@ -95,7 +95,7 @@ function WorldSelector() {
               <div className="ws-drop-item-body">
                 <div className="ws-drop-item-name">{w.name}</div>
                 <div className="ws-drop-item-sub">
-                  {w.era} · {w.campaignIds.length} campaign{w.campaignIds.length !== 1 ? 's' : ''}
+                  {w.campaignIds.length} campaign{w.campaignIds.length !== 1 ? 's' : ''}
                 </div>
               </div>
               {worlds.length > 1 && (
@@ -360,8 +360,7 @@ export default function WorldSidebar() {
 
       <div className="cm-side-foot">
         <div className="cm-side-meta">
-          <div>{activeWorld?.name ?? '—'} · {activeWorld?.era ?? ''}</div>
-          <div className="cm-side-meta-sub">{activeWorld?.calendar ?? ''} {activeWorld?.year ?? ''}</div>
+          <div>{activeWorld?.name ?? '—'}</div>
         </div>
         <button className="cm-logout-btn" onClick={async () => {
           const ok = await confirm({ title: 'Log out', message: 'Log out of Campaign Manager?' });

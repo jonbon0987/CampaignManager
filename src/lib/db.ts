@@ -26,6 +26,7 @@ import type {
   Encounter, EncounterInsert,
   ModuleDependency, ModuleDependencyInsert,
   SubmoduleDependency, SubmoduleDependencyInsert,
+  TimelineEvent, TimelineEventInsert,
 } from './database.types';
 
 // --------------- Helper ---------------
@@ -551,6 +552,39 @@ export const Lore = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('lore_entries').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// TIMELINE EVENTS
+// ============================================================
+
+export const TimelineEvents = {
+  async getByWorld(worldId: string): Promise<TimelineEvent[]> {
+    const { data, error } = await supabase
+      .from('timeline_events')
+      .select('*')
+      .eq('world_id', worldId)
+      .order('year')
+      .order('sort_order');
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(entry: TimelineEventInsert & { id?: string }): Promise<TimelineEvent> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('timeline_events')
+      .upsert({ ...entry, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('timeline_events').delete().eq('id', id);
     if (error) throw error;
   },
 };
