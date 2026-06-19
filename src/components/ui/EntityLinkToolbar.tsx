@@ -3,15 +3,17 @@ import type { RefObject } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import type { EntityType } from './StatBlockText';
+import { serializeRef } from '../../lib/slashMarkdown';
 
-const entityConfig: Record<EntityType, { icon: string; label: string; color: string; bg: string; border: string }> = {
-  creature: { icon: '⚔', label: 'Stat Sheet', color: '#c060d0', bg: '#2a1a3a', border: '#5a2a7a' },
+const entityConfig: Partial<Record<EntityType, { icon: string; label: string; color: string; bg: string; border: string }>> = {
+  statblock: { icon: '⚔', label: 'Stat Sheet', color: '#c060d0', bg: '#2a1a3a', border: '#5a2a7a' },
   npc:      { icon: '👤', label: 'NPC',      color: '#70a0e0', bg: '#1a2a3a', border: '#2a4a7a' },
   location: { icon: '📍', label: 'Location', color: '#60c080', bg: '#1a3a2a', border: '#2a6a4a' },
   session:  { icon: '📜', label: 'Session',  color: 'var(--gold)', bg: '#2a2a1a', border: '#5a5a2a' },
   faction:  { icon: '🛡', label: 'Faction',  color: '#b070b0', bg: '#2a1a2a', border: '#5a3060' },
   hook:     { icon: '💡', label: 'Hook',     color: '#e0a060', bg: '#3a2a1a', border: '#7a5a2a' },
 };
+const CONFIG_TYPES = Object.keys(entityConfig) as EntityType[];
 
 interface EntityItem {
   id: string;
@@ -37,7 +39,7 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
       id: m.id,
       name: m.name,
       subtitle: [m.creature_type, m.challenge_rating ? `CR ${m.challenge_rating}` : null].filter(Boolean).join(' · ') || undefined,
-      entityType: 'creature' as EntityType,
+      entityType: 'statblock' as EntityType,
     })),
     ...npcs.map(n => ({
       id: n.id,
@@ -82,7 +84,7 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
   });
 
   function handlePick(entity: EntityItem) {
-    const markup = `[[${entity.entityType}:${entity.id}:${entity.name}]]`;
+    const markup = serializeRef(entity.entityType, entity.id, entity.name);
     onInsert(markup);
     setPickerOpen(false);
     setSearch('');
@@ -93,8 +95,8 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
   return (
     <>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-        {(Object.keys(entityConfig) as EntityType[]).map(type => {
-          const cfg = entityConfig[type];
+        {CONFIG_TYPES.map(type => {
+          const cfg = entityConfig[type]!;
           return (
             <button
               key={type}
@@ -144,8 +146,8 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
             >
               All
             </button>
-            {(Object.keys(entityConfig) as EntityType[]).map(type => {
-              const cfg = entityConfig[type];
+            {CONFIG_TYPES.map(type => {
+              const cfg = entityConfig[type]!;
               return (
                 <button
                   key={type}
@@ -199,7 +201,7 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '360px', overflowY: 'auto' }}>
               {filtered.map(entity => {
-                const cfg = entityConfig[entity.entityType];
+                const cfg = entityConfig[entity.entityType]!;
                 return (
                   <button
                     key={`${entity.entityType}-${entity.id}`}

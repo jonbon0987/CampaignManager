@@ -1,12 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { getTypeStyle } from '../../lib/theme';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
-import { insertAtCursor } from '../../lib/textUtils';
 import { StatBlockText } from '../ui/StatBlockText';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
@@ -316,8 +314,6 @@ export default function CreatureStatblocks({ onImportFromWorld }: { onImportFrom
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonsterStatblock | null>(null);
   const [form, setForm] = useState<MonsterForm>(emptyMonsterForm());
-  const contentRef = useRef<HTMLTextAreaElement>(null);
-  const dmNotesRef = useRef<HTMLTextAreaElement>(null);
   const [viewing, setViewing] = useState<MonsterStatblock | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -983,12 +979,10 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
         {/* Actions & Traits free-form */}
         <FormField label="Actions & Traits">
-          <MarkdownEditor value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" textareaRef={contentRef} />
-          <EntityLinkToolbar textareaRef={contentRef} onInsert={markup => setForm(prev => ({ ...prev, content: insertAtCursor(contentRef, prev.content, markup) }))} />
+          <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" />
         </FormField>
         <FormField label="DM Notes">
-          <MarkdownEditor value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" textareaRef={dmNotesRef} />
-          <EntityLinkToolbar textareaRef={dmNotesRef} onInsert={markup => setForm(prev => ({ ...prev, dm_notes: insertAtCursor(dmNotesRef, prev.dm_notes, markup) }))} />
+          <SlashField value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" />
         </FormField>
       </Modal>
 

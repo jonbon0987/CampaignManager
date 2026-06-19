@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from './OverflowMenu';
-import { AutosaveTextarea } from './MentionButton';
+import { SlashField } from './SlashField';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
@@ -183,7 +183,6 @@ export function EncounterDetail({
   onRun,
   onViewStatblock,
   upsertEncounter,
-  enableMentions = true,
 }: {
   enc: Encounter;
   monsterStatblocks: MonsterStatblock[];
@@ -370,12 +369,10 @@ export function EncounterDetail({
       {/* ── Description ── */}
       <div className="as-fl" style={{ marginBottom: '24px' }}>
         <div className="as-ll">Description</div>
-        <AutosaveTextarea
-          value={form.description}
+        <SlashField
+          value={form.description ?? ''}
           onChange={v => setForm(prev => ({ ...prev, description: v }))}
           placeholder="Scene-setting description for the encounter…"
-          rows={3}
-          mention={enableMentions}
         />
       </div>
 
@@ -472,12 +469,10 @@ export function EncounterDetail({
       {/* ── DM Notes ── */}
       <div className="as-fl" style={{ marginBottom: '24px' }}>
         <div className="as-ll">DM Notes</div>
-        <AutosaveTextarea
-          value={form.dm_notes}
+        <SlashField
+          value={form.dm_notes ?? ''}
           onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))}
           placeholder="Tactics, pacing tips, dramatic moments…"
-          rows={4}
-          mention={enableMentions}
         />
       </div>
 

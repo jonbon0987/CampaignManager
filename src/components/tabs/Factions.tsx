@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { Pencil, Eye } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -11,9 +12,6 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { MarkdownContent } from '../ui/MarkdownContent';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
-import { insertAtCursor } from '../../lib/textUtils';
 import { factionTypeColors } from '../../lib/theme';
 import type { Faction } from '../../lib/database.types';
 
@@ -67,8 +65,6 @@ export default function Factions() {
   const [editForm, setEditForm] = useState<FactionForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const editOverviewRef = useRef<HTMLTextAreaElement>(null);
-  const newOverviewRef = useRef<HTMLTextAreaElement>(null);
 
   const filtered = factions
     .filter(f => {
@@ -282,20 +278,19 @@ export default function Factions() {
                           <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Overview
                           </label>
-                          <MarkdownEditor value={editForm.overview ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, overview: v || null } : prev)} placeholder="Describe this faction's purpose, history, and public face…" minHeight="100px" textareaRef={editOverviewRef} />
-                          <EntityLinkToolbar textareaRef={editOverviewRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, overview: insertAtCursor(editOverviewRef, prev.overview ?? '', markup) } : prev)} />
+                          <SlashField value={editForm.overview ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, overview: v || null } : prev)} placeholder="Describe this faction's purpose, history, and public face…" minHeight="100px" />
                         </div>
                         <div>
                           <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Key Figures
                           </label>
-                          <MarkdownEditor value={editForm.key_figures ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, key_figures: v || null } : prev)} placeholder="Notable members, leaders, agents…" minHeight="60px" />
+                          <SlashField value={editForm.key_figures ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, key_figures: v || null } : prev)} placeholder="Notable members, leaders, agents…" minHeight="60px" />
                         </div>
                         <div>
                           <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Agenda
                           </label>
-                          <MarkdownEditor value={editForm.agenda ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, agenda: v || null } : prev)} placeholder="Goals, plans, and public agenda…" minHeight="60px" />
+                          <SlashField value={editForm.agenda ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, agenda: v || null } : prev)} placeholder="Goals, plans, and public agenda…" minHeight="60px" />
                         </div>
                         <div
                           className="rounded border p-3"
@@ -313,7 +308,7 @@ export default function Factions() {
                               DM Only
                             </span>
                           </div>
-                          <MarkdownEditor value={editForm.dm_notes ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, dm_notes: v || null } : prev)} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="60px" />
+                          <SlashField value={editForm.dm_notes ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, dm_notes: v || null } : prev)} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="60px" />
                         </div>
                         <div className="flex gap-2">
                           <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
@@ -418,17 +413,16 @@ export default function Factions() {
           </div>
         </FormField>
         <FormField label="Overview">
-          <MarkdownEditor value={form.overview ?? ''} onChange={v => setForm(prev => ({ ...prev, overview: v || null }))} placeholder="Describe this faction's purpose, history, and public face…" minHeight="120px" textareaRef={newOverviewRef} />
-          <EntityLinkToolbar textareaRef={newOverviewRef} onInsert={markup => setForm(prev => ({ ...prev, overview: insertAtCursor(newOverviewRef, prev.overview ?? '', markup) }))} />
+          <SlashField value={form.overview ?? ''} onChange={v => setForm(prev => ({ ...prev, overview: v || null }))} placeholder="Describe this faction's purpose, history, and public face…" minHeight="120px" />
         </FormField>
         <FormField label="Key Figures">
-          <MarkdownEditor value={form.key_figures ?? ''} onChange={v => setForm(prev => ({ ...prev, key_figures: v || null }))} placeholder="Notable members, leaders, agents…" minHeight="80px" />
+          <SlashField value={form.key_figures ?? ''} onChange={v => setForm(prev => ({ ...prev, key_figures: v || null }))} placeholder="Notable members, leaders, agents…" minHeight="80px" />
         </FormField>
         <FormField label="Agenda">
-          <MarkdownEditor value={form.agenda ?? ''} onChange={v => setForm(prev => ({ ...prev, agenda: v || null }))} placeholder="Goals, plans, and public agenda…" minHeight="80px" />
+          <SlashField value={form.agenda ?? ''} onChange={v => setForm(prev => ({ ...prev, agenda: v || null }))} placeholder="Goals, plans, and public agenda…" minHeight="80px" />
         </FormField>
         <FormField label="DM Notes (Hidden Agendas / Secrets)">
-          <MarkdownEditor value={form.dm_notes ?? ''} onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="80px" />
+          <SlashField value={form.dm_notes ?? ''} onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="80px" />
         </FormField>
       </Modal>
     </div>

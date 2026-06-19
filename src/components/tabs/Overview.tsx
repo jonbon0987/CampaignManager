@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
 import type { Tab } from '../../App';
 
 interface OverviewProps {
@@ -250,7 +250,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
             </FormField>
 
             <FormField label="Plot Summary">
-              <MarkdownEditor
+              <SlashField
                 value={form.plotSummary}
                 onChange={v => updateField('plotSummary', v)}
                 placeholder="The overarching story, main conflicts, and campaign themes..."
@@ -260,7 +260,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField label="Major Characters">
-                <MarkdownEditor
+                <SlashField
                   value={form.majorCharacters}
                   onChange={v => updateField('majorCharacters', v)}
                   placeholder="Key villains, allies, and important figures..."
@@ -269,7 +269,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
               </FormField>
 
               <FormField label="World Info & Additional Notes">
-                <MarkdownEditor
+                <SlashField
                   value={form.worldInfo}
                   onChange={v => updateField('worldInfo', v)}
                   placeholder="Setting details, house rules, tone, important context..."

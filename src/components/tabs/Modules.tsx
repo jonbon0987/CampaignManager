@@ -1,11 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { SlashField } from '../ui/SlashField';
 // useRef kept for ModuleCreatePanel textarea refs
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { Button } from '../ui/Button';
-import { insertAtCursor } from '../../lib/textUtils';
 import type { Module, Faction } from '../../lib/database.types';
 import ModuleDetail from './ModuleDetail';
 import ModuleWeb from './ModuleWeb';
@@ -147,9 +145,6 @@ function ModuleCreatePanel({
 }) {
   const [form, setForm] = useState<ModuleForm>(emptyModuleForm());
   const [saving, setSaving] = useState(false);
-  const synopsisRef = useRef<HTMLTextAreaElement>(null);
-  const encountersRef = useRef<HTMLTextAreaElement>(null);
-  const dmNotesRef = useRef<HTMLTextAreaElement>(null);
 
   const handleCreate = async () => {
     if (!form.title.trim()) return;
@@ -196,16 +191,13 @@ function ModuleCreatePanel({
           </FormField>
         </div>
         <FormField label="Synopsis">
-          <MarkdownEditor value={form.synopsis ?? ''} onChange={v => setForm(p => ({ ...p, synopsis: v }))} placeholder="Overview of this chapter's events…" minHeight="80px" textareaRef={synopsisRef} />
-          <EntityLinkToolbar textareaRef={synopsisRef} onInsert={markup => setForm(p => ({ ...p, synopsis: insertAtCursor(synopsisRef, p.synopsis ?? '', markup) }))} />
+          <SlashField value={form.synopsis ?? ''} onChange={v => setForm(p => ({ ...p, synopsis: v }))} placeholder="Overview of this chapter's events…" minHeight="80px" />
         </FormField>
         <FormField label="Encounters & Story Beats">
-          <MarkdownEditor value={form.encounters ?? ''} onChange={v => setForm(p => ({ ...p, encounters: v }))} placeholder="Key scenes, encounters…" minHeight="100px" textareaRef={encountersRef} />
-          <EntityLinkToolbar textareaRef={encountersRef} onInsert={markup => setForm(p => ({ ...p, encounters: insertAtCursor(encountersRef, p.encounters ?? '', markup) }))} />
+          <SlashField value={form.encounters ?? ''} onChange={v => setForm(p => ({ ...p, encounters: v }))} placeholder="Key scenes, encounters…" minHeight="100px" />
         </FormField>
         <FormField label="DM Notes">
-          <MarkdownEditor value={form.dm_notes ?? ''} onChange={v => setForm(p => ({ ...p, dm_notes: v }))} placeholder="Hidden info, fallbacks…" minHeight="60px" textareaRef={dmNotesRef} />
-          <EntityLinkToolbar textareaRef={dmNotesRef} onInsert={markup => setForm(p => ({ ...p, dm_notes: insertAtCursor(dmNotesRef, p.dm_notes ?? '', markup) }))} />
+          <SlashField value={form.dm_notes ?? ''} onChange={v => setForm(p => ({ ...p, dm_notes: v }))} placeholder="Hidden info, fallbacks…" minHeight="60px" />
         </FormField>
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button variant="primary" size="sm" onClick={handleCreate} disabled={!form.title.trim() || saving}>{saving ? 'Creating…' : 'Create Module'}</Button>

@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -11,9 +12,6 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { MarkdownContent } from '../ui/MarkdownContent';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
-import { insertAtCursor } from '../../lib/textUtils';
 import type { Hook } from '../../lib/database.types';
 
 const CATEGORIES = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
@@ -70,8 +68,6 @@ export default function HooksIdeas() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<HookForm | null>(null);
   const [saving, setSaving] = useState(false);
-  const editDescRef = useRef<HTMLTextAreaElement>(null);
-  const newDescRef = useRef<HTMLTextAreaElement>(null);
 
   const filtered = hooks.filter(h => {
     if (!showInactive && !h.is_active) return false;
@@ -233,8 +229,7 @@ export default function HooksIdeas() {
                         </button>
                       ))}
                     </div>
-                    <MarkdownEditor value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Describe the idea..." minHeight="100px" textareaRef={editDescRef} />
-                    <EntityLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
+                    <SlashField value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Describe the idea..." minHeight="100px" />
                   </div>
                 ) : (
                   /* View mode */
@@ -318,8 +313,7 @@ export default function HooksIdeas() {
           </div>
         </FormField>
         <FormField label="Details / Notes">
-          <MarkdownEditor value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Describe the idea, how it could play out, related characters or locations..." minHeight="220px" textareaRef={newDescRef} />
-          <EntityLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
+          <SlashField value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Describe the idea, how it could play out, related characters or locations..." minHeight="220px" />
         </FormField>
       </Modal>
     </div>

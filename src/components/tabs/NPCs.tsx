@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -12,10 +13,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { MarkdownContent } from '../ui/MarkdownContent';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
 import { FactionPillSelector } from '../ui/FactionPillSelector';
-import { insertAtCursor } from '../../lib/textUtils';
 import { getFactionTypeStyle } from '../../lib/theme';
 import type { NPC } from '../../lib/database.types';
 
@@ -88,10 +86,6 @@ export default function NPCs() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<NPCForm | null>(null);
   const [saving, setSaving] = useState(false);
-  const editDescRef = useRef<HTMLTextAreaElement>(null);
-  const editHooksRef = useRef<HTMLTextAreaElement>(null);
-  const newDescRef = useRef<HTMLTextAreaElement>(null);
-  const newHooksRef = useRef<HTMLTextAreaElement>(null);
 
   const displayList = viewMode === 'campaign' ? npcs : globalNPCs;
 
@@ -254,13 +248,11 @@ export default function NPCs() {
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Description</label>
-                      <MarkdownEditor value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Physical appearance, personality..." minHeight="60px" textareaRef={editDescRef} />
-                      <EntityLinkToolbar textareaRef={editDescRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, description: insertAtCursor(editDescRef, prev.description ?? '', markup) } : prev)} />
+                      <SlashField value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Physical appearance, personality..." minHeight="60px" />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Hooks & Motivations</label>
-                      <MarkdownEditor value={editForm.hooks_motivations ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, hooks_motivations: v } : prev)} placeholder="Personal goals, secrets..." minHeight="60px" textareaRef={editHooksRef} />
-                      <EntityLinkToolbar textareaRef={editHooksRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, hooks_motivations: insertAtCursor(editHooksRef, prev.hooks_motivations ?? '', markup) } : prev)} />
+                      <SlashField value={editForm.hooks_motivations ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, hooks_motivations: v } : prev)} placeholder="Personal goals, secrets..." minHeight="60px" />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Factions</label>
@@ -447,12 +439,10 @@ export default function NPCs() {
           </FormField>
         </div>
         <FormField label="Description">
-          <MarkdownEditor value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Physical appearance, personality..." minHeight="80px" textareaRef={newDescRef} />
-          <EntityLinkToolbar textareaRef={newDescRef} onInsert={markup => setForm(prev => ({ ...prev, description: insertAtCursor(newDescRef, prev.description ?? '', markup) }))} />
+          <SlashField value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Physical appearance, personality..." minHeight="80px" />
         </FormField>
         <FormField label="Hooks & Motivations">
-          <MarkdownEditor value={form.hooks_motivations ?? ''} onChange={v => setForm(prev => ({ ...prev, hooks_motivations: v }))} placeholder="Personal goals, secrets..." minHeight="100px" textareaRef={newHooksRef} />
-          <EntityLinkToolbar textareaRef={newHooksRef} onInsert={markup => setForm(prev => ({ ...prev, hooks_motivations: insertAtCursor(newHooksRef, prev.hooks_motivations ?? '', markup) }))} />
+          <SlashField value={form.hooks_motivations ?? ''} onChange={v => setForm(prev => ({ ...prev, hooks_motivations: v }))} placeholder="Personal goals, secrets..." minHeight="100px" />
         </FormField>
         <FormField label="Factions">
           <FactionPillSelector
