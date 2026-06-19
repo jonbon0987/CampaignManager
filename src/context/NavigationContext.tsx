@@ -5,11 +5,14 @@ import type { EntityType } from '../components/ui/StatBlockText';
 
 /** Maps entity types to their corresponding sidebar tabs */
 const ENTITY_TAB_MAP: Record<EntityType, Tab> = {
-  creature: 'combat',
+  statblock: 'combat',
   npc: 'cast',
-  location: 'world',
-  session: 'sessions',
+  pc: 'cast',
   faction: 'cast',
+  location: 'world',
+  lore: 'world',
+  module: 'modules',
+  session: 'sessions',
   hook: 'sessions',
 };
 

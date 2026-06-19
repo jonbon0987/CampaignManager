@@ -1,14 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
 import { Breadcrumb } from '../ui/Breadcrumb';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { MarkdownContent } from '../ui/MarkdownContent';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
-import { insertAtCursor } from '../../lib/textUtils';
 import type { Module, Submodule, Scene, MonsterStatblock, Encounter, ModuleDependency, SubmoduleDependency } from '../../lib/database.types';
 import { wouldCreateModuleCycle, wouldCreateSubmoduleCycle } from '../../lib/moduleUtils';
 
@@ -187,16 +185,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
   const [subDepError, setSubDepError] = useState<string | null>(null);
 
   // Textarea refs for creature link insertion
-  const modSynopsisRef = useRef<HTMLTextAreaElement>(null);
-  const modEncountersRef = useRef<HTMLTextAreaElement>(null);
-  const modRewardsRef = useRef<HTMLTextAreaElement>(null);
-  const modDmNotesRef = useRef<HTMLTextAreaElement>(null);
-  const subSummaryRef = useRef<HTMLTextAreaElement>(null);
-  const subContentRef = useRef<HTMLTextAreaElement>(null);
-  const subDmNotesRef = useRef<HTMLTextAreaElement>(null);
-  const sceneSummaryRef = useRef<HTMLTextAreaElement>(null);
-  const sceneContentRef = useRef<HTMLTextAreaElement>(null);
-  const sceneDmNotesRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     loadSubmodules(mod.id);
@@ -503,20 +491,16 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
             </FormField>
           </div>
           <FormField label="Synopsis">
-            <MarkdownEditor value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(p => ({ ...p, synopsis: v }))} placeholder="Overview of this chapter's events, goals, and themes..." minHeight="80px" textareaRef={modSynopsisRef} />
-            <EntityLinkToolbar textareaRef={modSynopsisRef} onInsert={markup => setModuleForm(p => ({ ...p, synopsis: insertAtCursor(modSynopsisRef, p.synopsis ?? '', markup) }))} />
+            <SlashField value={moduleForm.synopsis ?? ''} onChange={v => setModuleForm(p => ({ ...p, synopsis: v }))} placeholder="Overview of this chapter's events, goals, and themes..." minHeight="80px" />
           </FormField>
           <FormField label="Encounters & Story Beats">
-            <MarkdownEditor value={moduleForm.encounters ?? ''} onChange={v => setModuleForm(p => ({ ...p, encounters: v }))} placeholder="Key scenes, encounters, revelations, branching paths..." minHeight="120px" textareaRef={modEncountersRef} />
-            <EntityLinkToolbar textareaRef={modEncountersRef} onInsert={markup => setModuleForm(p => ({ ...p, encounters: insertAtCursor(modEncountersRef, p.encounters ?? '', markup) }))} />
+            <SlashField value={moduleForm.encounters ?? ''} onChange={v => setModuleForm(p => ({ ...p, encounters: v }))} placeholder="Key scenes, encounters, revelations, branching paths..." minHeight="120px" />
           </FormField>
           <FormField label="Rewards">
-            <MarkdownEditor value={moduleForm.rewards ?? ''} onChange={v => setModuleForm(p => ({ ...p, rewards: v }))} placeholder="Loot, level-ups, plot rewards..." minHeight="60px" textareaRef={modRewardsRef} />
-            <EntityLinkToolbar textareaRef={modRewardsRef} onInsert={markup => setModuleForm(p => ({ ...p, rewards: insertAtCursor(modRewardsRef, p.rewards ?? '', markup) }))} />
+            <SlashField value={moduleForm.rewards ?? ''} onChange={v => setModuleForm(p => ({ ...p, rewards: v }))} placeholder="Loot, level-ups, plot rewards..." minHeight="60px" />
           </FormField>
           <FormField label="DM Notes">
-            <MarkdownEditor value={moduleForm.dm_notes ?? ''} onChange={v => setModuleForm(p => ({ ...p, dm_notes: v }))} placeholder="Hidden information, fallbacks, secret motives..." minHeight="60px" textareaRef={modDmNotesRef} />
-            <EntityLinkToolbar textareaRef={modDmNotesRef} onInsert={markup => setModuleForm(p => ({ ...p, dm_notes: insertAtCursor(modDmNotesRef, p.dm_notes ?? '', markup) }))} />
+            <SlashField value={moduleForm.dm_notes ?? ''} onChange={v => setModuleForm(p => ({ ...p, dm_notes: v }))} placeholder="Hidden information, fallbacks, secret motives..." minHeight="60px" />
           </FormField>
           <div style={{ display: 'flex', gap: '8px' }}>
             <Button variant="primary" size="sm" onClick={handleSaveModule}>Save</Button>
@@ -1278,16 +1262,13 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           </FormField>
         </div>
         <FormField label="Summary">
-          <MarkdownEditor value={subForm.summary} onChange={v => setSubForm(prev => ({ ...prev, summary: v }))} placeholder="Short description shown in the list view..." minHeight="60px" textareaRef={subSummaryRef} />
-          <EntityLinkToolbar textareaRef={subSummaryRef} onInsert={markup => setSubForm(prev => ({ ...prev, summary: insertAtCursor(subSummaryRef, prev.summary, markup) }))} />
+          <SlashField value={subForm.summary} onChange={v => setSubForm(prev => ({ ...prev, summary: v }))} placeholder="Short description shown in the list view..." minHeight="60px" />
         </FormField>
         <FormField label="Full Write-Up">
-          <MarkdownEditor value={subForm.content} onChange={v => setSubForm(prev => ({ ...prev, content: v }))} placeholder="Full description of this location or story beat — history, atmosphere, key details, DM guidance..." minHeight="320px" textareaRef={subContentRef} />
-          <EntityLinkToolbar textareaRef={subContentRef} onInsert={markup => setSubForm(prev => ({ ...prev, content: insertAtCursor(subContentRef, prev.content, markup) }))} />
+          <SlashField value={subForm.content} onChange={v => setSubForm(prev => ({ ...prev, content: v }))} placeholder="Full description of this location or story beat — history, atmosphere, key details, DM guidance..." minHeight="320px" />
         </FormField>
         <FormField label="DM Notes">
-          <MarkdownEditor value={subForm.dm_notes} onChange={v => setSubForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden info, contingencies, secrets..." minHeight="60px" textareaRef={subDmNotesRef} />
-          <EntityLinkToolbar textareaRef={subDmNotesRef} onInsert={markup => setSubForm(prev => ({ ...prev, dm_notes: insertAtCursor(subDmNotesRef, prev.dm_notes, markup) }))} />
+          <SlashField value={subForm.dm_notes} onChange={v => setSubForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden info, contingencies, secrets..." minHeight="60px" />
         </FormField>
       </Modal>
 
@@ -1327,16 +1308,13 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
           </FormField>
         </div>
         <FormField label="Summary">
-          <MarkdownEditor value={sceneForm.summary} onChange={v => setSceneForm(prev => ({ ...prev, summary: v }))} placeholder="Short description shown in the list view..." minHeight="60px" textareaRef={sceneSummaryRef} />
-          <EntityLinkToolbar textareaRef={sceneSummaryRef} onInsert={markup => setSceneForm(prev => ({ ...prev, summary: insertAtCursor(sceneSummaryRef, prev.summary, markup) }))} />
+          <SlashField value={sceneForm.summary} onChange={v => setSceneForm(prev => ({ ...prev, summary: v }))} placeholder="Short description shown in the list view..." minHeight="60px" />
         </FormField>
         <FormField label="Full Write-Up">
-          <MarkdownEditor value={sceneForm.content} onChange={v => setSceneForm(prev => ({ ...prev, content: v }))} placeholder="Full scene details — read-aloud text, tactics, trigger conditions, outcomes, branching paths..." minHeight="320px" textareaRef={sceneContentRef} />
-          <EntityLinkToolbar textareaRef={sceneContentRef} onInsert={markup => setSceneForm(prev => ({ ...prev, content: insertAtCursor(sceneContentRef, prev.content, markup) }))} />
+          <SlashField value={sceneForm.content} onChange={v => setSceneForm(prev => ({ ...prev, content: v }))} placeholder="Full scene details — read-aloud text, tactics, trigger conditions, outcomes, branching paths..." minHeight="320px" />
         </FormField>
         <FormField label="DM Notes">
-          <MarkdownEditor value={sceneForm.dm_notes} onChange={v => setSceneForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden info, contingencies, secrets..." minHeight="60px" textareaRef={sceneDmNotesRef} />
-          <EntityLinkToolbar textareaRef={sceneDmNotesRef} onInsert={markup => setSceneForm(prev => ({ ...prev, dm_notes: insertAtCursor(sceneDmNotesRef, prev.dm_notes, markup) }))} />
+          <SlashField value={sceneForm.dm_notes} onChange={v => setSceneForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Hidden info, contingencies, secrets..." minHeight="60px" />
         </FormField>
       </Modal>
 

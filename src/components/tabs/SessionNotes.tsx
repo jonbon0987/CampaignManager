@@ -1,15 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { MarkdownContent } from '../ui/MarkdownContent';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
-import { AutosaveTextarea } from '../ui/MentionButton';
 import { useAutoSave } from '../../hooks/useAutoSave';
-import { insertAtCursor } from '../../lib/textUtils';
 import type { Session } from '../../lib/database.types';
 
 type SessionForm = {
@@ -166,47 +163,42 @@ function SessionDetail({
         {/* Recap / Summary */}
         <div className="cm-section">
           <SectionLabel label="Recap" />
-          <AutosaveTextarea
-            value={form.summary}
+          <SlashField
+            value={form.summary ?? ''}
             onChange={v => setForm(prev => ({ ...prev, summary: v || null }))}
             placeholder="What happened this session..."
-            rows={6}
           />
         </div>
 
         {/* Structured fields */}
         <div className="flex flex-col gap-2">
           <SessionSection icon={Swords} label="Combat Summary">
-            <AutosaveTextarea
-              value={form.combats}
-              onChange={v => setForm(prev => ({ ...prev, combats: v || null }))}
-              placeholder="Describe combats that took place…"
-              rows={3}
-            />
+            <SlashField
+            value={form.combats ?? ''}
+            onChange={v => setForm(prev => ({ ...prev, combats: v || null }))}
+            placeholder="Describe combats that took place…"
+          />
           </SessionSection>
           <SessionSection icon={Gift} label="Loot & Rewards">
-            <AutosaveTextarea
-              value={form.loot_rewards}
-              onChange={v => setForm(prev => ({ ...prev, loot_rewards: v || null }))}
-              placeholder="Items, gold, or rewards gained…"
-              rows={3}
-            />
+            <SlashField
+            value={form.loot_rewards ?? ''}
+            onChange={v => setForm(prev => ({ ...prev, loot_rewards: v || null }))}
+            placeholder="Items, gold, or rewards gained…"
+          />
           </SessionSection>
           <SessionSection icon={Lightbulb} label="Hook Follow-ups">
-            <AutosaveTextarea
-              value={form.hooks_notes}
-              onChange={v => setForm(prev => ({ ...prev, hooks_notes: v || null }))}
-              placeholder="Which hooks were advanced or introduced…"
-              rows={3}
-            />
+            <SlashField
+            value={form.hooks_notes ?? ''}
+            onChange={v => setForm(prev => ({ ...prev, hooks_notes: v || null }))}
+            placeholder="Which hooks were advanced or introduced…"
+          />
           </SessionSection>
           <SessionSection icon={Eye} label="DM Notes" dmOnly>
-            <AutosaveTextarea
-              value={form.dm_notes}
-              onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))}
-              placeholder="Private notes, reminders, secrets…"
-              rows={3}
-            />
+            <SlashField
+            value={form.dm_notes ?? ''}
+            onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))}
+            placeholder="Private notes, reminders, secrets…"
+          />
           </SessionSection>
         </div>
       </div>
@@ -430,7 +422,6 @@ function SessionPrepView() {
   const { sessions, hooks, encounters, sessionPreps, upsertSessionPrep } = useCampaign();
   const [step, setStep] = useState<number>(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
-  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   // Most recent session for recap; next number for prep
   const sorted = [...sessions].sort((a, b) => b.session_number - a.session_number);
@@ -528,16 +519,11 @@ function SessionPrepView() {
         {step === 1 && (
           <div className="pw-section">
             <h3 className="pw-title">Prep Notes</h3>
-            <MarkdownEditor
+            <SlashField
               value={prepText}
               onChange={v => setPrepText(v)}
               placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
               minHeight="240px"
-              textareaRef={notesRef}
-            />
-            <EntityLinkToolbar
-              textareaRef={notesRef}
-              onInsert={markup => setPrepText(prev => insertAtCursor(notesRef, prev, markup))}
             />
             <div>
               <button className="pw-action pw-action-primary" onClick={savePrep} disabled={savingPrep}>

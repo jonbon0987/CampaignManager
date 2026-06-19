@@ -1,12 +1,13 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { CSSProperties, ReactNode } from 'react';
-import { ENTITY_LINK_RE, EntityChip } from './StatBlockText';
-import type { EntityType } from './StatBlockText';
+import { EntityChip } from './StatBlockText';
+import { parseSegments, hasRefs } from '../../lib/slashMarkdown';
 
 /**
- * Renders markdown content with support for [[type:uuid]] inline entity links.
- * Supported types: creature, npc, location, session, faction, hook.
+ * Renders markdown content with inline entity references.
+ * Supports the canonical @[Label](kind:id) format and the legacy
+ * [[kind:uuid:Name]] format (parsed for back-compat).
  */
 interface MarkdownContentProps {
   text?: string | null | undefined;
@@ -19,11 +20,7 @@ export function MarkdownContent({ text, content, style, className }: MarkdownCon
   const resolved = text ?? content;
   if (!resolved) return null;
 
-  // Check if there are any entity links
-  const hasEntityLinks = ENTITY_LINK_RE.test(resolved);
-  ENTITY_LINK_RE.lastIndex = 0;
-
-  if (!hasEntityLinks) {
+  if (!hasRefs(resolved)) {
     return (
       <div className={`markdown-preview ${className ?? ''}`} style={style}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{resolved}</ReactMarkdown>
@@ -31,36 +28,14 @@ export function MarkdownContent({ text, content, style, className }: MarkdownCon
     );
   }
 
-  // Split into segments: text (to render as markdown) and entity links
   const parts: ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
   let key = 0;
-
-  ENTITY_LINK_RE.lastIndex = 0;
-  while ((match = ENTITY_LINK_RE.exec(resolved)) !== null) {
-    if (match.index > lastIndex) {
-      const mdChunk = resolved.slice(lastIndex, match.index);
-      parts.push(
-        <ReactMarkdown key={key++} remarkPlugins={[remarkGfm]}>{mdChunk}</ReactMarkdown>
-      );
+  for (const seg of parseSegments(resolved)) {
+    if (seg.type === 'text') {
+      if (seg.value) parts.push(<ReactMarkdown key={key++} remarkPlugins={[remarkGfm]}>{seg.value}</ReactMarkdown>);
+    } else {
+      parts.push(<EntityChip key={key++} entityType={seg.entityType} id={seg.id} displayName={seg.displayName} />);
     }
-    parts.push(
-      <EntityChip
-        key={key++}
-        entityType={match[1] as EntityType}
-        id={match[2]}
-        displayName={match[3] ?? ''}
-      />
-    );
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < resolved.length) {
-    parts.push(
-      <ReactMarkdown key={key++} remarkPlugins={[remarkGfm]}>
-        {resolved.slice(lastIndex)}
-      </ReactMarkdown>
-    );
   }
 
   return (

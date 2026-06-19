@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { SlashField } from '../ui/SlashField';
 import { Pencil, Plus, X } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -10,9 +11,6 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { MarkdownContent } from '../ui/MarkdownContent';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
-import { EntityLinkToolbar } from '../ui/EntityLinkToolbar';
-import { insertAtCursor } from '../../lib/textUtils';
 import type { SessionPrep as SessionPrepType, Hook } from '../../lib/database.types';
 
 type PrepForm = {
@@ -168,8 +166,6 @@ export default function SessionPrep() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<PrepForm | null>(null);
   const [saving, setSaving] = useState(false);
-  const editNotesRef = useRef<HTMLTextAreaElement>(null);
-  const newNotesRef = useRef<HTMLTextAreaElement>(null);
 
   const filtered = sessionPreps
     .filter(p => {
@@ -347,14 +343,12 @@ export default function SessionPrep() {
                           <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Prep Notes
                           </label>
-                          <MarkdownEditor
+                          <SlashField
                             value={editForm.notes ?? ''}
                             onChange={v => setEditForm(prev => prev ? { ...prev, notes: v || null } : prev)}
                             placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
                             minHeight="200px"
-                            textareaRef={editNotesRef}
                           />
-                          <EntityLinkToolbar textareaRef={editNotesRef} onInsert={markup => setEditForm(prev => prev ? { ...prev, notes: insertAtCursor(editNotesRef, prev.notes ?? '', markup) } : prev)} />
                         </div>
 
                         <HookPicker
@@ -450,14 +444,12 @@ export default function SessionPrep() {
           </FormField>
         </div>
         <FormField label="Prep Notes">
-          <MarkdownEditor
+          <SlashField
             value={form.notes ?? ''}
             onChange={v => setForm(prev => ({ ...prev, notes: v || null }))}
             placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
             minHeight="200px"
-            textareaRef={newNotesRef}
           />
-          <EntityLinkToolbar textareaRef={newNotesRef} onInsert={markup => setForm(prev => ({ ...prev, notes: insertAtCursor(newNotesRef, prev.notes ?? '', markup) }))} />
         </FormField>
         <div className="mt-2">
           <HookPicker

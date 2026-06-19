@@ -23,6 +23,7 @@ import { PostSessionCapture } from './components/ui/PostSessionCapture';
 import SettingsView from './components/tabs/SettingsView';
 import { StatBlockPanelProvider } from './context/StatBlockPanelContext';
 import { NavigationProvider } from './context/NavigationContext';
+import { CampaignEntityRefProvider, WorldEntityRefProvider } from './context/EntityRefContext';
 import { signInWithEmail, onAuthStateChange, resetPasswordForEmail, updatePassword } from './lib/auth';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ToastProvider } from './context/ToastContext';
@@ -141,6 +142,7 @@ function AppInner({ user }: { user: User }) {
 
   return (
     <NavigationProvider setActiveTab={setActiveTab}>
+      <CampaignEntityRefProvider>
       <div className={shellClass}>
         <Sidebar
           activeTab={activeTab}
@@ -258,6 +260,7 @@ function AppInner({ user }: { user: User }) {
           onImport={() => setImportOpen(false)}
         />
       </div>
+      </CampaignEntityRefProvider>
     </NavigationProvider>
   );
 }
@@ -542,6 +545,7 @@ function WorldShell() {
   }, []);
 
   return (
+    <WorldEntityRefProvider>
     <div className="cm-shell">
       <WorldSidebar />
       <div className="cm-main">
@@ -563,6 +567,7 @@ function WorldShell() {
       <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
       <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
+    </WorldEntityRefProvider>
   );
 }
 

@@ -10,10 +10,9 @@ import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { StatBlockBody, emptyMonsterForm, CREATURE_TYPES, ABILITY_KEYS, abilityMod } from '../tabs/CreatureStatblocks';
 import type { MonsterForm } from '../tabs/CreatureStatblocks';
-import { MarkdownEditor } from '../ui/MarkdownEditor';
+import { SlashField } from '../ui/SlashField';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
-import { AutosaveTextarea } from '../ui/MentionButton';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
 import type { ReactNode } from 'react';
@@ -227,10 +226,10 @@ function WorldNPCEditDetail({ entity }: { entity: any }) {
         </div>
       </div>
       <DetailSection title="Description">
-        <AutosaveTextarea value={form.description} onChange={v => set('description', v)} placeholder="Describe this character…" rows={5} mention={false} />
+        <SlashField value={form.description} onChange={v => set('description', v)} placeholder="Describe this character…" />
       </DetailSection>
       <DetailSection title="DM Notes">
-        <AutosaveTextarea value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" rows={3} mention={false} />
+        <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" />
       </DetailSection>
     </DetailPanel>
   );
@@ -401,13 +400,13 @@ function WorldLocationDetail({ loc }: { loc: any }) {
         </div>
       </div>
       <DetailSection title="Description">
-        <AutosaveTextarea value={form.description} onChange={v => set('description', v)} placeholder="Describe this place…" rows={4} mention={false} />
+        <SlashField value={form.description} onChange={v => set('description', v)} placeholder="Describe this place…" />
       </DetailSection>
       <DetailSection title="History">
-        <AutosaveTextarea value={form.history} onChange={v => set('history', v)} placeholder="Historical events…" rows={4} mention={false} />
+        <SlashField value={form.history} onChange={v => set('history', v)} placeholder="Historical events…" />
       </DetailSection>
       <DetailSection title="DM Notes">
-        <AutosaveTextarea value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" rows={3} mention={false} />
+        <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" />
       </DetailSection>
     </DetailPanel>
   );
@@ -533,7 +532,7 @@ function WorldLoreDetail({ entry }: { entry: any }) {
         </div>
       </div>
       <DetailSection title="Content">
-        <AutosaveTextarea value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" rows={8} mention={false} />
+        <SlashField value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" />
       </DetailSection>
     </DetailPanel>
   );
@@ -1103,11 +1102,11 @@ function WorldBestiaryDetail({
         </div>
         <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
         <FormField label="Actions & Traits">
-          <MarkdownEditor value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))}
-            placeholder={`Actions, bonus actions, reactions, legendary actions...`} minHeight="280px" />
+          <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))}
+            placeholder="Actions, bonus actions, reactions, legendary actions..." minHeight="280px" />
         </FormField>
         <FormField label="DM Notes">
-          <MarkdownEditor value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))}
+          <SlashField value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))}
             placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" />
         </FormField>
       </Modal>

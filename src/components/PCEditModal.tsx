@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { SlashField } from './ui/SlashField';
 import { Trash2 } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { useConfirm } from '../context/ConfirmContext';
@@ -6,13 +7,10 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { Modal } from './Modal';
 import { FormField, inputStyle } from './FormField';
 import { Button } from './ui/Button';
-import { MarkdownEditor } from './ui/MarkdownEditor';
-import { EntityLinkToolbar } from './ui/EntityLinkToolbar';
 import { FactionPillSelector } from './ui/FactionPillSelector';
 import { SearchableSelect } from './ui/SearchableSelect';
 import { ActiveToggle } from './ui/ActiveToggle';
 import { SaveStatusIndicator } from './ui/SaveStatusIndicator';
-import { insertAtCursor } from '../lib/textUtils';
 import type { PlayerCharacter } from '../lib/database.types';
 
 type PCFormFull = {
@@ -75,10 +73,6 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
   const [creating, setCreating] = useState(false);
 
   // Textarea refs for entity link toolbars
-  const bgRef = useRef<HTMLTextAreaElement>(null);
-  const hooksRef = useRef<HTMLTextAreaElement>(null);
-  const npcsRef = useRef<HTMLTextAreaElement>(null);
-  const dmNotesRef = useRef<HTMLTextAreaElement>(null);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -240,44 +234,29 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
         {/* Right column — Details */}
         <div>
           <FormField label="Background">
-            <MarkdownEditor
+            <SlashField
               value={form.background ?? ''}
               onChange={v => update('background', v)}
               placeholder="Character background and history..."
               minHeight="100px"
-              textareaRef={bgRef}
-            />
-            <EntityLinkToolbar
-              textareaRef={bgRef}
-              onInsert={markup => update('background', insertAtCursor(bgRef, form.background ?? '', markup))}
             />
           </FormField>
 
           <FormField label="Story Hooks">
-            <MarkdownEditor
+            <SlashField
               value={form.story_hooks ?? ''}
               onChange={v => update('story_hooks', v)}
               placeholder="Personal quests, unresolved story threads, motivations..."
               minHeight="80px"
-              textareaRef={hooksRef}
-            />
-            <EntityLinkToolbar
-              textareaRef={hooksRef}
-              onInsert={markup => update('story_hooks', insertAtCursor(hooksRef, form.story_hooks ?? '', markup))}
             />
           </FormField>
 
           <FormField label="Key NPCs">
-            <MarkdownEditor
+            <SlashField
               value={form.key_npcs ?? ''}
               onChange={v => update('key_npcs', v)}
               placeholder="Relationships with NPCs, other PCs, factions..."
               minHeight="80px"
-              textareaRef={npcsRef}
-            />
-            <EntityLinkToolbar
-              textareaRef={npcsRef}
-              onInsert={markup => update('key_npcs', insertAtCursor(npcsRef, form.key_npcs ?? '', markup))}
             />
           </FormField>
 
@@ -300,16 +279,11 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
               </span>
             </>
           }>
-            <MarkdownEditor
+            <SlashField
               value={form.dm_notes ?? ''}
               onChange={v => update('dm_notes', v)}
               placeholder="Private notes, secrets, plans..."
               minHeight="80px"
-              textareaRef={dmNotesRef}
-            />
-            <EntityLinkToolbar
-              textareaRef={dmNotesRef}
-              onInsert={markup => update('dm_notes', insertAtCursor(dmNotesRef, form.dm_notes ?? '', markup))}
             />
           </FormField>
         </div>

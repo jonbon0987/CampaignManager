@@ -1,8 +1,12 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import type { RefObject } from 'react';
-import { ENTITY_LINK_RE, EntityChip } from './StatBlockText';
+import { EntityChip } from './StatBlockText';
 import type { EntityType } from './StatBlockText';
 import { MarkdownContent } from './MarkdownContent';
+
+// Legacy [[kind:uuid:Name]] reference matcher (this editor is superseded by SlashField;
+// kept self-contained so it still round-trips older content).
+const ENTITY_LINK_RE = /\[\[(creature|npc|location|session|faction|hook):([a-f0-9-]{36})(?::([^\]]*))?\]\]/g;
 
 type Mode = 'write' | 'preview';
 
