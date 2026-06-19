@@ -303,7 +303,15 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
 
   useEffect(() => {
     if (!menu && !hover) return;
-    const onScrollClose = () => { if (menu) setMenu(null); if (hover) setHover(null); };
+    const onScrollClose = (e: Event) => {
+      // Ignore scrolling that happens inside the menu/hovercard themselves —
+      // only close when the page or editor container scrolls (the popups are
+      // position:fixed and would otherwise detach from the caret).
+      const t = e.target;
+      if (t instanceof Element && t.closest('.sf-menu, .sf-hovercard')) return;
+      if (menu) setMenu(null);
+      if (hover) setHover(null);
+    };
     window.addEventListener('scroll', onScrollClose, true);
     return () => window.removeEventListener('scroll', onScrollClose, true);
   }, [menu, hover]);
