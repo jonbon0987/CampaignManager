@@ -45,7 +45,9 @@
 .sf-editor h4 { font-family: var(--mono); font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); margin: 0.9em 0 0.3em; font-weight: 500; }
 .sf-editor blockquote { margin: 0.5em 0; padding: 2px 0 2px 14px; border-left: 2px solid var(--gold); color: var(--ink-2); font-style: italic; }
 .sf-editor ul, .sf-editor ol { margin: 0.4em 0; padding-left: 1.4em; }
-.sf-editor li { margin: 0.15em 0; padding-left: 3px; }
+.sf-editor ul { list-style: disc outside; }
+.sf-editor ol { list-style: decimal outside; }
+.sf-editor li { margin: 0.15em 0; padding-left: 3px; display: list-item; }
 .sf-editor ul li::marker { color: var(--gold); }
 .sf-editor ol li::marker { color: var(--gold-2); font-family: var(--mono); font-size: .85em; }
 .sf-editor .se-callout {
@@ -123,7 +125,9 @@
 .sf-prose h4 { font-family: var(--mono); font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); margin: 0.9em 0 0.3em; font-weight: 500; }
 .sf-prose blockquote { margin: 0.5em 0; padding: 2px 0 2px 14px; border-left: 2px solid var(--gold); color: var(--ink-2); font-style: italic; }
 .sf-prose ul, .sf-prose ol { margin: 0.4em 0; padding-left: 1.4em; }
-.sf-prose li { margin: 0.15em 0; padding-left: 3px; }
+.sf-prose ul { list-style: disc outside; }
+.sf-prose ol { list-style: decimal outside; }
+.sf-prose li { margin: 0.15em 0; padding-left: 3px; display: list-item; }
 .sf-prose ul li::marker { color: var(--gold); }
 .sf-prose ol li::marker { color: var(--gold-2); font-family: var(--mono); font-size: .85em; }
 .sf-prose .se-callout { position: relative; margin: 0.6em 0; padding: 11px 14px 11px 40px; background: color-mix(in oklab, var(--gold) 9%, var(--bg-2)); border: 1px solid color-mix(in oklab, var(--gold) 24%, var(--rule)); border-left: 3px solid var(--gold); border-radius: var(--radius); color: var(--ink); font-size: 0.97em; }
