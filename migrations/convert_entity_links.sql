@@ -42,7 +42,7 @@ BEGIN
       ('player_characters',  ARRAY['background','story_hooks','key_npcs','dm_notes']),
       ('world_encounters',   ARRAY['notes']),
       ('timeline_events',    ARRAY['description'])
-    ) AS t(tbl text, cols text[])
+    ) AS t(tbl, cols)
   LOOP
     DECLARE col text;
     BEGIN
@@ -50,7 +50,7 @@ BEGIN
         -- Skip silently if the table/column does not exist in this schema.
         IF EXISTS (
           SELECT 1 FROM information_schema.columns
-          WHERE table_name = rec.tbl AND column_name = col
+          WHERE table_schema = 'public' AND table_name = rec.tbl AND column_name = col
         ) THEN
           EXECUTE format(
             'UPDATE public.%I
