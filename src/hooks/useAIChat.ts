@@ -119,7 +119,7 @@ ${formatCampaignContext(data)}
 
 == ACTION FORMAT ==
 
-Upsert (include "id" to update existing, omit for new):
+Upsert (to update an existing record, add an "id" field set to its id from the data above; omit "id" to create new):
   { "type": "upsertNPC", "payload": { "name": "...", "role": "...", "affiliation": "...", "status": "active|deceased|unknown", "description": "...", "hooks_motivations": "...", "dm_notes": "...", "location": "...", "first_session": null } }
   { "type": "upsertSession", "payload": { "session_number": 1, "session_date": "2024-01-01", "summary": "...", "combats": "...", "loot_rewards": "...", "hooks_notes": "...", "dm_notes": "..." } }
   { "type": "upsertPC", "payload": { "character_name": "...", "player_name": "...", "race": "...", "class": "...", "background": "...", "story_hooks": "...", "key_npcs": "...", "dm_notes": "...", "is_active": true } }
@@ -132,7 +132,10 @@ Upsert (include "id" to update existing, omit for new):
 
 Delete: { "type": "deleteNPC", "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule, deleteMonsterStatblock)
 
-Always use existing record IDs when updating. Only include fields you want to set.`;
+Always use existing record IDs when updating. Only include fields you want to set. Example of updating an existing hook (note the real "id" copied from the data above):
+  { "type": "upsertHook", "payload": { "id": "1f2e3d4c-0000-0000-0000-000000000000", "description": "...merged/updated text..." } }
+
+Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record describing the same thing and reuse its id to update it instead of making a duplicate. This matters most for plot hooks: if the DM mentions a quest, storyline, or hook that resembles one already in HOOKS & IDEAS — even when the title is reworded, shortened, or phrased differently — set that hook's id and merge the new developments into its description. Only omit the id when the hook is a genuinely new storyline with no match above.`;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────

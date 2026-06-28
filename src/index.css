@@ -1339,7 +1339,10 @@ input:focus, textarea:focus, select:focus {
   padding-left: 1.5em;
   margin: 0.4em 0;
 }
-.markdown-preview li { margin: 0.15em 0; }
+/* Tailwind Preflight resets list-style to none; restore markers. */
+.markdown-preview ul { list-style: disc outside; }
+.markdown-preview ol { list-style: decimal outside; }
+.markdown-preview li { display: list-item; margin: 0.15em 0; }
 .markdown-preview strong { color: var(--ink); font-weight: 700; }
 .markdown-preview em { font-style: italic; color: var(--ink-2); }
 .markdown-preview a { color: var(--gold); text-decoration: underline; }

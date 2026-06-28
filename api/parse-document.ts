@@ -265,7 +265,7 @@ Return your proposals via the propose_import_actions tool. If the document has n
 
 7. **Sessions**: Use ISO date format (YYYY-MM-DD).
 
-8. **Hooks**: category must be main_plot, side_quest, character_arc, faction, or null.
+8. **Hooks**: category must be main_plot, side_quest, character_arc, faction, or null. Match a hook to an existing entry in HOOKS & IDEAS whenever they describe the same quest or storyline — even if the document's title is reworded, shortened, or summarized differently. Set matched_id and merge the new developments into the existing description rather than proposing a duplicate hook. Only create a new hook when the storyline has no counterpart above.
 
 9. **Prefer updates over near-duplicates**.
 

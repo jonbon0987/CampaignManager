@@ -210,6 +210,29 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
   const insertCallout = () => { const p = document.createElement('p'); p.className = 'se-callout'; p.appendChild(document.createElement('br')); replaceOrInsertBlock(p, { caretInside: true }); };
   const insertDivider = (style: string) => { let el: HTMLElement; if (style === 'ornament') { el = document.createElement('div'); el.className = 'se-hr-orn'; el.contentEditable = 'false'; } else { el = document.createElement('hr'); el.className = 'se-hr' + (style === 'dotted' ? ' se-hr-dotted' : ''); } replaceOrInsertBlock(el, { caretInside: false }); };
 
+  // In-place block transforms for the markdown shortcuts (# , > , - , 1. …).
+  // We retag/wrap the current block via the DOM rather than document.execCommand,
+  // whose formatBlock/insert*List support is unreliable outside Chrome (Safari and
+  // Firefox silently no-op), which left the shortcuts doing nothing in those browsers.
+  const retagBlock = (tag: string) => {
+    const ed = edRef.current; if (!ed) return; const r = caretRange();
+    const block = r ? blockOf(ed, r.startContainer) : null;
+    if (!block || block === ed) { insertTextBlock(tag); return; }
+    const el = document.createElement(tag);
+    while (block.firstChild) el.appendChild(block.firstChild);
+    if (!el.firstChild) el.appendChild(document.createElement('br'));
+    block.replaceWith(el); caretToStart(el);
+  };
+  const wrapInList = (tag: string) => {
+    const ed = edRef.current; if (!ed) return; const r = caretRange();
+    const block = r ? blockOf(ed, r.startContainer) : null;
+    if (!block || block === ed) { insertList(tag); return; }
+    const list = document.createElement(tag); const li = document.createElement('li');
+    while (block.firstChild) li.appendChild(block.firstChild);
+    if (!li.firstChild) li.appendChild(document.createElement('br'));
+    list.appendChild(li); block.replaceWith(list); caretToStart(li);
+  };
+
   const runCmd = (c: Cmd) => {
     const ed = edRef.current; if (!ed) return; ed.focus(); removeTrigger();
     const run = c.run;
@@ -261,9 +284,9 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
         if (blockMap[pre] || pre === '-' || pre === '*' || isOl) {
           e.preventDefault(); rng.deleteContents();
           const sel = window.getSelection(); if (sel) { sel.removeAllRanges(); rng.collapse(true); sel.addRange(rng); }
-          if (pre === '-' || pre === '*') document.execCommand('insertUnorderedList');
-          else if (isOl) document.execCommand('insertOrderedList');
-          else document.execCommand('formatBlock', false, blockMap[pre]);
+          if (pre === '-' || pre === '*') wrapInList('ul');
+          else if (isOl) wrapInList('ol');
+          else retagBlock(blockMap[pre] === 'BLOCKQUOTE' ? 'blockquote' : blockMap[pre].toLowerCase());
           emit(); return;
         }
       }
