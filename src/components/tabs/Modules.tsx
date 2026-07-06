@@ -1,6 +1,17 @@
+/* ════════════════════════════════════════════════════════════════
+   Modules.tsx — patched for the Atlas redesign.
+   - The Modules shell now owns "which module is open". When one is
+     open it renders <ModuleDetail> full-bleed (the module "takes
+     over" the area as [outline rail | editor]) — reachable from BOTH
+     the list and the web view. ModuleDetail's "‹ Modules" breadcrumb
+     calls onBack to return.
+   - ModuleList is now a pure list + create panel; a row click (or
+     finishing the create form) calls onOpen(id).
+   - ModuleWeb gets the same onOpen, so "Open in editor →" / a node
+     double-click jumps straight into the Atlas editor.
+   ════════════════════════════════════════════════════════════════ */
 import { useState } from 'react';
 import { SlashField } from '../ui/SlashField';
-// useRef kept for ModuleCreatePanel textarea refs
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
@@ -41,14 +52,11 @@ const selectStyle: React.CSSProperties = {
 
 // ─── module list ──────────────────────────────────────────────────────────────
 
-function ModuleList() {
+function ModuleList({ onOpen }: { onOpen: (id: string) => void }) {
   const { modules, upsertModule, factions } = useCampaign();
 
-  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-
-  const selectedModule = modules.find(m => m.id === selectedModuleId);
   const sortedModules = [...modules].sort((a, b) => {
     const aId = a.chapter ? parseFloat(a.chapter) : Infinity;
     const bId = b.chapter ? parseFloat(b.chapter) : Infinity;
@@ -64,20 +72,19 @@ function ModuleList() {
             <div className="cm-md-eyebrow">Campaign</div>
             <div className="cm-md-title">Modules</div>
           </div>
-          <button className="cm-md-add" onClick={() => { setCreating(true); setSelectedModuleId(null); }}>+ Add</button>
+          <button className="cm-md-add" onClick={() => setCreating(true)}>+ Add</button>
         </div>
         <div className="cm-md-list-scroll">
           {modules.length === 0 ? (
             <div className="cm-empty">No modules yet.</div>
           ) : sortedModules.map(mod => {
-            const isActive = selectedModuleId === mod.id;
             const faction = mod.faction_id ? factions.find(f => f.id === mod.faction_id) : null;
             const fColor = faction ? (FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? 'var(--ink-2)') : null;
             return (
               <button
                 key={mod.id}
-                className={`cm-row ${isActive ? 'is-active' : ''}`}
-                onClick={() => setSelectedModuleId(mod.id)}
+                className="cm-row"
+                onClick={() => onOpen(mod.id)}
               >
                 <span className="cm-row-glyph">❧</span>
                 <span className="cm-row-body">
@@ -103,22 +110,17 @@ function ModuleList() {
         </div>
       </div>
 
-      {/* Detail panel */}
+      {/* Detail panel — create form or empty state (open modules take over above) */}
       <div className="cm-md-detail">
         {creating ? (
           <ModuleCreatePanel
             factions={factions}
             onCancel={() => setCreating(false)}
             onCreate={async (form) => {
-              await upsertModule({ ...form, played_session: null });
+              const created = await upsertModule({ ...form, played_session: null });
               setCreating(false);
+              if (created?.id) onOpen(created.id);
             }}
-          />
-        ) : selectedModule ? (
-          <ModuleDetail
-            module={selectedModule}
-            onBack={() => setSelectedModuleId(null)}
-            onModuleDeleted={() => setSelectedModuleId(null)}
           />
         ) : (
           <div className="cm-empty" style={{ paddingTop: 80 }}>
@@ -211,10 +213,26 @@ function ModuleCreatePanel({
 // ─── shell ────────────────────────────────────────────────────────────────────
 
 export default function Modules({ viewMode = 'list' }: { viewMode?: string; setViewMode?: (v: string) => void }) {
+  const { modules } = useCampaign();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openModule = openId ? modules.find(m => m.id === openId) ?? null : null;
+
+  // An open module takes over the whole Modules area as [outline rail | editor],
+  // reachable from BOTH the list and the web view. ‹ Modules returns here.
+  if (openModule) {
+    return (
+      <ModuleDetail
+        module={openModule}
+        onBack={() => setOpenId(null)}
+        onModuleDeleted={() => setOpenId(null)}
+      />
+    );
+  }
+
   return (
     <div style={{ height: '100%', overflow: viewMode === 'list' ? 'auto' : 'hidden' }}>
-      {viewMode === 'list' && <ModuleList />}
-      {viewMode === 'web'  && <ModuleWeb />}
+      {viewMode === 'list' && <ModuleList onOpen={setOpenId} />}
+      {viewMode === 'web'  && <ModuleWeb onOpen={setOpenId} />}
     </div>
   );
 }

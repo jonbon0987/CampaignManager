@@ -26,11 +26,11 @@ interface WorldItem {
 
 const GLYPHS: Record<WorldKind, string> = { location: '✦', lore: '❧' };
 
-const LOCATION_TYPES = ['city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
+const LOCATION_TYPES = ['continent', 'city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
 const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
 
 const typeBadgeColor: Record<string, 'blue' | 'green' | 'red' | 'gold' | 'muted'> = {
-  city: 'blue', town: 'green', dungeon: 'red', faction_hq: 'gold', landmark: 'blue', other: 'muted',
+  continent: 'green', city: 'blue', town: 'green', dungeon: 'red', faction_hq: 'gold', landmark: 'blue', other: 'muted',
 };
 
 const categoryBadgeColor: Record<string, 'blue' | 'green' | 'red' | 'gold' | 'muted'> = {

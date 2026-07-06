@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
+import { useLinkableGlobals } from '../hooks/useLinkableGlobals';
 import { useToast } from './ToastContext';
 import type { CampaignOverview } from '../types';
 import {
@@ -86,7 +87,6 @@ interface CampaignContextType {
 
   // Player Characters
   upsertPC: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<PlayerCharacter>;
-  upsertPCSilent: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
   deletePC: (id: string) => Promise<void>;
 
   // NPCs — scope: 'campaign' creates campaign-specific, 'global' creates in global pool
@@ -197,18 +197,6 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   // Campaign-scoped entities
   const [sessions, setSessions] = useState<Session[]>([]);
   const [pcs, setPCs] = useState<PlayerCharacter[]>([]);
-  // Campaign-specific NPCs (campaign_id = selectedCampaignId)
-  const [campaignNPCs, setCampaignNPCs] = useState<NPC[]>([]);
-  // Global NPCs (campaign_id IS NULL)
-  const [globalNPCs, setGlobalNPCs] = useState<NPC[]>([]);
-  // IDs of global NPCs linked to current campaign via campaign_npcs join table
-  const [linkedNPCIds, setLinkedNPCIds] = useState<string[]>([]);
-  // Campaign-specific locations
-  const [campaignLocations, setCampaignLocations] = useState<Location[]>([]);
-  // Global locations
-  const [globalLocations, setGlobalLocations] = useState<Location[]>([]);
-  // IDs of global locations linked to current campaign
-  const [linkedLocationIds, setLinkedLocationIds] = useState<string[]>([]);
   const [factions, setFactions] = useState<Faction[]>([]);
   const [hooks, setHooks] = useState<Hook[]>([]);
   const [lore, setLore] = useState<LoreEntry[]>([]);
@@ -226,17 +214,39 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Merged NPC/location arrays for backwards-compatible consumers:
-  // campaign-specific + linked global items
-  const npcs = useMemo(() => {
-    const linkedGlobals = globalNPCs.filter(n => linkedNPCIds.includes(n.id));
-    return [...campaignNPCs, ...linkedGlobals];
-  }, [campaignNPCs, globalNPCs, linkedNPCIds]);
+  // NPCs and Locations share the "linkable globals" pattern: campaign-specific
+  // rows + a global pool that campaigns opt into. One generic hook backs both.
+  const npcStore = useLinkableGlobals<NPC, NPCInsert>({
+    getByCampaign: NPCsDB.getByCampaign,
+    getGlobal: NPCsDB.getGlobal,
+    getLinkedIds: CampaignNPCsDB.getLinkedNPCIds,
+    upsert: NPCsDB.upsert,
+    remove: NPCsDB.delete,
+    link: CampaignNPCsDB.link,
+    unlink: CampaignNPCsDB.unlink,
+  }, selectedCampaignId);
 
-  const locations = useMemo(() => {
-    const linkedGlobals = globalLocations.filter(l => linkedLocationIds.includes(l.id));
-    return [...campaignLocations, ...linkedGlobals];
-  }, [campaignLocations, globalLocations, linkedLocationIds]);
+  const locationStore = useLinkableGlobals<Location, LocationInsert>({
+    getByCampaign: LocationsDB.getByCampaign,
+    getGlobal: LocationsDB.getGlobal,
+    getLinkedIds: CampaignLocationsDB.getLinkedLocationIds,
+    upsert: LocationsDB.upsert,
+    remove: LocationsDB.delete,
+    link: CampaignLocationsDB.link,
+    unlink: CampaignLocationsDB.unlink,
+  }, selectedCampaignId);
+
+  // Stable refresh fns (used in loadAll's dependency array)
+  const refreshNPCStore = npcStore.refresh;
+  const refreshLocationStore = locationStore.refresh;
+
+  // Merged arrays for backwards-compatible consumers: campaign-specific + linked global
+  const npcs = npcStore.items;
+  const globalNPCs = npcStore.globalItems;
+  const linkedNPCIds = npcStore.linkedIds;
+  const locations = locationStore.items;
+  const globalLocations = locationStore.globalItems;
+  const linkedLocationIds = locationStore.linkedIds;
 
   // Overview derived from the selected campaign (null-safe)
   const selectedCampaign = useMemo(
@@ -289,15 +299,11 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const [s, p, cn, gn, lnIds, cl, gl, llIds, f, h, le, m, r] = await Promise.all([
+      const [s, p, , , f, h, le, m, r] = await Promise.all([
         SessionsDB.getAll(campaignId),
         PlayerCharactersDB.getAll(campaignId),
-        NPCsDB.getByCampaign(campaignId),
-        NPCsDB.getGlobal(),
-        CampaignNPCsDB.getLinkedNPCIds(campaignId),
-        LocationsDB.getByCampaign(campaignId),
-        LocationsDB.getGlobal(),
-        CampaignLocationsDB.getLinkedLocationIds(campaignId),
+        refreshNPCStore(campaignId),
+        refreshLocationStore(campaignId),
         FactionsDB.getAll(campaignId),
         HooksDB.getAll(campaignId),
         LoreDB.getAll(),
@@ -306,12 +312,6 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       ]);
       setSessions(s);
       setPCs(p);
-      setCampaignNPCs(cn);
-      setGlobalNPCs(gn);
-      setLinkedNPCIds(lnIds);
-      setCampaignLocations(cl);
-      setGlobalLocations(gl);
-      setLinkedLocationIds(llIds);
       setFactions(f);
       setHooks(h);
       setLore(le);
@@ -343,7 +343,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshNPCStore, refreshLocationStore]);
 
   // One-time migration: move localStorage overview to DB
   const migrateLocalStorageOverview = useCallback(async (campaignId: string, campaign: Campaign) => {
@@ -445,87 +445,18 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setPCs(prev => prev.filter(r => r.id !== id));
   }, [selectedCampaignId]);
 
-  // ---- NPCs ----
-  const refreshNPCs = useCallback(async (campaignId: string) => {
-    const [cn, gn, lnIds] = await Promise.all([
-      NPCsDB.getByCampaign(campaignId),
-      NPCsDB.getGlobal(),
-      CampaignNPCsDB.getLinkedNPCIds(campaignId),
-    ]);
-    setCampaignNPCs(cn);
-    setGlobalNPCs(gn);
-    setLinkedNPCIds(lnIds);
-  }, []);
+  // ---- NPCs & Locations ----
+  // Backed by the generic useLinkableGlobals stores declared above; these
+  // aliases preserve the existing CampaignContext API surface.
+  const upsertNPC = npcStore.upsert;
+  const deleteNPC = npcStore.remove;
+  const linkNPCToCampaign = npcStore.link;
+  const unlinkNPCFromCampaign = npcStore.unlink;
 
-  const upsertNPC = useCallback(async (
-    npc: Omit<NPCInsert, 'campaign_id'> & { id?: string },
-    scope: 'campaign' | 'global' = 'campaign'
-  ) => {
-    if (!selectedCampaignId) return {} as NPC;
-    const campaign_id = scope === 'campaign' ? selectedCampaignId : null;
-    const result = await NPCsDB.upsert({ ...npc, campaign_id });
-    await refreshNPCs(selectedCampaignId);
-    return result;
-  }, [selectedCampaignId, refreshNPCs]);
-
-  const deleteNPC = useCallback(async (id: string) => {
-    if (!selectedCampaignId) return;
-    await NPCsDB.delete(id);
-    await refreshNPCs(selectedCampaignId);
-  }, [selectedCampaignId, refreshNPCs]);
-
-  const linkNPCToCampaign = useCallback(async (npcId: string) => {
-    if (!selectedCampaignId) return;
-    await CampaignNPCsDB.link(selectedCampaignId, npcId);
-    setLinkedNPCIds(prev => prev.includes(npcId) ? prev : [...prev, npcId]);
-  }, [selectedCampaignId]);
-
-  const unlinkNPCFromCampaign = useCallback(async (npcId: string) => {
-    if (!selectedCampaignId) return;
-    await CampaignNPCsDB.unlink(selectedCampaignId, npcId);
-    setLinkedNPCIds(prev => prev.filter(id => id !== npcId));
-  }, [selectedCampaignId]);
-
-  // ---- Locations ----
-  const refreshLocations = useCallback(async (campaignId: string) => {
-    const [cl, gl, llIds] = await Promise.all([
-      LocationsDB.getByCampaign(campaignId),
-      LocationsDB.getGlobal(),
-      CampaignLocationsDB.getLinkedLocationIds(campaignId),
-    ]);
-    setCampaignLocations(cl);
-    setGlobalLocations(gl);
-    setLinkedLocationIds(llIds);
-  }, []);
-
-  const upsertLocation = useCallback(async (
-    loc: Omit<LocationInsert, 'campaign_id'> & { id?: string },
-    scope: 'campaign' | 'global' = 'campaign'
-  ) => {
-    if (!selectedCampaignId) return {} as Location;
-    const campaign_id = scope === 'campaign' ? selectedCampaignId : null;
-    const result = await LocationsDB.upsert({ ...loc, campaign_id });
-    await refreshLocations(selectedCampaignId);
-    return result;
-  }, [selectedCampaignId, refreshLocations]);
-
-  const deleteLocation = useCallback(async (id: string) => {
-    if (!selectedCampaignId) return;
-    await LocationsDB.delete(id);
-    await refreshLocations(selectedCampaignId);
-  }, [selectedCampaignId, refreshLocations]);
-
-  const linkLocationToCampaign = useCallback(async (locationId: string) => {
-    if (!selectedCampaignId) return;
-    await CampaignLocationsDB.link(selectedCampaignId, locationId);
-    setLinkedLocationIds(prev => prev.includes(locationId) ? prev : [...prev, locationId]);
-  }, [selectedCampaignId]);
-
-  const unlinkLocationFromCampaign = useCallback(async (locationId: string) => {
-    if (!selectedCampaignId) return;
-    await CampaignLocationsDB.unlink(selectedCampaignId, locationId);
-    setLinkedLocationIds(prev => prev.filter(id => id !== locationId));
-  }, [selectedCampaignId]);
+  const upsertLocation = locationStore.upsert;
+  const deleteLocation = locationStore.remove;
+  const linkLocationToCampaign = locationStore.link;
+  const unlinkLocationFromCampaign = locationStore.unlink;
 
   // ---- Factions ----
   const upsertFaction = useCallback(async (f: Omit<FactionInsert, 'campaign_id'> & { id?: string }) => {
@@ -720,46 +651,45 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       locations, globalLocations, linkedLocationIds,
       factions, hooks, lore, modules, relationships,
       loading, error,
-      upsertSession: withToast(upsertSession, 'Session saved'),
+      upsertSession: withToast(upsertSession),
       deleteSession: withToast(deleteSession, 'Session deleted'),
-      upsertPC: withToast(upsertPC, 'Character saved'),
-      upsertPCSilent: upsertPC,
+      upsertPC: withToast(upsertPC),
       deletePC: withToast(deletePC, 'Character deleted'),
-      upsertNPC: withToast(upsertNPC, 'NPC saved'),
+      upsertNPC: withToast(upsertNPC),
       deleteNPC: withToast(deleteNPC, 'NPC deleted'),
       linkNPCToCampaign: withToast(linkNPCToCampaign),
       unlinkNPCFromCampaign: withToast(unlinkNPCFromCampaign),
-      upsertLocation: withToast(upsertLocation, 'Location saved'),
+      upsertLocation: withToast(upsertLocation),
       deleteLocation: withToast(deleteLocation, 'Location deleted'),
       linkLocationToCampaign: withToast(linkLocationToCampaign),
       unlinkLocationFromCampaign: withToast(unlinkLocationFromCampaign),
-      upsertFaction: withToast(upsertFaction, 'Faction saved'),
+      upsertFaction: withToast(upsertFaction),
       deleteFaction: withToast(deleteFaction, 'Faction deleted'),
-      upsertHook: withToast(upsertHook, 'Hook saved'),
+      upsertHook: withToast(upsertHook),
       deleteHook: withToast(deleteHook, 'Hook deleted'),
-      upsertLore: withToast(upsertLore, 'Lore saved'),
+      upsertLore: withToast(upsertLore),
       deleteLore: withToast(deleteLore, 'Lore deleted'),
-      upsertModule: withToast(upsertModule, 'Module saved'),
+      upsertModule: withToast(upsertModule),
       deleteModule: withToast(deleteModule, 'Module deleted'),
       upsertRelationship: withToast(upsertRelationship),
       deleteRelationship: withToast(deleteRelationship),
       submodules, loadSubmodules,
-      upsertSubmodule: withToast(upsertSubmodule, 'Submodule saved'),
+      upsertSubmodule: withToast(upsertSubmodule),
       deleteSubmodule: withToast(deleteSubmodule, 'Submodule deleted'),
       scenes, loadScenes,
-      upsertScene: withToast(upsertScene, 'Scene saved'),
+      upsertScene: withToast(upsertScene),
       deleteScene: withToast(deleteScene, 'Scene deleted'),
       moduleSheets, loadModuleSheets,
       upsertModuleSheet: withToast(upsertModuleSheet),
       deleteModuleSheet: withToast(deleteModuleSheet),
       monsterStatblocks,
-      upsertMonsterStatblock: withToast(upsertMonsterStatblock, 'Stat sheet saved'),
+      upsertMonsterStatblock: withToast(upsertMonsterStatblock),
       deleteMonsterStatblock: withToast(deleteMonsterStatblock, 'Stat sheet deleted'),
       encounters,
-      upsertEncounter: withToast(upsertEncounter, 'Encounter saved'),
+      upsertEncounter: withToast(upsertEncounter),
       deleteEncounter: withToast(deleteEncounter, 'Encounter deleted'),
       sessionPreps,
-      upsertSessionPrep: withToast(upsertSessionPrep, 'Prep notes saved'),
+      upsertSessionPrep: withToast(upsertSessionPrep),
       deleteSessionPrep: withToast(deleteSessionPrep, 'Prep notes deleted'),
       moduleDeps, loadModuleDeps,
       upsertModuleDep: withToast(upsertModuleDep),

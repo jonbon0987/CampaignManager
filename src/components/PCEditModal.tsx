@@ -64,7 +64,7 @@ interface PCEditModalProps {
 }
 
 export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
-  const { pcs, upsertPC, upsertPCSilent, deletePC, factions, monsterStatblocks } = useCampaign();
+  const { pcs, upsertPC, deletePC, factions, monsterStatblocks } = useCampaign();
   const confirm = useConfirm();
   const isEdit = pcId !== null;
   const pc = isEdit ? pcs.find(p => p.id === pcId) : null;
@@ -84,8 +84,8 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
   // Auto-save (edit mode only)
   const handleAutoSave = useCallback(async (data: PCFormFull) => {
     if (!pcId) return;
-    await upsertPCSilent({ id: pcId, ...data });
-  }, [pcId, upsertPCSilent]);
+    await upsertPC({ id: pcId, ...data });
+  }, [pcId, upsertPC]);
 
   const { status, saveNow, error } = useAutoSave({
     data: form,
