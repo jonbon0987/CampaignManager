@@ -294,7 +294,7 @@ export function WorldLocationsView() {
   );
 }
 
-const LOCATION_TYPES = ['city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
+const LOCATION_TYPES = ['continent', 'city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
 const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
 
 function formatType(t: string | null) {

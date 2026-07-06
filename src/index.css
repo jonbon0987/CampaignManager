@@ -3049,3 +3049,303 @@ input:focus, textarea:focus, select:focus {
   color: var(--gold);
 }
 .cm-top-btn.is-on .cm-top-btn-glyph { color: var(--gold); }
+
+/* ════════════════════════════════════════════════════════════════
+   MODULE ATLAS — ModuleDetail redesign styles
+   ────────────────────────────────────────────────────────────────
+   ► APPEND THIS ENTIRE BLOCK TO THE END OF src/index.css.
+     (ModuleDetail.tsx no longer imports a separate stylesheet.)
+   Builds on the existing Scriptorium tokens + .cm-md / .as-* system.
+   All new classes are prefixed .md- to avoid collisions.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Outline rail (left) ── */
+.md-railhead {
+  appearance: none; border: 0; width: 100%; text-align: left; font: inherit;
+  display: block;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--rule-soft);
+  cursor: pointer;
+  transition: background .12s;
+}
+.md-railhead:hover { background: var(--paper); }
+.md-railhead.is-active {
+  background: var(--paper-2);
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+.md-railhead-title {
+  font-family: var(--display);
+  font-size: 21px;
+  line-height: 1.12;
+  color: var(--ink);
+  font-weight: 500;
+  margin-top: 4px;
+}
+.md-railhead-hint {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+.md-railhead.is-active .md-railhead-hint { color: var(--gold); }
+
+.md-treelabel {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 14px 6px;
+}
+.md-treelabel-text {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.md-treelabel-rule { flex: 1; height: 1px; background: var(--rule-soft); }
+
+/* submodule row in the tree */
+.md-srow {
+  display: grid;
+  grid-template-columns: 16px 14px 12px 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s, border-color .12s;
+  margin-bottom: 1px;
+}
+.md-srow:hover { background: var(--paper); }
+.md-srow.is-active {
+  background: var(--paper-2);
+  border-color: var(--rule);
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+.md-srow.is-dragging { opacity: .4; }
+.md-srow.is-drop-target { box-shadow: inset 0 2px 0 var(--gold); }
+
+.md-grip {
+  cursor: grab; color: var(--ink-3); font-size: 13px; line-height: 1;
+  opacity: 0; transition: opacity .12s, color .12s;
+  text-align: center;
+}
+.md-srow:hover .md-grip,
+.md-scene-edit:hover .md-grip { opacity: .55; }
+.md-grip:hover { color: var(--gold); }
+.md-grip:active { cursor: grabbing; }
+
+.md-twist {
+  width: 14px; text-align: center; color: var(--ink-3); font-size: 9px;
+  transition: transform .16s; cursor: pointer; line-height: 1;
+}
+.md-srow.is-open .md-twist { transform: rotate(90deg); }
+.md-dot { width: 9px; height: 9px; border-radius: 50%; }
+.md-num { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.md-sname {
+  font-family: var(--serif); font-size: 15px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.md-srow.is-active .md-sname { color: var(--gold-2); }
+.md-scount { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+
+/* nested scene rows in the tree */
+.md-tree-scenes { padding: 1px 0 6px 34px; display: flex; flex-direction: column; gap: 1px; }
+.md-tree-scene {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px; border-radius: 5px; cursor: pointer;
+  font-size: 13px; color: var(--ink-2);
+}
+.md-tree-scene:hover { background: var(--paper); color: var(--ink); }
+.md-tree-scene-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+
+.md-railfoot { padding: 10px 12px; border-top: 1px solid var(--rule-soft); }
+
+/* inline meta input / select (overview chapter + faction) */
+.md-mini-in {
+  font-family: var(--serif); font-size: 14px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 5px;
+  padding: 5px 9px; outline: none; transition: border-color .12s;
+}
+.md-mini-in:hover { border-color: #3a3328; }
+.md-mini-in:focus { border-color: var(--gold); }
+
+/* dashed "add" button */
+.md-add {
+  appearance: none; cursor: pointer;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px dashed var(--rule); background: transparent; color: var(--ink-3);
+  transition: all .14s;
+}
+.md-add:hover { color: var(--gold); border-color: var(--gold); background: rgba(201,168,76,.06); }
+.md-add-block { width: 100%; justify-content: center; padding: 11px 14px; }
+
+/* ── Editor pane shared ── */
+.md-editor { max-width: 760px; }
+.md-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px;
+}
+.md-typebar { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+
+/* type tag (clickable) */
+.md-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
+  text-transform: uppercase; padding: 3px 9px;
+  border-radius: 999px; border: 1px solid currentColor;
+  background: transparent; cursor: pointer; white-space: nowrap;
+}
+.md-tag-static { cursor: default; }
+.md-tag-glyph { font-size: 11px; }
+
+/* DM notes block */
+.md-dm {
+  border-left: 2px solid rgba(201,122,85,.45);
+  background: rgba(201,122,85,.06);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 8px 14px; margin: 6px 0 20px;
+}
+.md-dm-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 4px;
+}
+
+/* ── inline scene editor (right pane) ── */
+.md-scene-list { display: flex; flex-direction: column; gap: 6px; }
+.md-scene-edit {
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--bg); overflow: hidden; transition: border-color .12s;
+}
+.md-scene-edit:hover { border-color: #3a3328; }
+.md-scene-edit.is-open { border-color: rgba(201,168,76,.3); }
+.md-scene-edit.is-dragging { opacity: .4; }
+.md-scene-head { display: flex; align-items: center; gap: 9px; padding: 9px 12px; }
+.md-scene-num { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.md-scene-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.md-scene-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.md-scene-title-in {
+  font-family: var(--display); font-size: 16px; color: var(--ink);
+  background: transparent; border: none; outline: none; padding: 0;
+  width: 100%;
+}
+.md-scene-title-in::placeholder { color: var(--ink-3); }
+.md-scene-sum-in {
+  font-family: var(--serif); font-size: 12.5px; color: var(--ink-3); font-style: italic;
+  background: transparent; border: none; outline: none; padding: 0; width: 100%;
+}
+.md-scene-body { padding: 4px 14px 14px 46px; border-top: 1px solid var(--rule-soft); }
+.md-iconbtn {
+  appearance: none; cursor: pointer; border: 1px solid transparent; background: transparent;
+  color: var(--ink-3); width: 26px; height: 26px; border-radius: 6px; line-height: 1;
+  display: inline-grid; place-items: center; font-size: 13px; transition: all .12s;
+}
+.md-iconbtn:hover { color: var(--ink); background: var(--paper-2); border-color: var(--rule); }
+.md-iconbtn.is-danger:hover { color: #e05c5c; border-color: rgba(224,92,92,.4); }
+
+/* ── linked-thing chip rows ── */
+.md-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.md-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--rule); background: var(--paper);
+  font-size: 13px; color: var(--ink-2); white-space: nowrap;
+}
+.md-chip-glyph { font-size: 11px; }
+.md-chip-cr { font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+.md-chip button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  color: var(--ink-3); font-size: 11px; line-height: 1; padding: 0;
+  opacity: 0; transition: opacity .12s, color .12s;
+}
+.md-chip:hover button { opacity: 1; }
+.md-chip button:hover { color: #e05c5c; }
+.md-chip-link {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  color: inherit; font: inherit; padding: 0;
+}
+.md-chip-link:hover { color: var(--gold-2); }
+
+/* ── inline picker popover ── */
+.md-pop-wrap { position: relative; display: inline-block; }
+.md-pop {
+  position: absolute; z-index: 60; margin-top: 6px; left: 0;
+  background: var(--paper-2); border: 1px solid var(--rule);
+  border-radius: var(--radius); box-shadow: 0 14px 38px rgba(0,0,0,.5);
+  padding: 5px; min-width: 240px; max-height: 320px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.md-pop-item {
+  appearance: none; cursor: pointer; border: 0; background: transparent;
+  display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+  border-radius: 5px; font-family: var(--serif); font-size: 14px; color: var(--ink-2);
+  text-align: left; width: 100%;
+}
+.md-pop-item:hover { background: var(--highlight); color: var(--ink); }
+.md-pop-item-meta { margin-left: auto; font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+.md-pop-empty { padding: 10px; color: var(--ink-3); font-style: italic; font-size: 13px; }
+.md-pop-radio { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--rule-soft); margin-bottom: 4px; }
+
+/* ── dependency rows ── */
+.md-dep { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 14px; }
+.md-dep-arrow { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.md-dep-kind {
+  font-family: var(--mono); font-size: 8px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+}
+.md-dep-kind-required { color: var(--gold); border: 1px solid rgba(201,168,76,.4); }
+.md-dep-kind-optional { color: var(--moss); border: 1px solid rgba(138,165,107,.4); }
+.md-dep-name { flex: 1; font-family: var(--display); color: var(--ink); }
+
+/* ── dependency map (overview) ── */
+.md-depmap { display: flex; flex-direction: column; gap: 6px; }
+.md-depmap-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.md-depmap-node {
+  appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 14px; border-radius: var(--radius);
+  background: var(--paper); border: 1px solid var(--rule); color: var(--ink);
+  font-family: var(--display); font-size: 15px; transition: all .12s; min-width: 240px;
+}
+.md-depmap-node:hover { background: var(--paper-2); border-color: var(--gold); }
+.md-depmap-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-depmap-after { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.md-depmap-after .md-dep-kind { cursor: pointer; }
+
+/* responsive: collapse rail under a narrow pane */
+@media (max-width: 820px) {
+  .cm-md:has(.md-railhead) { grid-template-columns: 1fr; }
+}
+
+/* Atlas redesign — additions missing from earlier partial append */
+/* breadcrumb back-link in the rail head */
+.md-crumb {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--serif); font-size: 13px; color: var(--ink-3);
+  padding: 0 0 4px; transition: color .12s;
+}
+.md-crumb:hover { color: var(--gold); }
+
+/* ── Module Web additions (open-in-editor + inline dependency adder) ── */
+.mw-side-open {
+  appearance: none; cursor: pointer; margin-top: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: var(--radius);
+  border: 1px solid var(--gold); background: rgba(201,168,76,.08); color: var(--gold-2);
+  font-family: var(--serif); font-size: 13px; transition: all .14s;
+}
+.mw-side-open:hover { background: var(--gold); color: #1a1410; }
+.mw-depadd {
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--bg); padding: 12px;
+}
+.mw-depadd-title { font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; }
+.mw-depadd-title b { color: var(--ink); }
+.mw-depadd-err {
+  margin-top: 8px; font-size: 12.5px; color: #e05c5c;
+  background: rgba(224,92,92,.08); border: 1px solid rgba(224,92,92,.35);
+  border-radius: 4px; padding: 6px 9px;
+}

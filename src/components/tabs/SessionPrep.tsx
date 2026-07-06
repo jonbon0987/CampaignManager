@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { SlashField } from '../ui/SlashField';
 import { Pencil, Plus, X } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
@@ -11,6 +11,8 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { EmptyState } from '../ui/EmptyState';
 import { MarkdownContent } from '../ui/MarkdownContent';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { SessionPrep as SessionPrepType, Hook } from '../../lib/database.types';
 
 type PrepForm = {
@@ -165,7 +167,6 @@ export default function SessionPrep() {
   // Inline edit state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<PrepForm | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const filtered = sessionPreps
     .filter(p => {
@@ -198,7 +199,28 @@ export default function SessionPrep() {
     setModalOpen(false);
   };
 
-  const startEdit = (p: SessionPrepType) => {
+  // Auto-save the inline edit form while the user types (edit mode only).
+  const handleEditAutoSave = useCallback(async (data: PrepForm) => {
+    if (!editingId) return;
+    await upsertSessionPrep({
+      id: editingId,
+      session_number: data.session_number,
+      prep_date: data.prep_date,
+      notes: data.notes,
+      dangled_hook_ids: data.dangled_hook_ids,
+    });
+  }, [editingId, upsertSessionPrep]);
+
+  const { status: editStatus, saveNow: saveEditNow } = useAutoSave<PrepForm>({
+    data: editForm ?? emptyForm(),
+    onSave: handleEditAutoSave,
+    enabled: editingId !== null,
+    delay: 1500,
+  });
+
+  const startEdit = async (p: SessionPrepType) => {
+    // Flush any pending edits on the row we're leaving before switching.
+    if (editingId && editingId !== p.id) await saveEditNow();
     setEditingId(p.id);
     setEditForm({
       session_number: p.session_number,
@@ -214,16 +236,8 @@ export default function SessionPrep() {
     setEditForm(null);
   };
 
-  const saveEdit = async () => {
-    if (!editForm || !editingId) return;
-    setSaving(true);
-    await upsertSessionPrep({
-      session_number: editForm.session_number,
-      prep_date: editForm.prep_date,
-      notes: editForm.notes,
-      dangled_hook_ids: editForm.dangled_hook_ids,
-    });
-    setSaving(false);
+  const closeEdit = async () => {
+    await saveEditNow();
     cancelEdit();
   };
 
@@ -357,13 +371,11 @@ export default function SessionPrep() {
                           allHooks={hooks}
                         />
 
-                        <div className="flex gap-2">
-                          <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
-                            {saving ? 'Saving…' : 'Save'}
+                        <div className="flex items-center gap-3">
+                          <Button variant="secondary" size="sm" onClick={closeEdit}>
+                            Done
                           </Button>
-                          <Button variant="secondary" size="sm" onClick={cancelEdit} disabled={saving}>
-                            Cancel
-                          </Button>
+                          <SaveStatusIndicator status={editStatus} onRetry={saveEditNow} />
                         </div>
                       </div>
                     ) : (

@@ -143,7 +143,7 @@ export interface Location {
   world_id: string | null;           // Optional FK to world — both can be set simultaneously
   name: string;
   region: string | null;
-  location_type: string | null;      // city | town | dungeon | faction_hq | landmark
+  location_type: string | null;      // continent | city | town | dungeon | faction_hq | landmark
   population: string | null;
   status: string | null;             // active | destroyed | unknown | compromised
   history: string | null;
