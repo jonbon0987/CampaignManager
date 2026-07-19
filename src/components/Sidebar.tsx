@@ -48,6 +48,9 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   onToggleRun?: () => void;
+  onOpenAI?: () => void;
+  onOpenDice?: () => void;
+  proposalCount?: number;
   runMode?: boolean;
   isMobile: boolean;
   onCloseMobile: () => void;
@@ -59,6 +62,9 @@ export default function Sidebar({
   isOpen,
   onToggle,
   onToggleRun,
+  onOpenAI,
+  onOpenDice,
+  proposalCount = 0,
   runMode = false,
   isMobile,
   onCloseMobile,
@@ -153,6 +159,26 @@ export default function Sidebar({
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.label}</span>
             </button>
           ))}
+
+          <div className="cm-nav-section">Tools</div>
+          <button
+            className="cm-nav-item cm-nav-assist"
+            onClick={() => { onOpenAI?.(); if (isMobile) onCloseMobile(); }}
+            title="Campaign Assistant (⌘K)"
+          >
+            <span className="cm-nav-glyph">✦</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Assistant</span>
+            {proposalCount > 0 && <span className="cm-nav-badge" title={`${proposalCount} pending`}>{collapsed ? '' : proposalCount}</span>}
+            {!collapsed && proposalCount === 0 && <span className="cm-nav-kbd">⌘K</span>}
+          </button>
+          <button
+            className="cm-nav-item"
+            onClick={() => { onOpenDice?.(); if (isMobile) onCloseMobile(); }}
+            title="Dice roller"
+          >
+            <span className="cm-nav-glyph">⚄</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Dice</span>
+          </button>
         </nav>
 
         {/* Recently Viewed */}

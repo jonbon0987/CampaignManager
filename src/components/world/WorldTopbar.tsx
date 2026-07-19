@@ -1,5 +1,4 @@
 import { useWorld } from '../../context/WorldContext';
-import type { Tab } from '../../App';
 
 const WORLD_TAB_LABELS: Record<string, string> = {
   overview: 'Overview', lore: 'Lore', locations: 'Locations',

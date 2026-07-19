@@ -5,7 +5,8 @@ interface ShortcutsOverlayProps {
 
 const GROUPS = [
   { title: 'Navigation', shortcuts: [
-    { keys: ['⌘', 'K'], label: 'Command bar / search' },
+    { keys: ['⌘', 'K'], label: 'Campaign Assistant' },
+    { keys: ['⌘', '/'], label: 'Search' },
     { keys: ['⌘', '\\'], label: 'Toggle sidebar' },
     { keys: ['⌘', '.'], label: 'Toggle scratchpad' },
   ]},

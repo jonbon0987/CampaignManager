@@ -15,20 +15,29 @@
   --bg-2:      #1e1a14;
   --paper:     #1c1814;
   --paper-2:   #211c16;
+  --paper-3:   #262019;
   --ink:       #e8dcc4;
   --ink-2:     #b9ac90;
   --ink-3:     #897f68;
+  --ink-4:     #6a614e;
   --rule:      #2e2820;
   --rule-soft: #26211a;
   --rule-hover:#3e3428;
   --gold:      #c9a84c;
   --gold-2:    #d8bd6b;
+  --gold-dim:  rgba(201,168,76,0.10);
+  --gold-line: rgba(201,168,76,0.28);
   --accent:    #c97a55;
   --accent-2:  #b06a48;
   --moss:      #8aa56b;
+  --moss-dim:  rgba(138,165,107,0.12);
+  --sky:       #7fa8d0;
+  --red:       #d9694f;
+  --red-dim:   rgba(217,105,79,0.12);
   --highlight: #2a241b;
   --shadow:    rgba(0,0,0,0.35);
   --shadow-soft: rgba(0,0,0,0.2);
+  --shadow-2:  rgba(0,0,0,0.5);
   --pill-bg:   #2a2218;
   --pill-bd:   #5a4828;
   --pill-ink:  #e2c984;
@@ -37,6 +46,7 @@
   --mono:      "JetBrains Mono", ui-monospace, monospace;
   --radius:    6px;
   --radius-lg: 10px;
+  --radius-xl: 14px;
 }
 
 body {

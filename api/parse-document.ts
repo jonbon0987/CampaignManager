@@ -17,8 +17,8 @@ type RequestBody = {
 // ── Tool schema builder ─────────────────────────────────────────────────────
 //
 // We force tool use so we get strict structured JSON instead of having to
-// strip markdown fences. Every action has matched_id (string|null) and a
-// short reasoning string shown on the review card.
+// strip markdown fences. Every action has matched_id (string|null), a
+// short reasoning string, and a confidence score — all shown on the staging card.
 
 const propertiesForAction = (typeLiteral: string, payloadProps: Record<string, unknown>, payloadRequired: string[] = []) => ({
   type: 'object' as const,
@@ -32,6 +32,10 @@ const propertiesForAction = (typeLiteral: string, payloadProps: Record<string, u
       type: 'string',
       description: 'One sentence explaining why this action was proposed and, for updates, why this entity was matched.',
     },
+    confidence: {
+      type: 'number',
+      description: 'How confident you are in this action, from 0 to 1. Reflect how directly the document supports it and, for updates, how sure you are of the match.',
+    },
     payload: {
       type: 'object',
       properties: payloadProps,
@@ -39,7 +43,7 @@ const propertiesForAction = (typeLiteral: string, payloadProps: Record<string, u
       additionalProperties: false,
     },
   },
-  required: ['type', 'matched_id', 'reasoning', 'payload'],
+  required: ['type', 'matched_id', 'reasoning', 'confidence', 'payload'],
   additionalProperties: false,
 });
 
@@ -254,6 +258,8 @@ Return your proposals via the propose_import_actions tool. If the document has n
 1. **Matching**: Set "matched_id" to the existing entity's id (shown in [id:...] brackets above) when updating an existing entity. Set to null for new entities. Be willing to match across minor naming differences.
 
 2. **Reasoning**: Always populate "reasoning" with a short sentence explaining the match decision.
+
+2b. **Confidence**: Always populate "confidence" (0 to 1). Use it honestly — the DM sees it and uses it to decide what to review closely. Above 0.85 means the document states this plainly and any match is unambiguous. 0.7 to 0.85 means you inferred some of it, or the match rests on a reworded name. Below 0.7 means you are reading between the lines and the DM should check it. Do not default everything to a high score.
 
 3. **met_by_pcs**: When the document shows PCs encountering an NPC, set "met_by_pcs": true.
 
