@@ -10,9 +10,9 @@ import Characters from './components/tabs/Characters';
 import LoreLocations from './components/tabs/LoreLocations';
 import Modules from './components/tabs/Modules';
 import CombatView from './components/tabs/CombatView';
-import AIAssistant from './components/AIAssistant';
+import Workbench from './components/Workbench';
 import { useAIChat } from './hooks/useAIChat';
-import ProposalsInbox from './components/ProposalsInbox';
+import { useCampaignAssistantBackend, useWorldAssistantBackend } from './hooks/assistantBackend';
 import StatBlockPanel from './components/StatBlockPanel';
 import SearchOverlay from './components/SearchOverlay';
 import DiceRoller from './components/DiceRoller';
@@ -53,7 +53,7 @@ const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', modules: 'list', sessions: 'log' });
-  const [aiOpen, setAiOpen] = useLocalStorage<boolean>('dnd-ai-open', true);
+  const [aiOpen, setAiOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -62,7 +62,6 @@ function AppInner({ user }: { user: User }) {
   const [sessionBarOpen, setSessionBarOpen] = useState(false);
   const [runMode, setRunMode] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
-  const [inboxOpen, setInboxOpen] = useState(false);
   const [scratchOpen, setScratchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -71,7 +70,7 @@ function AppInner({ user }: { user: User }) {
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
   const { loading, error, pcs } = useCampaign();
-  const chat = useAIChat();
+  const chat = useAIChat(useCampaignAssistantBackend());
   const pcNames = pcs.map(p => p.character_name).filter(Boolean);
 
   useEffect(() => {
@@ -91,8 +90,15 @@ function AppInner({ user }: { user: User }) {
       const tag = (e.target as HTMLElement).tagName;
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable;
 
-      // ⌘K → search
+      // ⌘K → Assistant Workbench
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setAiOpen(prev => !prev);
+        return;
+      }
+
+      // ⌘/ → search
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault();
         setSearchOpen(prev => !prev);
         return;
@@ -115,6 +121,7 @@ function AppInner({ user }: { user: User }) {
       // Esc → close overlays
       if (e.key === 'Escape') {
         setShortcutsOpen(false);
+        setAiOpen(false);
       }
     };
     window.addEventListener('keydown', handler);
@@ -131,12 +138,10 @@ function AppInner({ user }: { user: User }) {
   };
 
 
-  // Shell class based on AI rail state and sidebar
+  // The Workbench is a modal, so the shell no longer reserves a rail column.
   const shellClass = [
     'cm-shell',
     runMode ? 'cm-run' : '',
-    !isMobile && aiOpen ? 'has-rail' : '',
-    !isMobile && !aiOpen ? 'has-strip' : '',
     !isMobile && !sidebarOpen ? 'side-collapsed' : '',
   ].filter(Boolean).join(' ');
 
@@ -154,6 +159,9 @@ function AppInner({ user }: { user: User }) {
             setRunMode(next);
             if (next) setSessionBarOpen(true);
           }}
+          onOpenAI={() => setAiOpen(true)}
+          onOpenDice={() => setDiceOpen(true)}
+          proposalCount={chat.pendingProposalCount}
           runMode={runMode}
           isMobile={isMobile}
           onCloseMobile={() => setMobileMenuOpen(false)}
@@ -166,20 +174,11 @@ function AppInner({ user }: { user: User }) {
             onOpenMobileMenu={() => setMobileMenuOpen(true)}
             onOpenSearch={() => setSearchOpen(true)}
             onToggleDice={() => setSessionBarOpen(prev => !prev)}
-            onOpenAI={() => setAiOpen(true)}
-            onOpenInbox={() => setInboxOpen(true)}
             onOpenCapture={() => setCaptureOpen(true)}
             onToggleScratch={() => setScratchOpen(prev => !prev)}
             onToggleShortcuts={() => setShortcutsOpen(prev => !prev)}
             scratchOpen={scratchOpen}
-            onToggleRun={() => {
-              const next = !runMode;
-              setRunMode(next);
-              if (next) setSessionBarOpen(true);
-            }}
-            runMode={runMode}
             isMobile={isMobile}
-            proposalCount={chat.pendingProposalCount}
             viewMode={activeViewMode}
             setViewMode={setViewMode}
             viewOptions={TAB_VIEW_OPTIONS[activeTab]}
@@ -207,21 +206,7 @@ function AppInner({ user }: { user: User }) {
           </div>
         </div>
 
-        {/* AI Rail — docked right panel or collapsed strip */}
-        {!isMobile && (
-          aiOpen ? (
-            <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} chat={chat} onOpenInbox={() => setInboxOpen(true)} />
-          ) : (
-            <div
-              className="cm-rail-strip"
-              onClick={() => setAiOpen(true)}
-              title="Open Campaign Assistant"
-            >
-              <span style={{ color: 'var(--gold)', fontSize: '16px', marginBottom: '8px' }}>✦</span>
-              <span className="cm-rail-strip-glyph">Assistant</span>
-            </div>
-          )
-        )}
+        <Workbench open={aiOpen} onClose={() => setAiOpen(false)} chat={chat} />
 
         <StatBlockPanel />
         <SearchOverlay
@@ -247,9 +232,6 @@ function AppInner({ user }: { user: User }) {
         />
         {captureOpen && (
           <PostSessionCapture onClose={() => setCaptureOpen(false)} />
-        )}
-        {inboxOpen && (
-          <ProposalsInbox chat={chat} onClose={() => setInboxOpen(false)} />
         )}
         <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
         <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
@@ -521,11 +503,20 @@ function WorldShell() {
   const [importType, setImportType] = useState('all');
   const [scratchOpen, setScratchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [diceOpen, setDiceOpen] = useState(false);
+  const chat = useAIChat(useWorldAssistantBackend());
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable;
+      // ⌘K → World Assistant
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setAiOpen(prev => !prev);
+        return;
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === '.') {
         e.preventDefault();
         setScratchOpen(prev => !prev);
@@ -538,6 +529,7 @@ function WorldShell() {
       }
       if (e.key === 'Escape') {
         setShortcutsOpen(false);
+        setAiOpen(false);
       }
     };
     window.addEventListener('keydown', handler);
@@ -547,7 +539,7 @@ function WorldShell() {
   return (
     <WorldEntityRefProvider>
     <div className="cm-shell">
-      <WorldSidebar />
+      <WorldSidebar onOpenAI={() => setAiOpen(true)} onOpenDice={() => setDiceOpen(true)} />
       <div className="cm-main">
         <WorldTopbar
           onToggleScratch={() => setScratchOpen(prev => !prev)}
@@ -558,6 +550,8 @@ function WorldShell() {
           <WorldContent />
         </div>
       </div>
+      <Workbench open={aiOpen} onClose={() => setAiOpen(false)} chat={chat} />
+      <DiceRoller open={diceOpen} onClose={() => setDiceOpen(false)} />
       <WorldImportDrawer
         open={importOpen}
         onClose={() => setImportOpen(false)}

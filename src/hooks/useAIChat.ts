@@ -1,18 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
-import { useCampaign } from '../context/CampaignContext';
 import { useToast } from '../context/ToastContext';
 import useLocalStorage from './useLocalStorage';
 import type {
-  Session, PlayerCharacter, NPC, Location,
-  Faction, Hook, LoreEntry, Module, MonsterStatblock,
   SessionInsert, PlayerCharacterInsert, NPCInsert, LocationInsert,
   FactionInsert, HookInsert, LoreEntryInsert, ModuleInsert,
   MonsterStatblockInsert,
 } from '../lib/database.types';
-import { submitDocument, type ImportAction, type DocumentInput, lookupExistingEntity, stripInternalFields } from '../lib/documentImport';
-import { formatCampaignContext } from '../lib/campaignContext';
+import {
+  submitDocument, entityMeta, computeDiffRows, fieldLabel, actionName, normalizeConfidence,
+  type ImportAction, type ImportActionType, type DocumentInput,
+} from '../lib/documentImport';
 import { getAIProvider, setAIProvider, type AIProvider } from '../lib/aiProvider';
 import { authHeaders } from '../lib/apiClient';
+import {
+  extractBlock, stripBlocks, parseCompleteObjects, parsePlanBlock, splitAnnotations,
+  type StepState, type PlanState,
+} from '../lib/assistantParse';
+import type { AssistantBackend } from './assistantBackend';
+
+export type { StepState, PlanStep, PlanState } from '../lib/assistantParse';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -36,10 +42,43 @@ export type PendingAction =
   | { type: 'deleteModule';    id: string; label: string }
   | { type: 'deleteMonsterStatblock'; id: string; label: string };
 
-export interface ImportApplyState {
-  phase: 'idle' | 'pending_confirmation' | 'applying' | 'done';
-  appliedActionIds: string[];
-  failedActionIds: string[];
+export type StageVerb = 'create' | 'update' | 'delete';
+
+export interface StagedField {
+  label: string;
+  old?: string;
+  value: string;
+  add?: boolean;
+}
+
+// One curatable card in the staging tray. `importAction` drives the diff UI;
+// `chatAction` (present only for chat-authored changes) is the preferred apply
+// path because it carries deletes, which imports never propose.
+export interface StagedChange {
+  id: string;
+  verb: StageVerb;
+  kind: ImportActionType;
+  name: string;
+  why: string;
+  confidence: number;
+  fields: StagedField[];
+  on: boolean;
+  open: boolean;
+  committed: boolean;
+  failed?: boolean;
+  importAction: ImportAction;
+  chatAction?: PendingAction;
+}
+
+export interface IngestCount { n: number; label: string }
+export interface IngestPass { label: string; state: StepState; count?: number }
+
+export interface IngestState {
+  phase: 'reading' | 'outline' | 'extracting' | 'done';
+  filename: string;
+  size: string;
+  counts: IngestCount[];
+  passes: IngestPass[];
 }
 
 export type ChatMessage =
@@ -47,107 +86,55 @@ export type ChatMessage =
   | {
       role: 'assistant';
       content: string;
-      isExtracting?: boolean;
-      extractingLabel?: string;
-      pendingActions?: PendingAction[];
-      importActions?: ImportAction[];
-      importApplyState?: ImportApplyState;
-      autoApplied?: boolean;
-      proposalTitle?: string;
-      proposalSource?: string;
-      proposalTimestamp?: number;
+      plan?: PlanState;
+      ingest?: IngestState;
+      error?: boolean;
     };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function pendingActionToImportType(a: PendingAction): ImportAction['type'] {
-  switch (a.type) {
-    case 'upsertSession':   return 'upsertSession';
-    case 'upsertNPC':       return 'upsertNPC';
-    case 'upsertPC':        return 'upsertPC';
-    case 'upsertLocation':  return 'upsertLocation';
-    case 'upsertFaction':   return 'upsertFaction';
-    case 'upsertHook':      return 'upsertHook';
-    case 'upsertLore':      return 'upsertLore';
-    case 'upsertModule':    return 'upsertModule';
-    case 'upsertMonsterStatblock': return 'upsertMonsterStatblock';
-    case 'deleteSession':   return 'upsertSession';
-    case 'deleteNPC':       return 'upsertNPC';
-    case 'deletePC':        return 'upsertPC';
-    case 'deleteLocation':  return 'upsertLocation';
-    case 'deleteFaction':   return 'upsertFaction';
-    case 'deleteHook':      return 'upsertHook';
-    case 'deleteLore':      return 'upsertLore';
-    case 'deleteModule':    return 'upsertModule';
-    case 'deleteMonsterStatblock': return 'upsertMonsterStatblock';
-  }
+const CHAT_ACTION_TYPES: Record<string, ImportActionType> = {
+  upsertSession: 'upsertSession', deleteSession: 'upsertSession',
+  upsertNPC: 'upsertNPC',         deleteNPC: 'upsertNPC',
+  upsertPC: 'upsertPC',           deletePC: 'upsertPC',
+  upsertLocation: 'upsertLocation', deleteLocation: 'upsertLocation',
+  upsertFaction: 'upsertFaction', deleteFaction: 'upsertFaction',
+  upsertHook: 'upsertHook',       deleteHook: 'upsertHook',
+  upsertLore: 'upsertLore',       deleteLore: 'upsertLore',
+  upsertModule: 'upsertModule',   deleteModule: 'upsertModule',
+  upsertMonsterStatblock: 'upsertMonsterStatblock',
+  deleteMonsterStatblock: 'upsertMonsterStatblock',
+};
+
+// Returns null for anything the model invented. An unrecognised type would
+// otherwise reach the tray with no entityMeta entry and throw on render.
+function pendingActionToImportType(a: PendingAction): ImportActionType | null {
+  return CHAT_ACTION_TYPES[a.type] ?? null;
 }
 
-function buildSystemPrompt(data: {
-  sessions: Session[];
-  pcs: PlayerCharacter[];
-  npcs: NPC[];
-  locations: Location[];
-  factions: Faction[];
-  hooks: Hook[];
-  lore: LoreEntry[];
-  modules: Module[];
-  monsterStatblocks: MonsterStatblock[];
-  overviewTitle: string;
-  overviewPlot: string;
-}): string {
-  return `You are a D&D campaign assistant. You help the DM organize campaign data by creating/updating/deleting records.
-
-${formatCampaignContext(data)}
-
-== CRITICAL RULES ==
-
-1. When the DM asks you to create, update, or change campaign data, you MUST respond with:
-   - 1-2 SHORT sentences saying what you're doing
-   - IMMEDIATELY followed by a \`\`\`json code block with an array of actions
-   This is MANDATORY. Never skip the JSON block when changes are requested.
-
-2. Your JSON actions ARE automatically applied to the database. You CAN and DO make changes. NEVER say "I can't execute", "you'll need to manually", "copy/paste", or "let me do that now". Just output the JSON block and it happens.
-
-3. Do NOT ask follow-up questions before making changes. Do NOT ask what to prioritize. Just do everything the DM asked for in one response.
-
-4. Do NOT write long summaries, bullet lists, or explanations. The user sees a preview table. Keep text minimal.
-
-5. You can ONLY work with data from the conversation and the campaign data above. If the DM references an uploaded document, the document import system handles that separately — do not pretend to parse a document you cannot see.
-
-6. If the DM is just asking a question (not requesting changes), respond normally without JSON.
-
-== ACTION FORMAT ==
-
-Upsert (to update an existing record, add an "id" field set to its id from the data above; omit "id" to create new):
-  { "type": "upsertNPC", "payload": { "name": "...", "role": "...", "affiliation": "...", "status": "active|deceased|unknown", "description": "...", "hooks_motivations": "...", "dm_notes": "...", "location": "...", "first_session": null } }
-  { "type": "upsertSession", "payload": { "session_number": 1, "session_date": "2024-01-01", "summary": "...", "combats": "...", "loot_rewards": "...", "hooks_notes": "...", "dm_notes": "..." } }
-  { "type": "upsertPC", "payload": { "character_name": "...", "player_name": "...", "race": "...", "class": "...", "background": "...", "story_hooks": "...", "key_npcs": "...", "dm_notes": "...", "is_active": true } }
-  { "type": "upsertLocation", "payload": { "name": "...", "region": "...", "location_type": "continent|city|town|dungeon|faction_hq|landmark", "population": "...", "status": "...", "history": "...", "description": "...", "dm_notes": "..." } }
-  { "type": "upsertFaction", "payload": { "name": "...", "faction_type": "...", "overview": "...", "key_figures": "...", "agenda": "...", "dm_notes": "..." } }
-  { "type": "upsertHook", "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "..." } }
-  { "type": "upsertLore", "payload": { "title": "...", "category": "history|artifact|creature|magic|religion", "content": "...", "dm_only": false } }
-  { "type": "upsertModule", "payload": { "chapter": "1", "title": "...", "synopsis": "...", "status": "planned|active|completed", "played_session": null, "encounters": "...", "rewards": "...", "dm_notes": "..." } }
-  { "type": "upsertMonsterStatblock", "payload": { "name": "...", "creature_type": "Medium humanoid", "challenge_rating": "5", "armor_class": 15, "ac_descriptor": "chain shirt", "hit_points": 65, "hit_dice": "10d8+20", "speed": "30 ft.", "str": 16, "dex": 14, "con": 14, "int": 10, "wis": 12, "cha": 8, "saving_throws": "Str +6, Con +5", "skills": "Athletics +6", "damage_immunities": null, "damage_resistances": null, "condition_immunities": null, "senses": "passive Perception 11", "languages": "Common", "content": "### Traits\\n**Brave.** Advantage on saves vs frightened.\\n\\n### Actions\\n**Multiattack.** Two longsword attacks.\\n\\n**Longsword.** +6 to hit, 1d8+3 slashing.", "dm_notes": "...", "tags": "humanoid, soldier" } }
-
-Delete: { "type": "deleteNPC", "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule, deleteMonsterStatblock)
-
-Always use existing record IDs when updating. Only include fields you want to set. Example of updating an existing hook (note the real "id" copied from the data above):
-  { "type": "upsertHook", "payload": { "id": "1f2e3d4c-0000-0000-0000-000000000000", "description": "...merged/updated text..." } }
-
-Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record describing the same thing and reuse its id to update it instead of making a duplicate. This matters most for plot hooks: if the DM mentions a quest, storyline, or hook that resembles one already in HOOKS & IDEAS — even when the title is reworded, shortened, or phrased differently — set that hook's id and merge the new developments into its description. Only omit the id when the hook is a genuinely new storyline with no match above.`;
+function approxSize(input: DocumentInput): string {
+  if (input.kind === 'gdocs-url') return 'Google Doc';
+  // base64 encodes 3 bytes per 4 chars; text payloads are already bytes.
+  const bytes = input.kind === 'text'
+    ? input.payload.length
+    : Math.floor(input.payload.length * 0.75);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+let stagedSeq = 0;
 
 // ── Hook ──────────────────────────────────────────────────────────────────
 
-export function useAIChat() {
-  const campaign = useCampaign();
-  const { sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, overview } = campaign;
+export function useAIChat(backend: AssistantBackend) {
   const toast = useToast();
 
-  const [messages, setMessages] = useLocalStorage<ChatMessage[]>('ai-chat-messages', []);
+  const [messages, setMessages] = useLocalStorage<ChatMessage[]>(`${backend.storageKey}-messages`, []);
+  const [stage, setStage] = useLocalStorage<StagedChange[]>(`${backend.storageKey}-stage`, []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [committing, setCommitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [pendingDocument, setPendingDocument] = useState<DocumentInput | null>(null);
   const [aiProvider, setAiProvider] = useState<AIProvider>(getAIProvider);
@@ -156,14 +143,19 @@ export function useAIChat() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // On mount, reset any messages stuck in 'applying' phase (e.g. from a page refresh mid-apply)
+  // A reload mid-run leaves spinners frozen forever. Settle any in-flight
+  // plan/ingest state on mount so nothing spins against a dead request.
   useEffect(() => {
     setMessages(prev => prev.map(m => {
       if (m.role !== 'assistant') return m;
-      if (m.importApplyState?.phase === 'applying') {
-        return { ...m, importApplyState: { ...m.importApplyState, phase: 'idle' as const } };
+      let next = m;
+      if (m.plan?.steps.some(s => s.state === 'active')) {
+        next = { ...next, plan: { ...m.plan, steps: m.plan.steps.map(s => s.state === 'active' ? { ...s, state: 'pending' as StepState } : s) } };
       }
-      return m;
+      if (m.ingest && m.ingest.phase !== 'done') {
+        next = { ...next, ingest: { ...m.ingest, phase: 'done' as const, passes: m.ingest.passes.map(p => p.state === 'active' ? { ...p, state: 'pending' as StepState } : p) } };
+      }
+      return next;
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -191,33 +183,129 @@ export function useAIChat() {
     setMessages([]);
   }
 
-  async function sendMessage() {
-    const hasText = !!input.trim();
+  // ── Staging ──────────────────────────────────────────────────────────────
+
+  // Turn one proposed action into a tray card: verb from create/update/delete,
+  // fields from a diff against the record it would touch.
+  function toStagedChange(
+    importAction: ImportAction,
+    chatAction?: PendingAction,
+  ): StagedChange {
+    const isDelete = !!chatAction?.type.startsWith('delete');
+    const existing = importAction.matched_id
+      ? backend.lookupExisting(importAction.type, importAction.matched_id)
+      : null;
+
+    const verb: StageVerb = isDelete ? 'delete' : existing ? 'update' : 'create';
+    const fields: StagedField[] = isDelete ? [] : computeDiffRows(existing, importAction.payload as Record<string, unknown>)
+      .map(row => ({
+        label: fieldLabel(row.key),
+        old: existing && row.oldValue != null && String(row.oldValue) !== '' ? String(row.oldValue) : undefined,
+        value: row.newValue == null ? '—' : String(row.newValue),
+        add: !existing,
+      }));
+
+    const name = isDelete
+      ? (chatAction as { label?: string }).label ?? '(unknown)'
+      : actionName(importAction, existing);
+
+    return {
+      id: `st-${Date.now()}-${stagedSeq++}`,
+      verb,
+      kind: importAction.type,
+      name,
+      why: importAction.reasoning,
+      confidence: importAction.confidence,
+      fields,
+      on: true,
+      open: false,
+      committed: false,
+      importAction,
+      chatAction,
+    };
+  }
+
+  function stageActions(changes: StagedChange[]) {
+    if (changes.length === 0) return;
+    setStage(prev => [...prev, ...changes]);
+  }
+
+  const toggleStagedOn = (id: string) =>
+    setStage(prev => prev.map(s => s.id === id && !s.committed ? { ...s, on: !s.on } : s));
+
+  const toggleStagedOpen = (id: string) =>
+    setStage(prev => prev.map(s => s.id === id ? { ...s, open: !s.open } : s));
+
+  const discardStaged = () =>
+    setStage(prev => prev.filter(s => s.committed));
+
+  const clearStage = () => setStage([]);
+
+  // Apply the checked, uncommitted subset. Mirrors the old
+  // applyConfirmedActions/handleApplyImport: chat actions apply their payload
+  // as written; import actions merge onto the existing record so fields the AI
+  // left out are preserved rather than nulled.
+  async function commitStaged() {
+    const selected = stage.filter(s => s.on && !s.committed);
+    if (selected.length === 0 || committing) return;
+
+    setCommitting(true);
+    const applied: string[] = [];
+    const failed: string[] = [];
+
+    for (const change of selected) {
+      try {
+        if (change.chatAction) {
+          await backend.applyChatAction(change.chatAction);
+        } else {
+          await backend.applyImportAction(change.importAction);
+        }
+        applied.push(change.id);
+      } catch (err) {
+        failed.push(change.id);
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        toast(`Failed to commit ${change.name}: ${msg}`, 'error');
+      }
+
+      setStage(prev => prev.map(s => {
+        if (applied.includes(s.id)) return { ...s, committed: true, open: false, failed: false };
+        if (failed.includes(s.id)) return { ...s, failed: true };
+        return s;
+      }));
+    }
+
+    setCommitting(false);
+
+    if (failed.length === 0 && applied.length > 0) {
+      toast(`Committed ${applied.length} change${applied.length === 1 ? '' : 's'} to your ${backend.scopeNoun}`, 'success');
+    } else if (failed.length > 0 && applied.length > 0) {
+      toast(`Committed ${applied.length}, ${failed.length} failed`, 'error');
+    }
+  }
+
+  // ── Chat ─────────────────────────────────────────────────────────────────
+
+  async function sendMessage(promptOverride?: string) {
+    const text = (promptOverride ?? input).trim();
     const hasDoc = !!pendingDocument;
-    if ((!hasText && !hasDoc) || loading) return;
+    if ((!text && !hasDoc) || loading) return;
     setApiError('');
 
     if (hasDoc) {
       const doc = pendingDocument;
-      const instructions = input.trim();
       setPendingDocument(null);
       setInput('');
-      handleDocumentImport(doc, instructions);
+      handleDocumentImport(doc, text);
       return;
     }
 
-    const userPrompt = input.trim();
-    const userMsg: ChatMessage = { role: 'user', content: userPrompt };
+    const userMsg: ChatMessage = { role: 'user', content: text };
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setInput('');
     setLoading(true);
 
-    const systemPrompt = buildSystemPrompt({
-      sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks,
-      overviewTitle: overview.title,
-      overviewPlot: overview.plotSummary,
-    });
+    const systemPrompt = backend.buildSystemPrompt();
 
     // Keep only the last 10 messages to avoid token bloat across long sessions.
     // Campaign context is always in the system prompt, so old history adds little value.
@@ -231,15 +319,84 @@ export function useAIChat() {
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
     let fullText = '';
-
-    function stripJsonBlocks(text: string): string {
-      let result = text.replace(/```json[\s\S]*?```/g, '');
-      result = result.replace(/```json[\s\S]*$/, '');
-      return result.trim();
-    }
+    let stagedCount = 0;
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    function patchStreaming(updater: (m: ChatMessage & { role: 'assistant' }) => ChatMessage) {
+      setMessages(prev => prev.map((m, i) =>
+        i === streamingIdx && m.role === 'assistant' ? updater(m) : m
+      ));
+    }
+
+    // Stage every action the model has finished writing, and tick its plan step
+    // over to done. Called on each chunk, so cards land as they are composed.
+    function drainCompletedActions(final: boolean) {
+      const block = extractBlock(fullText, 'json');
+      if (!block) return;
+      const objects = parseCompleteObjects(block);
+      if (objects.length <= stagedCount) return;
+
+      const fresh = objects.slice(stagedCount);
+      stagedCount = objects.length;
+
+      const changes: StagedChange[] = [];
+      const touchedSteps = new Set<number>();
+
+      fresh.forEach((raw, i) => {
+        const { action: parsed, meta } = splitAnnotations(raw);
+        if (typeof parsed.type !== 'string') return;
+        const action = parsed as unknown as PendingAction;
+        const kind = pendingActionToImportType(action);
+        if (!kind) return;
+        const isDelete = action.type.startsWith('delete');
+        const payload = isDelete
+          ? { name: (action as { label?: string }).label ?? '(unknown)' }
+          : (action as { payload?: Record<string, unknown> }).payload;
+        if (!payload || typeof payload !== 'object') return;
+        const matchedId = isDelete
+          ? (action as { id?: string }).id ?? null
+          : ((payload as Record<string, unknown>).id as string) ?? null;
+        // A delete with no id can't be applied and would fail at commit.
+        if (isDelete && !matchedId) return;
+
+        const importAction = {
+          action_id: `chat-${Date.now()}-${stagedCount - fresh.length + i}`,
+          type: kind,
+          matched_id: matchedId,
+          reasoning: meta.reasoning ?? '',
+          confidence: normalizeConfidence(meta.confidence),
+          payload,
+        } as ImportAction;
+
+        changes.push(toStagedChange(importAction, action));
+        if (meta.step != null) touchedSteps.add(meta.step);
+      });
+
+      stageActions(changes);
+
+      if (touchedSteps.size > 0) {
+        patchStreaming(m => {
+          if (!m.plan) return m;
+          const highest = Math.max(...touchedSteps);
+          return {
+            ...m,
+            plan: {
+              ...m.plan,
+              steps: m.plan.steps.map((s, idx) => {
+                const stepNo = idx + 1;
+                // Anything at or below the newest action's step is finished;
+                // the next one is what the model is writing now.
+                if (stepNo <= highest) return { ...s, state: 'done' as StepState };
+                if (stepNo === highest + 1 && !final) return { ...s, state: 'active' as StepState };
+                return s;
+              }),
+            },
+          };
+        });
+      }
+    }
 
     try {
       const response = await fetch('/api/chat', {
@@ -256,6 +413,7 @@ export function useAIChat() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let sseBuffer = '';
+      let planSet = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -271,76 +429,55 @@ export function useAIChat() {
           try { event = JSON.parse(line.slice(6)); } catch { continue; }
           if (event.type === 'text' && event.text) {
             fullText += event.text;
-            const displayText = stripJsonBlocks(fullText);
-            setMessages(prev => prev.map((m, i) =>
-              i === streamingIdx ? { ...m, content: displayText } : m
-            ));
+            const displayText = stripBlocks(fullText);
+
+            // The plan block streams in first; render it as soon as it closes,
+            // with step 1 running.
+            if (!planSet) {
+              const plan = parsePlanBlock(fullText);
+              if (plan && /```plan[\s\S]*?```/.test(fullText)) {
+                planSet = true;
+                plan.steps[0].state = 'active';
+                patchStreaming(m => ({ ...m, plan }));
+              }
+            }
+
+            patchStreaming(m => ({ ...m, content: displayText }));
+            drainCompletedActions(false);
           } else if (event.type === 'error') {
             throw new Error(event.message ?? 'Stream error');
           }
         }
       }
 
-      const parsedActions = parseActions(fullText);
-      const displayText = stripJsonBlocks(fullText);
+      drainCompletedActions(true);
 
-      if (parsedActions.length > 0) {
-        const importActions: ImportAction[] = parsedActions.map((a, i) => {
-          const isDelete = a.type.startsWith('delete');
-          const payload = isDelete
-            ? { name: (a as { label?: string }).label ?? '(unknown)' }
-            : (a as { payload: Record<string, unknown> }).payload;
-          const matchedId = isDelete
-            ? (a as { id?: string }).id ?? null
-            : ((payload as Record<string, unknown>).id as string) ?? null;
-          return {
-            action_id: `chat-${Date.now()}-${i}`,
-            type: pendingActionToImportType(a),
-            matched_id: matchedId,
-            reasoning: '',
-            payload,
-          };
-        }) as ImportAction[];
-
-        setMessages(prev => prev.map((m, i) =>
-          i === streamingIdx
-            ? {
-                role: 'assistant' as const,
-                content: displayText || `I'd like to make ${parsedActions.length} change${parsedActions.length === 1 ? '' : 's'} to your campaign:`,
-                autoApplied: true,
-                pendingActions: parsedActions,
-                importActions,
-                importApplyState: { phase: 'pending_confirmation', appliedActionIds: [], failedActionIds: [] },
-                proposalTitle: userPrompt.length > 60 ? userPrompt.slice(0, 57) + '…' : userPrompt,
-                proposalSource: 'Ask Campaign Assistant',
-                proposalTimestamp: Date.now(),
-              }
-            : m
-        ));
-      } else {
-        setMessages(prev => prev.map((m, i) =>
-          i === streamingIdx
-            ? { role: 'assistant' as const, content: displayText }
-            : m
-        ));
-      }
+      const displayText = stripBlocks(fullText);
+      patchStreaming(m => ({
+        ...m,
+        content: displayText || (stagedCount > 0
+          ? `I've drafted ${stagedCount} change${stagedCount === 1 ? '' : 's'}. Review them in the staging tray and commit what you want.`
+          : ''),
+        // Whatever the model did or didn't tag, the run is over — no step is
+        // still in flight.
+        plan: m.plan
+          ? { ...m.plan, steps: m.plan.steps.map(s => ({ ...s, state: 'done' as StepState })) }
+          : undefined,
+      }));
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        const displayText = stripJsonBlocks(fullText);
-        setMessages(prev => prev.map((m, i) =>
-          i === streamingIdx
-            ? { role: 'assistant' as const, content: displayText || '(Stopped)' }
-            : m
-        ));
+        const displayText = stripBlocks(fullText);
+        patchStreaming(m => ({
+          ...m,
+          content: displayText || '(Stopped)',
+          plan: m.plan
+            ? { ...m.plan, steps: m.plan.steps.map(s => s.state === 'active' ? { ...s, state: 'pending' as StepState } : s) }
+            : undefined,
+        }));
       } else {
         const msg = err instanceof Error ? err.message : 'Unknown error';
-        setMessages(prev => {
-          const last = prev[prev.length - 1];
-          if (last && last.role === 'assistant' && !last.content) {
-            return [...prev.slice(0, -1), { role: 'assistant' as const, content: `Error: ${msg}` }];
-          }
-          return [...prev, { role: 'assistant' as const, content: `Error: ${msg}` }];
-        });
+        setApiError(msg);
+        patchStreaming(m => ({ ...m, content: `Error: ${msg}`, error: true }));
       }
     } finally {
       abortControllerRef.current = null;
@@ -348,123 +485,32 @@ export function useAIChat() {
     }
   }
 
-  function parseActions(text: string): PendingAction[] {
-    const match = text.match(/```json\s*([\s\S]*?)```/);
-    if (!match) return [];
-    try {
-      const parsed = JSON.parse(match[1]);
-      if (!Array.isArray(parsed)) return [];
-      return parsed as PendingAction[];
-    } catch {
-      return [];
-    }
-  }
-
-  async function applyConfirmedActions(msgIdx: number) {
-    const msg = messages[msgIdx];
-    if (!msg || msg.role !== 'assistant' || !msg.importActions) return;
-
-    const importActions = msg.importActions;
-    const chatActions = msg.pendingActions;
-
-    setMessages(prev => prev.map((m, i) =>
-      i === msgIdx && m.role === 'assistant'
-        ? { ...m, importApplyState: { phase: 'applying' as const, appliedActionIds: [], failedActionIds: [] } }
-        : m
-    ));
-
-    const applied: string[] = [];
-    const failed: string[] = [];
-
-    for (let ai = 0; ai < importActions.length; ai++) {
-      const actionId = importActions[ai].action_id;
-      try {
-        if (chatActions && chatActions[ai]) {
-          const action = chatActions[ai];
-          switch (action.type) {
-            case 'upsertSession':   await campaign.upsertSession(action.payload); break;
-            case 'upsertNPC':       await campaign.upsertNPC(action.payload); break;
-            case 'upsertPC':        await campaign.upsertPC(action.payload); break;
-            case 'upsertLocation':  await campaign.upsertLocation(action.payload); break;
-            case 'upsertFaction':   await campaign.upsertFaction(action.payload); break;
-            case 'upsertHook':      await campaign.upsertHook(action.payload); break;
-            case 'upsertLore':      await campaign.upsertLore(action.payload); break;
-            case 'upsertModule':    await campaign.upsertModule(action.payload); break;
-            case 'upsertMonsterStatblock': await campaign.upsertMonsterStatblock(action.payload); break;
-            case 'deleteSession':   await campaign.deleteSession(action.id); break;
-            case 'deleteNPC':       await campaign.deleteNPC(action.id); break;
-            case 'deletePC':        await campaign.deletePC(action.id); break;
-            case 'deleteLocation':  await campaign.deleteLocation(action.id); break;
-            case 'deleteFaction':   await campaign.deleteFaction(action.id); break;
-            case 'deleteHook':      await campaign.deleteHook(action.id); break;
-            case 'deleteLore':      await campaign.deleteLore(action.id); break;
-            case 'deleteModule':    await campaign.deleteModule(action.id); break;
-            case 'deleteMonsterStatblock': await campaign.deleteMonsterStatblock(action.id); break;
-          }
-        } else {
-          const action = importActions[ai];
-          const existing = lookupExistingEntity(campaign, action.type, action.matched_id);
-          const payload = existing
-            ? { ...stripInternalFields(existing), ...(action.payload as Record<string, unknown>), id: action.matched_id }
-            : { ...(action.payload as Record<string, unknown>) };
-          switch (action.type) {
-            case 'upsertSession':      await campaign.upsertSession(payload as Parameters<typeof campaign.upsertSession>[0]); break;
-            case 'upsertPC':           await campaign.upsertPC(payload as Parameters<typeof campaign.upsertPC>[0]); break;
-            case 'upsertNPC':          await campaign.upsertNPC(payload as Parameters<typeof campaign.upsertNPC>[0]); break;
-            case 'upsertLocation':     await campaign.upsertLocation(payload as Parameters<typeof campaign.upsertLocation>[0]); break;
-            case 'upsertFaction':      await campaign.upsertFaction(payload as Parameters<typeof campaign.upsertFaction>[0]); break;
-            case 'upsertHook':         await campaign.upsertHook(payload as Parameters<typeof campaign.upsertHook>[0]); break;
-            case 'upsertLore':         await campaign.upsertLore(payload as Parameters<typeof campaign.upsertLore>[0]); break;
-            case 'upsertModule':       await campaign.upsertModule(payload as Parameters<typeof campaign.upsertModule>[0]); break;
-            case 'upsertSubmodule':    await campaign.upsertSubmodule(payload as Parameters<typeof campaign.upsertSubmodule>[0]); break;
-            case 'upsertScene':        await campaign.upsertScene(payload as Parameters<typeof campaign.upsertScene>[0]); break;
-            case 'upsertRelationship': await campaign.upsertRelationship(payload as Parameters<typeof campaign.upsertRelationship>[0]); break;
-            case 'upsertMonsterStatblock': await campaign.upsertMonsterStatblock(payload as Parameters<typeof campaign.upsertMonsterStatblock>[0]); break;
-          }
-        }
-        applied.push(actionId);
-      } catch {
-        failed.push(actionId);
-      }
-      setMessages(prev => prev.map((m, i) =>
-        i === msgIdx && m.role === 'assistant'
-          ? { ...m, importApplyState: { phase: 'applying' as const, appliedActionIds: [...applied], failedActionIds: [...failed] } }
-          : m
-      ));
-    }
-
-    setMessages(prev => prev.map((m, i) =>
-      i === msgIdx && m.role === 'assistant'
-        ? { ...m, pendingActions: undefined, importApplyState: { phase: 'done' as const, appliedActionIds: [...applied], failedActionIds: [...failed] } }
-        : m
-    ));
-
-    if (failed.length === 0 && applied.length > 0) toast(`Applied ${applied.length} change${applied.length === 1 ? '' : 's'}`, 'success');
-    else if (failed.length > 0) toast(`Applied ${applied.length}, ${failed.length} failed`, 'error');
-  }
-
-  function dismissConfirmedActions(msgIdx: number) {
-    setMessages(prev => prev.map((m, i) =>
-      i === msgIdx && m.role === 'assistant'
-        ? { ...m, pendingActions: undefined, importActions: undefined, importApplyState: undefined }
-        : m
-    ));
-  }
+  // ── Document import ──────────────────────────────────────────────────────
 
   async function handleDocumentImport(docInput: DocumentInput, userInstructions?: string) {
     setApiError('');
 
-    const label = docInput.kind === 'gdocs-url'
-      ? 'Imported Google Doc'
-      : `Uploaded ${docInput.filename ?? 'document'}`;
+    const filename = docInput.kind === 'gdocs-url'
+      ? 'Google Doc'
+      : (docInput.filename ?? 'document');
     const userContent = userInstructions
-      ? `📄 ${label}\n${userInstructions}`
-      : `📄 ${label}`;
+      ? `📄 Attached ${filename}\n${userInstructions}`
+      : `📄 Attached ${filename}`;
     const userMsg: ChatMessage = { role: 'user', content: userContent };
 
     setMessages(prev => {
       importPlaceholderRef.current = prev.length + 1;
-      return [...prev, userMsg, { role: 'assistant', content: '' }];
+      return [...prev, userMsg, {
+        role: 'assistant',
+        content: '',
+        ingest: {
+          phase: 'reading',
+          filename,
+          size: approxSize(docInput),
+          counts: [],
+          passes: [],
+        },
+      }];
     });
     setLoading(true);
 
@@ -478,178 +524,85 @@ export function useAIChat() {
       }));
     }
 
+    function patchIngest(updater: (ing: IngestState) => IngestState) {
+      updatePlaceholder(m => (m.ingest ? { ...m, ingest: updater(m.ingest) } : m));
+    }
+
     try {
-      const ctx = formatCampaignContext({
-        sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks,
-        overviewTitle: overview.title,
-        overviewPlot: overview.plotSummary,
-      });
+      const ctx = backend.formatContext();
 
       const { actions } = await submitDocument(
         docInput,
         ctx,
         userInstructions,
         (chunk) => {
+          // The model's read-through of the doc — this is the outline prose.
           updatePlaceholder(m => ({ ...m, content: m.content + chunk }));
+          patchIngest(ing => (ing.phase === 'reading' ? { ...ing, phase: 'outline' } : ing));
         },
         () => {
-          updatePlaceholder(m => ({ ...m, isExtracting: true }));
+          patchIngest(ing => ({ ...ing, phase: 'extracting' }));
         },
         (pass) => {
-          updatePlaceholder(m => ({
-            ...m,
-            isExtracting: true,
-            extractingLabel: `Extracting ${pass.label} (${pass.index + 1}/${pass.total})...`,
-          }));
+          patchIngest(ing => {
+            // Seed the row list the first time we learn how many passes there are.
+            const passes: IngestPass[] = ing.passes.length === pass.total
+              ? [...ing.passes]
+              : Array.from({ length: pass.total }, (_, i) => ({ label: i === pass.index ? pass.label : '…', state: 'pending' as StepState }));
+            passes.forEach((p, i) => {
+              if (i < pass.index) p.state = 'done';
+              else if (i === pass.index) { p.label = pass.label; p.state = 'active'; }
+            });
+            return { ...ing, phase: 'extracting', passes };
+          });
         },
         controller.signal,
         aiProvider,
       );
 
-      if (actions.length > 0) {
-        const filename = docInput.kind === 'gdocs-url' ? 'Google Doc' : (docInput.filename ?? 'document');
-        const title = userInstructions
-          ? (userInstructions.length > 60 ? userInstructions.slice(0, 57) + '…' : userInstructions)
-          : `Import ${filename}`;
-        updatePlaceholder(m => ({
-          ...m,
-          isExtracting: false,
-          importActions: actions,
-          importApplyState: { phase: 'pending_confirmation', appliedActionIds: [], failedActionIds: [] },
-          proposalTitle: title,
-          proposalSource: filename,
-          proposalTimestamp: Date.now(),
+      // The tool schema constrains the type, but a stray one would throw on
+      // render — drop it rather than take the tray down.
+      const known = actions.filter(a => !!entityMeta[a.type]);
+
+      if (known.length > 0) {
+        stageActions(known.map(a => toStagedChange(a)));
+
+        // Counts the design shows as the "here's what I found" grid — real
+        // totals, grouped by kind, now that extraction has actually run.
+        const byKind = new Map<ImportActionType, number>();
+        for (const a of known) byKind.set(a.type, (byKind.get(a.type) ?? 0) + 1);
+        const counts: IngestCount[] = [...byKind.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([kind, n]) => ({ n, label: `${entityMeta[kind].label}${n === 1 ? '' : 's'}` }));
+
+        patchIngest(ing => ({
+          ...ing,
+          phase: 'done',
+          counts,
+          passes: ing.passes.map(p => ({ ...p, state: 'done' as StepState })),
         }));
       } else {
+        patchIngest(ing => ({ ...ing, phase: 'done', passes: ing.passes.map(p => ({ ...p, state: 'done' as StepState })) }));
         updatePlaceholder(m => ({
           ...m,
-          isExtracting: false,
           content: (m.content ? m.content + '\n\n' : '') +
             'No changes were extracted. The document may have been too large for a single pass, or the extraction timed out. Try uploading again, or break the document into smaller sections.',
         }));
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        updatePlaceholder(m => ({
-          ...m,
-          isExtracting: false,
-          content: m.content || '(Stopped)',
-        }));
+        patchIngest(ing => ({ ...ing, phase: 'done' }));
+        updatePlaceholder(m => ({ ...m, content: m.content || '(Stopped)' }));
       } else {
         const msg = err instanceof Error ? err.message : 'Unknown error';
-        updatePlaceholder(() => ({ role: 'assistant', content: `Error importing document: ${msg}` }));
+        setApiError(msg);
+        updatePlaceholder(() => ({ role: 'assistant', content: `Error importing document: ${msg}`, error: true }));
       }
     } finally {
       abortControllerRef.current = null;
       setLoading(false);
     }
-  }
-
-  async function handleApplyImport(msgIdx: number, selected: ImportAction[]) {
-    setMessages(prev => prev.map((m, i) => {
-      if (i !== msgIdx || m.role !== 'assistant') return m;
-      return {
-        ...m,
-        importApplyState: { phase: 'applying', appliedActionIds: [], failedActionIds: [] },
-      };
-    }));
-
-    const applied: string[] = [];
-    const failed: string[] = [];
-
-    for (const action of selected) {
-      try {
-        const existing = lookupExistingEntity(campaign, action.type, action.matched_id);
-        const payload = existing
-          ? { ...stripInternalFields(existing), ...(action.payload as Record<string, unknown>), id: action.matched_id }
-          : { ...(action.payload as Record<string, unknown>) };
-
-        switch (action.type) {
-          case 'upsertSession':
-            await campaign.upsertSession(payload as Parameters<typeof campaign.upsertSession>[0]);
-            break;
-          case 'upsertPC':
-            await campaign.upsertPC(payload as Parameters<typeof campaign.upsertPC>[0]);
-            break;
-          case 'upsertNPC':
-            await campaign.upsertNPC(payload as Parameters<typeof campaign.upsertNPC>[0]);
-            break;
-          case 'upsertLocation':
-            await campaign.upsertLocation(payload as Parameters<typeof campaign.upsertLocation>[0]);
-            break;
-          case 'upsertFaction':
-            await campaign.upsertFaction(payload as Parameters<typeof campaign.upsertFaction>[0]);
-            break;
-          case 'upsertHook':
-            await campaign.upsertHook(payload as Parameters<typeof campaign.upsertHook>[0]);
-            break;
-          case 'upsertLore':
-            await campaign.upsertLore(payload as Parameters<typeof campaign.upsertLore>[0]);
-            break;
-          case 'upsertModule':
-            await campaign.upsertModule(payload as Parameters<typeof campaign.upsertModule>[0]);
-            break;
-          case 'upsertSubmodule':
-            await campaign.upsertSubmodule(payload as Parameters<typeof campaign.upsertSubmodule>[0]);
-            break;
-          case 'upsertScene':
-            await campaign.upsertScene(payload as Parameters<typeof campaign.upsertScene>[0]);
-            break;
-          case 'upsertRelationship':
-            await campaign.upsertRelationship(payload as Parameters<typeof campaign.upsertRelationship>[0]);
-            break;
-          case 'upsertMonsterStatblock':
-            await campaign.upsertMonsterStatblock(payload as Parameters<typeof campaign.upsertMonsterStatblock>[0]);
-            break;
-          default: {
-            const _exhaustive: never = action;
-            void _exhaustive;
-          }
-        }
-        applied.push(action.action_id);
-      } catch (err) {
-        failed.push(action.action_id);
-        const msg = err instanceof Error ? err.message : 'Unknown error';
-        toast(`Failed: ${msg}`, 'error');
-      }
-
-      setMessages(prev => prev.map((m, i) => {
-        if (i !== msgIdx || m.role !== 'assistant') return m;
-        return {
-          ...m,
-          importApplyState: {
-            phase: 'applying',
-            appliedActionIds: [...applied],
-            failedActionIds: [...failed],
-          },
-        };
-      }));
-    }
-
-    setMessages(prev => prev.map((m, i) => {
-      if (i !== msgIdx || m.role !== 'assistant') return m;
-      return {
-        ...m,
-        importApplyState: {
-          phase: 'done',
-          appliedActionIds: [...applied],
-          failedActionIds: [...failed],
-        },
-      };
-    }));
-
-    if (failed.length === 0 && applied.length > 0) {
-      toast(`Imported ${applied.length} change${applied.length === 1 ? '' : 's'}`, 'success');
-    } else if (failed.length > 0 && applied.length > 0) {
-      toast(`Applied ${applied.length}, ${failed.length} failed`, 'error');
-    }
-  }
-
-  function dismissImportActions(msgIdx: number) {
-    setMessages(prev => prev.map((m, i) => {
-      if (i !== msgIdx || m.role !== 'assistant') return m;
-      return { ...m, importActions: undefined, importApplyState: undefined };
-    }));
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -659,19 +612,21 @@ export function useAIChat() {
     }
   }
 
-  // Count messages with unresolved import proposals (not yet applied or dismissed)
-  const pendingProposalCount = messages.reduce((count, m) => {
-    if (m.role !== 'assistant') return count;
-    if (!m.importActions?.length) return count;
-    if (m.importApplyState?.phase === 'done') return count;
-    return count + m.importActions.length;
-  }, 0);
+  const pendingStaged = stage.filter(s => !s.committed);
+  const selectedStaged = pendingStaged.filter(s => s.on);
 
   return {
+    title: backend.title,
+    subtitle: backend.subtitle,
+    scopeNoun: backend.scopeNoun,
+    supportsDocuments: backend.supportsDocuments,
+    composerPlaceholder: backend.composerPlaceholder,
+    samples: backend.samples,
     messages,
     input,
     setInput,
     loading,
+    committing,
     apiError,
     setApiError,
     pendingDocument,
@@ -681,13 +636,19 @@ export function useAIChat() {
     sendMessage,
     stopGeneration,
     clearMessages,
-    applyConfirmedActions,
-    dismissConfirmedActions,
-    handleApplyImport,
-    dismissImportActions,
+    handleDocumentImport,
     handleKeyDown,
     bottomRef,
     textareaRef,
-    pendingProposalCount,
+    // staging tray
+    stage,
+    pendingStaged,
+    selectedStaged,
+    toggleStagedOn,
+    toggleStagedOpen,
+    commitStaged,
+    discardStaged,
+    clearStage,
+    pendingProposalCount: pendingStaged.length,
   };
 }

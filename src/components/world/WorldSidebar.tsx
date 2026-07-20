@@ -203,7 +203,7 @@ function CampaignFlyout({ campaigns, activeCampaignId, openCampaign }: CampaignF
 
 // ── Main sidebar ────────────────────────────────────────────────────────────
 
-export default function WorldSidebar() {
+export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () => void; onOpenDice?: () => void }) {
   const {
     activeWorld, campaigns, worldTab, setWorldTab, loading,
     activeCampaignId, openCampaign, createCampaign, deleteCampaign,
@@ -265,6 +265,16 @@ export default function WorldSidebar() {
               {t.glyph}
             </button>
           ))}
+
+          {(onOpenAI || onOpenDice) && <div className="w-coll-sep" />}
+          {onOpenAI && (
+            <button className="w-coll-item cm-nav-assist" onClick={onOpenAI} title="World Assistant (⌘K)">
+              <span className="cm-nav-glyph" style={{ width: 'auto', flex: 'none' }}>✦</span>
+            </button>
+          )}
+          {onOpenDice && (
+            <button className="w-coll-item" onClick={onOpenDice} title="Dice roller">⚄</button>
+          )}
         </nav>
 
         <div className="w-coll-sep" />
@@ -309,6 +319,24 @@ export default function WorldSidebar() {
               {counts[t.id] != null && <span className="w-nav-count">{counts[t.id]}</span>}
             </button>
           ))}
+          {(onOpenAI || onOpenDice) && (
+            <>
+              <div className="w-nav-section" style={{ marginTop: 8 }}>Tools</div>
+              {onOpenAI && (
+                <button className="w-nav-item cm-nav-assist" onClick={onOpenAI} title="World Assistant (⌘K)">
+                  <span className="w-nav-glyph">✦</span>
+                  <span className="cm-nav-label">Assistant</span>
+                  {!collapsed && <span className="cm-nav-kbd">⌘K</span>}
+                </button>
+              )}
+              {onOpenDice && (
+                <button className="w-nav-item" onClick={onOpenDice} title="Dice roller">
+                  <span className="w-nav-glyph">⚄</span>
+                  <span className="cm-nav-label">Dice</span>
+                </button>
+              )}
+            </>
+          )}
           <div className="w-nav-section" style={{ marginTop: 8 }}>Campaigns</div>
         </nav>
 

@@ -1,7 +1,7 @@
-// Upload affordance mounted next to the AI Assistant textarea. Paperclip
-// button opens a small popover with two choices: upload a file, or paste
-// a Google Docs URL. Calls onAttach with a DocumentInput which the parent
-// (AIAssistant) holds as a pending attachment until the user hits Send.
+// Attach affordance mounted in the Workbench composer. The ＋ button opens a
+// small popover with two choices: upload a file, or paste a Google Docs URL.
+// Calls onAttach with a DocumentInput which the parent holds as a pending
+// attachment until the user hits Send.
 
 import { useRef, useState } from 'react';
 import { extractClientSide, parseGoogleDocsUrl, type DocumentInput } from '../lib/documentImport';
@@ -53,23 +53,14 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
     <div style={{ position: 'relative' }}>
       <button
         type="button"
+        className={`icon-btn${open ? ' on' : ''}`}
         onClick={() => setOpen(o => !o)}
         disabled={disabled}
-        title="Import document"
-        aria-label="Import document"
-        style={{
-          background: 'none',
-          border: '1px solid #3a3660',
-          borderRadius: '8px',
-          padding: '10px 12px',
-          color: open ? 'var(--gold)' : 'var(--ink-2)',
-          fontSize: '18px',
-          cursor: disabled ? 'default' : 'pointer',
-          lineHeight: 1,
-          opacity: disabled ? 0.5 : 1,
-        }}
+        title="Attach a document"
+        aria-label="Attach a document"
+        style={{ flexShrink: 0, opacity: disabled ? 0.5 : 1 }}
       >
-        ⎘
+        ＋
       </button>
 
       {open && (
@@ -88,7 +79,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               left: 0,
               width: '280px',
               backgroundColor: 'var(--paper)',
-              border: '1px solid #3a3660',
+              border: '1px solid var(--rule)',
               borderRadius: '10px',
               padding: '14px',
               zIndex: 1002,
@@ -168,7 +159,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
                 width: '100%',
                 backgroundColor: 'var(--paper-2)',
                 color: 'var(--ink)',
-                border: '1px solid #3a3660',
+                border: '1px solid var(--rule)',
                 borderRadius: '6px',
                 padding: '8px 10px',
                 fontSize: '12px',
@@ -185,7 +176,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
                 marginTop: '8px',
                 width: '100%',
                 background: 'none',
-                border: '1px solid #3a3660',
+                border: '1px solid var(--rule)',
                 borderRadius: '6px',
                 padding: '6px 12px',
                 fontSize: '12px',

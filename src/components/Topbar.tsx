@@ -8,16 +8,11 @@ interface TopbarProps {
   onOpenMobileMenu: () => void;
   onOpenSearch: () => void;
   onToggleDice: () => void;
-  onOpenAI: () => void;
-  onOpenInbox: () => void;
   onOpenCapture: () => void;
-  onToggleRun: () => void;
   onToggleScratch: () => void;
   onToggleShortcuts: () => void;
   scratchOpen: boolean;
-  runMode: boolean;
   isMobile: boolean;
-  proposalCount?: number;
   viewMode?: string;
   setViewMode?: (v: string) => void;
   viewOptions?: ViewOption[];
@@ -28,16 +23,11 @@ export default function Topbar({
   onOpenMobileMenu,
   onOpenSearch,
   onToggleDice,
-  onOpenAI,
-  onOpenInbox,
   onOpenCapture,
-  onToggleRun,
   onToggleScratch,
   onToggleShortcuts,
   scratchOpen,
-  runMode,
   isMobile,
-  proposalCount = 0,
   viewMode,
   setViewMode,
   viewOptions,
@@ -94,20 +84,6 @@ export default function Topbar({
 
       {/* Right cluster */}
       <div className="cm-top-actions">
-        {/* Proposals */}
-        {proposalCount > 0 && (
-          <button
-            onClick={onOpenInbox}
-            className="cm-top-btn"
-            title="AI Proposals"
-            style={{ borderColor: 'var(--gold)', color: 'var(--ink)' }}
-          >
-            <span className="cm-top-btn-glyph">✎</span>
-            {!isMobile && <span>Proposals</span>}
-            <span className="cm-top-badge">{proposalCount}</span>
-          </button>
-        )}
-
         {/* Scratchpad */}
         {!isMobile && (
           <button
@@ -130,16 +106,10 @@ export default function Topbar({
         )}
 
         {/* Search */}
-        <button onClick={onOpenSearch} className="cm-top-btn" title="Search (⌘K)">
+        <button onClick={onOpenSearch} className="cm-top-btn" title="Search (⌘/)">
           <span className="cm-top-btn-glyph">⌕</span>
           {!isMobile && <span>Search</span>}
-          {!isMobile && <kbd>⌘K</kbd>}
-        </button>
-
-        {/* AI Assistant */}
-        <button onClick={onOpenAI} className="cm-top-btn" title="Campaign Assistant">
-          <span className="cm-top-btn-glyph">✦</span>
-          {!isMobile && <span>Assistant</span>}
+          {!isMobile && <kbd>⌘/</kbd>}
         </button>
 
         {/* Post-Session Capture */}

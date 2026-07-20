@@ -23,14 +23,16 @@ import type {
 
 // ── ImportAction discriminated union ───────────────────────────────────────
 // The server returns a list of these. Each has matched_id (existing entity
-// id, or null for new), a reasoning string for the UI, and the entity-specific
-// payload. A client-side action_id is assigned on receipt for UI state keys.
+// id, or null for new), a reasoning string for the UI, a 0-1 confidence score,
+// and the entity-specific payload. A client-side action_id is assigned on
+// receipt for UI state keys.
 
 type ImportActionBase<TType extends string, TPayload> = {
   action_id: string;      // client-assigned UUID for UI tracking
   type: TType;
   matched_id: string | null;
   reasoning: string;
+  confidence: number;
   payload: Partial<TPayload>;
 };
 
@@ -52,26 +54,91 @@ export type ImportAction =
 
 export type ImportActionType = ImportAction['type'];
 
-// Entity-kind metadata for the review UI (label, badge color, which campaign
-// list to look up the "old" values in).
+// The model self-reports confidence and can omit it, send it as a percentage,
+// or send junk. Anything we can't read as a 0-1 number becomes 0.7 — mid-range,
+// so an unscored action reads as "worth a look" rather than trusted or alarming.
+export const DEFAULT_CONFIDENCE = 0.7;
+
+export function normalizeConfidence(raw: unknown): number {
+  // Number(null) and Number('') are both 0, which would masquerade as a real
+  // (very low) score — treat absent/blank as unscored instead.
+  if (raw == null || raw === '') return DEFAULT_CONFIDENCE;
+  const n = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(n)) return DEFAULT_CONFIDENCE;
+  // Some models report a percentage (0-100) instead of a fraction. Only values
+  // clearly in that range get rescaled; a small overshoot like 1.2 is a fumbled
+  // fraction, not "120%", so it just clamps to 1.
+  const scaled = n >= 2 ? n / 100 : n;
+  return Math.min(1, Math.max(0, scaled));
+}
+
+// Entity-kind metadata for the review UI (label, badge color, staging-tray
+// glyph, and which campaign list to look up the "old" values in).
 export const entityMeta: Record<ImportActionType, {
   label: string;
   badgeColor: 'gold' | 'green' | 'red' | 'blue' | 'muted' | 'yellow' | 'orange';
+  glyph: string;
   nameField: string;
 }> = {
-  upsertSession:      { label: 'Session',      badgeColor: 'blue',   nameField: 'session_number' },
-  upsertPC:           { label: 'PC',           badgeColor: 'gold',   nameField: 'character_name' },
-  upsertNPC:          { label: 'NPC',          badgeColor: 'orange', nameField: 'name' },
-  upsertLocation:     { label: 'Location',     badgeColor: 'green',  nameField: 'name' },
-  upsertFaction:      { label: 'Faction',      badgeColor: 'yellow', nameField: 'name' },
-  upsertHook:         { label: 'Plot Hook',    badgeColor: 'red',    nameField: 'title' },
-  upsertLore:         { label: 'Lore',         badgeColor: 'muted',  nameField: 'title' },
-  upsertModule:       { label: 'Module',       badgeColor: 'gold',   nameField: 'title' },
-  upsertSubmodule:    { label: 'Submodule',    badgeColor: 'muted',  nameField: 'title' },
-  upsertScene:        { label: 'Scene',        badgeColor: 'muted',  nameField: 'title' },
-  upsertRelationship:      { label: 'Relationship', badgeColor: 'muted',  nameField: 'label' },
-  upsertMonsterStatblock:  { label: 'Stat Sheet',   badgeColor: 'blue',   nameField: 'name' },
+  upsertSession:      { label: 'Session',      badgeColor: 'blue',   glyph: '◉', nameField: 'session_number' },
+  upsertPC:           { label: 'PC',           badgeColor: 'gold',   glyph: '◈', nameField: 'character_name' },
+  upsertNPC:          { label: 'NPC',          badgeColor: 'orange', glyph: '◇', nameField: 'name' },
+  upsertLocation:     { label: 'Location',     badgeColor: 'green',  glyph: '⬡', nameField: 'name' },
+  upsertFaction:      { label: 'Faction',      badgeColor: 'yellow', glyph: '⚑', nameField: 'name' },
+  upsertHook:         { label: 'Plot Hook',    badgeColor: 'red',    glyph: '↯', nameField: 'title' },
+  upsertLore:         { label: 'Lore',         badgeColor: 'muted',  glyph: '✦', nameField: 'title' },
+  upsertModule:       { label: 'Module',       badgeColor: 'gold',   glyph: '▣', nameField: 'title' },
+  upsertSubmodule:    { label: 'Submodule',    badgeColor: 'muted',  glyph: '▣', nameField: 'title' },
+  upsertScene:        { label: 'Scene',        badgeColor: 'muted',  glyph: '▸', nameField: 'title' },
+  upsertRelationship:      { label: 'Relationship', badgeColor: 'muted',  glyph: '⧉', nameField: 'label' },
+  upsertMonsterStatblock:  { label: 'Stat Sheet',   badgeColor: 'blue',   glyph: '☠', nameField: 'name' },
 };
+
+// ── Field diffing for the staging tray ────────────────────────────────────
+// Fields that are foreign keys, internal refs, or handled elsewhere — never
+// meaningful to show the DM as a diff row.
+const hiddenFields = new Set([
+  'faction_ids', 'statblock_id', 'module_id', 'submodule_id', 'sort_order',
+  'from_id', 'from_kind', 'to_id', 'to_kind', 'linked_monster_ids', 'linked_encounter_ids',
+  'id', 'campaign_id',
+]);
+
+export function fieldLabel(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+export interface DiffRow {
+  key: string;
+  oldValue: unknown;
+  newValue: unknown;
+}
+
+// Which fields the AI's payload actually changes against the current record.
+// currentEntity is null for creates, so every field reads as new.
+export function computeDiffRows(
+  currentEntity: Record<string, unknown> | null,
+  payload: Record<string, unknown>,
+): DiffRow[] {
+  const rows: DiffRow[] = [];
+  for (const [key, newValue] of Object.entries(payload)) {
+    if (hiddenFields.has(key)) continue;
+    const oldValue = currentEntity?.[key] ?? null;
+    const oldStr = oldValue == null ? '' : String(oldValue);
+    const newStr = newValue == null ? '' : String(newValue);
+    if (oldStr === newStr) continue;
+    rows.push({ key, oldValue, newValue });
+  }
+  return rows;
+}
+
+export function actionName(a: ImportAction, existing: Record<string, unknown> | null): string {
+  const meta = entityMeta[a.type];
+  const payload = a.payload as Record<string, unknown>;
+  const raw = payload[meta.nameField] ?? existing?.[meta.nameField];
+  const name = typeof raw === 'string' || typeof raw === 'number' ? String(raw) : '';
+  if (!name) return '(unnamed)';
+  return a.type === 'upsertSession' ? `Session ${name}` : name;
+}
 
 export function describeAction(a: ImportAction): string {
   const meta = entityMeta[a.type];
@@ -215,6 +282,7 @@ export async function submitDocument(
       // Individual action event
       actions.push({
         ...event.action,
+        confidence: normalizeConfidence(event.action.confidence),
         action_id: `imp-${Date.now()}-${actionCounter++}`,
       } as ImportAction);
     } else if (event.type === 'done') {
@@ -222,6 +290,7 @@ export async function submitDocument(
       if (event.actions && event.actions.length > 0) {
         actions = event.actions.map((a, i) => ({
           ...a,
+          confidence: normalizeConfidence(a.confidence),
           action_id: `imp-${Date.now()}-${i}`,
         })) as ImportAction[];
       }
