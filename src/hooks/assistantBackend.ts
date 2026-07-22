@@ -11,6 +11,7 @@ import {
   lookupExistingEntity, stripInternalFields,
   type ImportAction, type ImportActionType,
 } from '../lib/documentImport';
+import { normalizeAssistantPayload } from '../lib/assistantNormalize';
 import type { PendingAction } from './useAIChat';
 
 export interface AssistantBackend {
@@ -120,7 +121,10 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     return (lookupExistingEntity(campaign, type, id) as Record<string, unknown> | null) ?? null;
   }
 
-  async function applyChatAction(action: PendingAction): Promise<void> {
+  async function applyChatAction(rawAction: PendingAction): Promise<void> {
+    const action = ('payload' in rawAction
+      ? { ...rawAction, payload: normalizeAssistantPayload(rawAction.type, rawAction.payload) }
+      : rawAction) as PendingAction;
     switch (action.type) {
       case 'upsertSession':   await campaign.upsertSession(action.payload); break;
       case 'upsertNPC':       await campaign.upsertNPC(action.payload); break;
@@ -145,9 +149,10 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
 
   async function applyImportAction(action: ImportAction): Promise<void> {
     const existing = lookupExistingEntity(campaign, action.type, action.matched_id);
-    const payload = existing
+    const merged = existing
       ? { ...stripInternalFields(existing), ...(action.payload as Record<string, unknown>), id: action.matched_id }
       : { ...(action.payload as Record<string, unknown>) };
+    const payload = normalizeAssistantPayload(action.type, merged);
     switch (action.type) {
       case 'upsertSession':      await campaign.upsertSession(payload as Parameters<typeof campaign.upsertSession>[0]); break;
       case 'upsertPC':           await campaign.upsertPC(payload as Parameters<typeof campaign.upsertPC>[0]); break;
@@ -294,7 +299,7 @@ Before creating ANY record, scan the CURRENT WORLD DATA above for one describing
     // Merge the AI's sparse payload onto the existing record (world upserts
     // overwrite every column, so omitted fields would otherwise be nulled).
     const existing = matchedId ? lookupExisting(type, matchedId) : null;
-    const merged = { ...(existing ?? {}), ...payload };
+    const merged = normalizeAssistantPayload(type, { ...(existing ?? {}), ...payload });
 
     if (type === 'upsertNPC') {
       const id = matchedId ?? (await world.createNPC());

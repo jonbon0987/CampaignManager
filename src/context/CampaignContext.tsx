@@ -4,6 +4,7 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import { useLinkableGlobals } from '../hooks/useLinkableGlobals';
 import { useToast } from './ToastContext';
 import type { CampaignOverview } from '../types';
+import { errorMessage } from '../lib/errors';
 import {
   Campaigns as CampaignsDB,
   CampaignNPCs as CampaignNPCsDB,
@@ -183,8 +184,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
         if (successMsg) toast(successMsg, 'success');
         return result;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Something went wrong';
-        toast(msg, 'error');
+        toast(errorMessage(err), 'error');
         throw err;
       }
     };

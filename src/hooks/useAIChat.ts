@@ -12,6 +12,7 @@ import {
 } from '../lib/documentImport';
 import { getAIProvider, setAIProvider, type AIProvider } from '../lib/aiProvider';
 import { authHeaders } from '../lib/apiClient';
+import { errorMessage } from '../lib/errors';
 import {
   extractBlock, stripBlocks, parseCompleteObjects, parsePlanBlock, splitAnnotations,
   type StepState, type PlanState,
@@ -263,7 +264,7 @@ export function useAIChat(backend: AssistantBackend) {
         applied.push(change.id);
       } catch (err) {
         failed.push(change.id);
-        const msg = err instanceof Error ? err.message : 'Unknown error';
+        const msg = errorMessage(err, 'Unknown error');
         toast(`Failed to commit ${change.name}: ${msg}`, 'error');
       }
 
@@ -475,7 +476,7 @@ export function useAIChat(backend: AssistantBackend) {
             : undefined,
         }));
       } else {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
+        const msg = errorMessage(err, 'Unknown error');
         setApiError(msg);
         patchStreaming(m => ({ ...m, content: `Error: ${msg}`, error: true }));
       }
@@ -595,7 +596,7 @@ export function useAIChat(backend: AssistantBackend) {
         patchIngest(ing => ({ ...ing, phase: 'done' }));
         updatePlaceholder(m => ({ ...m, content: m.content || '(Stopped)' }));
       } else {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
+        const msg = errorMessage(err, 'Unknown error');
         setApiError(msg);
         updatePlaceholder(() => ({ role: 'assistant', content: `Error importing document: ${msg}`, error: true }));
       }
