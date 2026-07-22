@@ -1,4 +1,10 @@
+import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
+
+export interface AddOption {
+  label: string;
+  onClick: () => void;
+}
 
 interface ListDetailProps {
   title: string;
@@ -7,6 +13,8 @@ interface ListDetailProps {
   onSearchChange: (value: string) => void;
   onAdd?: () => void;
   addLabel?: string;
+  /** When set, renders a dropdown of add actions instead of a single onAdd button. */
+  addOptions?: AddOption[];
   onImport?: () => void;
   importLabel?: string;
   onGenerate?: () => void;
@@ -14,6 +22,41 @@ interface ListDetailProps {
   filters?: ReactNode;
   list: ReactNode;
   detail: ReactNode;
+}
+
+function AddMenu({ label, options }: { label: string; options: AddOption[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="as-ov">
+      <button className="cm-md-add" onClick={() => setOpen(o => !o)}>
+        {label} ▾
+      </button>
+      {open && (
+        <div className="as-ov-menu">
+          {options.map((opt, i) => (
+            <button
+              key={i}
+              className="as-ov-item"
+              onClick={() => { setOpen(false); opt.onClick(); }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -27,6 +70,7 @@ export function ListDetail({
   onSearchChange,
   onAdd,
   addLabel = '+ New',
+  addOptions,
   onImport,
   importLabel = '⊕ Import',
   onGenerate,
@@ -56,11 +100,13 @@ export function ListDetail({
                 {importLabel}
               </button>
             )}
-            {onAdd && (
+            {addOptions ? (
+              <AddMenu label={addLabel} options={addOptions} />
+            ) : onAdd ? (
               <button className="cm-md-add" onClick={onAdd}>
                 {addLabel}
               </button>
-            )}
+            ) : null}
           </div>
         </div>
         <div className="cm-md-search">

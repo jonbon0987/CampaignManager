@@ -27,7 +27,14 @@ export function resolveProvider(bodyProvider?: string): AIProvider {
 let _anthropic: Anthropic | null = null;
 export function getAnthropicClient(): Anthropic {
   if (!_anthropic) {
-    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const key = process.env.ANTHROPIC_API_KEY;
+    if (!key) {
+      // In production, env vars come from the host (e.g. Vercel Project
+      // Settings), not from .env.local. A missing key otherwise surfaces as the
+      // SDK's opaque "Could not resolve authentication method" error.
+      throw new Error('ANTHROPIC_API_KEY is not set in this environment. Add it to your host\'s environment variables (Production scope) and redeploy.');
+    }
+    _anthropic = new Anthropic({ apiKey: key });
   }
   return _anthropic;
 }
