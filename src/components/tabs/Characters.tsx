@@ -116,17 +116,23 @@ function CastList({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
     pushRecent({ kind: item.kind, id: item.id, label: item.name, tab: 'cast' });
   };
 
+  const addFaction = async () => {
+    const result = await upsertFaction({ name: '', faction_type: 'other', overview: null, key_figures: null, agenda: null, dm_notes: null });
+    setSelectedId(result.id);
+  };
+  const addPC = async () => {
+    const result = await upsertPC({ character_name: '', is_active: true, faction_ids: [] });
+    setSelectedId(result.id);
+  };
+  const addNPC = async () => {
+    const result = await upsertNPC({ name: '', status: 'active', met_by_pcs: false, faction_ids: [] });
+    setSelectedId(result.id);
+  };
+
   const handleAdd = async () => {
-    if (filter === 'faction') {
-      const result = await upsertFaction({ name: '', faction_type: 'other', overview: null, key_figures: null, agenda: null, dm_notes: null });
-      setSelectedId(result.id);
-    } else if (filter === 'pc') {
-      const result = await upsertPC({ character_name: '', is_active: true, faction_ids: [] });
-      setSelectedId(result.id);
-    } else {
-      const result = await upsertNPC({ name: '', status: 'active', met_by_pcs: false, faction_ids: [] });
-      setSelectedId(result.id);
-    }
+    if (filter === 'faction') await addFaction();
+    else if (filter === 'pc') await addPC();
+    else await addNPC();
   };
 
   return (
@@ -136,7 +142,12 @@ function CastList({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
       search={search}
       onSearchChange={setSearch}
       onAdd={handleAdd}
-      addLabel={filter === 'faction' ? '+ Faction' : filter === 'npc' ? '+ NPC' : '+ New'}
+      addLabel={filter === 'faction' ? '+ Faction' : filter === 'npc' ? '+ NPC' : filter === 'pc' ? '+ PC' : '+ New'}
+      addOptions={filter === 'all' ? [
+        { label: 'PC', onClick: addPC },
+        { label: 'NPC', onClick: addNPC },
+        { label: 'Faction', onClick: addFaction },
+      ] : undefined}
       onImport={onImportFromWorld && (filter === 'all' || filter === 'npc') ? onImportFromWorld : undefined}
       importLabel="⊕ Import NPC"
       filters={
