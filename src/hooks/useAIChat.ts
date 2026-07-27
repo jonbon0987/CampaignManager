@@ -358,6 +358,20 @@ export function useAIChat(backend: AssistantBackend) {
           ? { name: (action as { label?: string }).label ?? '(unknown)' }
           : (action as { payload?: Record<string, unknown> }).payload;
         if (!payload || typeof payload !== 'object') return;
+
+        // An upsert updates in place only when it carries the target record's
+        // id. The prompt nests it in "payload", but the model often puts it at
+        // the action's top level instead — mirroring the delete shape, or just
+        // emitting "matched_id" like the import path. Fold either into the
+        // payload so both the verb detection below and the commit path (which
+        // upserts action.payload verbatim) update the record instead of
+        // inserting a duplicate.
+        if (!isDelete && (payload as Record<string, unknown>).id == null) {
+          const topId = (action as { id?: string; matched_id?: string }).id
+            ?? (action as { matched_id?: string }).matched_id;
+          if (topId) (payload as Record<string, unknown>).id = topId;
+        }
+
         const matchedId = isDelete
           ? (action as { id?: string }).id ?? null
           : ((payload as Record<string, unknown>).id as string) ?? null;
