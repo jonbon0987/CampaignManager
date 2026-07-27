@@ -15,7 +15,8 @@ import { createPortal } from 'react-dom';
 import { useEntityRefs } from '../../context/EntityRefContext';
 import type { EntityRef } from '../../context/EntityRefContext';
 import {
-  serialize, parseToHTML, pillHTML, KINDS, KIND_GLYPH, KIND_LABEL,
+  serialize, parseToHTML, pillHTML, indentListItem, outdentListItem,
+  KINDS, KIND_GLYPH, KIND_LABEL,
 } from '../../lib/slashMarkdown';
 import type { RefKind } from '../../lib/slashMarkdown';
 
@@ -88,6 +89,14 @@ function blockAtStart(editor: HTMLElement): HTMLElement | null {
 }
 function unstyleBlock(block: HTMLElement): HTMLElement { const p = document.createElement('p'); while (block.firstChild) p.appendChild(block.firstChild); if (!p.firstChild) p.appendChild(document.createElement('br')); block.replaceWith(p); caretToStart(p); return p; }
 function unstyleListItem(li: HTMLElement) { const list = li.parentNode as HTMLElement | null; if (!list) return; const p = document.createElement('p'); while (li.firstChild) p.appendChild(li.firstChild); if (!p.firstChild) p.appendChild(document.createElement('br')); list.parentNode?.insertBefore(p, list); li.remove(); if (!list.querySelector('li')) list.remove(); caretToStart(p); }
+
+/** The <li> containing the caret, or null when the caret isn't inside a list. */
+function currentLi(editor: HTMLElement): HTMLElement | null {
+  const r = caretRange(); if (!r) return null;
+  const n = r.startContainer.nodeType === 1 ? (r.startContainer as Element) : r.startContainer.parentElement;
+  const li = n && n.closest ? n.closest('li') : null;
+  return li && editor.contains(li) ? (li as HTMLElement) : null;
+}
 
 function detect(editor: HTMLElement): Detected | null {
   const r = caretRange(); if (!r) return null;
@@ -299,6 +308,21 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
         e.preventDefault();
         if (menu.type === 'slash') { if (slashItems[active]) runCmd(slashItems[active].c); }
         else if (refItems[active]) insertEntity(refItems[active]);
+        return;
+      }
+    }
+    if (e.key === 'Tab' && !menu) {
+      const ed = edRef.current!;
+      const li = currentLi(ed);
+      if (li) {
+        e.preventDefault();
+        const sel = window.getSelection();
+        const saved = sel && sel.rangeCount ? { c: sel.getRangeAt(0).startContainer, o: sel.getRangeAt(0).startOffset } : null;
+        const ok = e.shiftKey ? outdentListItem(li) : indentListItem(li);
+        if (ok && saved) {
+          try { const rr = document.createRange(); rr.setStart(saved.c, saved.o); rr.collapse(true); sel!.removeAllRanges(); sel!.addRange(rr); } catch { /* node moved out of range */ }
+        }
+        if (ok) emit();
         return;
       }
     }

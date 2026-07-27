@@ -50,6 +50,10 @@
 .sf-editor li { display: list-item; margin: 0.15em 0; padding-left: 3px; }
 .sf-editor ul li::marker { color: var(--gold); }
 .sf-editor ol li::marker { color: var(--gold-2); font-family: var(--mono); font-size: .85em; }
+/* Nested lists: no extra vertical gap, and distinct bullet glyphs per depth. */
+.sf-editor li > ul, .sf-editor li > ol { margin: 0.15em 0; }
+.sf-editor ul ul { list-style-type: circle; }
+.sf-editor ul ul ul { list-style-type: square; }
 .sf-editor .se-callout {
   position: relative; margin: 0.6em 0; padding: 11px 14px 11px 40px;
   background: color-mix(in oklab, var(--gold) 9%, var(--bg-2));
@@ -129,6 +133,9 @@
 .sf-prose li { display: list-item; margin: 0.15em 0; padding-left: 3px; }
 .sf-prose ul li::marker { color: var(--gold); }
 .sf-prose ol li::marker { color: var(--gold-2); font-family: var(--mono); font-size: .85em; }
+.sf-prose li > ul, .sf-prose li > ol { margin: 0.15em 0; }
+.sf-prose ul ul { list-style-type: circle; }
+.sf-prose ul ul ul { list-style-type: square; }
 .sf-prose .se-callout { position: relative; margin: 0.6em 0; padding: 11px 14px 11px 40px; background: color-mix(in oklab, var(--gold) 9%, var(--bg-2)); border: 1px solid color-mix(in oklab, var(--gold) 24%, var(--rule)); border-left: 3px solid var(--gold); border-radius: var(--radius); color: var(--ink); font-size: 0.97em; }
 .sf-prose .se-callout::before { content: "❧"; position: absolute; left: 14px; top: 10px; color: var(--gold); font-size: 15px; }
 .sf-prose .se-hr { border: none; border-top: 1px solid var(--rule); margin: 0.9em 0; }
