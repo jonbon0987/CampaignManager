@@ -88,6 +88,11 @@ function inlineSer(el: Node): string {
     if (n.nodeType === 3) { out += n.nodeValue; return; }
     if (n.nodeType !== 1) return;
     const e = n as HTMLElement;
+    if (e.tagName === 'UL' || e.tagName === 'OL') {
+      // Nested lists inside an <li> are serialized separately (see serList), not
+      // flattened into the parent item's inline text.
+      return;
+    }
     if (e.classList && e.classList.contains('rre-pill')) {
       out += serializeRef(e.dataset.refKind || 'npc', e.dataset.refId || '', e.dataset.refLabel || '');
     } else if (e.tagName === 'BR') {
@@ -101,6 +106,70 @@ function inlineSer(el: Node): string {
     }
   });
   return out;
+}
+
+/* ───────────────── nested-list DOM editing (Tab / Shift+Tab) ───────────────── */
+
+/** Tab: nest a list item one level deeper, into a sublist under its previous
+ *  sibling. The first item in a list has no previous sibling, so it can't be
+ *  indented (returns false). Pure DOM — the caller preserves the caret. */
+export function indentListItem(li: HTMLElement): boolean {
+  const list = li.parentNode as HTMLElement | null;
+  if (!list || (list.tagName !== 'UL' && list.tagName !== 'OL')) return false;
+  const prev = li.previousElementSibling as HTMLElement | null;
+  if (!prev || prev.tagName !== 'LI') return false;
+  let sub = prev.lastElementChild as HTMLElement | null;
+  if (!sub || (sub.tagName !== 'UL' && sub.tagName !== 'OL')) {
+    sub = li.ownerDocument.createElement(list.tagName.toLowerCase());
+    prev.appendChild(sub);
+  }
+  sub.appendChild(li);
+  return true;
+}
+
+/** Shift+Tab: pull a list item up one level. A nested item becomes a sibling of
+ *  its parent (any trailing siblings follow it as its own sublist, keeping their
+ *  depth); a top-level item becomes a plain paragraph before its list. Pure DOM. */
+export function outdentListItem(li: HTMLElement): boolean {
+  const list = li.parentNode as HTMLElement | null;
+  if (!list || (list.tagName !== 'UL' && list.tagName !== 'OL')) return false;
+  const doc = li.ownerDocument;
+  const parentLi = list.parentElement && list.parentElement.tagName === 'LI' ? list.parentElement : null;
+  if (!parentLi) {
+    // Top level → unwrap into a paragraph inserted before the list.
+    const p = doc.createElement('p');
+    while (li.firstChild) p.appendChild(li.firstChild);
+    if (!p.firstChild) p.appendChild(doc.createElement('br'));
+    list.parentNode?.insertBefore(p, list);
+    li.remove();
+    if (!list.querySelector('li')) list.remove();
+    return true;
+  }
+  let sib = li.nextElementSibling as HTMLElement | null;
+  if (sib) {
+    let sub = li.lastElementChild as HTMLElement | null;
+    if (!sub || (sub.tagName !== 'UL' && sub.tagName !== 'OL')) {
+      sub = doc.createElement(list.tagName.toLowerCase());
+      li.appendChild(sub);
+    }
+    while (sib) { const next = sib.nextElementSibling as HTMLElement | null; sub.appendChild(sib); sib = next; }
+  }
+  parentLi.after(li);
+  if (!list.querySelector('li')) list.remove();
+  return true;
+}
+
+/** Recursively serialize a UL/OL (and any nested sublists) with 2-space indents. */
+function serList(list: HTMLElement, depth: number, lines: string[]): void {
+  const ordered = list.tagName === 'OL';
+  const indent = '  '.repeat(depth);
+  let i = 1;
+  list.querySelectorAll(':scope > li').forEach(node => {
+    const li = node as HTMLElement;
+    const marker = ordered ? `${i++}. ` : '- ';
+    lines.push(indent + marker + inlineSer(li));
+    li.querySelectorAll(':scope > ul, :scope > ol').forEach(sub => serList(sub as HTMLElement, depth + 1, lines));
+  });
 }
 
 export function serialize(editor: HTMLElement): string {
@@ -119,8 +188,7 @@ export function serialize(editor: HTMLElement): string {
     else if (tag === 'H4') lines.push('#### ' + inlineSer(el));
     else if (el.classList && el.classList.contains('se-callout')) lines.push('> [!note] ' + inlineSer(el));
     else if (tag === 'BLOCKQUOTE') lines.push('> ' + inlineSer(el));
-    else if (tag === 'UL') el.querySelectorAll(':scope > li').forEach(li => lines.push('- ' + inlineSer(li)));
-    else if (tag === 'OL') { let i = 1; el.querySelectorAll(':scope > li').forEach(li => lines.push((i++) + '. ' + inlineSer(li))); }
+    else if (tag === 'UL' || tag === 'OL') serList(el, 0, lines);
     else if (el.classList && el.classList.contains('se-hr-orn')) lines.push('❦❦❦');
     else if (tag === 'HR') lines.push(el.classList && el.classList.contains('se-hr-dotted') ? '···' : '---');
     else { const s = inlineSer(el).trim(); lines.push(s); }
@@ -158,17 +226,56 @@ function inlineHTML(text: string): string {
   return out || '<br>';
 }
 
+interface ListItem { indent: number; ordered: boolean; content: string; }
+/** Parse a single line into a list item, or null if it isn't one. Indentation
+ *  (leading spaces/tabs, tab = 2 cols) determines nesting depth. */
+function listItem(l: string): ListItem | null {
+  const m = l.match(/^([ \t]*)([-*]|\d+\.)\s+(.*)$/);
+  if (!m) return null;
+  const indent = m[1].replace(/\t/g, '  ').length;
+  return { indent, ordered: /\d/.test(m[2]), content: m[3] };
+}
+/** Build nested <ul>/<ol> HTML from a flat, indent-tagged run of list items. */
+function renderList(items: ListItem[]): string {
+  let out = '';
+  const stack: { indent: number; ordered: boolean }[] = [];
+  for (const it of items) {
+    while (stack.length && it.indent < stack[stack.length - 1].indent) {
+      const top = stack.pop()!;
+      out += '</li>' + (top.ordered ? '</ol>' : '</ul>');
+    }
+    const top = stack[stack.length - 1];
+    if (top && it.indent === top.indent && top.ordered === it.ordered) {
+      out += '</li>';
+    } else {
+      // Same indent but a different marker type starts a fresh sibling list.
+      if (top && it.indent === top.indent) { stack.pop(); out += '</li>' + (top.ordered ? '</ol>' : '</ul>'); }
+      stack.push({ indent: it.indent, ordered: it.ordered });
+      out += it.ordered ? '<ol>' : '<ul>';
+    }
+    out += '<li>' + inlineHTML(it.content);
+  }
+  while (stack.length) {
+    const top = stack.pop()!;
+    out += '</li>' + (top.ordered ? '</ol>' : '</ul>');
+  }
+  return out;
+}
+
 export function parseToHTML(md: string): string {
   const lines = (md || '').split('\n');
   let html = '';
   let i = 0;
-  const isUL = (l: string) => /^[-*]\s+/.test(l);
-  const isOL = (l: string) => /^\d+\.\s+/.test(l);
   while (i < lines.length) {
     const line = lines[i];
     if (line.trim() === '') { i++; continue; }
-    if (isUL(line)) { html += '<ul>'; while (i < lines.length && isUL(lines[i])) { html += '<li>' + inlineHTML(lines[i].replace(/^[-*]\s+/, '')) + '</li>'; i++; } html += '</ul>'; continue; }
-    if (isOL(line)) { html += '<ol>'; while (i < lines.length && isOL(lines[i])) { html += '<li>' + inlineHTML(lines[i].replace(/^\d+\.\s+/, '')) + '</li>'; i++; } html += '</ol>'; continue; }
+    if (listItem(line)) {
+      const items: ListItem[] = [];
+      let it: ListItem | null;
+      while (i < lines.length && (it = listItem(lines[i]))) { items.push(it); i++; }
+      html += renderList(items);
+      continue;
+    }
     if (/^####\s+/.test(line)) html += '<h4>' + inlineHTML(line.replace(/^####\s+/, '')) + '</h4>';
     else if (/^###\s+/.test(line)) html += '<h3>' + inlineHTML(line.replace(/^###\s+/, '')) + '</h3>';
     else if (/^##\s+/.test(line)) html += '<h2>' + inlineHTML(line.replace(/^##\s+/, '')) + '</h2>';
@@ -192,7 +299,7 @@ export function mdToPlain(md: string | null | undefined): string {
     .replace(/^#{1,4}\s+/, '')
     .replace(/^>\s*\[!note\]\s?/, '')
     .replace(/^>\s+/, '')
-    .replace(/^[-*]\s+/, '• ')
+    .replace(/^[ \t]*(?:[-*]|\d+\.)\s+/, '• ')
     .replace(/^(---|···|❦+|❦(\s*·\s*❦)*)\s*$/, ''),
   );
   return lines.join(' ')
