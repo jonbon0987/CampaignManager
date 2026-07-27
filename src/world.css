@@ -1244,6 +1244,9 @@
 .scard {
   border: 1px solid var(--rule); border-radius: var(--radius-lg); background: var(--paper);
   overflow: hidden; animation: wb-card-in .32s cubic-bezier(.2,.7,.3,1);
+  /* Keep natural height in the flex-column list — without this, a full/open
+     tray shrinks the cards to fit and clips them instead of scrolling. */
+  flex-shrink: 0;
 }
 .scard.off { opacity: .45; }
 .scard.committed { border-color: rgba(138,165,107,.4); background: var(--moss-dim); }
