@@ -281,7 +281,12 @@ function StagingTray({ chat }: { chat: Chat }) {
               </div>
             </>
           ) : (
-            <div className="commit-done">✓ All changes committed to your {chat.scopeNoun}</div>
+            <div className="commit-done">
+              <span>✓ All changes committed to your {chat.scopeNoun}</span>
+              <button className="btn btn-sm" onClick={chat.discardStaged} disabled={chat.committing}>
+                Clear
+              </button>
+            </div>
           )}
         </div>
       )}

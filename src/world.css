@@ -1295,6 +1295,7 @@
 .stage-foot .row { display: flex; gap: 9px; }
 .stage-foot .row .btn { flex: 1; justify-content: center; text-align: center; }
 .commit-done { display: flex; align-items: center; gap: 9px; padding: 4px 2px; font-family: var(--serif); font-size: 14px; color: var(--moss); }
+.commit-done .btn { margin-left: auto; flex-shrink: 0; }
 
 .btn {
   font-family: var(--serif); font-size: 13.5px; padding: 8px 16px; border-radius: var(--radius);

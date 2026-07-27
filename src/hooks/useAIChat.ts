@@ -237,8 +237,10 @@ export function useAIChat(backend: AssistantBackend) {
   const toggleStagedOpen = (id: string) =>
     setStage(prev => prev.map(s => s.id === id ? { ...s, open: !s.open } : s));
 
-  const discardStaged = () =>
-    setStage(prev => prev.filter(s => s.committed));
+  // Empties the whole tray — pending drafts and committed receipts alike.
+  // Committed changes are already saved; the card is just a receipt, so
+  // dropping it doesn't undo anything.
+  const discardStaged = () => setStage([]);
 
   const clearStage = () => setStage([]);
 
