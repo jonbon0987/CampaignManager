@@ -107,7 +107,7 @@ export default function SettingsView() {
                 <button
                   className="cm-pill"
                   onClick={signOut}
-                  style={{ color: '#e05c5c' }}
+                  style={{ color: 'var(--red)' }}
                 >
                   Sign out
                 </button>

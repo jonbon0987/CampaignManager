@@ -11,13 +11,13 @@ interface BadgeProps {
 }
 
 const colorMap: Record<BadgeColor, { bg: string; text: string; border: string }> = {
-  gold:   { bg: '#2a2418', text: 'var(--gold)', border: '#5a4a20' },
-  green:  { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
-  red:    { bg: '#3a1a1a', text: '#e05c5c', border: '#6a2a2a' },
-  blue:   { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
-  muted:  { bg: '#211c16', text: '#897f68', border: '#2e2820' },
-  yellow: { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
-  orange: { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
+  gold:   { bg: 'var(--pill-bg)',     text: 'var(--gold)',    border: 'var(--pill-bd)' },
+  green:  { bg: 'var(--success-bg)',  text: 'var(--success)', border: 'var(--success-line)' },
+  red:    { bg: 'var(--red-bg)',      text: 'var(--red)',     border: 'var(--red-line)' },
+  blue:   { bg: 'var(--info-bg)',     text: 'var(--info)',    border: 'var(--info-line)' },
+  muted:  { bg: 'var(--paper-2)',     text: 'var(--ink-3)',   border: 'var(--rule)' },
+  yellow: { bg: 'var(--warn-bg)',     text: 'var(--warn)',    border: 'var(--warn-line)' },
+  orange: { bg: 'var(--orange-bg)',   text: 'var(--orange)',  border: 'var(--orange-line)' },
 };
 
 const sizeMap: Record<BadgeSize, string> = {

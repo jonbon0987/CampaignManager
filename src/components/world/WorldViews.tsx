@@ -788,11 +788,11 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         saveLabel="Generate"
       >
         <div className="space-y-4">
-          <div className="flex rounded overflow-hidden" style={{ border: '1px solid #3a3660' }}>
+          <div className="flex rounded overflow-hidden" style={{ border: '1px solid var(--rule)' }}>
             {(['cr', 'party'] as const).map(mode => (
               <button key={mode} onClick={() => { setGenMode(mode); setGenError(''); }} disabled={genLoading}
                 className="flex-1 text-sm py-1.5 font-medium transition-colors"
-                style={{ backgroundColor: genMode === mode ? '#2a2050' : 'var(--paper)', color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)' }}>
+                style={{ backgroundColor: genMode === mode ? 'var(--gold-dim)' : 'var(--paper)', color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)' }}>
                 {mode === 'cr' ? 'By Challenge Rating' : 'By Party'}
               </button>
             ))}
@@ -838,7 +838,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               style={textareaStyle} disabled={genLoading} />
           </FormField>
 
-          {genError && <p className="text-sm" style={{ color: '#e05c5c' }}>{genError}</p>}
+          {genError && <p className="text-sm" style={{ color: 'var(--red)' }}>{genError}</p>}
           {genLoading && <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>Generating stat block…</p>}
         </div>
       </Modal>
@@ -850,7 +850,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             <div className="flex items-center gap-2 flex-wrap">
               {viewingStatblock.creature_type && (
                 <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: '#3a1a1a', color: '#e07070', borderColor: '#7a2a2a' }}>
+                  style={{ backgroundColor: 'var(--red-bg)', color: '#e07070', borderColor: '#7a2a2a' }}>
                   {viewingStatblock.creature_type}
                 </span>
               )}
@@ -861,19 +861,19 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 </span>
               )}
               {viewingStatblock.tags && (
-                <span className="text-xs" style={{ color: '#897f68' }}>{viewingStatblock.tags}</span>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewingStatblock.tags}</span>
               )}
             </div>
             {viewingStatblock.content && (
               <pre className="text-sm whitespace-pre-wrap rounded p-3"
-                style={{ color: '#e8dcc4', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
+                style={{ color: 'var(--ink)', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
                 {viewingStatblock.content}
               </pre>
             )}
             {viewingStatblock.dm_notes && (
               <div>
-                <div style={{ color: '#c9a84c', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.5rem' }}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.6', fontStyle: 'italic' }}>
+                <div style={{ color: 'var(--gold)', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.5rem' }}>DM Notes</div>
+                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
                   {viewingStatblock.dm_notes}
                 </p>
               </div>
@@ -1019,11 +1019,11 @@ function WorldBestiaryDetail({
         {/* Actions */}
         <div style={{ marginTop: 'auto', paddingTop: 20, borderTop: '1px solid var(--rule)', display: 'flex', gap: 8 }}>
           <button onClick={openEdit}
-            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 4, padding: '6px 14px', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
+            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '6px 14px', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
             Edit
           </button>
           <button onClick={handleDelete}
-            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 4, padding: '6px 12px', color: '#e05c5c', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
+            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '6px 12px', color: 'var(--red)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
             ✕ Delete
           </button>
         </div>
@@ -1047,7 +1047,7 @@ function WorldBestiaryDetail({
         <FormField label="Tags">
           <input type="text" value={form.tags} onChange={field('tags')} placeholder="Comma-separated: boss, undead, ranged..." style={inputStyle} />
         </FormField>
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
         <div className="grid grid-cols-3 gap-3">
           <div>
             <FormField label="Armor Class">
@@ -1100,7 +1100,7 @@ function WorldBestiaryDetail({
             <input type="text" value={form.languages} onChange={field('languages')} placeholder="e.g. Common, Draconic" style={inputStyle} />
           </FormField>
         </div>
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
         <FormField label="Actions & Traits">
           <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))}
             placeholder="Actions, bonus actions, reactions, legendary actions..." minHeight="280px" />

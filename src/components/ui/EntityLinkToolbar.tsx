@@ -6,12 +6,13 @@ import type { EntityType } from './StatBlockText';
 import { serializeRef } from '../../lib/slashMarkdown';
 
 const entityConfig: Partial<Record<EntityType, { icon: string; label: string; color: string; bg: string; border: string }>> = {
+  // Scriptorium glyph set (matches the submodule/scene glyphs in moduleDetail/pickers.tsx)
   statblock: { icon: '⚔', label: 'Stat Sheet', color: '#c060d0', bg: '#2a1a3a', border: '#5a2a7a' },
-  npc:      { icon: '👤', label: 'NPC',      color: '#70a0e0', bg: '#1a2a3a', border: '#2a4a7a' },
-  location: { icon: '📍', label: 'Location', color: '#60c080', bg: '#1a3a2a', border: '#2a6a4a' },
-  session:  { icon: '📜', label: 'Session',  color: 'var(--gold)', bg: '#2a2a1a', border: '#5a5a2a' },
-  faction:  { icon: '🛡', label: 'Faction',  color: '#b070b0', bg: '#2a1a2a', border: '#5a3060' },
-  hook:     { icon: '💡', label: 'Hook',     color: '#e0a060', bg: '#3a2a1a', border: '#7a5a2a' },
+  npc:      { icon: '❦', label: 'NPC',      color: 'var(--info)', bg: 'var(--info-bg)', border: 'var(--info-line)' },
+  location: { icon: '✦', label: 'Location', color: '#60c080', bg: '#1a3a2a', border: '#2a6a4a' },
+  session:  { icon: '❧', label: 'Session',  color: 'var(--gold)', bg: 'var(--warn-bg)', border: '#5a5a2a' },
+  faction:  { icon: '◈', label: 'Faction',  color: '#b070b0', bg: '#2a1a2a', border: '#5a3060' },
+  hook:     { icon: '✧', label: 'Hook',     color: '#e0a060', bg: '#3a2a1a', border: '#7a5a2a' },
 };
 const CONFIG_TYPES = Object.keys(entityConfig) as EntityType[];
 
@@ -108,7 +109,7 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                 gap: '4px',
                 fontSize: '0.72rem',
                 padding: '3px 10px',
-                borderRadius: '4px',
+                borderRadius: 'var(--radius)',
                 backgroundColor: cfg.bg,
                 color: cfg.color,
                 border: `1px solid ${cfg.border}`,
@@ -136,10 +137,10 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
               style={{
                 fontSize: '0.75rem',
                 padding: '4px 10px',
-                borderRadius: '4px',
+                borderRadius: 'var(--radius)',
                 backgroundColor: activeType === 'all' ? 'var(--rule)' : 'var(--paper)',
                 color: activeType === 'all' ? 'var(--ink)' : 'var(--ink-3)',
-                border: '1px solid #3a3660',
+                border: '1px solid var(--rule)',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
               }}
@@ -156,7 +157,7 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                   style={{
                     fontSize: '0.75rem',
                     padding: '4px 10px',
-                    borderRadius: '4px',
+                    borderRadius: 'var(--radius)',
                     backgroundColor: activeType === type ? cfg.bg : 'var(--paper)',
                     color: activeType === type ? cfg.color : 'var(--ink-3)',
                     border: `1px solid ${activeType === type ? cfg.border : 'var(--rule)'}`,
@@ -181,8 +182,8 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
               width: '100%',
               backgroundColor: 'var(--paper)',
               color: 'var(--ink)',
-              border: '1px solid #3a3660',
-              borderRadius: '6px',
+              border: '1px solid var(--rule)',
+              borderRadius: 'var(--radius)',
               padding: '8px 12px',
               fontSize: '0.875rem',
               outline: 'none',
@@ -212,9 +213,9 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                       alignItems: 'center',
                       gap: '10px',
                       padding: '8px 12px',
-                      borderRadius: '6px',
+                      borderRadius: 'var(--radius)',
                       backgroundColor: 'var(--paper)',
-                      border: '1px solid #3a3660',
+                      border: '1px solid var(--rule)',
                       cursor: 'pointer',
                       textAlign: 'left',
                       width: '100%',
@@ -226,7 +227,7 @@ export function EntityLinkToolbar({ textareaRef, onInsert }: EntityLinkToolbarPr
                       style={{
                         fontSize: '0.65rem',
                         padding: '1px 7px',
-                        borderRadius: '4px',
+                        borderRadius: 'var(--radius)',
                         border: `1px solid ${cfg.border}`,
                         backgroundColor: cfg.bg,
                         color: cfg.color,
