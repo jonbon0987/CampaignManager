@@ -18,7 +18,7 @@
   --paper-3:   #262019;
   --ink:       #e8dcc4;
   --ink-2:     #b9ac90;
-  --ink-3:     #897f68;
+  --ink-3:     #9a8f74;
   --ink-4:     #6a614e;
   --rule:      #2e2820;
   --rule-soft: #26211a;
@@ -27,13 +27,28 @@
   --gold-2:    #d8bd6b;
   --gold-dim:  rgba(201,168,76,0.10);
   --gold-line: rgba(201,168,76,0.28);
+  --gold-hover:#a07830;
   --accent:    #c97a55;
   --accent-2:  #b06a48;
   --moss:      #8aa56b;
   --moss-dim:  rgba(138,165,107,0.12);
   --sky:       #7fa8d0;
-  --red:       #d9694f;
-  --red-dim:   rgba(217,105,79,0.12);
+  --red:       #e05c5c;
+  --red-dim:   rgba(224,92,92,0.12);
+  --red-bg:    #3a1a1a;
+  --red-line:  #6a2a2a;
+  --success:     #6ab87a;
+  --success-bg:  #1a2a1a;
+  --success-line:#2a5a2a;
+  --info:      #70a0e0;
+  --info-bg:   #1a2a3a;
+  --info-line: #2a4a7a;
+  --warn:      #d0c060;
+  --warn-bg:   #2a2a1a;
+  --warn-line: #6a6020;
+  --orange:    #e09050;
+  --orange-bg: #3a2010;
+  --orange-line:#7a4a20;
   --highlight: #2a241b;
   --shadow:    rgba(0,0,0,0.35);
   --shadow-soft: rgba(0,0,0,0.2);
@@ -66,7 +81,7 @@ body {
 /* ═══ Scrollbars ═══ */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #3a3328; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--rule-hover); border-radius: var(--radius); }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 
 textarea, input[type="text"], input[type="number"], input[type="date"], select {
@@ -108,7 +123,7 @@ input:focus, textarea:focus, select:focus {
 }
 /* World sidebar collapsed */
 .cm-shell.w-side-collapsed {
-  grid-template-columns: 48px 1fr;
+  grid-template-columns: 56px 1fr;
 }
 .cm-shell.side-collapsed.has-rail {
   grid-template-columns: 56px 1fr 340px;
@@ -123,7 +138,7 @@ input:focus, textarea:focus, select:focus {
   flex-direction: column;
   border-right: 1px solid var(--rule);
   background: var(--bg-2);
-  width: 200px;
+  width: 100%;
   overflow: hidden;
   transition: width 0.2s ease;
 }
@@ -180,7 +195,7 @@ input:focus, textarea:focus, select:focus {
 }
 .cm-side-eyebrow {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: .22em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -198,7 +213,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink-2);
   width: 22px;
   height: 22px;
-  border-radius: 3px;
+  border-radius: var(--radius);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
@@ -223,7 +238,7 @@ input:focus, textarea:focus, select:focus {
 }
 .cm-nav-section {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: .22em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -379,7 +394,7 @@ input:focus, textarea:focus, select:focus {
   font-size: 10px;
   padding: 1px 5px;
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: var(--bg-2);
   color: var(--ink-3);
   margin-left: 4px;
@@ -423,7 +438,7 @@ input:focus, textarea:focus, select:focus {
   font-size: 10px;
   padding: 1px 5px;
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: var(--bg-2);
   color: var(--ink-3);
   margin-left: 2px;
@@ -446,7 +461,7 @@ input:focus, textarea:focus, select:focus {
   padding: 3px;
   background: var(--paper-2);
   border: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--radius);
   margin-left: 8px;
 }
 .cm-vm-btn {
@@ -457,7 +472,7 @@ input:focus, textarea:focus, select:focus {
   font-size: 12px;
   color: var(--ink-2);
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius);
   letter-spacing: 0.02em;
 }
 .cm-vm-btn.is-active {
@@ -950,7 +965,7 @@ input:focus, textarea:focus, select:focus {
 }
 .cm-dep-badge-and {
   background: rgba(76,175,125,.12);
-  color: #4caf7d;
+  color: var(--success);
   border: 1px solid rgba(76,175,125,.3);
 }
 .cm-dep-badge-or {
@@ -1096,7 +1111,7 @@ input:focus, textarea:focus, select:focus {
   font-family: var(--serif);
   font-size: 13px;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius);
   align-self: flex-start;
 }
 .vc-regen:hover { color: var(--gold); border-color: var(--gold); }
@@ -1116,7 +1131,7 @@ input:focus, textarea:focus, select:focus {
 /* ═══ Read-Aloud Block ═══ */
 .ra {
   border: 1px solid var(--gold);
-  border-radius: 4px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 .ra-label {
@@ -1171,7 +1186,7 @@ input:focus, textarea:focus, select:focus {
   font-family: var(--serif);
   font-size: 12px;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 .ra-edit-actions button:first-child {
   background: var(--gold);
@@ -1236,7 +1251,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--bg);
   border: none;
   padding: 10px 14px;
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-family: var(--serif);
   font-weight: 600;
   cursor: pointer;
@@ -1359,7 +1374,7 @@ input:focus, textarea:focus, select:focus {
 .markdown-preview code {
   background-color: var(--bg);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-family: var(--mono);
   font-size: 0.85em;
   color: var(--accent);
@@ -1653,7 +1668,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--gold);
   background: var(--paper-2);
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 3px 4px;
   outline: none;
   font-family: var(--mono);
@@ -1676,7 +1691,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink-2);
   background: transparent;
   border: 1px solid var(--rule-soft);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 2px 4px;
   outline: none;
   text-align: center;
@@ -1797,8 +1812,8 @@ input:focus, textarea:focus, select:focus {
   text-align: right;
   font-weight: 600;
 }
-.sb-dice-result.is-crit { color: #4caf7d; }
-.sb-dice-result.is-fumble { color: #e05c5c; }
+.sb-dice-result.is-crit { color: var(--success); }
+.sb-dice-result.is-fumble { color: var(--red); }
 
 /* Search */
 .sb-search { display: flex; flex-direction: column; gap: 8px; height: 100%; }
@@ -1902,7 +1917,7 @@ input:focus, textarea:focus, select:focus {
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 8px 10px;
   font-size: 13px;
   resize: none;
@@ -1918,7 +1933,7 @@ input:focus, textarea:focus, select:focus {
   background: var(--gold);
   color: var(--bg);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 8px 14px;
   font-weight: 600;
   font-size: 13px;
@@ -2120,7 +2135,7 @@ input:focus, textarea:focus, select:focus {
 .cw-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cw-select {
   background: var(--paper-2); color: var(--ink);
-  border: 1px solid var(--rule); border-radius: 3px;
+  border: 1px solid var(--rule); border-radius: var(--radius);
   padding: 6px 10px; font-family: var(--serif); font-size: 13px;
 }
 .cw-legend {
@@ -2133,7 +2148,7 @@ input:focus, textarea:focus, select:focus {
 .cw-legend-line { display: inline-block; width: 18px; height: 2px; border-radius: 1px; }
 .cw-clear {
   background: none; border: 1px solid var(--rule); color: var(--ink-3);
-  padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;
+  padding: 4px 10px; border-radius: var(--radius); cursor: pointer; font-size: 12px;
   font-family: var(--serif);
 }
 .cw-body { display: grid; grid-template-columns: 1fr 320px; gap: 1px; flex: 1; min-height: 0; background: var(--rule); }
@@ -2175,7 +2190,7 @@ input:focus, textarea:focus, select:focus {
 .cw-rel-name { color: var(--ink); font-weight: 600; }
 .cw-rel-label { font-style: italic; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
 .cw-actions { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 12px; }
-.cw-action { background: var(--gold); color: var(--bg); border: none; padding: 10px 14px; border-radius: 3px; font-family: var(--serif); font-weight: 600; cursor: pointer; }
+.cw-action { background: var(--gold); color: var(--bg); border: none; padding: 10px 14px; border-radius: var(--radius); font-family: var(--serif); font-weight: 600; cursor: pointer; }
 .cw-action:hover { background: var(--gold-2); }
 .cw-action-ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--rule); }
 .cw-action-ghost:hover { background: var(--paper-2); color: var(--ink); }
@@ -2216,7 +2231,7 @@ input:focus, textarea:focus, select:focus {
   font-family: var(--mono);
   font-size: 11px;
   padding: 3px 8px;
-  border-radius: 3px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: color .12s, border-color .12s;
 }
@@ -2278,7 +2293,7 @@ input:focus, textarea:focus, select:focus {
   gap: 8px;
   padding: 6px 10px;
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: var(--paper-2);
   margin-bottom: 4px;
 }
@@ -2301,7 +2316,7 @@ input:focus, textarea:focus, select:focus {
   padding: 0 2px;
   line-height: 1;
 }
-.mw-side-row-del:hover { color: #e05c5c; }
+.mw-side-row-del:hover { color: var(--red); }
 .mw-side-actions {
   padding: 14px 20px;
   display: flex;
@@ -2315,7 +2330,7 @@ input:focus, textarea:focus, select:focus {
   background: var(--gold);
   color: var(--bg);
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-family: var(--serif);
   font-size: 13px;
   font-weight: 600;
@@ -2329,7 +2344,7 @@ input:focus, textarea:focus, select:focus {
   background: transparent;
   color: var(--ink-2);
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-family: var(--serif);
   font-size: 13px;
   cursor: pointer;
@@ -2467,7 +2482,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink);
   background: var(--bg);
   border: 1px solid var(--rule-soft);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 6px 10px;
   outline: none;
   transition: border-color .15s;
@@ -2482,7 +2497,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink);
   background: var(--bg);
   border: 1px solid var(--rule-soft);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 6px 10px;
   outline: none;
   cursor: pointer;
@@ -2585,7 +2600,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 8px 34px 8px 10px;
   outline: none;
   line-height: 1.6;
@@ -2605,7 +2620,7 @@ input:focus, textarea:focus, select:focus {
   padding: 2px 6px;
   background: var(--paper-2);
   border: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--radius);
   font-family: var(--mono);
   font-size: 11px;
   color: var(--gold);
@@ -2628,7 +2643,7 @@ input:focus, textarea:focus, select:focus {
   width: 260px;
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   z-index: 200;
   overflow: hidden;
@@ -2682,7 +2697,7 @@ input:focus, textarea:focus, select:focus {
   padding: 2px 8px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius);
   color: var(--ink-3);
   font-size: 16px;
   line-height: 1;
@@ -2702,7 +2717,7 @@ input:focus, textarea:focus, select:focus {
   min-width: 160px;
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   z-index: 200;
   overflow: hidden;
@@ -2721,8 +2736,8 @@ input:focus, textarea:focus, select:focus {
   transition: background .1s, color .1s;
 }
 .as-ov-item:hover { background: var(--paper-2); color: var(--ink); }
-.as-ov-item.is-danger { color: #e05c5c; }
-.as-ov-item.is-danger:hover { background: rgba(224,92,92,0.08); color: #e05c5c; }
+.as-ov-item.is-danger { color: var(--red); }
+.as-ov-item.is-danger:hover { background: rgba(224,92,92,0.08); color: var(--red); }
 .as-ov-sep {
   height: 1px;
   background: var(--rule-soft);
@@ -2854,7 +2869,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink-3);
   padding: 1px 5px;
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: var(--bg);
 }
 .v6-scratch-close {
@@ -3001,7 +3016,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink-3);
   padding: 2px 8px;
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: var(--bg-2);
 }
 .v6-ks-close {
@@ -3047,7 +3062,7 @@ input:focus, textarea:focus, select:focus {
   padding: 2px 6px;
   background: var(--bg-2);
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: var(--radius);
   min-width: 20px;
   text-align: center;
 }
@@ -3164,7 +3179,7 @@ input:focus, textarea:focus, select:focus {
 .md-tree-scenes { padding: 1px 0 6px 34px; display: flex; flex-direction: column; gap: 1px; }
 .md-tree-scene {
   display: flex; align-items: center; gap: 8px;
-  padding: 5px 10px; border-radius: 5px; cursor: pointer;
+  padding: 5px 10px; border-radius: var(--radius); cursor: pointer;
   font-size: 13px; color: var(--ink-2);
 }
 .md-tree-scene:hover { background: var(--paper); color: var(--ink); }
@@ -3175,10 +3190,10 @@ input:focus, textarea:focus, select:focus {
 /* inline meta input / select (overview chapter + faction) */
 .md-mini-in {
   font-family: var(--serif); font-size: 14px; color: var(--ink);
-  background: var(--paper); border: 1px solid var(--rule); border-radius: 5px;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
   padding: 5px 9px; outline: none; transition: border-color .12s;
 }
-.md-mini-in:hover { border-color: #3a3328; }
+.md-mini-in:hover { border-color: var(--rule-hover); }
 .md-mini-in:focus { border-color: var(--gold); }
 
 /* dashed "add" button */
@@ -3231,7 +3246,7 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid var(--rule); border-radius: var(--radius);
   background: var(--bg); overflow: hidden; transition: border-color .12s;
 }
-.md-scene-edit:hover { border-color: #3a3328; }
+.md-scene-edit:hover { border-color: var(--rule-hover); }
 .md-scene-edit.is-open { border-color: rgba(201,168,76,.3); }
 .md-scene-edit.is-dragging { opacity: .4; }
 .md-scene-head { display: flex; align-items: center; gap: 9px; padding: 9px 12px; }
@@ -3251,11 +3266,11 @@ input:focus, textarea:focus, select:focus {
 .md-scene-body { padding: 4px 14px 14px 46px; border-top: 1px solid var(--rule-soft); }
 .md-iconbtn {
   appearance: none; cursor: pointer; border: 1px solid transparent; background: transparent;
-  color: var(--ink-3); width: 26px; height: 26px; border-radius: 6px; line-height: 1;
+  color: var(--ink-3); width: 26px; height: 26px; border-radius: var(--radius); line-height: 1;
   display: inline-grid; place-items: center; font-size: 13px; transition: all .12s;
 }
 .md-iconbtn:hover { color: var(--ink); background: var(--paper-2); border-color: var(--rule); }
-.md-iconbtn.is-danger:hover { color: #e05c5c; border-color: rgba(224,92,92,.4); }
+.md-iconbtn.is-danger:hover { color: var(--red); border-color: rgba(224,92,92,.4); }
 
 /* ── linked-thing chip rows ── */
 .md-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -3273,7 +3288,7 @@ input:focus, textarea:focus, select:focus {
   opacity: 0; transition: opacity .12s, color .12s;
 }
 .md-chip:hover button { opacity: 1; }
-.md-chip button:hover { color: #e05c5c; }
+.md-chip button:hover { color: var(--red); }
 .md-chip-link {
   appearance: none; border: 0; background: transparent; cursor: pointer;
   color: inherit; font: inherit; padding: 0;
@@ -3292,7 +3307,7 @@ input:focus, textarea:focus, select:focus {
 .md-pop-item {
   appearance: none; cursor: pointer; border: 0; background: transparent;
   display: flex; align-items: center; gap: 9px; padding: 8px 10px;
-  border-radius: 5px; font-family: var(--serif); font-size: 14px; color: var(--ink-2);
+  border-radius: var(--radius); font-family: var(--serif); font-size: 14px; color: var(--ink-2);
   text-align: left; width: 100%;
 }
 .md-pop-item:hover { background: var(--highlight); color: var(--ink); }
@@ -3305,7 +3320,7 @@ input:focus, textarea:focus, select:focus {
 .md-dep-arrow { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .md-dep-kind {
   font-family: var(--mono); font-size: 8px; letter-spacing: .12em; text-transform: uppercase;
-  padding: 2px 6px; border-radius: 4px;
+  padding: 2px 6px; border-radius: var(--radius);
 }
 .md-dep-kind-required { color: var(--gold); border: 1px solid rgba(201,168,76,.4); }
 .md-dep-kind-optional { color: var(--moss); border: 1px solid rgba(138,165,107,.4); }
@@ -3355,7 +3370,7 @@ input:focus, textarea:focus, select:focus {
 .mw-depadd-title { font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; }
 .mw-depadd-title b { color: var(--ink); }
 .mw-depadd-err {
-  margin-top: 8px; font-size: 12.5px; color: #e05c5c;
+  margin-top: 8px; font-size: 12.5px; color: var(--red);
   background: rgba(224,92,92,.08); border: 1px solid rgba(224,92,92,.35);
-  border-radius: 4px; padding: 6px 9px;
+  border-radius: var(--radius); padding: 6px 9px;
 }

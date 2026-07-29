@@ -30,7 +30,7 @@ export function InlineEditCard({
     <EntityCard isEditing={isEditing} className={className} entityId={entityId}>
       {children}
       {isEditing && (
-        <div className="flex items-center gap-2 mt-4 pt-3" style={{ borderTop: '1px solid #3a3660' }}>
+        <div className="flex items-center gap-2 mt-4 pt-3" style={{ borderTop: '1px solid var(--rule)' }}>
           <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </Button>

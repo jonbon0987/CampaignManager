@@ -10,11 +10,11 @@ const CONDITIONS = [
 type Condition = (typeof CONDITIONS)[number];
 
 const conditionColors: Record<string, string> = {
-  blinded: '#897f68', charmed: '#b070b0', deafened: '#897f68',
-  frightened: '#c9a84c', grappled: '#c08060', incapacitated: '#897f68',
-  invisible: '#70a0e0', paralyzed: '#e05c5c', petrified: '#897f68',
-  poisoned: '#6ab87a', prone: '#c97a55', restrained: '#c08060',
-  stunned: '#e0a060', unconscious: '#e05c5c', concentrating: '#70a0e0',
+  blinded: 'var(--ink-3)', charmed: '#b070b0', deafened: 'var(--ink-3)',
+  frightened: 'var(--gold)', grappled: '#c08060', incapacitated: 'var(--ink-3)',
+  invisible: 'var(--info)', paralyzed: 'var(--red)', petrified: 'var(--ink-3)',
+  poisoned: 'var(--success)', prone: 'var(--accent)', restrained: '#c08060',
+  stunned: '#e0a060', unconscious: 'var(--red)', concentrating: 'var(--info)',
 };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -62,9 +62,9 @@ function kindGlyph(isPC: boolean): string {
 
 // HP bar color based on percentage
 function hpBarColor(pct: number): string {
-  if (pct > 60) return 'linear-gradient(to right, #c97a55, #c9a84c)';
-  if (pct > 25) return 'linear-gradient(to right, #c97a55, #e0a060)';
-  return 'linear-gradient(to right, #e05c5c, #c97a55)';
+  if (pct > 60) return 'linear-gradient(to right, var(--accent), var(--gold))';
+  if (pct > 25) return 'linear-gradient(to right, var(--accent), #e0a060)';
+  return 'linear-gradient(to right, var(--red), var(--accent))';
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
   const currentCombatant = started ? sorted[currentTurn] ?? null : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#15120e', color: '#e8dcc4' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg)', color: 'var(--ink)' }}>
 
       {/* ── Header ── */}
       <div style={{
@@ -249,12 +249,12 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
         justifyContent: 'space-between',
         gap: '24px',
         padding: '28px 32px 20px',
-        borderBottom: '1px solid #2e2820',
+        borderBottom: '1px solid var(--rule)',
         flexShrink: 0,
       }}>
         <div>
           <div style={{
-            color: '#897f68',
+            color: 'var(--ink-3)',
             fontSize: '0.6rem',
             fontWeight: 700,
             letterSpacing: '0.18em',
@@ -265,7 +265,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
             Theater-of-the-Mind
           </div>
           <h2 style={{
-            color: '#e8dcc4',
+            color: 'var(--ink)',
             fontSize: '1.5rem',
             fontWeight: 700,
             fontFamily: 'var(--display)',
@@ -277,7 +277,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
               : encounter.name}
           </h2>
           {started && currentCombatant && (
-            <div style={{ color: '#897f68', fontSize: '0.78rem', marginTop: '4px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
+            <div style={{ color: 'var(--ink-3)', fontSize: '0.78rem', marginTop: '4px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
               {currentCombatant.name}'s turn
             </div>
           )}
@@ -325,9 +325,9 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                   alignItems: 'center',
                   gap: '12px',
                   padding: isCurrent ? '12px 14px 12px 11px' : '12px 14px',
-                  borderBottom: '1px solid #1e1a14',
-                  borderLeft: isCurrent ? '3px solid #c9a84c' : '3px solid transparent',
-                  backgroundColor: isCurrent ? '#1c1814' : 'transparent',
+                  borderBottom: '1px solid var(--bg-2)',
+                  borderLeft: isCurrent ? '3px solid var(--gold)' : '3px solid transparent',
+                  backgroundColor: isCurrent ? 'var(--paper)' : 'transparent',
                   opacity: isDown ? 0.45 : 1,
                   transition: 'background 0.15s, opacity 0.2s',
                 }}
@@ -344,10 +344,10 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                         textAlign: 'center',
                         fontSize: '1rem',
                         fontWeight: 700,
-                        color: '#c9a84c',
-                        backgroundColor: '#1e1a14',
-                        border: '1px solid #2e2820',
-                        borderRadius: '3px',
+                        color: 'var(--gold)',
+                        backgroundColor: 'var(--bg-2)',
+                        border: '1px solid var(--rule)',
+                        borderRadius: 'var(--radius)',
                         padding: '2px 4px',
                         outline: 'none',
                         fontFamily: 'var(--mono)',
@@ -358,7 +358,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                     <span style={{
                       fontSize: '1.1rem',
                       fontWeight: 700,
-                      color: isCurrent ? '#c9a84c' : '#5a5040',
+                      color: isCurrent ? 'var(--gold)' : '#5a5040',
                       fontFamily: 'var(--mono)',
                     }}>
                       {c.initiative ?? '—'}
@@ -370,7 +370,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                 <div style={{
                   fontSize: '1.1rem',
                   textAlign: 'center',
-                  color: c.isPC ? '#c9a84c' : isCurrent ? '#897f68' : '#3a3020',
+                  color: c.isPC ? 'var(--gold)' : isCurrent ? 'var(--ink-3)' : '#3a3020',
                 }}>
                   {kindGlyph(c.isPC)}
                 </div>
@@ -380,14 +380,14 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: showHpBar ? '4px' : 0 }}>
                     <span
                       style={{
-                        color: isCurrent ? '#e8dcc4' : isDown ? '#897f68' : c.isPC ? '#c9b88a' : '#c9b88a',
+                        color: isCurrent ? 'var(--ink)' : isDown ? 'var(--ink-3)' : c.isPC ? 'var(--ink-2)' : 'var(--ink-2)',
                         fontSize: '0.9rem',
                         fontWeight: 600,
                         fontFamily: 'var(--display)',
                         cursor: c.statblock ? 'pointer' : 'default',
                         textDecoration: c.statblock ? 'underline dotted' : 'none',
                         textUnderlineOffset: '3px',
-                        textDecorationColor: '#3e3428',
+                        textDecorationColor: 'var(--rule-hover)',
                       }}
                       onClick={() => c.statblock && setViewingStatblock(c.statblock)}
                     >
@@ -403,9 +403,9 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                           fontWeight: 700,
                           textTransform: 'uppercase',
                           letterSpacing: '0.1em',
-                          color: conditionColors[cond] ?? '#897f68',
-                          backgroundColor: `${conditionColors[cond] ?? '#897f68'}22`,
-                          border: `1px solid ${conditionColors[cond] ?? '#897f68'}55`,
+                          color: conditionColors[cond] ?? 'var(--ink-3)',
+                          backgroundColor: `${conditionColors[cond] ?? 'var(--ink-3)'}22`,
+                          border: `1px solid ${conditionColors[cond] ?? 'var(--ink-3)'}55`,
                           borderRadius: '2px',
                           padding: '2px 6px',
                           cursor: 'pointer',
@@ -419,7 +419,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                   </div>
                   {/* HP bar */}
                   {showHpBar && (
-                    <div style={{ height: '3px', background: '#26211a', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '3px', background: 'var(--rule-soft)', borderRadius: '2px', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%',
                         width: `${hpPct}%`,
@@ -434,8 +434,8 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                 {/* HP text */}
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   {(!c.isPC || c.maxHp > 0) && (
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '0.75rem', color: '#897f68' }}>
-                      <span style={{ color: isDown ? '#e05c5c' : '#b9ac90', fontWeight: 600 }}>{c.currentHp}</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '0.75rem', color: 'var(--ink-3)' }}>
+                      <span style={{ color: isDown ? 'var(--red)' : 'var(--ink-2)', fontWeight: 600 }}>{c.currentHp}</span>
                       {c.maxHp > 0 && <span style={{ color: '#3a3020' }}>/{c.maxHp}</span>}
                     </span>
                   )}
@@ -456,10 +456,10 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                       width: '44px',
                       fontSize: '0.78rem',
                       fontFamily: 'var(--mono)',
-                      color: '#e8dcc4',
-                      backgroundColor: '#1e1a14',
-                      border: '1px solid #2e2820',
-                      borderRadius: '3px',
+                      color: 'var(--ink)',
+                      backgroundColor: 'var(--bg-2)',
+                      border: '1px solid var(--rule)',
+                      borderRadius: 'var(--radius)',
                       padding: '3px 5px',
                       outline: 'none',
                       textAlign: 'center',
@@ -471,7 +471,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                     onClick={() => setConditionMenuId(conditionMenuId === c.id ? null : c.id)}
                     title="Conditions"
                     style={{
-                      color: c.conditions.size > 0 ? '#c9a84c' : '#3a3020',
+                      color: c.conditions.size > 0 ? 'var(--gold)' : '#3a3020',
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
@@ -485,7 +485,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                     onClick={() => removeCombatant(c.id)}
                     title="Remove"
                     style={{
-                      color: '#2e2820',
+                      color: 'var(--rule)',
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
@@ -506,7 +506,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: '4px',
-                  borderBottom: '1px solid #1e1a14',
+                  borderBottom: '1px solid var(--bg-2)',
                 }}>
                   {CONDITIONS.map(cond => {
                     const active = c.conditions.has(cond);
@@ -523,9 +523,9 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                           borderRadius: '2px',
                           cursor: 'pointer',
                           fontFamily: 'var(--mono)',
-                          backgroundColor: active ? `${conditionColors[cond] ?? '#c9a84c'}18` : 'transparent',
-                          color: active ? (conditionColors[cond] ?? '#c9a84c') : '#897f68',
-                          border: `1px solid ${active ? (conditionColors[cond] ?? '#c9a84c') + '55' : '#26211a'}`,
+                          backgroundColor: active ? `${conditionColors[cond] ?? 'var(--gold)'}18` : 'transparent',
+                          color: active ? (conditionColors[cond] ?? 'var(--gold)') : 'var(--ink-3)',
+                          border: `1px solid ${active ? (conditionColors[cond] ?? 'var(--gold)') + '55' : 'var(--rule-soft)'}`,
                           transition: 'all 0.1s',
                         }}
                       >
@@ -552,10 +552,10 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                 style={{
                   flex: 1,
                   fontSize: '0.85rem',
-                  color: '#e8dcc4',
-                  backgroundColor: '#1e1a14',
-                  border: '1px solid #2e2820',
-                  borderRadius: '3px',
+                  color: 'var(--ink)',
+                  backgroundColor: 'var(--bg-2)',
+                  border: '1px solid var(--rule)',
+                  borderRadius: 'var(--radius)',
                   padding: '6px 10px',
                   outline: 'none',
                   fontFamily: 'var(--serif)',
@@ -576,8 +576,8 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
                 fontSize: '0.72rem',
                 fontFamily: 'var(--mono)',
                 backgroundColor: 'transparent',
-                border: '1px dashed #26211a',
-                borderRadius: '3px',
+                border: '1px dashed var(--rule-soft)',
+                borderRadius: 'var(--radius)',
                 padding: '6px 16px',
                 cursor: 'pointer',
                 width: '100%',
@@ -596,27 +596,27 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
           flexShrink: 0,
           overflowY: 'auto',
           padding: '16px 32px',
-          borderTop: '1px solid #2e2820',
-          backgroundColor: '#1c1814',
+          borderTop: '1px solid var(--rule)',
+          backgroundColor: 'var(--paper)',
           maxHeight: '38vh',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div>
-              <div style={{ color: '#897f68', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: 'var(--mono)', marginBottom: '2px' }}>
+              <div style={{ color: 'var(--ink-3)', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: 'var(--mono)', marginBottom: '2px' }}>
                 Stat Sheet
               </div>
-              <h3 style={{ color: '#c9a84c', fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--display)', margin: 0 }}>
+              <h3 style={{ color: 'var(--gold)', fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--display)', margin: 0 }}>
                 {viewingStatblock.name}
               </h3>
             </div>
             <button onClick={() => setViewingStatblock(null)}
-              style={{ color: '#897f68', background: 'none', border: '1px solid #2e2820', cursor: 'pointer', fontSize: '0.7rem', padding: '4px 10px', borderRadius: '3px', fontFamily: 'var(--serif)' }}>
+              style={{ color: 'var(--ink-3)', background: 'none', border: '1px solid var(--rule)', cursor: 'pointer', fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--radius)', fontFamily: 'var(--serif)' }}>
               Close
             </button>
           </div>
 
           {/* Meta */}
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.75rem', color: '#897f68', marginBottom: '12px', fontFamily: 'var(--mono)' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--ink-3)', marginBottom: '12px', fontFamily: 'var(--mono)' }}>
             {viewingStatblock.creature_type && <span style={{ textTransform: 'capitalize' }}>{viewingStatblock.creature_type}</span>}
             {viewingStatblock.challenge_rating && <span>CR {viewingStatblock.challenge_rating}</span>}
             {viewingStatblock.armor_class != null && <span>AC {viewingStatblock.armor_class}{viewingStatblock.ac_descriptor ? ` (${viewingStatblock.ac_descriptor})` : ''}</span>}
@@ -631,17 +631,17 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
               const mod = abilityMod(val);
               return (
                 <div key={ab} style={{
-                  backgroundColor: '#15120e',
-                  border: '1px solid #2e2820',
-                  borderRadius: '3px',
+                  backgroundColor: 'var(--bg)',
+                  border: '1px solid var(--rule)',
+                  borderRadius: 'var(--radius)',
                   padding: '6px 4px',
                   textAlign: 'center',
                   fontFamily: 'var(--mono)',
                   fontSize: '0.68rem',
                 }}>
-                  <div style={{ color: '#c9a84c', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>{ab}</div>
-                  <div style={{ color: '#e8dcc4', fontWeight: 600 }}>{val ?? '—'}</div>
-                  <div style={{ color: '#897f68' }}>{mod >= 0 ? '+' : ''}{mod}</div>
+                  <div style={{ color: 'var(--gold)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>{ab}</div>
+                  <div style={{ color: 'var(--ink)', fontWeight: 600 }}>{val ?? '—'}</div>
+                  <div style={{ color: 'var(--ink-3)' }}>{mod >= 0 ? '+' : ''}{mod}</div>
                 </div>
               );
             })}
@@ -659,8 +659,8 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
               ['Languages', viewingStatblock.languages],
             ].filter(([, v]) => !!v).map(([label, value]) => (
               <div key={label as string} style={{ fontSize: '0.72rem' }}>
-                <span style={{ color: '#c9a84c', fontWeight: 700, fontFamily: 'var(--mono)' }}>{label}: </span>
-                <span style={{ color: '#b9ac90' }}>{value}</span>
+                <span style={{ color: 'var(--gold)', fontWeight: 700, fontFamily: 'var(--mono)' }}>{label}: </span>
+                <span style={{ color: 'var(--ink-2)' }}>{value}</span>
               </div>
             ))}
           </div>
@@ -670,12 +670,12 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
               fontSize: '0.72rem',
               whiteSpace: 'pre-wrap',
               padding: '10px 12px',
-              borderRadius: '3px',
-              backgroundColor: '#15120e',
-              color: '#b9ac90',
+              borderRadius: 'var(--radius)',
+              backgroundColor: 'var(--bg)',
+              color: 'var(--ink-2)',
               lineHeight: '1.65',
               fontFamily: 'var(--mono)',
-              border: '1px solid #2e2820',
+              border: '1px solid var(--rule)',
               margin: 0,
             }}>
               {viewingStatblock.content}
@@ -691,10 +691,10 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
 const primaryBtn: React.CSSProperties = {
   fontSize: '0.78rem',
   fontWeight: 600,
-  color: '#15120e',
-  backgroundColor: '#c9a84c',
-  border: '1px solid #c9a84c',
-  borderRadius: '3px',
+  color: 'var(--bg)',
+  backgroundColor: 'var(--gold)',
+  border: '1px solid var(--gold)',
+  borderRadius: 'var(--radius)',
   padding: '6px 14px',
   cursor: 'pointer',
   fontFamily: 'var(--serif)',
@@ -703,10 +703,10 @@ const primaryBtn: React.CSSProperties = {
 const ghostBtn: React.CSSProperties = {
   fontSize: '0.78rem',
   fontWeight: 500,
-  color: '#b9ac90',
+  color: 'var(--ink-2)',
   backgroundColor: 'transparent',
-  border: '1px solid #2e2820',
-  borderRadius: '3px',
+  border: '1px solid var(--rule)',
+  borderRadius: 'var(--radius)',
   padding: '6px 12px',
   cursor: 'pointer',
   fontFamily: 'var(--serif)',
@@ -714,10 +714,10 @@ const ghostBtn: React.CSSProperties = {
 
 const exitBtn: React.CSSProperties = {
   fontSize: '0.78rem',
-  color: '#e05c5c',
+  color: 'var(--red)',
   backgroundColor: 'transparent',
   border: '1px solid #4a2020',
-  borderRadius: '3px',
+  borderRadius: 'var(--radius)',
   cursor: 'pointer',
   padding: '6px 12px',
   fontFamily: 'var(--serif)',
@@ -727,9 +727,9 @@ const exitBtn: React.CSSProperties = {
 const dmgBtn: React.CSSProperties = {
   fontSize: '0.65rem',
   fontWeight: 700,
-  color: '#e05c5c',
+  color: 'var(--red)',
   backgroundColor: '#1e1014',
-  border: '1px solid #3a1a1a',
+  border: '1px solid var(--red-bg)',
   borderRadius: '2px',
   padding: '3px 7px',
   cursor: 'pointer',
@@ -739,7 +739,7 @@ const dmgBtn: React.CSSProperties = {
 const healBtn: React.CSSProperties = {
   fontSize: '0.65rem',
   fontWeight: 700,
-  color: '#6ab87a',
+  color: 'var(--success)',
   backgroundColor: '#141e14',
   border: '1px solid #1a3a1a',
   borderRadius: '2px',

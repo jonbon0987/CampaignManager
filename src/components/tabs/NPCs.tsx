@@ -48,13 +48,13 @@ const statusBadgeColor: Record<NPC['status'], 'green' | 'red' | 'gold'> = {
 };
 
 const statusStyles: Record<NPC['status'], { bg: string; text: string }> = {
-  active:   { bg: '#1a3a1a', text: '#4caf7d' },
-  deceased: { bg: '#3a1a1a', text: '#e05c5c' },
-  unknown:  { bg: '#2a2a1a', text: 'var(--gold)' },
+  active:   { bg: '#1a3a1a', text: 'var(--success)' },
+  deceased: { bg: 'var(--red-bg)', text: 'var(--red)' },
+  unknown:  { bg: 'var(--warn-bg)', text: 'var(--gold)' },
 };
 
 const inputEditStyle: React.CSSProperties = {
-  backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid #3a3660',
+  backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid var(--rule)',
   fontFamily: 'var(--serif)', fontSize: '0.875rem', borderRadius: '0.375rem',
   padding: '0.375rem 0.5rem', width: '100%',
 };
@@ -156,7 +156,7 @@ export default function NPCs() {
   };
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
-    padding: '6px 16px', borderRadius: '6px', fontSize: '13px',
+    padding: '6px 16px', borderRadius: 'var(--radius)', fontSize: '13px',
     fontWeight: active ? 600 : 400, cursor: 'pointer', border: 'none',
     backgroundColor: active ? 'var(--rule-soft)' : 'transparent',
     color: active ? 'var(--gold)' : 'var(--ink-2)', transition: 'all 0.15s',
@@ -181,7 +181,7 @@ export default function NPCs() {
 
       {/* View toggle */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: '#12111e' }}>
+        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg)' }}>
           <button style={pillStyle(viewMode === 'campaign')} onClick={() => setViewMode('campaign')}>This Campaign</button>
           <button style={pillStyle(viewMode === 'global')} onClick={() => setViewMode('global')}>Global Pool</button>
         </div>
@@ -302,7 +302,7 @@ export default function NPCs() {
                                       backgroundColor: style.bg,
                                       color: style.text,
                                       border: `1px solid ${style.border}`,
-                                      borderRadius: 3,
+                                      borderRadius: 'var(--radius)',
                                       padding: '1px 5px',
                                       fontSize: 10,
                                       lineHeight: 1.3,
@@ -323,7 +323,7 @@ export default function NPCs() {
                                   type="button"
                                   onClick={e => { e.stopPropagation(); openStatBlock(sb.id); }}
                                   className="text-xs underline"
-                                  style={{ color: '#70a0e0', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                  style={{ color: 'var(--info)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                                   title="Open stat sheet"
                                 >
                                   {sb.name}
@@ -336,12 +336,12 @@ export default function NPCs() {
                           <Badge label={npc.status} color={statusBadgeColor[npc.status]} size="xs" />
                           <button
                             onClick={e => { e.stopPropagation(); handleToggleMet(npc); }}
-                            className="text-xs px-2 py-0.5 rounded transition-colors"
+                            className="text-xs px-2 py-1 rounded transition-colors"
                             title={npc.met_by_pcs ? 'PCs have met this NPC' : 'PCs have not met this NPC'}
                             style={{
-                              backgroundColor: npc.met_by_pcs ? '#1a2e3a' : 'var(--paper-2)',
-                              color: npc.met_by_pcs ? '#4ab8d4' : '#4a4870',
-                              border: `1px solid ${npc.met_by_pcs ? '#2a6080' : 'var(--rule)'}`,
+                              backgroundColor: npc.met_by_pcs ? 'var(--info-bg)' : 'var(--paper-2)',
+                              color: npc.met_by_pcs ? 'var(--info)' : 'var(--ink-3)',
+                              border: `1px solid ${npc.met_by_pcs ? 'var(--info-line)' : 'var(--rule)'}`,
                             }}
                           >
                             {npc.met_by_pcs ? 'Met' : 'Unmet'}
@@ -369,14 +369,14 @@ export default function NPCs() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #2e2c4a' }}>
+                    <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--rule-soft)' }}>
                       <Button variant="ghost" size="sm" onClick={() => startEdit(npc)} title="Edit">
                         <Pencil size={12} strokeWidth={1.5} />
                       </Button>
                       {viewMode === 'campaign' && isLinked ? (
                         <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from this campaign?')) unlinkNPCFromCampaign(npc.id); }}>Unlink</Button>
                       ) : viewMode === 'global' && !isLinked ? (
-                        <Button variant="secondary" size="sm" onClick={() => linkNPCToCampaign(npc.id)} style={{ color: '#4caf7d' }}>Add to Campaign</Button>
+                        <Button variant="secondary" size="sm" onClick={() => linkNPCToCampaign(npc.id)} style={{ color: 'var(--success)' }}>Add to Campaign</Button>
                       ) : viewMode === 'global' && isLinked ? (
                         <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from campaign?')) unlinkNPCFromCampaign(npc.id); }} style={{ color: '#4ab8d4' }}>In Campaign ✓</Button>
                       ) : (
@@ -407,13 +407,13 @@ export default function NPCs() {
             {linkableGlobals.map(npc => {
               const ss = statusStyles[npc.status];
               return (
-                <div key={npc.id} className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: '#12111e', borderColor: 'var(--rule)' }}>
+                <div key={npc.id} className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--rule)' }}>
                   <div>
                     <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{npc.name}</span>
                     {npc.role && <span className="text-xs ml-2" style={{ color: 'var(--ink-2)' }}>{npc.role}</span>}
                     <span className="text-xs ml-2 px-1.5 py-0.5 rounded capitalize" style={{ backgroundColor: ss.bg, color: ss.text }}>{npc.status}</span>
                   </div>
-                  <Button variant="secondary" size="sm" onClick={() => linkNPCToCampaign(npc.id)} style={{ color: '#4caf7d' }}>+ Add</Button>
+                  <Button variant="secondary" size="sm" onClick={() => linkNPCToCampaign(npc.id)} style={{ color: 'var(--success)' }}>+ Add</Button>
                 </div>
               );
             })}

@@ -162,7 +162,7 @@ export default function Factions() {
                   style={{
                     backgroundColor: filterType === t ? 'var(--rule)' : 'var(--paper-2)',
                     color: filterType === t ? 'var(--ink)' : 'var(--ink-2)',
-                    border: '1px solid #3a3660',
+                    border: '1px solid var(--rule)',
                   }}
                 >
                   {t === 'all' ? 'All' : formatType(t)}
@@ -199,7 +199,7 @@ export default function Factions() {
                 {/* Header row */}
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer"
-                  style={{ borderBottom: isExpanded ? '1px solid #3a3660' : 'none' }}
+                  style={{ borderBottom: isExpanded ? '1px solid var(--rule)' : 'none' }}
                   onClick={() => {
                     if (!isEditing) setExpandedId(isExpanded ? null : faction.id);
                   }}
@@ -249,7 +249,7 @@ export default function Factions() {
                             onChange={e => setEditForm(prev => prev ? { ...prev, name: e.target.value } : prev)}
                             autoFocus
                             className="w-full px-2 py-1.5 rounded text-sm outline-none"
-                            style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid #3a3660', fontFamily: 'var(--serif)' }}
+                            style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid var(--rule)', fontFamily: 'var(--serif)' }}
                           />
                         </div>
                         <div>

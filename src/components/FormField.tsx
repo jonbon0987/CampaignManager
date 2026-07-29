@@ -25,7 +25,7 @@ export const inputStyle: CSSProperties = {
   backgroundColor: 'var(--paper-2)',
   color: 'var(--ink)',
   border: '1px solid var(--rule)',
-  borderRadius: '6px',
+  borderRadius: 'var(--radius)',
   outline: 'none',
   fontFamily: 'var(--serif)',
   fontSize: '14px',

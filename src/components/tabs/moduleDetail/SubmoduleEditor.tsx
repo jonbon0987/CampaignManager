@@ -207,7 +207,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
     }
   };
 
-  const diffColor: Record<string, string> = { easy: '#7fc090', medium: '#d8bd6b', hard: '#e0a060', deadly: '#e06868' };
+  const diffColor: Record<string, string> = { easy: '#7fc090', medium: 'var(--gold-2)', hard: '#e0a060', deadly: '#e06868' };
 
   return (
     <div className="cm-detail">

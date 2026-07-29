@@ -75,7 +75,7 @@ export default function StatBlockPanel() {
                   style={{
                     fontSize: '0.7rem',
                     padding: '1px 8px',
-                    borderRadius: '4px',
+                    borderRadius: 'var(--radius)',
                     border: `1px solid ${ts.border}`,
                     backgroundColor: ts.bg,
                     color: ts.text,
@@ -89,7 +89,7 @@ export default function StatBlockPanel() {
                     style={{
                       fontSize: '0.7rem',
                       padding: '1px 8px',
-                      borderRadius: '4px',
+                      borderRadius: 'var(--radius)',
                       backgroundColor: '#2a1a1a',
                       color: '#c08060',
                       border: '1px solid #5a3a2a',

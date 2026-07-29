@@ -391,7 +391,7 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
           <div>{activeWorld?.name ?? '—'}</div>
         </div>
         <button className="cm-logout-btn" onClick={async () => {
-          const ok = await confirm({ title: 'Log out', message: 'Log out of Campaign Manager?' });
+          const ok = await confirm({ title: 'Log out', message: 'Log out of DM Lair?' });
           if (ok) signOut();
         }}>
           <span className="cm-logout-glyph">⎋</span>

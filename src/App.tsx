@@ -186,7 +186,7 @@ function AppInner({ user }: { user: User }) {
 
           <div className="cm-canvas">
             {error && (
-              <div style={{ margin: '16px 28px', padding: '12px 16px', borderRadius: '6px', fontSize: '14px', backgroundColor: 'var(--redBg, #3a1a1a)', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
+              <div style={{ margin: '16px 28px', padding: '12px 16px', borderRadius: 'var(--radius)', fontSize: '14px', backgroundColor: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-line)' }}>
                 Failed to load data: {error}
               </div>
             )}
@@ -339,7 +339,7 @@ function LoginScreen() {
               style={inputStyle}
               data-testid="login-password"
             />
-            {error && <p className="text-xs" data-testid="login-error" style={{ color: '#e05c5c' }}>{error}</p>}
+            {error && <p className="text-xs" data-testid="login-error" style={{ color: 'var(--red)' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
@@ -371,12 +371,12 @@ function LoginScreen() {
               className="px-4 py-2 rounded text-sm outline-none"
               style={inputStyle}
             />
-            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
             >
               {loading ? '…' : 'Send reset link'}
             </button>
@@ -434,13 +434,13 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center gap-8"
-      style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}
+      style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)' }}
     >
       <div className="text-center">
         <div className="text-5xl mb-4 select-none">⚔️</div>
         <h1
           className="text-3xl font-bold mb-2"
-          style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+          style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
         >
           Set New Password
         </h1>
@@ -469,12 +469,12 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
               className="px-4 py-2 rounded text-sm outline-none"
               style={inputStyle}
             />
-            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
             >
               {loading ? '…' : 'Update password'}
             </button>

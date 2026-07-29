@@ -26,7 +26,7 @@ const ROW_GAP = 100;
 const STATUS_COLOR: Record<Module['status'], string> = {
   planned:   'var(--ink-3)',
   active:    'var(--gold)',
-  completed: '#4caf7d',
+  completed: 'var(--success)',
 };
 
 const STATUS_LABEL: Record<Module['status'], string> = {

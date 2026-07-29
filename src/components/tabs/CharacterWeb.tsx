@@ -333,14 +333,14 @@ export default function CharacterWeb() {
                           <button
                             onClick={ev => { ev.stopPropagation(); openEdit(e.id); }}
                             className="cw-action-ghost"
-                            style={{ padding: '2px 8px', fontSize: 11, borderRadius: 3 }}
+                            style={{ padding: '2px 8px', fontSize: 11, borderRadius: 'var(--radius)' }}
                           >
                             Edit
                           </button>
                           <button
                             onClick={ev => { ev.stopPropagation(); handleDelete(e.id); }}
                             className="cw-action-ghost"
-                            style={{ padding: '2px 6px', fontSize: 11, borderRadius: 3, color: 'var(--accent)' }}
+                            style={{ padding: '2px 6px', fontSize: 11, borderRadius: 'var(--radius)', color: 'var(--accent)' }}
                           >
                             ✕
                           </button>

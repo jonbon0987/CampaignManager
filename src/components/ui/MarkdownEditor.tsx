@@ -59,7 +59,7 @@ const toolbarBtnStyle: React.CSSProperties = {
   color: 'var(--ink-3)',
   cursor: 'pointer',
   padding: '2px 6px',
-  borderRadius: '3px',
+  borderRadius: 'var(--radius)',
   fontSize: '13px',
   fontFamily: 'monospace',
   lineHeight: 1,
@@ -166,7 +166,7 @@ export function MarkdownEditor({
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     padding: '3px 10px',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius)',
     fontSize: '11px',
     fontWeight: active ? 600 : 400,
     cursor: 'pointer',
@@ -179,12 +179,12 @@ export function MarkdownEditor({
   return (
     <div
       className="rounded-md overflow-hidden"
-      style={{ border: '1px solid #3a3660', backgroundColor: 'var(--paper)' }}
+      style={{ border: '1px solid var(--rule)', backgroundColor: 'var(--paper)' }}
     >
       {/* Toolbar */}
       <div
         className="flex items-center gap-1 px-2 py-1"
-        style={{ borderBottom: '1px solid #2e2c4a', backgroundColor: 'var(--bg-2)' }}
+        style={{ borderBottom: '1px solid var(--rule-soft)', backgroundColor: 'var(--bg-2)' }}
       >
         <div className="flex gap-0.5 mr-2">
           <button onClick={() => setMode('write')} style={pillStyle(mode === 'write')}>Write</button>
@@ -225,7 +225,7 @@ export function MarkdownEditor({
           {entityLinks.length > 0 && (
             <div
               className="flex flex-wrap gap-1.5 px-3 pt-2 pb-1"
-              style={{ borderBottom: '1px solid #2e2c4a' }}
+              style={{ borderBottom: '1px solid var(--rule-soft)' }}
             >
               {entityLinks.map((link, i) => (
                 <EntityChip

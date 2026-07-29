@@ -28,7 +28,7 @@ export function EntityCard({ children, isEditing, className = '', onClick, style
         ...style,
       }}
       onMouseEnter={e => {
-        if (!isEditing && !isHighlighted) (e.currentTarget as HTMLDivElement).style.borderColor = '#4a4870';
+        if (!isEditing && !isHighlighted) (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--rule-hover)';
       }}
       onMouseLeave={e => {
         if (!isEditing && !isHighlighted) (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--rule)';
