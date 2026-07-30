@@ -116,7 +116,7 @@ export default function CampaignSelector() {
       {dropdownOpen && dropdownPos && createPortal(
         <div
           ref={dropdownRef}
-          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999, backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', border: '1px solid var(--rule)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: '200px', maxWidth: 'calc(100vw - 2rem)', padding: '4px 0' }}
+          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999, backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: '200px', maxWidth: 'calc(100vw - 2rem)', padding: '4px 0' }}
         >
           {campaigns.map(campaign => (
             <div
@@ -236,7 +236,7 @@ export default function CampaignSelector() {
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" onClick={handleDeleteConfirm} style={{ backgroundColor: '#6a2a2a', borderColor: '#6a2a2a', color: 'var(--ink)' }}>Delete Campaign</Button>
+          <Button variant="danger" onClick={handleDeleteConfirm} style={{ backgroundColor: 'var(--red-line)', borderColor: 'var(--red-line)', color: 'var(--ink)' }}>Delete Campaign</Button>
         </div>
       </Modal>
     </div>

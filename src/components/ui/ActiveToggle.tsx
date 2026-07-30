@@ -5,7 +5,7 @@ interface ActiveToggleProps {
 
 export function ActiveToggle({ isActive, onChange }: ActiveToggleProps) {
   return (
-    <div style={{ display: 'inline-flex', borderRadius: 4, overflow: 'hidden', border: '1px solid #3a3660' }}>
+    <div style={{ display: 'inline-flex', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--rule)' }}>
       <button
         type="button"
         onClick={() => onChange(true)}
@@ -32,10 +32,10 @@ export function ActiveToggle({ isActive, onChange }: ActiveToggleProps) {
           fontWeight: 600,
           fontFamily: 'var(--serif)',
           border: 'none',
-          borderLeft: '1px solid #3a3660',
+          borderLeft: '1px solid var(--rule)',
           cursor: 'pointer',
           backgroundColor: !isActive ? '#3a2a2a' : 'var(--paper-2)',
-          color: !isActive ? '#e05c5c' : 'var(--ink-3)',
+          color: !isActive ? 'var(--red)' : 'var(--ink-3)',
           transition: 'all 0.15s',
         }}
       >

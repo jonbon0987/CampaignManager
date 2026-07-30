@@ -45,7 +45,7 @@ const emptyForm = (): LoreForm => ({
 const inputEditStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg)',
   color: 'var(--ink)',
-  border: '1px solid #3a3660',
+  border: '1px solid var(--rule)',
   fontFamily: 'var(--serif)',
   fontSize: '0.875rem',
   borderRadius: '0.375rem',
@@ -132,7 +132,7 @@ export default function Lore() {
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
           className="text-sm rounded px-2 py-1.5 outline-none"
-          style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid #3a3660', fontFamily: 'var(--serif)' }}
+          style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule)', fontFamily: 'var(--serif)' }}
         >
           <option value="all">All Categories</option>
           {LORE_CATEGORIES.map(c => (
@@ -238,7 +238,7 @@ export default function Lore() {
                       )}
                     </div>
 
-                    <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #2e2c4a' }}>
+                    <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--rule-soft)' }}>
                       <Button variant="ghost" size="sm" onClick={() => startEdit(entry)} title="Edit">
                         <Pencil size={12} strokeWidth={1.5} />
                       </Button>

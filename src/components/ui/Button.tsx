@@ -10,9 +10,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<ButtonVariant, { base: string; hover: string }> = {
-  primary:   { base: 'bg-gold text-bg border-gold',                hover: 'hover:bg-gold-dim hover:border-gold-dim' },
+  primary:   { base: 'bg-gold text-bg border-gold',                hover: 'hover:bg-gold-hover hover:border-gold-hover' },
   secondary: { base: 'bg-transparent text-muted border-border',    hover: 'hover:text-parchment hover:border-border-hover' },
-  danger:    { base: 'bg-transparent border-border',               hover: 'hover:border-red-500' },
+  danger:    { base: 'bg-transparent border-border',               hover: 'hover:border-red' },
   ghost:     { base: 'bg-transparent border-transparent text-muted', hover: 'hover:text-parchment hover:bg-surface-high' },
 };
 
@@ -44,7 +44,7 @@ export function Button({
       `.trim().replace(/\s+/g, ' ')}
       style={{
         fontFamily: 'var(--serif)',
-        ...(variant === 'danger' ? { color: '#e05c5c' } : {}),
+        ...(variant === 'danger' ? { color: 'var(--red)' } : {}),
         ...style,
       }}
     >

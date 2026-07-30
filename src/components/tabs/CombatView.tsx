@@ -16,7 +16,7 @@ export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: 
           alignItems: 'center',
           gap: '4px',
           padding: '10px 28px 0',
-          borderBottom: '1px solid #2e2820',
+          borderBottom: '1px solid var(--rule)',
           flexShrink: 0,
         }}
       >
@@ -34,9 +34,9 @@ export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: 
               fontFamily: 'var(--serif)',
               cursor: 'pointer',
               border: 'none',
-              borderBottom: activeSubTab === tab.id ? '2px solid #c9a84c' : '2px solid transparent',
+              borderBottom: activeSubTab === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
               backgroundColor: 'transparent',
-              color: activeSubTab === tab.id ? '#c9a84c' : '#897f68',
+              color: activeSubTab === tab.id ? 'var(--gold)' : 'var(--ink-3)',
               marginBottom: '-1px',
               transition: 'color 0.15s',
             }}

@@ -560,7 +560,7 @@ function SessionPrepView() {
             )}
 
             {hookPickerOpen ? (
-              <div style={{ marginTop: 12, border: '1px solid var(--rule)', borderRadius: 8, padding: 8, backgroundColor: 'var(--paper)' }}>
+              <div style={{ marginTop: 12, border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: 8, backgroundColor: 'var(--paper)' }}>
                 {availableHooks.length === 0 ? (
                   <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
                     {activeHooks.length === 0 ? 'No active hooks. Add some in the Hooks & Ideas tab.' : 'All active hooks already added.'}
@@ -571,7 +571,7 @@ function SessionPrepView() {
                       <button
                         key={h.id}
                         onClick={() => { saveDangledHooks([...dangledIds, h.id]); setHookPickerOpen(false); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, border: 'none', background: 'none', color: 'var(--ink)', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 'var(--radius)', border: 'none', background: 'none', color: 'var(--ink)', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)')}
                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >

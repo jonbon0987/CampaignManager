@@ -120,7 +120,7 @@ export default function DiceRoller({ open, onClose }: DiceRollerProps) {
         maxHeight: 'calc(100vh - 100px)',
         backgroundColor: colors.surface,
         border: `1px solid ${colors.border}`,
-        borderRadius: 12,
+        borderRadius: 'var(--radius-lg)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 998,
@@ -145,7 +145,7 @@ export default function DiceRoller({ open, onClose }: DiceRollerProps) {
             style={{
               background: 'none',
               border: `1px solid ${colors.border}`,
-              borderRadius: 6,
+              borderRadius: 'var(--radius)',
               color: colors.textDim,
               fontSize: 11,
               cursor: 'pointer',
@@ -180,7 +180,7 @@ export default function DiceRoller({ open, onClose }: DiceRollerProps) {
                 padding: '6px 4px',
                 backgroundColor: colors.surfaceHigh,
                 border: `1px solid ${colors.border}`,
-                borderRadius: 6,
+                borderRadius: 'var(--radius)',
                 color: colors.gold,
                 fontSize: 13,
                 fontWeight: 600,
@@ -210,7 +210,7 @@ export default function DiceRoller({ open, onClose }: DiceRollerProps) {
                 backgroundColor: colors.bg,
                 color: colors.text,
                 border: `1px solid ${parseError ? colors.red : colors.border}`,
-                borderRadius: 6,
+                borderRadius: 'var(--radius)',
                 padding: '6px 10px',
                 fontSize: 13,
                 outline: 'none',
@@ -224,7 +224,7 @@ export default function DiceRoller({ open, onClose }: DiceRollerProps) {
                 backgroundColor: colors.gold,
                 color: colors.bg,
                 border: 'none',
-                borderRadius: 6,
+                borderRadius: 'var(--radius)',
                 padding: '6px 12px',
                 fontWeight: 700,
                 fontSize: 13,
@@ -304,7 +304,7 @@ export default function DiceRoller({ open, onClose }: DiceRollerProps) {
 
                 {/* Total */}
                 <span style={{
-                  color: isNat20(roll) ? '#4caf7d' : isNat1(roll) ? colors.red : colors.gold,
+                  color: isNat20(roll) ? 'var(--success)' : isNat1(roll) ? colors.red : colors.gold,
                   fontWeight: 700,
                   fontSize: 16,
                   minWidth: 28,

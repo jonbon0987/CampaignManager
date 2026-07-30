@@ -239,7 +239,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
           zIndex: 9001,
           backgroundColor: 'var(--paper)',
           border: '1px solid var(--rule)',
-          borderRadius: '12px',
+          borderRadius: 'var(--radius-lg)',
           boxShadow: '0 16px 64px rgba(0,0,0,0.6)',
           display: 'flex',
           flexDirection: 'column',

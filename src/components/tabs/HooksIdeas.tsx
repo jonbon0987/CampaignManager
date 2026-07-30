@@ -39,10 +39,10 @@ const categoryBadgeColor: Record<Category, 'red' | 'gold' | 'green' | 'blue'> = 
 };
 
 const categoryStyles: Record<Category, { border: string; badge: string; badgeBg: string }> = {
-  main_plot:     { border: '#6a2a2a', badge: '#e05c5c', badgeBg: '#3a1a1a' },
+  main_plot:     { border: 'var(--red-line)', badge: 'var(--red)', badgeBg: 'var(--red-bg)' },
   side_quest:    { border: '#4a3a1a', badge: 'var(--gold)', badgeBg: '#2a2a10' },
-  character_arc: { border: '#1a3a3a', badge: '#4caf7d', badgeBg: '#0a2a1a' },
-  faction:       { border: '#3a2a1a', badge: '#c97a55', badgeBg: '#2a1a10' },
+  character_arc: { border: '#1a3a3a', badge: 'var(--success)', badgeBg: '#0a2a1a' },
+  faction:       { border: '#3a2a1a', badge: 'var(--accent)', badgeBg: '#2a1a10' },
 };
 
 const defaultStyle = categoryStyles.side_quest;
@@ -157,7 +157,7 @@ export default function HooksIdeas() {
                   style={{
                     backgroundColor: filterCategory === c ? 'var(--rule)' : 'var(--paper-2)',
                     color: filterCategory === c ? 'var(--ink)' : 'var(--ink-2)',
-                    border: '1px solid #3a3660',
+                    border: '1px solid var(--rule)',
                   }}
                 >
                   {c === 'all' ? 'All' : formatCategory(c)}
@@ -210,7 +210,7 @@ export default function HooksIdeas() {
                       placeholder="Title"
                       autoFocus
                       className="w-full px-2 py-1.5 rounded text-sm outline-none"
-                      style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid #3a3660', fontFamily: 'var(--serif)' }}
+                      style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid var(--rule)', fontFamily: 'var(--serif)' }}
                     />
                     <div className="flex gap-1 flex-wrap">
                       {CATEGORIES.map(c => (

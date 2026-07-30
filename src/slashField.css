@@ -7,7 +7,7 @@
 .rre-pill {
   display: inline-flex; align-items: baseline; gap: 4px;
   padding: 0 7px; margin: 0 1px;
-  border-radius: 4px; line-height: 1.5;
+  border-radius: var(--radius); line-height: 1.5;
   font-size: 0.92em; white-space: nowrap; vertical-align: baseline;
   background: color-mix(in oklab, var(--gold) 12%, var(--bg-2));
   border: 1px solid color-mix(in oklab, var(--gold) 28%, var(--rule));
@@ -15,7 +15,7 @@
 }
 .rre-pill-glyph { color: var(--gold); font-size: 0.95em; }
 .rre-pill-label { color: inherit; }
-.rre-pill.is-missing { background: #2a1a1a; border-color: #5a2a2a; color: #e05c5c; }
+.rre-pill.is-missing { background: #2a1a1a; border-color: #5a2a2a; color: var(--red); }
 
 /* field surface */
 .sf-wrap { position: relative; }
@@ -79,21 +79,21 @@
   border-radius: var(--radius); box-shadow: 0 16px 48px rgba(0,0,0,.5);
   overflow: hidden; font-family: var(--serif);
 }
-.sf-menu-head { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); padding: 9px 11px 7px; }
+.sf-menu-head { font-family: var(--mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); padding: 9px 11px 7px; }
 .sf-menu-head .sf-q { color: var(--gold-2); }
 .sf-scroll { max-height: 264px; overflow: auto; padding: 4px; }
 .sf-group { font-family: var(--mono); font-size: 8.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); padding: 7px 9px 3px; }
 .sf-item { display: grid; align-items: center; gap: 10px; grid-template-columns: 26px 1fr auto; padding: 7px 9px; border-radius: var(--radius); cursor: pointer; color: var(--ink); }
 .sf-item.is-active { background: var(--highlight); }
-.sf-cmd-glyph { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 5px; background: var(--bg-2); border: 1px solid var(--rule); color: var(--gold-2); font-size: 13px; font-family: var(--display); }
+.sf-cmd-glyph { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--radius); background: var(--bg-2); border: 1px solid var(--rule); color: var(--gold-2); font-size: 13px; font-family: var(--display); }
 .sf-ref-glyph { color: var(--gold); font-size: 15px; justify-self: center; }
 .sf-item-main { min-width: 0; }
 .sf-item-label { font-size: 14px; color: var(--ink); line-height: 1.2; }
 .sf-item-sub { font-family: var(--serif); font-size: 12px; color: var(--ink-3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sf-ref-sub { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sf-item-key { font-family: var(--mono); font-size: 10px; color: var(--ink-3); padding: 2px 6px; border: 1px solid var(--rule-soft); border-radius: 5px; background: var(--bg-2); }
-.sf-ref-kind { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); padding: 1px 7px; border: 1px solid var(--rule-soft); border-radius: 999px; }
-.sf-foot { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ink-3); padding: 7px 11px; border-top: 1px solid var(--rule-soft); display: flex; gap: 12px; }
+.sf-item-key { font-family: var(--mono); font-size: 10px; color: var(--ink-3); padding: 2px 6px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg-2); }
+.sf-ref-kind { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); padding: 1px 7px; border: 1px solid var(--rule-soft); border-radius: 999px; }
+.sf-foot { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--ink-3); padding: 7px 11px; border-top: 1px solid var(--rule-soft); display: flex; gap: 12px; }
 .sf-foot .sf-sp { margin-left: auto; }
 .sf-foot kbd { color: var(--ink-2); }
 
@@ -107,14 +107,14 @@
 @keyframes sfpop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
 .sf-hovercard.flip { transform: translateY(-100%); }
 .sf-hc-top { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
-.sf-hc-glyph { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 7px; font-size: 16px; background: var(--bg-2); border: 1px solid var(--rule); color: var(--gold); }
+.sf-hc-glyph { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: var(--radius); font-size: 16px; background: var(--bg-2); border: 1px solid var(--rule); color: var(--gold); }
 .sf-hc-name { font-family: var(--display); font-size: 16px; color: var(--ink); line-height: 1.1; }
-.sf-hc-kind { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin-top: 2px; }
+.sf-hc-kind { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin-top: 2px; }
 .sf-hc-desc { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); margin: 0 0 11px; }
 .sf-hc-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 11px; }
-.sf-hc-tag { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--ink-3); padding: 2px 7px; border: 1px solid var(--rule-soft); border-radius: 999px; }
+.sf-hc-tag { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-3); padding: 2px 7px; border: 1px solid var(--rule-soft); border-radius: 999px; }
 .sf-hc-actions { display: flex; gap: 6px; }
-.sf-hc-btn { flex: 1 1 auto; text-align: center; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 8px; border-radius: 5px; border: 1px solid var(--rule); background: var(--bg-2); color: var(--ink-2); transition: all .1s; }
+.sf-hc-btn { flex: 1 1 auto; text-align: center; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 8px; border-radius: var(--radius); border: 1px solid var(--rule); background: var(--bg-2); color: var(--ink-2); transition: all .1s; }
 .sf-hc-btn:hover { color: var(--ink); border-color: var(--gold); }
 .sf-hc-btn.primary { color: var(--bg); background: var(--gold); border-color: var(--gold); }
 .sf-hc-btn.primary:hover { background: var(--gold-2); }

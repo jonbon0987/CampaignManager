@@ -304,11 +304,11 @@ function truncate(s: string, max: number) {
 
 function hookColor(category?: string | null): string {
   switch (category) {
-    case 'main_plot': return '#e05c5c';
+    case 'main_plot': return 'var(--red)';
     case 'side':      return '#4ab8d4';
-    case 'character_arc': return '#c9a84c';
-    case 'lore':      return '#8aa56b';
-    default:          return '#897f68';
+    case 'character_arc': return 'var(--gold)';
+    case 'lore':      return 'var(--moss)';
+    default:          return 'var(--ink-3)';
   }
 }
 

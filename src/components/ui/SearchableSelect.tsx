@@ -111,7 +111,7 @@ export function SearchableSelect({
           backgroundColor: 'var(--paper-2)',
           color: selected ? 'var(--ink)' : 'var(--ink-3)',
           border: '1px solid var(--rule)',
-          borderRadius: 4,
+          borderRadius: 'var(--radius)',
           fontFamily: 'var(--serif)',
           fontSize: 14,
           padding: '8px 10px',
@@ -147,7 +147,7 @@ export function SearchableSelect({
             marginTop: 4,
             backgroundColor: 'var(--paper)',
             border: '1px solid var(--rule)',
-            borderRadius: 4,
+            borderRadius: 'var(--radius)',
             zIndex: 60,
             boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
             overflow: 'hidden',
@@ -199,7 +199,7 @@ export function SearchableSelect({
                   padding: '6px 8px',
                   fontSize: 13,
                   cursor: 'pointer',
-                  borderRadius: 3,
+                  borderRadius: 'var(--radius)',
                   fontFamily: 'var(--serif)',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--paper-2)'; }}
@@ -232,7 +232,7 @@ export function SearchableSelect({
                     padding: '6px 8px',
                     fontSize: 13,
                     cursor: 'pointer',
-                    borderRadius: 3,
+                    borderRadius: 'var(--radius)',
                     fontFamily: 'var(--serif)',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--paper-2)'; setHighlightIndex(i); }}

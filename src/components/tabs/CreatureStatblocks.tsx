@@ -223,7 +223,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 
       {/* Ability scores */}
       {hasAbilityScores && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', borderTop: '1px solid #3a3660', borderBottom: '1px solid #3a3660', padding: '8px 0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', borderTop: '1px solid var(--rule)', borderBottom: '1px solid var(--rule)', padding: '8px 0' }}>
           {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map(key => {
             const score = m[key];
             return (
@@ -271,8 +271,8 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
               fontFamily: 'var(--display)',
               fontSize: '0.85rem',
               backgroundColor: 'var(--bg)',
-              border: '1px solid #3a3660',
-              borderRadius: '6px',
+              border: '1px solid var(--rule)',
+              borderRadius: 'var(--radius)',
               padding: '12px',
               whiteSpace: 'pre-wrap',
               margin: 0,
@@ -623,16 +623,16 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 min-w-0 px-3 py-1.5 rounded text-sm outline-none"
-            style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid #3a3660', minWidth: '180px' }}
+            style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule)', minWidth: '180px' }}
           />
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={() => setFilterType('all')}
               className="text-xs px-2.5 py-1 rounded border"
               style={{
-                backgroundColor: filterType === 'all' ? '#2a2050' : 'var(--paper)',
+                backgroundColor: filterType === 'all' ? 'var(--gold-dim)' : 'var(--paper)',
                 color: filterType === 'all' ? 'var(--gold)' : 'var(--ink-2)',
-                borderColor: filterType === 'all' ? '#5a4a90' : 'var(--rule)',
+                borderColor: filterType === 'all' ? 'var(--gold-line)' : 'var(--rule)',
               }}
             >
               All
@@ -695,7 +695,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                       </span>
                     )}
                     {m.armor_class != null && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#1a2a1a', color: '#70a0a0' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--success-bg)', color: '#70a0a0' }}>
                         AC {m.armor_class}
                       </span>
                     )}
@@ -720,14 +720,14 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                   <button
                     onClick={() => openEdit(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
+                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: 'var(--paper-2)', color: '#e05c5c', border: '1px solid #3a3660' }}
+                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--red)', border: '1px solid var(--rule)' }}
                   >
                     ✕
                   </button>
@@ -750,7 +750,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       >
         <div className="space-y-4">
           {/* Mode toggle */}
-          <div className="flex rounded overflow-hidden" style={{ border: '1px solid #3a3660' }}>
+          <div className="flex rounded overflow-hidden" style={{ border: '1px solid var(--rule)' }}>
             {(['cr', 'party'] as const).map(mode => (
               <button
                 key={mode}
@@ -758,7 +758,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 disabled={genLoading}
                 className="flex-1 text-sm py-1.5 font-medium transition-colors"
                 style={{
-                  backgroundColor: genMode === mode ? '#2a2050' : 'var(--paper)',
+                  backgroundColor: genMode === mode ? 'var(--gold-dim)' : 'var(--paper)',
                   color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)',
                 }}
               >
@@ -830,9 +830,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               disabled={genLoading}
               className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
               style={{
-                backgroundColor: genUseCampaignContext ? '#2a2050' : 'var(--paper)',
+                backgroundColor: genUseCampaignContext ? 'var(--gold-dim)' : 'var(--paper)',
                 color: genUseCampaignContext ? 'var(--gold)' : 'var(--ink-2)',
-                border: `1px solid ${genUseCampaignContext ? '#5a4090' : 'var(--rule)'}`,
+                border: `1px solid ${genUseCampaignContext ? 'var(--gold-line)' : 'var(--rule)'}`,
               }}
             >
               {genUseCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
@@ -857,7 +857,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           </FormField>
 
           {genError && (
-            <p className="text-sm" style={{ color: '#e05c5c' }}>{genError}</p>
+            <p className="text-sm" style={{ color: 'var(--red)' }}>{genError}</p>
           )}
           {genLoading && (
             <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
@@ -898,7 +898,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </FormField>
 
         {/* Divider */}
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
 
         {/* Row: AC / HP / Speed */}
         <div className="grid grid-cols-3 gap-3">
@@ -975,7 +975,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </div>
 
         {/* Divider */}
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
 
         {/* Actions & Traits free-form */}
         <FormField label="Actions & Traits">
@@ -1023,7 +1023,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               <button
                 onClick={() => { setViewing(null); openEdit(viewing); }}
                 className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
+                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
               >
                 Edit
               </button>
