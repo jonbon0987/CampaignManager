@@ -3,6 +3,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { InitiativeTracker } from '../InitiativeTracker';
+import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
 import type { Encounter, MonsterStatblock } from '../../lib/database.types';
 import {
   EncounterDetail,
@@ -25,6 +26,9 @@ export default function EncounterBuilder() {
 
   // Search
   const [search, setSearch] = useState('');
+
+  // AI encounter generator
+  const [genOpen, setGenOpen] = useState(false);
 
   // Initiative tracker
   const [runningEncounter, setRunningEncounter] = useState<Encounter | null>(null);
@@ -113,25 +117,43 @@ export default function EncounterBuilder() {
           <div style={{ color: 'var(--ink-3)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
             {encounters.length} {encounters.length === 1 ? 'entry' : 'entries'}
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-1">
             <span style={{ color: 'var(--ink)', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
               Encounters
             </span>
-            <button
-              onClick={handleAdd}
-              style={{
-                color: 'var(--gold)',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                backgroundColor: 'transparent',
-                border: '1px solid var(--rule-hover)',
-                borderRadius: 'var(--radius)',
-                padding: '2px 8px',
-                cursor: 'pointer',
-              }}
-            >
-              + New
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setGenOpen(true)}
+                title="Generate a full encounter with AI"
+                style={{
+                  color: '#c060d0',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  backgroundColor: '#2a1a3a',
+                  border: '1px solid #5a2a7a',
+                  borderRadius: 'var(--radius)',
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                }}
+              >
+                ✦ Generate
+              </button>
+              <button
+                onClick={handleAdd}
+                style={{
+                  color: 'var(--gold)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--rule-hover)',
+                  borderRadius: 'var(--radius)',
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                }}
+              >
+                + New
+              </button>
+            </div>
           </div>
         </div>
 
@@ -283,6 +305,15 @@ export default function EncounterBuilder() {
           </div>
         </Modal>
       )}
+
+      {/* ================================================================
+          AI ENCOUNTER GENERATOR
+      ================================================================ */}
+      <GenerateEncounterModal
+        isOpen={genOpen}
+        onClose={() => setGenOpen(false)}
+        onCreated={enc => { setGenOpen(false); setSelectedId(enc.id); }}
+      />
 
       {/* ================================================================
           INITIATIVE TRACKER
