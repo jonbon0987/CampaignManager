@@ -8,6 +8,7 @@ import { getTypeStyle } from '../../lib/theme';
 import { StatBlockText } from '../ui/StatBlockText';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
+import { buildCampaignContextBlock } from '../../lib/campaignContext';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -132,43 +133,6 @@ export const ABILITY_KEYS: Array<{ key: keyof MonsterForm; label: string }> = [
   { key: 'wis', label: 'WIS' },
   { key: 'cha', label: 'CHA' },
 ];
-
-// ================================================================
-// Campaign context helper
-// ================================================================
-
-type CampaignContextData = {
-  overview: { title: string; plotSummary: string };
-  sessions: Array<{ session_number: number | null; session_date: string | null; summary: string | null }>;
-  lore: Array<{ title: string; category: string | null; content: string | null }>;
-  locations: Array<{ name: string; region: string | null; location_type: string | null; description: string | null }>;
-};
-
-function buildCampaignContextBlock(data: CampaignContextData): string {
-  const parts: string[] = ['\n\n== CAMPAIGN CONTEXT ==', `Campaign: ${data.overview.title || 'Unnamed'}`];
-  if (data.overview.plotSummary) parts.push(`Plot: ${data.overview.plotSummary}`);
-  if (data.sessions.length > 0) {
-    parts.push('\nRecent Sessions:');
-    data.sessions.slice(-5).forEach(s => {
-      if (s.summary) parts.push(`  Session #${s.session_number ?? '?'}: ${s.summary}`);
-    });
-  }
-  if (data.lore.length > 0) {
-    parts.push('\nLore:');
-    data.lore.slice(0, 10).forEach(l => {
-      const snippet = l.content ? l.content.substring(0, 120) + (l.content.length > 120 ? '…' : '') : '';
-      parts.push(`  [${l.category ?? 'lore'}] ${l.title}${snippet ? ': ' + snippet : ''}`);
-    });
-  }
-  if (data.locations.length > 0) {
-    parts.push('\nLocations:');
-    data.locations.slice(0, 10).forEach(l => {
-      parts.push(`  ${l.name} (${l.location_type ?? '?'})${l.region ? ` in ${l.region}` : ''}${l.description ? ': ' + l.description.substring(0, 80) + '…' : ''}`);
-    });
-  }
-  parts.push('\nUse this campaign context to make the generated content feel native to this world — reference appropriate locations, lore, and ongoing story threads where fitting.\n');
-  return parts.join('\n');
-}
 
 // ================================================================
 // Structured stat block viewer (shared by view modal and StatBlockPanel)
