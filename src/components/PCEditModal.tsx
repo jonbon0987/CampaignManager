@@ -269,7 +269,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
                 borderRadius: 'var(--radius)',
                 backgroundColor: 'var(--red-bg)',
                 color: 'var(--red)',
-                border: '1px solid #5a2a2a',
+                border: '1px solid var(--red-line)',
                 verticalAlign: 'middle',
                 marginLeft: 4,
                 fontWeight: 600,

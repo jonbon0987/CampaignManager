@@ -13,6 +13,7 @@ import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import type { Hook } from '../../lib/database.types';
+import { hookCategoryStyles as categoryStyles } from '../../lib/theme';
 
 const CATEGORIES = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -36,13 +37,6 @@ const categoryBadgeColor: Record<Category, 'red' | 'gold' | 'green' | 'blue'> = 
   side_quest:    'gold',
   character_arc: 'green',
   faction:       'blue',
-};
-
-const categoryStyles: Record<Category, { border: string; badge: string; badgeBg: string }> = {
-  main_plot:     { border: 'var(--red-line)', badge: 'var(--red)', badgeBg: 'var(--red-bg)' },
-  side_quest:    { border: '#4a3a1a', badge: 'var(--gold)', badgeBg: '#2a2a10' },
-  character_arc: { border: '#1a3a3a', badge: 'var(--success)', badgeBg: '#0a2a1a' },
-  faction:       { border: '#3a2a1a', badge: 'var(--accent)', badgeBg: '#2a1a10' },
 };
 
 const defaultStyle = categoryStyles.side_quest;

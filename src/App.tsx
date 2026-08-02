@@ -306,7 +306,7 @@ function LoginScreen() {
       style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)' }}
     >
       <div className="text-center">
-        <div className="text-5xl mb-4 select-none">⚔️</div>
+        <div className="text-5xl mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
         <h1
           className="text-3xl font-bold mb-2"
           style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
@@ -437,7 +437,7 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
       style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)' }}
     >
       <div className="text-center">
-        <div className="text-5xl mb-4 select-none">⚔️</div>
+        <div className="text-5xl mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
         <h1
           className="text-3xl font-bold mb-2"
           style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}

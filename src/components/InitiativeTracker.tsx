@@ -13,11 +13,11 @@ const CONDITIONS = [
 type Condition = (typeof CONDITIONS)[number] | 'dying' | 'stable' | 'dead';
 
 const conditionColors: Record<string, string> = {
-  blinded: 'var(--ink-3)', charmed: '#b070b0', deafened: 'var(--ink-3)',
-  frightened: 'var(--gold)', grappled: '#c08060', incapacitated: 'var(--ink-3)',
+  blinded: 'var(--ink-3)', charmed: 'var(--arcane)', deafened: 'var(--ink-3)',
+  frightened: 'var(--gold)', grappled: 'var(--cr)', incapacitated: 'var(--ink-3)',
   invisible: 'var(--info)', paralyzed: 'var(--red)', petrified: 'var(--ink-3)',
-  poisoned: 'var(--success)', prone: 'var(--accent)', restrained: '#c08060',
-  stunned: '#e0a060', unconscious: 'var(--red)', concentrating: 'var(--info)',
+  poisoned: 'var(--success)', prone: 'var(--accent)', restrained: 'var(--cr)',
+  stunned: 'var(--diff-hard)', unconscious: 'var(--red)', concentrating: 'var(--info)',
   dying: 'var(--red)', stable: 'var(--moss)', dead: 'var(--ink-3)',
 };
 
@@ -83,7 +83,7 @@ function kindGlyph(isPC: boolean): string {
 // HP bar color based on percentage
 function hpBarColor(pct: number): string {
   if (pct > 60) return 'linear-gradient(to right, var(--accent), var(--gold))';
-  if (pct > 25) return 'linear-gradient(to right, var(--accent), #e0a060)';
+  if (pct > 25) return 'linear-gradient(to right, var(--accent), var(--diff-hard))';
   return 'linear-gradient(to right, var(--red), var(--accent))';
 }
 
@@ -478,7 +478,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
             <button
               onClick={() => setAddingCombatant(true)}
               style={{
-                color: '#3a3020',
+                color: 'var(--ink-4)',
                 fontSize: '0.72rem',
                 fontFamily: 'var(--mono)',
                 backgroundColor: 'transparent',
@@ -622,7 +622,7 @@ const exitBtn: React.CSSProperties = {
   fontSize: '0.78rem',
   color: 'var(--red)',
   backgroundColor: 'transparent',
-  border: '1px solid #4a2020',
+  border: '1px solid var(--red-line)',
   borderRadius: 'var(--radius)',
   cursor: 'pointer',
   padding: '6px 12px',
@@ -720,7 +720,7 @@ function CombatantRow({
             <span style={{
               fontSize: '1.1rem',
               fontWeight: 700,
-              color: isCurrent ? 'var(--gold)' : '#5a5040',
+              color: isCurrent ? 'var(--gold)' : 'var(--ink-4)',
               fontFamily: 'var(--mono)',
             }}>
               {c.initiative ?? '—'}
@@ -882,7 +882,7 @@ function CombatantRow({
             onClick={onToggleConditionMenu}
             title="Conditions"
             style={{
-              color: c.conditions.size > 0 ? 'var(--gold)' : '#3a3020',
+              color: c.conditions.size > 0 ? 'var(--gold)' : 'var(--ink-4)',
               background: 'none',
               border: 'none',
               cursor: 'pointer',

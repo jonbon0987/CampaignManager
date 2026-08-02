@@ -17,6 +17,7 @@ import type { Module, Submodule, Scene, MonsterStatblock, Encounter } from '../.
 import {
   TypeTag, InlinePicker, typeInfo, parseLinkedIds, SCENE_TYPES, SUBMODULE_TYPES,
 } from './pickers';
+import { difficultyColors as diffColor } from '../../../lib/theme';
 
 /* ───────────────────────── scene row ───────────────────────── */
 
@@ -206,8 +207,6 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
       if (arr[i].sort_order !== i) await upsertScene({ ...arr[i], sort_order: i });
     }
   };
-
-  const diffColor: Record<string, string> = { easy: '#7fc090', medium: 'var(--gold-2)', hard: '#e0a060', deadly: '#e06868' };
 
   return (
     <div className="cm-detail">

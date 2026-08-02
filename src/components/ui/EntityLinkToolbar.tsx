@@ -5,15 +5,8 @@ import { Modal } from '../Modal';
 import type { EntityType } from './StatBlockText';
 import { serializeRef } from '../../lib/slashMarkdown';
 
-const entityConfig: Partial<Record<EntityType, { icon: string; label: string; color: string; bg: string; border: string }>> = {
-  // Scriptorium glyph set (matches the submodule/scene glyphs in moduleDetail/pickers.tsx)
-  statblock: { icon: '⚔', label: 'Stat Sheet', color: '#c060d0', bg: '#2a1a3a', border: '#5a2a7a' },
-  npc:      { icon: '❦', label: 'NPC',      color: 'var(--info)', bg: 'var(--info-bg)', border: 'var(--info-line)' },
-  location: { icon: '✦', label: 'Location', color: '#60c080', bg: '#1a3a2a', border: '#2a6a4a' },
-  session:  { icon: '❧', label: 'Session',  color: 'var(--gold)', bg: 'var(--warn-bg)', border: '#5a5a2a' },
-  faction:  { icon: '◈', label: 'Faction',  color: '#b070b0', bg: '#2a1a2a', border: '#5a3060' },
-  hook:     { icon: '✧', label: 'Hook',     color: '#e0a060', bg: '#3a2a1a', border: '#7a5a2a' },
-};
+import { entityLinkConfig } from '../../lib/theme';
+const entityConfig = entityLinkConfig as Partial<Record<EntityType, { icon: string; label: string; color: string; bg: string; border: string }>>;
 const CONFIG_TYPES = Object.keys(entityConfig) as EntityType[];
 
 interface EntityItem {

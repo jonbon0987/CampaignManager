@@ -126,11 +126,11 @@ export default function EncounterBuilder() {
                 onClick={() => setGenOpen(true)}
                 title="Generate a full encounter with AI"
                 style={{
-                  color: '#c060d0',
+                  color: 'var(--arcane)',
                   fontSize: '0.75rem',
                   fontWeight: 600,
-                  backgroundColor: '#2a1a3a',
-                  border: '1px solid #5a2a7a',
+                  backgroundColor: 'var(--arcane-bg)',
+                  border: '1px solid var(--arcane-line)',
                   borderRadius: 'var(--radius)',
                   padding: '2px 8px',
                   cursor: 'pointer',
@@ -204,7 +204,7 @@ export default function EncounterBuilder() {
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ color: isActive ? 'var(--ink)' : 'var(--ink-2)', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'var(--display)', marginBottom: '4px', lineHeight: 1.3 }}>
-                    {enc.name || <em style={{ color: '#5a5040' }}>Unnamed</em>}
+                    {enc.name || <em style={{ color: 'var(--ink-4)' }}>Unnamed</em>}
                   </div>
                   {/* Difficulty badge + status pill */}
                   <div className="flex flex-wrap items-center gap-1">
@@ -274,13 +274,13 @@ export default function EncounterBuilder() {
             <div className="flex items-center gap-2 flex-wrap">
               {viewingStatblock.creature_type && (
                 <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: 'var(--red-bg)', color: '#e07070', borderColor: '#7a2a2a' }}>
+                  style={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)', borderColor: 'var(--red-line)' }}>
                   {viewingStatblock.creature_type}
                 </span>
               )}
               {viewingStatblock.challenge_rating && (
                 <span className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: '#2a1a1a', color: '#c08060', border: '1px solid #5a3a2a' }}>
+                  style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
                   CR {viewingStatblock.challenge_rating}
                 </span>
               )}
