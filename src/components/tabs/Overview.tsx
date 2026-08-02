@@ -305,7 +305,7 @@ function truncate(s: string, max: number) {
 function hookColor(category?: string | null): string {
   switch (category) {
     case 'main_plot': return 'var(--red)';
-    case 'side':      return '#4ab8d4';
+    case 'side':      return 'var(--info)';
     case 'character_arc': return 'var(--gold)';
     case 'lore':      return 'var(--moss)';
     default:          return 'var(--ink-3)';

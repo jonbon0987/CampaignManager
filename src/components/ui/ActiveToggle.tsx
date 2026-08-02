@@ -16,8 +16,8 @@ export function ActiveToggle({ isActive, onChange }: ActiveToggleProps) {
           fontFamily: 'var(--serif)',
           border: 'none',
           cursor: 'pointer',
-          backgroundColor: isActive ? '#2a4a35' : 'var(--paper-2)',
-          color: isActive ? '#7dce82' : 'var(--ink-3)',
+          backgroundColor: isActive ? 'var(--success-bg)' : 'var(--paper-2)',
+          color: isActive ? 'var(--success)' : 'var(--ink-3)',
           transition: 'all 0.15s',
         }}
       >
@@ -34,7 +34,7 @@ export function ActiveToggle({ isActive, onChange }: ActiveToggleProps) {
           border: 'none',
           borderLeft: '1px solid var(--rule)',
           cursor: 'pointer',
-          backgroundColor: !isActive ? '#3a2a2a' : 'var(--paper-2)',
+          backgroundColor: !isActive ? 'var(--red-bg)' : 'var(--paper-2)',
           color: !isActive ? 'var(--red)' : 'var(--ink-3)',
           transition: 'all 0.15s',
         }}

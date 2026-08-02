@@ -124,7 +124,7 @@ export function CombatantRow({
             {c.name}
           </span>
           {c.challenge_rating && (
-            <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#c08060' }}>
+            <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)' }}>
               CR {c.challenge_rating}
             </span>
           )}
@@ -135,7 +135,7 @@ export function CombatantRow({
             <button
               onClick={onViewSheet}
               className="ml-1 text-xs px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
+              style={{ backgroundColor: '#1a1a3a', color: 'var(--info)', border: '1px solid var(--info-line)' }}
             >
               Sheet
             </button>
@@ -423,7 +423,7 @@ export function EncounterDetail({
                   className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
                   style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule-soft)' }}>
                   <span className="flex-1">{m.name}</span>
-                  {m.challenge_rating && <span style={{ color: '#c08060' }}>CR {m.challenge_rating}</span>}
+                  {m.challenge_rating && <span style={{ color: 'var(--cr)' }}>CR {m.challenge_rating}</span>}
                   {m.creature_type && <span className="capitalize" style={{ color: 'var(--ink-3)' }}>{m.creature_type}</span>}
                 </button>
               ))}
@@ -452,7 +452,7 @@ export function EncounterDetail({
             </div>
             <div className="flex gap-2">
               <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: '#a07830', color: 'var(--ink)' }}>Add</button>
+                style={{ backgroundColor: 'var(--gold-hover)', color: 'var(--ink)' }}>Add</button>
               <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
                 style={{ color: 'var(--ink-3)', border: '1px solid var(--rule)' }}>Cancel</button>
             </div>

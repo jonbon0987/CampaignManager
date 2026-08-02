@@ -90,9 +90,9 @@ export default function StatBlockPanel() {
                       fontSize: '0.7rem',
                       padding: '1px 8px',
                       borderRadius: 'var(--radius)',
-                      backgroundColor: '#2a1a1a',
-                      color: '#c08060',
-                      border: '1px solid #5a3a2a',
+                      backgroundColor: 'var(--chip-bg)',
+                      color: 'var(--cr)',
+                      border: '1px solid var(--chip-line)',
                     }}
                   >
                     CR {statblock.challenge_rating}

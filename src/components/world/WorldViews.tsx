@@ -850,13 +850,13 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             <div className="flex items-center gap-2 flex-wrap">
               {viewingStatblock.creature_type && (
                 <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: 'var(--red-bg)', color: '#e07070', borderColor: '#7a2a2a' }}>
+                  style={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)', borderColor: 'var(--red-line)' }}>
                   {viewingStatblock.creature_type}
                 </span>
               )}
               {viewingStatblock.challenge_rating && (
                 <span className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: '#2a1a1a', color: '#c08060', border: '1px solid #5a3a2a' }}>
+                  style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
                   CR {viewingStatblock.challenge_rating}
                 </span>
               )}

@@ -56,6 +56,17 @@
   --pill-bg:   #2a2218;
   --pill-bd:   #5a4828;
   --pill-ink:  #e2c984;
+  /* ── Promoted from inline use — audit F3 ── */
+  --cr:          #c08060;  /* challenge-rating / monster accent */
+  --chip-bg:     #2a1a1a;  /* stat-chip background */
+  --chip-line:   #5a3a2a;  /* stat-chip border */
+  --arcane:      #c060d0;  /* stat-sheet / arcane accent */
+  --arcane-bg:   #2a1a3a;
+  --arcane-line: #5a2a7a;
+  --immune:      #70a0a0;  /* resist / immune teal */
+  --diff-easy:   #7fc090;
+  --diff-hard:   #e0a060;
+  --diff-deadly: #e06868;
   --serif:     "EB Garamond", Georgia, Cambria, serif;
   --display:   "EB Garamond", Georgia, Cambria, serif;
   --mono:      "JetBrains Mono", ui-monospace, monospace;

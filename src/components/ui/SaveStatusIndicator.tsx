@@ -13,7 +13,7 @@ export function SaveStatusIndicator({ status, onRetry }: SaveStatusIndicatorProp
     saved: {
       icon: <Check size={14} />,
       text: 'Saved',
-      color: '#5a9a6a',
+      color: 'var(--success)',
     },
     saving: {
       icon: <Loader2 size={14} className="animate-spin" />,

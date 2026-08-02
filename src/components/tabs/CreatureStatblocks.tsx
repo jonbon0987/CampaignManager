@@ -556,7 +556,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         <button
           onClick={openGenModal}
           className="px-3 py-1.5 rounded text-sm font-medium transition-colors"
-          style={{ backgroundColor: '#2a1a3a', color: '#c060d0', border: '1px solid #5a2a7a' }}
+          style={{ backgroundColor: 'var(--arcane-bg)', color: 'var(--arcane)', border: '1px solid var(--arcane-line)' }}
         >
           ✦ Generate
         </button>
@@ -654,17 +654,17 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                       {m.name}
                     </span>
                     {m.challenge_rating && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#c08060' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)' }}>
                         CR {m.challenge_rating}
                       </span>
                     )}
                     {m.armor_class != null && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--success-bg)', color: '#70a0a0' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--immune)' }}>
                         AC {m.armor_class}
                       </span>
                     )}
                     {m.hit_points != null && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#e07070' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--red)' }}>
                         {m.hit_points} HP
                       </span>
                     )}
@@ -677,7 +677,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                   <button
                     onClick={() => setViewing(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
+                    style={{ backgroundColor: '#1a1a3a', color: 'var(--info)', border: '1px solid var(--info-line)' }}
                   >
                     View
                   </button>
@@ -974,7 +974,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 );
               })()}
               {viewing.challenge_rating && (
-                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#c08060', border: '1px solid #5a3a2a' }}>
+                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
                   CR {viewing.challenge_rating}
                 </span>
               )}

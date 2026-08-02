@@ -303,7 +303,7 @@ export default function Factions() {
                             </label>
                             <span
                               className="text-[9px] px-1.5 py-0.5 rounded ml-auto"
-                              style={{ backgroundColor: 'var(--highlight)', color: 'var(--accent)', border: '1px solid #5a3060' }}
+                              style={{ backgroundColor: 'var(--highlight)', color: 'var(--accent)', border: '1px solid var(--arcane-line)' }}
                             >
                               DM Only
                             </span>
@@ -352,7 +352,7 @@ export default function Factions() {
                               <p className="text-xs font-medium" style={{ color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.6rem' }}>DM Notes</p>
                               <span
                                 className="text-[9px] px-1.5 py-0.5 rounded ml-auto"
-                                style={{ backgroundColor: 'var(--highlight)', color: 'var(--accent)', border: '1px solid #5a3060' }}
+                                style={{ backgroundColor: 'var(--highlight)', color: 'var(--accent)', border: '1px solid var(--arcane-line)' }}
                               >
                                 DM Only
                               </span>

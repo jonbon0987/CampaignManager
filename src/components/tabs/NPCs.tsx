@@ -378,7 +378,7 @@ export default function NPCs() {
                       ) : viewMode === 'global' && !isLinked ? (
                         <Button variant="secondary" size="sm" onClick={() => linkNPCToCampaign(npc.id)} style={{ color: 'var(--success)' }}>Add to Campaign</Button>
                       ) : viewMode === 'global' && isLinked ? (
-                        <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from campaign?')) unlinkNPCFromCampaign(npc.id); }} style={{ color: '#4ab8d4' }}>In Campaign ✓</Button>
+                        <Button variant="secondary" size="sm" onClick={async () => { if (await confirm('Remove from campaign?')) unlinkNPCFromCampaign(npc.id); }} style={{ color: 'var(--info)' }}>In Campaign ✓</Button>
                       ) : (
                         <Button variant="danger" size="sm" onClick={() => handleDelete(npc.id)}>Delete</Button>
                       )}
