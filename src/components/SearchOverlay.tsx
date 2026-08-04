@@ -98,7 +98,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: loc.id, label: loc.name,
           detail: [loc.location_type, loc.region].filter(Boolean).join(' · ') || undefined,
-          tab: 'world', icon: Map, group: 'Locations',
+          tab: 'locations', icon: Map, group: 'Locations',
         });
       }
     }
@@ -121,7 +121,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: h.id, label: h.title,
           detail: `${h.category ?? ''} · ${h.is_active ? 'active' : 'resolved'}`,
-          tab: 'sessions', icon: Lightbulb, group: 'Hooks & Ideas',
+          tab: 'threads', icon: Lightbulb, group: 'Threads',
         });
       }
     }
@@ -132,7 +132,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: l.id, label: l.title,
           detail: l.category ?? undefined,
-          tab: 'world', icon: Library, group: 'Lore',
+          tab: 'lore', icon: Library, group: 'Lore',
         });
       }
     }

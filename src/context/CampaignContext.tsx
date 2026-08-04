@@ -9,6 +9,7 @@ import {
   Campaigns as CampaignsDB,
   CampaignNPCs as CampaignNPCsDB,
   CampaignLocations as CampaignLocationsDB,
+  CampaignLore as CampaignLoreDB,
   Sessions as SessionsDB,
   SessionPreps as SessionPrepsDB,
   PlayerCharacters as PlayerCharactersDB,
@@ -16,6 +17,7 @@ import {
   Locations as LocationsDB,
   Factions as FactionsDB,
   Hooks as HooksDB,
+  Ideas as IdeasDB,
   Lore as LoreDB,
   Modules as ModulesDB,
   Relationships as RelationshipsDB,
@@ -36,6 +38,7 @@ import type {
   Location, LocationInsert,
   Faction, FactionInsert,
   Hook, HookInsert,
+  Idea, IdeaInsert,
   LoreEntry, LoreEntryInsert,
   Module, ModuleInsert,
   CharacterRelationship, CharacterRelationshipInsert,
@@ -74,8 +77,12 @@ interface CampaignContextType {
   globalLocations: Location[];
   linkedLocationIds: string[];
   factions: Faction[];
-  hooks: Hook[];
+  hooks: Hook[];              // Threads — plot threads with a lifecycle state
+  ideas: Idea[];             // raw inbox notes; promote turns one into a Thread
+  // lore = campaign-specific + linked global (canon) lore
   lore: LoreEntry[];
+  globalLore: LoreEntry[];    // global/canon pool (campaign_id IS NULL)
+  linkedLoreIds: string[];    // IDs of canon lore linked to current campaign
   modules: Module[];
   relationships: CharacterRelationship[];
 
@@ -106,13 +113,21 @@ interface CampaignContextType {
   upsertFaction: (f: Omit<FactionInsert, 'campaign_id'> & { id?: string }) => Promise<Faction>;
   deleteFaction: (id: string) => Promise<void>;
 
-  // Hooks / ideas
-  upsertHook: (h: Omit<HookInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
+  // Hooks (Threads)
+  upsertHook: (h: Omit<HookInsert, 'campaign_id'> & { id?: string }) => Promise<Hook | undefined>;
   deleteHook: (id: string) => Promise<void>;
 
-  // Lore entries (global)
-  upsertLore: (e: LoreEntryInsert & { id?: string }) => Promise<LoreEntry>;
+  // Ideas (inbox)
+  upsertIdea: (i: Omit<IdeaInsert, 'campaign_id'> & { id?: string }) => Promise<Idea | undefined>;
+  deleteIdea: (id: string) => Promise<void>;
+  /** Promote an idea into a new Thread (hook); links the idea and returns the new hook. */
+  promoteIdea: (idea: Idea, kind: string) => Promise<Hook | undefined>;
+
+  // Lore entries — scope: 'campaign' creates campaign-specific, 'global' publishes to canon
+  upsertLore: (e: Omit<LoreEntryInsert, 'campaign_id'> & { id?: string }, scope?: 'campaign' | 'global') => Promise<LoreEntry>;
   deleteLore: (id: string) => Promise<void>;
+  linkLoreToCampaign: (loreId: string) => Promise<void>;
+  unlinkLoreFromCampaign: (loreId: string) => Promise<void>;
 
   // Modules
   upsertModule: (m: Omit<ModuleInsert, 'campaign_id'> & { id?: string }) => Promise<Module | undefined>;
@@ -199,7 +214,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [pcs, setPCs] = useState<PlayerCharacter[]>([]);
   const [factions, setFactions] = useState<Faction[]>([]);
   const [hooks, setHooks] = useState<Hook[]>([]);
-  const [lore, setLore] = useState<LoreEntry[]>([]);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [relationships, setRelationships] = useState<CharacterRelationship[]>([]);
   const [submodules, setSubmodules] = useState<Submodule[]>([]);
@@ -236,9 +251,22 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     unlink: CampaignLocationsDB.unlink,
   }, selectedCampaignId);
 
+  // Lore shares the same linkable-globals pattern: campaign-local entries +
+  // a canon pool (campaign_id IS NULL) a campaign imports via campaign_lore.
+  const loreStore = useLinkableGlobals<LoreEntry, LoreEntryInsert>({
+    getByCampaign: LoreDB.getByCampaign,
+    getGlobal: LoreDB.getGlobal,
+    getLinkedIds: CampaignLoreDB.getLinkedLoreIds,
+    upsert: LoreDB.upsert,
+    remove: LoreDB.delete,
+    link: CampaignLoreDB.link,
+    unlink: CampaignLoreDB.unlink,
+  }, selectedCampaignId);
+
   // Stable refresh fns (used in loadAll's dependency array)
   const refreshNPCStore = npcStore.refresh;
   const refreshLocationStore = locationStore.refresh;
+  const refreshLoreStore = loreStore.refresh;
 
   // Merged arrays for backwards-compatible consumers: campaign-specific + linked global
   const npcs = npcStore.items;
@@ -247,6 +275,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const locations = locationStore.items;
   const globalLocations = locationStore.globalItems;
   const linkedLocationIds = locationStore.linkedIds;
+  const lore = loreStore.items;
+  const globalLore = loreStore.globalItems;
+  const linkedLoreIds = loreStore.linkedIds;
 
   // Overview derived from the selected campaign (null-safe)
   const selectedCampaign = useMemo(
@@ -299,14 +330,13 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const [s, p, , , f, h, le, m, r] = await Promise.all([
+      const [s, p, , , f, h, m, r] = await Promise.all([
         SessionsDB.getAll(campaignId),
         PlayerCharactersDB.getAll(campaignId),
         refreshNPCStore(campaignId),
         refreshLocationStore(campaignId),
         FactionsDB.getAll(campaignId),
         HooksDB.getAll(campaignId),
-        LoreDB.getAll(),
         ModulesDB.getAll(campaignId),
         RelationshipsDB.getAll(campaignId),
       ]);
@@ -314,10 +344,19 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       setPCs(p);
       setFactions(f);
       setHooks(h);
-      setLore(le);
       setModules(m);
       setRelationships(r);
-      // monster_statblocks and encounters require migrations to be run first
+      // campaign_lore, ideas, monster_statblocks and encounters require migrations first
+      try {
+        await refreshLoreStore(campaignId);
+      } catch {
+        // campaign_lore table doesn't exist yet — apply migration 0025
+      }
+      try {
+        setIdeas(await IdeasDB.getAll(campaignId));
+      } catch {
+        // ideas table doesn't exist yet — apply migration 0026
+      }
       try {
         setMonsterStatblocks(await MonsterStatblocksDB.getAll(campaignId));
       } catch {
@@ -343,7 +382,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [refreshNPCStore, refreshLocationStore]);
+  }, [refreshNPCStore, refreshLocationStore, refreshLoreStore]);
 
   // One-time migration: move localStorage overview to DB
   const migrateLocalStorageOverview = useCallback(async (campaignId: string, campaign: Campaign) => {
@@ -472,11 +511,12 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setFactions(prev => prev.filter(r => r.id !== id));
   }, [selectedCampaignId]);
 
-  // ---- Hooks ----
+  // ---- Hooks (Threads) ----
   const upsertHook = useCallback(async (h: Omit<HookInsert, 'campaign_id'> & { id?: string }) => {
-    if (!selectedCampaignId) return;
-    await HooksDB.upsert({ ...h, campaign_id: selectedCampaignId });
+    if (!selectedCampaignId) return undefined;
+    const result = await HooksDB.upsert({ ...h, campaign_id: selectedCampaignId });
     setHooks(await HooksDB.getAll(selectedCampaignId));
+    return result;
   }, [selectedCampaignId]);
 
   const deleteHook = useCallback(async (id: string) => {
@@ -485,17 +525,51 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setHooks(prev => prev.filter(r => r.id !== id));
   }, [selectedCampaignId]);
 
-  // ---- Lore ----
-  const upsertLore = useCallback(async (e: LoreEntryInsert & { id?: string }) => {
-    const result = await LoreDB.upsert(e);
-    setLore(await LoreDB.getAll());
+  // ---- Ideas (inbox) ----
+  const upsertIdea = useCallback(async (i: Omit<IdeaInsert, 'campaign_id'> & { id?: string }) => {
+    if (!selectedCampaignId) return undefined;
+    const result = await IdeasDB.upsert({ ...i, campaign_id: selectedCampaignId });
+    setIdeas(await IdeasDB.getAll(selectedCampaignId));
     return result;
-  }, []);
+  }, [selectedCampaignId]);
 
-  const deleteLore = useCallback(async (id: string) => {
-    await LoreDB.delete(id);
-    setLore(prev => prev.filter(r => r.id !== id));
-  }, []);
+  const deleteIdea = useCallback(async (id: string) => {
+    if (!selectedCampaignId) return;
+    await IdeasDB.delete(id);
+    setIdeas(prev => prev.filter(r => r.id !== id));
+  }, [selectedCampaignId]);
+
+  // Promote an idea → create a seed Thread (hook) titled from the idea, link it back.
+  const promoteIdea = useCallback(async (idea: Idea, kind: string) => {
+    if (!selectedCampaignId) return undefined;
+    const title = idea.text.trim().split(/\s+/).slice(0, 8).join(' ') || 'New thread';
+    const hook = await HooksDB.upsert({
+      campaign_id: selectedCampaignId,
+      title,
+      category: kind,
+      description: idea.text,
+      state: 'seed',
+      last_updated_session: null,
+      is_active: true,
+      dm_only_notes: null,
+    });
+    await IdeasDB.upsert({
+      id: idea.id,
+      campaign_id: selectedCampaignId,
+      text: idea.text,
+      tag: idea.tag,
+      promoted_hook_id: hook.id,
+    });
+    setHooks(await HooksDB.getAll(selectedCampaignId));
+    setIdeas(await IdeasDB.getAll(selectedCampaignId));
+    return hook;
+  }, [selectedCampaignId]);
+
+  // ---- Lore (linkable globals: campaign-local + linked canon) ----
+  const upsertLore = loreStore.upsert;
+  const deleteLore = loreStore.remove;
+  const linkLoreToCampaign = loreStore.link;
+  const unlinkLoreFromCampaign = loreStore.unlink;
 
   // ---- Modules ----
   const upsertModule = useCallback(async (m: Omit<ModuleInsert, 'campaign_id'> & { id?: string }) => {
@@ -649,7 +723,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       overview, setOverview,
       sessions, pcs, npcs, globalNPCs, linkedNPCIds,
       locations, globalLocations, linkedLocationIds,
-      factions, hooks, lore, modules, relationships,
+      factions, hooks, ideas, lore, globalLore, linkedLoreIds, modules, relationships,
       loading, error,
       upsertSession: withToast(upsertSession),
       deleteSession: withToast(deleteSession, 'Session deleted'),
@@ -666,9 +740,14 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       upsertFaction: withToast(upsertFaction),
       deleteFaction: withToast(deleteFaction, 'Faction deleted'),
       upsertHook: withToast(upsertHook),
-      deleteHook: withToast(deleteHook, 'Hook deleted'),
+      deleteHook: withToast(deleteHook, 'Thread deleted'),
+      upsertIdea: withToast(upsertIdea),
+      deleteIdea: withToast(deleteIdea, 'Idea dismissed'),
+      promoteIdea: withToast(promoteIdea, 'Promoted to a Thread'),
       upsertLore: withToast(upsertLore),
       deleteLore: withToast(deleteLore, 'Lore deleted'),
+      linkLoreToCampaign: withToast(linkLoreToCampaign),
+      unlinkLoreFromCampaign: withToast(unlinkLoreFromCampaign),
       upsertModule: withToast(upsertModule),
       deleteModule: withToast(deleteModule, 'Module deleted'),
       upsertRelationship: withToast(upsertRelationship),

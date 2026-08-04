@@ -142,10 +142,10 @@ export default function Overview({ onNavigate }: OverviewProps) {
 
       {/* 2-col: Active Hooks + Party */}
       <div className="ov-grid">
-        {/* Active Hooks */}
-        <div className="ov-card" onClick={() => onNavigate('sessions')}>
+        {/* Active Threads */}
+        <div className="ov-card" onClick={() => onNavigate('threads')}>
           <div className="ov-card-head">
-            <span className="ov-card-title">Active Hooks</span>
+            <span className="ov-card-title">Active Threads</span>
             <span className="ov-card-chevron">›</span>
           </div>
           <div className="ov-card-body">
