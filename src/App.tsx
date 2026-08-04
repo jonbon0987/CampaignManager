@@ -7,7 +7,10 @@ import Topbar from './components/Topbar';
 import Overview from './components/tabs/Overview';
 import SessionNotes from './components/tabs/SessionNotes';
 import Characters from './components/tabs/Characters';
-import LoreLocations from './components/tabs/LoreLocations';
+import Lore from './components/tabs/Lore';
+import Locations from './components/tabs/Locations';
+import Threads from './components/tabs/Threads';
+import Ideas from './components/tabs/Ideas';
 import Modules from './components/tabs/Modules';
 import CombatView from './components/tabs/CombatView';
 import Workbench from './components/Workbench';
@@ -35,24 +38,25 @@ import { WorldNPCsView, WorldLocationsView, WorldLoreView, WorldCombatView } fro
 import WorldTimeline from './components/world/WorldTimeline';
 import WorldImportDrawer from './components/world/WorldImportDrawer';
 
-// Consolidated from 10 tabs to 6 + settings (Scriptorium redesign)
-// cast = PCs + NPCs + Factions, world = Locations + Lore, combat = Stat Sheets + Encounters
-export type Tab = 'overview' | 'cast' | 'world' | 'modules' | 'sessions' | 'combat' | 'settings';
+// cast = PCs + NPCs + Factions; Lore & Locations are separate compendium tabs;
+// Threads & Ideas are separate play tabs; combat = Stat Sheets + Encounters
+export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'threads' | 'ideas' | 'modules' | 'sessions' | 'combat' | 'settings';
 
 // View options per tab — what the topbar segment control shows
 const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
   cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship Web' }],
+  threads:  [{ id: 'board', label: 'Board' }, { id: 'pipeline', label: 'Pipeline' }],
   modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Dependencies' }],
-  sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }, { id: 'hooks', label: 'Hooks' }],
+  sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }],
 };
 
 const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
-  cast: 'list', modules: 'list', sessions: 'log',
+  cast: 'list', threads: 'board', modules: 'list', sessions: 'log',
 };
 
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', modules: 'list', sessions: 'log' });
+  const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', threads: 'board', modules: 'list', sessions: 'log' });
   const [aiOpen, setAiOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
   const [isMobile, setIsMobile] = useState(false);
@@ -132,7 +136,8 @@ function AppInner({ user }: { user: User }) {
 
   // Get the display label for topbar breadcrumb
   const TAB_LABELS: Record<Tab, string> = {
-    overview: 'Overview', cast: 'Cast', world: 'World',
+    overview: 'Overview', cast: 'Cast', lore: 'Lore', locations: 'Locations',
+    threads: 'Threads', ideas: 'Ideas',
     modules: 'Modules', sessions: 'Sessions', combat: 'Combat',
     settings: 'Settings',
   };
@@ -196,7 +201,10 @@ function AppInner({ user }: { user: User }) {
               <>
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
                 {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} />}
-                {activeTab === 'world'     && <LoreLocations onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} />}
+                {activeTab === 'lore'      && <Lore />}
+                {activeTab === 'locations' && <Locations />}
+                {activeTab === 'threads'   && <Threads viewMode={viewModes.threads ?? 'board'} onNavigate={setActiveTab} />}
+                {activeTab === 'ideas'     && <Ideas onNavigate={setActiveTab} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} />}
                 {activeTab === 'combat'    && <CombatView onImportFromWorld={() => { setImportType('bestiary'); setImportOpen(true); }} />}

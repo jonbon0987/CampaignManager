@@ -48,7 +48,7 @@ function SearchPanel({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
         ...campaign.locations
           .filter(l => l.name.toLowerCase().includes(q.toLowerCase()))
           .slice(0, 4)
-          .map(l => ({ id: l.id, label: l.name, sub: l.location_type ?? '', tab: 'world' as Tab, glyph: '✦' })),
+          .map(l => ({ id: l.id, label: l.name, sub: l.location_type ?? '', tab: 'locations' as Tab, glyph: '✦' })),
         ...campaign.modules
           .filter(m => m.title.toLowerCase().includes(q.toLowerCase()))
           .slice(0, 3)

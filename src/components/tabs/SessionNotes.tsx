@@ -653,18 +653,6 @@ export default function SessionNotes({ viewMode = 'log' }: { viewMode?: string; 
       {viewMode === 'log'      && <SessionLog />}
       {viewMode === 'timeline' && <SessionTimeline />}
       {viewMode === 'prep'     && <SessionPrepView />}
-      {viewMode === 'hooks'    && <div style={{ height: '100%', overflowY: 'auto' }}><HooksIdeasLazy /></div>}
     </div>
   );
-}
-
-// Lazy import for HooksIdeas to avoid circular deps
-function HooksIdeasLazy() {
-  const [mod, setMod] = useState<{ default: React.ComponentType } | null>(null);
-  if (!mod) {
-    import('./HooksIdeas').then(setMod);
-    return <div style={{ padding: '32px', color: 'var(--ink-3)', textAlign: 'center' }}>Loading...</div>;
-  }
-  const HooksIdeas = mod.default;
-  return <HooksIdeas />;
 }

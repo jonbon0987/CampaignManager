@@ -93,6 +93,18 @@ export const hookCategoryStyles: Record<string, { border: string; badge: string;
 export const getHookCategoryStyle = (c: string | null) =>
   hookCategoryStyles[c ?? 'side_quest'] ?? hookCategoryStyles['side_quest'];
 
+// Thread lifecycle states — seed → active → cold → resolved (from the Blended-IA prototype).
+export const threadStateMeta: Record<string, { label: string; color: string; bg: string; line: string }> = {
+  seed:     { label: 'Seed',     color: 'var(--sky)',   bg: 'rgba(127,168,208,0.12)', line: '#2a4a7a' },
+  active:   { label: 'Active',   color: 'var(--moss)',  bg: 'var(--moss-dim)',        line: '#2a5a2a' },
+  cold:     { label: 'Cold',     color: 'var(--ink-3)', bg: 'var(--paper-3)',         line: 'var(--rule)' },
+  resolved: { label: 'Resolved', color: 'var(--gold)',  bg: 'var(--gold-dim)',        line: 'var(--gold-line)' },
+};
+
+export const THREAD_STATES = ['seed', 'active', 'cold', 'resolved'] as const;
+
+export const getThreadState = (s: string | null) => threadStateMeta[s ?? 'active'] ?? threadStateMeta['active'];
+
 // Module / scene element types (glyph + label + color) — from tabs/moduleDetail/pickers.tsx (`TYPE_META`)
 export interface TypeInfo { label: string; glyph: string; color: string; }
 export const moduleTypeMeta: Record<string, TypeInfo> = {

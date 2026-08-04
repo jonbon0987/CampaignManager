@@ -87,7 +87,7 @@ function dbLocationToWorldLocation(l: DBLocation): WorldLocation {
     type: l.location_type ?? '',
     desc: l.description ?? '',
     tags: [],
-    parent: null,
+    parent: l.parent_id ?? null,
   };
 }
 
@@ -313,7 +313,9 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     }
     loadEntities();
     return () => { cancelled = true; };
-  }, [activeWorldId]);
+    // Re-runs on activeCampaignId too: a campaign can edit/publish shared canon
+    // (its own WorldContext copy goes stale), so re-fetch when returning to world.
+  }, [activeWorldId, activeCampaignId]);
 
   const activeWorld = useMemo(
     () => worlds.find(w => w.id === activeWorldId) ?? null,
@@ -460,6 +462,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       world_id: activeWorldId,
       campaign_id: null,
       location_type: 'landmark',
+      parent_id: null,
       region: null,
       population: null,
       status: null,
@@ -549,6 +552,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       world_id: activeWorldId,
       campaign_id: null,
       location_type: data.location_type ?? 'landmark',
+      parent_id: data.parent_id ?? null,
       region: data.region ?? null,
       population: data.population ?? null,
       status: data.status ?? null,
