@@ -1,14 +1,14 @@
 /* ════════════════════════════════════════════════════════════════
    moduleDetail/SubmoduleEditor.tsx
-   Right-pane inline editor for one submodule. Everything autosaves
-   in place (no modals): title, type, summary, content, DM notes,
-   linked stat-sheets, linked encounters, prerequisites, and a
-   drag-reorderable inline scene list.
+   Right-pane inline editor for one submodule. Text fields (title, type,
+   summary, content, DM notes) are committed via an explicit Save button;
+   linked stat-sheets, linked encounters, prerequisites, and scene reorder
+   apply immediately.
    ════════════════════════════════════════════════════════════════ */
 import { useState, useEffect, useRef } from 'react';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
-import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useManualSave } from '../../../hooks/useManualSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
@@ -38,12 +38,12 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
   const [form, setForm] = useState<SceneForm>(() => toForm(scene));
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
+  const prevId = useRef(scene.id);
+  if (prevId.current !== scene.id) { prevId.current = scene.id; setForm(toForm(scene)); }
 
-  useEffect(() => { setForm(toForm(scene)); }, [scene.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { status } = useAutoSave<SceneForm>({
+  const { status, save, isDirty } = useManualSave<SceneForm>({
     data: form,
-    delay: 800,
+    resetKey: scene.id,
     onSave: async (d) => {
       await upsertScene({
         id: scene.id,
@@ -117,6 +117,9 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
                 onPick={linkCreature} />
             </div>
           </div>
+          <div className="md-savebar-inline">
+            <button className="md-savebtn-sm" disabled={!isDirty} onClick={save}>Save scene</button>
+          </div>
         </div>
       )}
     </div>
@@ -148,13 +151,14 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
   const [form, setForm] = useState<SubForm>(() => toForm(submodule));
   const subRef = useRef(submodule);
   subRef.current = submodule;
+  const prevId = useRef(submodule.id);
+  if (prevId.current !== submodule.id) { prevId.current = submodule.id; setForm(toForm(submodule)); }
 
-  useEffect(() => { setForm(toForm(submodule)); }, [submodule.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { loadScenes(submodule.id); }, [submodule.id, loadScenes]);
 
-  const { status, saveNow } = useAutoSave<SubForm>({
+  const { status, save, isDirty } = useManualSave<SubForm>({
     data: form,
-    delay: 800,
+    resetKey: submodule.id,
     onSave: async (d) => {
       await upsertSubmodule({
         id: submodule.id,
@@ -213,7 +217,6 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
       <div className="md-editor">
         {/* action bar */}
         <div className="as-bar">
-          <SaveStatusIndicator status={status} onRetry={saveNow} />
           <div className="as-spacer" />
           <OverflowMenu items={[{
             label: 'Delete Submodule', danger: true,
@@ -346,6 +349,13 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
               });
             }}>＋ Scene</button>
           </div>
+        </div>
+
+        {/* save bar */}
+        <div className="md-savebar">
+          <SaveStatusIndicator status={status} onRetry={save} />
+          <div className="as-spacer" />
+          <button className="md-savebtn" disabled={!isDirty} onClick={save}>Save changes</button>
         </div>
       </div>
     </div>
