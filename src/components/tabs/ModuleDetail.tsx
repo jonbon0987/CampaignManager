@@ -160,10 +160,10 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
       {/* ───── editor pane ───── */}
       <section className="cm-md-detail" style={{ overflowY: 'auto' }}>
         {selectedId === OVERVIEW
-          ? <ModuleOverview module={mod} submodules={modSubs} deps={submoduleDeps}
+          ? <ModuleOverview key={mod.id} module={mod} submodules={modSubs} deps={submoduleDeps}
               onSelect={selectSub} onDeleted={onModuleDeleted} />
           : selectedSub
-            ? <SubmoduleEditor submodule={selectedSub} module={mod} siblings={modSubs}
+            ? <SubmoduleEditor key={selectedSub.id} submodule={selectedSub} module={mod} siblings={modSubs}
                 onDeleted={() => setSelectedId(OVERVIEW)} />
             : null}
       </section>
