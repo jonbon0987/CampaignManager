@@ -358,9 +358,22 @@ export function useAIChat(backend: AssistantBackend) {
           ? { name: (action as { label?: string }).label ?? '(unknown)' }
           : (action as { payload?: Record<string, unknown> }).payload;
         if (!payload || typeof payload !== 'object') return;
-        const matchedId = isDelete
-          ? (action as { id?: string }).id ?? null
-          : ((payload as Record<string, unknown>).id as string) ?? null;
+        let matchedId: string | null;
+        if (isDelete) {
+          matchedId = (action as { id?: string }).id ?? null;
+        } else {
+          // The model often puts the record id at the action's TOP level
+          // (`id` or `matched_id`), mirroring the delete shape, instead of
+          // inside `payload`. If we only read payload.id, every such upsert
+          // reads as a create (wrong verb, no name to fall back on → "unnamed",
+          // and a duplicate at commit). Fold whichever id we find into
+          // payload.id so verb detection here AND the verbatim payload upsert
+          // in applyChatAction both treat it as an update.
+          const top = action as { id?: string; matched_id?: string };
+          const body = payload as Record<string, unknown>;
+          matchedId = (body.id as string) ?? top.id ?? top.matched_id ?? null;
+          if (matchedId && body.id == null) body.id = matchedId;
+        }
         // A delete with no id can't be applied and would fail at commit.
         if (isDelete && !matchedId) return;
 
