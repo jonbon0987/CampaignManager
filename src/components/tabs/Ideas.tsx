@@ -4,6 +4,8 @@ import { useConfirm } from '../../context/ConfirmContext';
 import type { Tab } from '../../App';
 import { SectionHeader } from '../ui/SectionHeader';
 import { EmptyState } from '../ui/EmptyState';
+import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
 import type { Idea } from '../../lib/database.types';
 
 // Compact relative age, e.g. "2d", "3w", "just now".
@@ -46,7 +48,7 @@ function IdeaCard({ idea, onPromoteThread, onPromoteLore, onPromoteLocation, onD
       ) : (
         <div className="cm-idea-actions">
           <div className="cm-promote-wrap">
-            <button className="cm-promote-btn" onClick={() => setMenu(m => !m)}>Promote ▾</button>
+            <Button variant="secondary" size="xs" onClick={() => setMenu(m => !m)}>Promote ▾</Button>
             {menu && (
               <>
                 <div className="cm-promote-scrim" onClick={() => setMenu(false)} />
@@ -58,7 +60,7 @@ function IdeaCard({ idea, onPromoteThread, onPromoteLore, onPromoteLocation, onD
               </>
             )}
           </div>
-          <button className="cm-idea-dismiss" onClick={() => onDismiss(idea)}>Dismiss</button>
+          <Button variant="link" onClick={() => onDismiss(idea)}>Dismiss</Button>
         </div>
       )}
     </div>
@@ -83,7 +85,7 @@ function QuickIdeaDrawer({ open, onClose, onAdd }: { open: boolean; onClose: () 
             <div className="cm-drawer-title">Quick Idea</div>
             <div className="cm-drawer-sub">Jot it and go — it lands in the inbox.</div>
           </div>
-          <button className="cm-drawer-x" onClick={onClose}>✕</button>
+          <IconButton onClick={onClose}>✕</IconButton>
         </div>
         <textarea
           className="cm-drawer-text"
@@ -100,8 +102,8 @@ function QuickIdeaDrawer({ open, onClose, onAdd }: { open: boolean; onClose: () 
           onKeyDown={e => { if (e.key === 'Enter') save(); }}
         />
         <div className="cm-drawer-foot">
-          <button className="cm-ghost-btn" onClick={onClose}>Cancel</button>
-          <button className="cm-primary-btn" onClick={save}>Save to inbox</button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={save}>Save to inbox</Button>
         </div>
         <div className="cm-drawer-note">Promote it to a Thread or into canon whenever you're ready — never forced to categorise up front.</div>
       </div>

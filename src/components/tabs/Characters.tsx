@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { ListDetail, ListRow, EmptyDetail, Pill, FilterSep } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
 import { FactionPillSelector } from '../ui/FactionPillSelector';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { getFactionTypeStyle } from '../../lib/theme';
@@ -534,9 +535,9 @@ function NPCDetail({
             searchPlaceholder="Search stat sheets…"
           />
           {form.statblock_id && (
-            <button className="cm-pill is-active" onClick={() => openStatBlock(form.statblock_id!)}>
+            <Button variant="primary" size="xs" onClick={() => openStatBlock(form.statblock_id!)}>
               View
-            </button>
+            </Button>
           )}
         </div>
       </div>

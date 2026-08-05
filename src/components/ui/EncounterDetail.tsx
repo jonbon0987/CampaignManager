@@ -135,7 +135,7 @@ export function CombatantRow({
             <button
               onClick={onViewSheet}
               className="ml-1 text-xs px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: '#1a1a3a', color: 'var(--info)', border: '1px solid var(--info-line)' }}
+              style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}
             >
               Sheet
             </button>

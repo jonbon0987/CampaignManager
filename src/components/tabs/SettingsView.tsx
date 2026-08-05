@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { signOut } from '../../lib/auth';
+import { Button } from '../ui/Button';
 
 function SettingRow({ label, help, children }: { label: string; help: string; children: React.ReactNode }) {
   return (
@@ -104,13 +105,14 @@ export default function SettingsView() {
                 <span className="cm-section-rule" />
               </div>
               <div style={{ paddingTop: '8px' }}>
-                <button
-                  className="cm-pill"
+                <Button
+                  variant="secondary"
+                  size="xs"
                   onClick={signOut}
                   style={{ color: 'var(--red)' }}
                 >
                   Sign out
-                </button>
+                </Button>
               </div>
             </section>
           </div>

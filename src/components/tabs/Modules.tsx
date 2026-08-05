@@ -72,7 +72,7 @@ function ModuleList({ onOpen }: { onOpen: (id: string) => void }) {
             <div className="cm-md-eyebrow">Campaign</div>
             <div className="cm-md-title">Modules</div>
           </div>
-          <button className="cm-md-add" onClick={() => setCreating(true)}>+ Add</button>
+          <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>+ Add</Button>
         </div>
         <div className="cm-md-list-scroll">
           {modules.length === 0 ? (

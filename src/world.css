@@ -665,20 +665,7 @@
   font-family: var(--serif); font-size: 14px; color: var(--ink-2); line-height: 1.6;
 }
 
-/* Timeline add button */
-.tl-add {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px;
-  border: 1px dashed var(--rule);
-  background: transparent;
-  color: var(--ink-3);
-  font-family: var(--serif); font-size: 13px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  margin-top: 12px;
-  transition: all .15s;
-}
-.tl-add:hover { border-color: var(--gold); color: var(--gold); background: var(--paper-2); }
+/* Audit F4 — .tl-add removed; timeline add control now uses <Button>. */
 
 /* ── Back to World button ── */
 .w-back-btn {
@@ -761,27 +748,7 @@
   border-top: 1px solid var(--rule-soft);
   display: flex; justify-content: flex-end; gap: 8px;
 }
-.ne-btn {
-  padding: 8px 16px;
-  border: 1px solid var(--rule);
-  background: var(--paper);
-  color: var(--ink-2);
-  font-family: var(--serif); font-size: 13px;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-.ne-btn:hover { border-color: var(--ink-3); color: var(--ink); }
-.ne-btn-primary {
-  background: var(--gold); color: #1a1410;
-  border-color: var(--gold); font-weight: 600;
-}
-.ne-btn-primary:hover { opacity: 0.9; }
-.ne-btn-primary:disabled { opacity: 0.4; cursor: default; }
-.ne-btn-danger {
-  background: transparent; color: var(--ember);
-  border-color: color-mix(in oklab, var(--ember) 40%, transparent);
-}
-.ne-btn-danger:hover { background: color-mix(in oklab, var(--ember) 12%, transparent); border-color: var(--ember); }
+/* Audit F4 — .ne-btn/.ne-btn-primary/.ne-btn-danger removed; node-editor buttons now use <Button>. */
 
 .tl-edit-form {
   flex: 1; display: flex; flex-direction: column; gap: 8px;
@@ -1296,22 +1263,8 @@
 .stage-foot .meta { display: flex; align-items: center; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .stage-foot .meta .risk { margin-left: auto; color: var(--moss); }
 .stage-foot .row { display: flex; gap: 9px; }
-.stage-foot .row .btn { flex: 1; justify-content: center; text-align: center; }
 .commit-done { display: flex; align-items: center; gap: 9px; padding: 4px 2px; font-family: var(--serif); font-size: 14px; color: var(--moss); }
-.commit-done .btn { margin-left: auto; flex-shrink: 0; }
-
-.btn {
-  font-family: var(--serif); font-size: 13.5px; padding: 8px 16px; border-radius: var(--radius);
-  border: 1px solid var(--rule); background: var(--paper); color: var(--ink-2);
-  cursor: pointer; transition: all .15s; white-space: nowrap;
-}
-.btn:hover { border-color: var(--gold-line); color: var(--ink); }
-.btn:disabled { opacity: .4; cursor: default; }
-.btn:disabled:hover { border-color: var(--rule); color: var(--ink-2); }
-.btn-primary { background: var(--gold); color: var(--bg); border-color: var(--gold); font-weight: 600; }
-.btn-primary:hover { background: var(--gold-2); color: var(--bg); }
-.btn-primary:disabled:hover { background: var(--gold); border-color: var(--gold); color: var(--bg); }
-.btn-sm { font-size: 12px; padding: 5px 11px; }
+/* Audit F4 — .btn/.btn-primary/.btn-sm removed; Workbench tray buttons now use <Button> (flex/align preserved inline). */
 
 /* Below 900px the tray has no room; conversation takes the full width. */
 @media (max-width: 900px) {

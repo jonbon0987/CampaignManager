@@ -76,6 +76,7 @@ function WorldSelector() {
 
   return (
     <>
+      {/* eslint-disable-next-line no-restricted-syntax -- bespoke world-selector menu trigger (glyph + name + caret), not an action button */}
       <button ref={buttonRef} className="ws-selector" onClick={handleToggle}>
         <span className="ws-selector-glyph">⊕</span>
         <span className="ws-selector-name">{active?.name || 'Select World'}</span>

@@ -1,4 +1,21 @@
-# React + TypeScript + Vite
+# DM Lair
+
+*Where every campaign comes to life.*
+
+DM Lair is a prep-and-run companion for tabletop Dungeon Masters — world lore, locations,
+NPCs, factions, modules, encounters, session notes, and live-session tools in one place.
+
+> **Naming:** the product is **DM Lair** (the name used everywhere in the app). *Scriptorium*
+> is the internal codename of the design system only (referenced in `src/index.css`,
+> `src/lib/theme.ts`, and `src/components/ui/`), not a user-facing product name.
+
+Built with React 19 + TypeScript + Vite + Tailwind, backed by Supabase.
+
+---
+
+## Toolchain notes (Vite template)
+
+This project was scaffolded from the React + Vite template; the notes below are retained for reference.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

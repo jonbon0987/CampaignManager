@@ -1,5 +1,6 @@
 import CampaignSelector from './CampaignSelector';
 import { useWorld } from '../context/WorldContext';
+import { ToolbarButton } from './ui/ToolbarButton';
 
 interface ViewOption { id: string; label: string; }
 
@@ -38,9 +39,9 @@ export default function Topbar({
     <header className="cm-top">
       {/* Mobile hamburger */}
       {isMobile && (
-        <button onClick={onOpenMobileMenu} className="cm-top-btn" aria-label="Open menu">
+        <ToolbarButton onClick={onOpenMobileMenu} aria-label="Open menu">
           ☰
-        </button>
+        </ToolbarButton>
       )}
 
       {/* Breadcrumb — World / Campaign / Tab */}
@@ -86,43 +87,36 @@ export default function Topbar({
       <div className="cm-top-actions">
         {/* Scratchpad */}
         {!isMobile && (
-          <button
+          <ToolbarButton
             onClick={onToggleScratch}
-            className={`cm-top-btn${scratchOpen ? ' is-on' : ''}`}
+            active={scratchOpen}
+            glyph="✎"
+            kbd="⌘."
             title="Scratchpad (⌘.)"
           >
-            <span className="cm-top-btn-glyph">✎</span>
             <span>Notes</span>
-            <kbd>⌘.</kbd>
-          </button>
+          </ToolbarButton>
         )}
 
         {/* Keyboard shortcuts */}
         {!isMobile && (
-          <button onClick={onToggleShortcuts} className="cm-top-btn" title="Keyboard shortcuts (?)">
-            <span className="cm-top-btn-glyph">⌨</span>
-            <kbd>?</kbd>
-          </button>
+          <ToolbarButton onClick={onToggleShortcuts} glyph="⌨" kbd="?" title="Keyboard shortcuts (?)" />
         )}
 
         {/* Search */}
-        <button onClick={onOpenSearch} className="cm-top-btn" title="Search (⌘/)">
-          <span className="cm-top-btn-glyph">⌕</span>
+        <ToolbarButton onClick={onOpenSearch} glyph="⌕" kbd={!isMobile ? '⌘/' : undefined} title="Search (⌘/)">
           {!isMobile && <span>Search</span>}
-          {!isMobile && <kbd>⌘/</kbd>}
-        </button>
+        </ToolbarButton>
 
         {/* Post-Session Capture */}
-        <button onClick={onOpenCapture} className="cm-top-btn" title="Post-session capture">
-          <span className="cm-top-btn-glyph">✍</span>
+        <ToolbarButton onClick={onOpenCapture} glyph="✍" title="Post-session capture">
           {!isMobile && <span>Capture</span>}
-        </button>
+        </ToolbarButton>
 
         {/* Session Bar / Tools */}
-        <button onClick={onToggleDice} className="cm-top-btn" title="Session tools (Initiative · Dice · Search)">
-          <span className="cm-top-btn-glyph">⚄</span>
+        <ToolbarButton onClick={onToggleDice} glyph="⚄" title="Session tools (Initiative · Dice · Search)">
           {!isMobile && <span>Session Tools</span>}
-        </button>
+        </ToolbarButton>
 
       </div>
     </header>

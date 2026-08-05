@@ -677,7 +677,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                   <button
                     onClick={() => setViewing(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#1a1a3a', color: 'var(--info)', border: '1px solid var(--info-line)' }}
+                    style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}
                   >
                     View
                   </button>

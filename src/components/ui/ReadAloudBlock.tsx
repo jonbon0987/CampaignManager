@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from './Button';
 
 interface ReadAloudBlockProps {
   text: string;
@@ -24,7 +25,7 @@ export function ReadAloudBlock({ text, onChange }: ReadAloudBlockProps) {
           />
           <div className="ra-edit-actions">
             <button onClick={() => { onChange?.(val); setEditing(false); }}>Save</button>
-            <button className="ra-cancel" onClick={() => { setVal(text); setEditing(false); }}>Cancel</button>
+            <Button variant="link" onClick={() => { setVal(text); setEditing(false); }}>Cancel</Button>
           </div>
         </div>
       ) : (

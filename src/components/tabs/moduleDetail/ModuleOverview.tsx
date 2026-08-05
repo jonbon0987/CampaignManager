@@ -11,6 +11,7 @@ import { useManualSave } from '../../../hooks/useManualSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
+import { Button } from '../../ui/Button';
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
 import { typeInfo } from './pickers';
 
@@ -167,7 +168,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
         <div className="md-savebar">
           <SaveStatusIndicator status={status} onRetry={save} />
           <div className="as-spacer" />
-          <button className="md-savebtn" disabled={!isDirty} onClick={save}>Save changes</button>
+          <Button variant="primary" disabled={!isDirty} onClick={save}>Save changes</Button>
         </div>
       </div>
     </div>
