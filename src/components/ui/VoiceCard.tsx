@@ -27,9 +27,9 @@ export function VoiceCard({ voice, npcName, onGenerate }: VoiceCardProps) {
           to help you perform this character at the table.
         </div>
         {onGenerate && (
-          <button className="cm-pill" onClick={onGenerate}>
+          <Button variant="secondary" size="xs" onClick={onGenerate}>
             &#x2726; Generate voice notes
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -62,9 +62,9 @@ export function VoiceCard({ voice, npcName, onGenerate }: VoiceCardProps) {
         </div>
       )}
       {onGenerate && (
-        <button className="vc-regen" onClick={onGenerate}>
+        <Button variant="ghost" size="xs" onClick={onGenerate}>
           &#x2726; Suggest alternatives
-        </button>
+        </Button>
       )}
     </div>
   );

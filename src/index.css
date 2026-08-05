@@ -544,30 +544,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--ink);
   font-weight: 500;
 }
-.cm-md-add {
-  padding: 6px 12px;
-  border: 1px solid var(--rule);
-  background: var(--paper);
-  color: var(--ink-2);
-  font-family: var(--serif);
-  font-size: 13px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all .15s;
-}
-.cm-md-add:hover {
-  color: var(--ink);
-  border-color: var(--ink-3);
-}
-.cm-md-import {
-  color: var(--ink-3);
-  background: transparent;
-}
-.cm-md-generate {
-  color: #c060d0;
-  background: #2a1a3a;
-  border-color: #5a2a7a !important;
-}
+/* Audit F4 — .cm-md-add/.cm-md-import/.cm-md-generate removed; list-header add/generate/import now use <Button> (generate's accent preserved inline). */
 
 /* Search in list */
 .cm-md-search {
@@ -946,18 +923,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .cm-idea-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .cm-promote-wrap { position: relative; }
-.cm-promote-btn {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--gold-2);
-  background: transparent;
-  border: 1px solid var(--gold-line);
-  border-radius: var(--radius);
-  padding: 4px 12px;
-  cursor: pointer;
-  transition: all .15s;
-}
-.cm-promote-btn:hover { background: var(--gold-dim); }
+/* Audit F4 — .cm-promote-btn removed; promote toggle now uses <Button>. */
 .cm-promote-scrim { position: fixed; inset: 0; z-index: 30; }
 .cm-promote-menu {
   position: absolute;
@@ -987,15 +953,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   cursor: pointer;
 }
 .cm-promote-menu button:hover { background: var(--paper-2); }
-.cm-idea-dismiss {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-3);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.cm-idea-dismiss:hover { color: var(--red); }
+/* Audit F4 — .cm-idea-dismiss removed; now uses <Button variant="link">. */
 
 /* ═══════════════════ Quick Idea drawer ═══════════════════ */
 .cm-drawer-wrap { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
@@ -1030,32 +988,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .cm-drawer-glyph { color: var(--sky); font-size: 18px; }
 .cm-drawer-title { font-family: var(--serif); font-size: 17px; color: var(--ink); }
 .cm-drawer-sub { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-top: 2px; }
-.cm-drawer-x { margin-left: auto; background: none; border: none; color: var(--ink-3); cursor: pointer; font-size: 14px; }
-.cm-drawer-x:hover { color: var(--ink); }
+/* Audit F4 — .cm-drawer-x (→ <IconButton>) and .cm-ghost-btn/.cm-primary-btn (→ <Button>) removed. */
 .cm-drawer-text { min-height: 160px; resize: vertical; line-height: 1.5; font-family: var(--serif); font-size: 14px; }
 .cm-drawer-foot { display: flex; gap: 8px; justify-content: flex-end; }
-.cm-ghost-btn {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-2);
-  background: transparent;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: 6px 14px;
-  cursor: pointer;
-}
-.cm-primary-btn {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--bg);
-  background: var(--gold);
-  border: 1px solid var(--gold);
-  border-radius: var(--radius);
-  padding: 6px 14px;
-  cursor: pointer;
-}
-.cm-primary-btn:hover { background: var(--gold-2); }
 .cm-drawer-note { font-family: var(--serif); font-size: 12px; font-style: italic; color: var(--ink-3); line-height: 1.5; }
 
 /* ═══ List Rows ═══ */
@@ -1560,18 +1495,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   color: var(--ink);
   line-height: 1.35;
 }
-.vc-regen {
-  background: transparent;
-  border: 1px solid var(--rule);
-  color: var(--ink-2);
-  padding: 8px 14px;
-  font-family: var(--serif);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: var(--radius);
-  align-self: flex-start;
-}
-.vc-regen:hover { color: var(--gold); border-color: var(--gold); }
+/* Audit F4 — .vc-regen removed; now uses <Button variant="ghost" size="xs">. */
 .vc-empty {
   text-align: center;
   padding: 40px 16px;
@@ -1651,11 +1575,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border: none;
   font-weight: 600;
 }
-.ra-cancel {
-  background: transparent;
-  color: var(--ink-2);
-  border: 1px solid var(--rule);
-}
+/* Audit F4 — .ra-cancel removed; now uses <Button variant="link">. */
 
 /* ═══ Recently Viewed ═══ */
 .rv {
@@ -2067,28 +1987,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   color: var(--ink);
 }
 .sb-init-controls { display: flex; gap: 6px; align-items: center; }
-.sb-btn-primary {
-  padding: 5px 12px;
-  background: var(--gold);
-  border: 1px solid var(--gold);
-  color: #1a1410;
-  font-family: var(--serif);
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-.sb-btn-ghost {
-  padding: 5px 10px;
-  background: transparent;
-  border: 1px solid var(--rule);
-  color: var(--ink-2);
-  font-family: var(--serif);
-  font-size: 12px;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-.sb-btn-ghost:hover { background: var(--paper-2); color: var(--ink); }
+/* Audit F4 — .sb-btn-primary/.sb-btn-ghost removed; session-bar buttons now use <Button size="sm">. */
 .sb-init-list {
   display: flex;
   flex-direction: column;
@@ -2647,10 +2546,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .cw-rel-name { color: var(--ink); font-weight: 600; }
 .cw-rel-label { font-style: italic; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
 .cw-actions { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 12px; }
-.cw-action { background: var(--gold); color: var(--bg); border: none; padding: 10px 14px; border-radius: var(--radius); font-family: var(--serif); font-weight: 600; cursor: pointer; }
-.cw-action:hover { background: var(--gold-2); }
-.cw-action-ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--rule); }
-.cw-action-ghost:hover { background: var(--paper-2); color: var(--ink); }
+/* Audit F4 — .cw-action/.cw-action-ghost removed; now use <Button> (secondary/ghost). .cw-actions wrapper kept. */
 
 /* ═══ Module Web ═══ */
 .mw { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -2781,33 +2677,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   gap: 6px;
   margin-top: auto;
 }
-.mw-side-btn-primary {
-  width: 100%;
-  padding: 10px 14px;
-  background: var(--gold);
-  color: var(--bg);
-  border: none;
-  border-radius: var(--radius);
-  font-family: var(--serif);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity .15s;
-}
-.mw-side-btn-primary:hover { opacity: 0.88; }
-.mw-side-btn-ghost {
-  width: 100%;
-  padding: 8px 14px;
-  background: transparent;
-  color: var(--ink-2);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  font-family: var(--serif);
-  font-size: 13px;
-  cursor: pointer;
-  transition: color .12s, border-color .12s;
-}
-.mw-side-btn-ghost:hover { color: var(--ink); border-color: var(--ink-3); }
+/* Audit F4 — .mw-side-btn-primary/.mw-side-btn-ghost removed; module-web side buttons now use <Button>. */
 
 .mw-empty { text-align: center; padding: 40px 8px; color: var(--ink-3); }
 .mw-empty-glyph { font-size: 32px; color: var(--gold); margin-bottom: 8px; }
@@ -2864,11 +2734,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .pw-loose-from { font-style: italic; color: var(--ink-3); font-weight: 400; font-size: 12px; }
 .pw-nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 32px; border-top: 1px solid var(--rule); flex-shrink: 0; }
 .pw-nav-count { font-family: var(--mono); font-size: 12px; color: var(--ink-3); letter-spacing: 0.1em; }
-.pw-action { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-2); font-family: var(--serif); font-size: 13px; border-radius: var(--radius); cursor: pointer; transition: all .12s; }
-.pw-action:hover { color: var(--ink); border-color: var(--ink-3); }
-.pw-action:disabled { opacity: 0.35; cursor: default; }
-.pw-action-primary { background: var(--gold); color: #1a1410; border-color: var(--gold); font-weight: 600; }
-.pw-action-primary:hover { background: var(--gold-2); }
+/* Audit F4 — .pw-action/.pw-action-primary removed; prep-wizard buttons now use <Button>. */
 .pw-empty { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 13px; }
 
 /* ═══ Sub-tab bar (underline tabs) ═══ */
@@ -3673,29 +3539,14 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border-top: 1px solid var(--rule-soft);
 }
 .md-savebar .as-spacer { flex: 1; }
-.md-savebtn {
-  font-family: var(--mono); font-size: 12px; font-weight: 600;
-  color: var(--bg); background: var(--gold);
-  border: 1px solid var(--gold); border-radius: var(--radius);
-  padding: 7px 18px; cursor: pointer; transition: background .14s, opacity .14s;
-}
-.md-savebtn:hover:not(:disabled) { background: var(--gold-2); }
-.md-savebtn:disabled { opacity: .4; cursor: default; }
+/* Audit F4 — .md-savebtn removed; now uses <Button variant="primary">. */
 
 /* Compact variant used inside a scene's expanded body */
 .md-savebar-inline {
   display: flex; align-items: center; gap: 10px;
   margin-top: 14px; justify-content: flex-end;
 }
-.md-savebtn-sm {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
-  text-transform: uppercase; font-weight: 600;
-  color: var(--bg); background: var(--gold);
-  border: 1px solid var(--gold); border-radius: 999px;
-  padding: 5px 14px; cursor: pointer; transition: background .14s, opacity .14s;
-}
-.md-savebtn-sm:hover:not(:disabled) { background: var(--gold-2); }
-.md-savebtn-sm:disabled { opacity: .4; cursor: default; }
+/* Audit F4 — .md-savebtn-sm removed; now uses <Button variant="primary" size="sm">. */
 
 /* ── Editor pane shared ── */
 .md-editor { max-width: 760px; }

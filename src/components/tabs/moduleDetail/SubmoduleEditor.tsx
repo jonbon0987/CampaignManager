@@ -12,6 +12,7 @@ import { useManualSave } from '../../../hooks/useManualSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
+import { Button } from '../../ui/Button';
 import { wouldCreateSubmoduleCycle } from '../../../lib/moduleUtils';
 import type { Module, Submodule, Scene, MonsterStatblock, Encounter } from '../../../lib/database.types';
 import {
@@ -118,7 +119,7 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
             </div>
           </div>
           <div className="md-savebar-inline">
-            <button className="md-savebtn-sm" disabled={!isDirty} onClick={save}>Save scene</button>
+            <Button variant="primary" size="sm" disabled={!isDirty} onClick={save}>Save scene</Button>
           </div>
         </div>
       )}
@@ -355,7 +356,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
         <div className="md-savebar">
           <SaveStatusIndicator status={status} onRetry={save} />
           <div className="as-spacer" />
-          <button className="md-savebtn" disabled={!isDirty} onClick={save}>Save changes</button>
+          <Button variant="primary" disabled={!isDirty} onClick={save}>Save changes</Button>
         </div>
       </div>
     </div>

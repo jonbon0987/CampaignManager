@@ -48,7 +48,7 @@ const statusBadgeColor: Record<NPC['status'], 'green' | 'red' | 'gold'> = {
 };
 
 const statusStyles: Record<NPC['status'], { bg: string; text: string }> = {
-  active:   { bg: '#1a3a1a', text: 'var(--success)' },
+  active:   { bg: 'var(--success-bg)', text: 'var(--success)' },
   deceased: { bg: 'var(--red-bg)', text: 'var(--red)' },
   unknown:  { bg: 'var(--warn-bg)', text: 'var(--gold)' },
 };
