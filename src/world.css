@@ -319,56 +319,71 @@
   color: var(--ink-3);
 }
 
-/* Campaign cards in sidebar */
-.w-camp-list { padding: 6px 10px 14px; display: flex; flex-direction: column; gap: 4px; }
-.w-camp-card {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px;
-  background: transparent;
-  border: 1px solid var(--rule-soft);
-  border-radius: var(--radius);
-  cursor: pointer;
-  width: 100%; text-align: left;
-  transition: all .15s;
-  font-family: var(--serif);
-  color: var(--ink);
+/* ══════════════════════════════════════════════════════════════════════════
+   World sidebar — Campaign section (Direction A: hero + list)
+   Replaces the old expanded-view .w-camp-list/.w-camp-card styles. The
+   collapsed .w-coll-*, .w-camp-flyout-*, .w-camp-status-dot, .w-camp-new-form,
+   and .w-camp-name-input classes are kept (still used elsewhere).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Section header */
+.wc-head { padding: 8px 6px 9px; }
+.wc-head-label { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold-2); }
+
+/* List wrapper */
+.wc-list { padding: 0 10px 6px; }
+
+/* Hero card — the resume target */
+.wc-hero {
+  display: block; width: 100%; text-align: left; position: relative; overflow: hidden;
+  border: 1px solid var(--gold-line); border-radius: 8px; padding: 13px 14px 12px;
+  background: linear-gradient(180deg, rgba(201,168,76,.11), rgba(201,168,76,.03));
+  cursor: pointer; animation: wcHeroIn .28s ease;
 }
-.w-camp-card:hover { border-color: var(--rule); background: var(--paper-2); }
-.w-camp-card.is-active { border-color: var(--gold); background: rgba(201,168,76,0.06); }
-.w-camp-glyph { color: var(--gold); font-size: 14px; }
-.w-camp-body { flex: 1; min-width: 0; }
-.w-camp-name {
-  font-family: var(--display); font-size: 13px; color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.wc-hero::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+@keyframes wcHeroIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.wc-hero-eyebrow { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+.wc-hero-name { font-family: var(--display); font-size: 18px; font-weight: 600; line-height: 1.18; color: var(--ink); }
+.wc-hero-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); margin-top: 9px; }
+.wc-hero-last { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); margin-top: 3px; }
+.wc-hero-cta {
+  margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px;
+  border: 1px solid var(--gold-line); border-radius: var(--radius); background: rgba(201,168,76,.09);
+  color: var(--gold-2); font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  transition: background .14s, border-color .14s;
 }
-.w-camp-meta { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-top: 1px; }
-.w-camp-status {
-  font-family: var(--mono); font-size: 11px;
-  letter-spacing: .1em; text-transform: uppercase;
-  padding: 2px 6px; border-radius: 999px;
-  border: 1px solid var(--rule-soft);
-  color: var(--ink-3);
+.wc-hero-cta:hover { background: rgba(201,168,76,.16); border-color: var(--gold); }
+
+/* Slim rows — the other campaigns */
+.wc-others-label { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-4); padding: 16px 4px 4px; }
+.wc-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 8px;
+  border: none; background: transparent; border-radius: var(--radius); text-align: left;
+  color: var(--ink); cursor: pointer; transition: background .12s;
 }
-.w-camp-status-active { color: #6b9a4a; border-color: rgba(107,154,74,0.3); }
-.w-camp-status-paused { color: var(--ink-3); }
-/* Campaign action buttons (edit + delete) — hidden until hover */
-.w-camp-actions {
-  display: none;
-  align-items: center;
-  gap: 2px;
-  flex: 0 0 auto;
+.wc-row:hover { background: var(--paper-2); }
+.wc-row:hover .wc-row-name { color: var(--ink); }
+.wc-row-name { flex: 1; min-width: 0; font-family: var(--display); font-size: 13.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wc-row-n { font-family: var(--mono); font-size: 10px; color: var(--ink-4); flex: 0 0 auto; }
+.wc-row-del { display: none; background: transparent; border: none; color: var(--ink-3); font-size: 12px; line-height: 1; padding: 2px 4px; cursor: pointer; flex: 0 0 auto; }
+.wc-row:hover .wc-row-del { display: block; }
+.wc-row-del:hover { color: var(--red); }
+
+/* Status dots (shared by hero eyebrow + rows) */
+.wc-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; display: inline-block; }
+.wc-dot-active { background: #6b9a4a; }
+.wc-dot-paused { background: var(--ink-3); }
+.wc-dot-completed { background: var(--gold); }
+
+/* New campaign row */
+.wc-newrow {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px 8px; margin-top: 6px;
+  border: none; border-top: 1px solid var(--rule-soft); background: transparent;
+  color: var(--ink-3); font-family: var(--serif); font-size: 13px; cursor: pointer;
 }
-.w-camp-card:hover .w-camp-actions { display: flex; }
-.w-camp-edit, .w-camp-delete {
-  display: block;
-  background: transparent; border: none;
-  color: var(--ink-3); font-size: 13px;
-  padding: 2px 4px; cursor: pointer;
-  border-radius: var(--radius);
-  line-height: 1;
-}
-.w-camp-edit:hover { color: var(--gold); }
-.w-camp-delete:hover { color: var(--red); }
+.wc-newrow:hover { color: var(--ink); }
+.wc-newrow b { color: var(--gold); font-weight: 400; font-family: var(--mono); font-size: 14px; }
+
 /* Editing state — no hover highlight on the wrapper div */
 .w-camp-card-editing { cursor: default; }
 .w-camp-card-editing:hover { border-color: var(--rule-soft); background: transparent; }

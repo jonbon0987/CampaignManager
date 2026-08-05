@@ -4,7 +4,7 @@ import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { signOut } from '../../lib/auth';
 import useLocalStorage from '../../hooks/useLocalStorage';
-import type { WorldTab } from '../../types/world';
+import type { WorldTab, WorldCampaign } from '../../types/world';
 
 interface WorldNavItem {
   id: WorldTab;
@@ -20,6 +20,18 @@ const WORLD_TABS: WorldNavItem[] = [
   { id: 'combat',    label: 'Combat',     glyph: '⚔' },
   { id: 'timeline',  label: 'Timeline',   glyph: '⏤' },
 ];
+
+// Status-adaptive copy for the campaign hero card.
+const CAMPAIGN_EYEBROW: Record<WorldCampaign['status'], string> = {
+  active: 'Now playing',
+  paused: 'Paused campaign',
+  completed: 'Completed',
+};
+const CAMPAIGN_CTA: Record<WorldCampaign['status'], string> = {
+  active: 'Continue session ›',
+  paused: 'Resume campaign ›',
+  completed: 'Reopen chronicle ›',
+};
 
 // ── World Selector dropdown ─────────────────────────────────────────────────
 
@@ -291,6 +303,14 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
   }
 
   // ── Expanded view ─────────────────────────────────────────────────────────
+  // Hero = the open campaign, else the first active-status one, else the first.
+  const heroCampaign =
+    campaigns.find(c => c.id === activeCampaignId) ??
+    campaigns.find(c => c.status === 'active') ??
+    campaigns[0] ??
+    null;
+  const otherCampaigns = campaigns.filter(c => c.id !== heroCampaign?.id);
+
   return (
     <aside className="w-side">
       <div className="w-side-head">
@@ -338,29 +358,56 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
               )}
             </>
           )}
-          <div className="w-nav-section" style={{ marginTop: 8 }}>Campaigns</div>
         </nav>
 
-        <div className="w-camp-list">
-          {campaigns.map(c => (
-            <div key={c.id} role="button" tabIndex={0}
-              className={`w-camp-card ${activeCampaignId === c.id ? 'is-active' : ''}`}
+        <div className="wc-head">
+          <span className="wc-head-label">Campaigns</span>
+        </div>
+
+        <div className="wc-list">
+          {heroCampaign && (
+            <div
+              role="button"
+              tabIndex={0}
+              className="wc-hero"
+              onClick={() => openCampaign(heroCampaign.id)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCampaign(heroCampaign.id); }}
+            >
+              <div className="wc-hero-eyebrow">
+                <span className={`wc-dot wc-dot-${heroCampaign.status}`} />
+                {activeCampaignId === heroCampaign.id ? 'Now playing' : CAMPAIGN_EYEBROW[heroCampaign.status]}
+              </div>
+              <div className="wc-hero-name">{heroCampaign.name}</div>
+              <div className="wc-hero-meta">{heroCampaign.party} · {heroCampaign.sessions} sessions</div>
+              {heroCampaign.lastPlayed && (
+                <div className="wc-hero-last">Last played · {heroCampaign.lastPlayed}</div>
+              )}
+              <div className="wc-hero-cta">{CAMPAIGN_CTA[heroCampaign.status]}</div>
+            </div>
+          )}
+
+          {otherCampaigns.length > 0 && <div className="wc-others-label">Also in this world</div>}
+          {otherCampaigns.map(c => (
+            <div
+              key={c.id}
+              role="button"
+              tabIndex={0}
+              className="wc-row"
               onClick={() => openCampaign(c.id)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCampaign(c.id); }}
             >
-              <span className="w-camp-glyph">❧</span>
-              <div className="w-camp-body">
-                <div className="w-camp-name">{c.name}</div>
-                <div className="w-camp-meta">{c.party} · {c.sessions} sessions</div>
-              </div>
-              <span className={`w-camp-status w-camp-status-${c.status}`}>{c.status}</span>
-              <div className="w-camp-actions">
-                <button className="w-camp-delete"
-                  onClick={e => handleDeleteCampaign(e, c.id, c.name)}
-                  title="Delete campaign">✕</button>
-              </div>
+              <span className={`wc-dot wc-dot-${c.status}`} />
+              <span className="wc-row-name">{c.name}</span>
+              <span className="wc-row-n">{c.sessions} sess</span>
+              {/* eslint-disable-next-line no-restricted-syntax -- bespoke sidebar affordance */}
+              <button className="wc-row-del" title="Delete campaign"
+                onClick={e => handleDeleteCampaign(e, c.id, c.name)}
+              >
+                ✕
+              </button>
             </div>
           ))}
+
           {creatingCampaign ? (
             <div className="w-camp-new-form">
               <input autoFocus className="w-camp-name-input" value={newCampName}
@@ -376,12 +423,9 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
               </div>
             </div>
           ) : (
-            <button className="w-camp-card"
-              style={{ justifyContent: 'center', color: 'var(--ink-3)', borderStyle: 'dashed' }}
-              onClick={() => setCreatingCampaign(true)}
-            >
-              <span style={{ color: 'var(--gold)' }}>+</span>
-              <span style={{ fontFamily: 'var(--serif)', fontSize: 13 }}>New campaign</span>
+            /* eslint-disable-next-line no-restricted-syntax -- bespoke sidebar affordance */
+            <button className="wc-newrow" onClick={() => setCreatingCampaign(true)}>
+              <b>+</b><span>New campaign</span>
             </button>
           )}
         </div>
