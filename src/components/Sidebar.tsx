@@ -11,13 +11,16 @@ interface NavItem {
 }
 
 const TABS: NavItem[] = [
-  { id: 'overview', label: 'Overview', glyph: '❖' },
-  { id: 'cast',     label: 'Cast',     glyph: '◇' },
-  { id: 'world',    label: 'World',    glyph: '✦' },
-  { id: 'modules',  label: 'Modules',  glyph: '❧' },
-  { id: 'sessions', label: 'Sessions', glyph: '✧' },
-  { id: 'combat',   label: 'Combat',   glyph: '⚔' },
-  { id: 'settings', label: 'Settings', glyph: '⚙' },
+  { id: 'overview',  label: 'Overview',  glyph: '❖' },
+  { id: 'cast',      label: 'Cast',      glyph: '◇' },
+  { id: 'lore',      label: 'Lore',      glyph: '❦' },
+  { id: 'locations', label: 'Locations', glyph: '✦' },
+  { id: 'threads',   label: 'Threads',   glyph: '✧' },
+  { id: 'ideas',     label: 'Ideas',     glyph: '✎' },
+  { id: 'modules',   label: 'Modules',   glyph: '❧' },
+  { id: 'sessions',  label: 'Sessions',  glyph: '❂' },
+  { id: 'combat',    label: 'Combat',    glyph: '⚔' },
+  { id: 'settings',  label: 'Settings',  glyph: '⚙' },
 ];
 
 // Recently viewed entries

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import type { Tab } from '../App';
+import { Button } from './ui/Button';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ function SearchPanel({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
         ...campaign.locations
           .filter(l => l.name.toLowerCase().includes(q.toLowerCase()))
           .slice(0, 4)
-          .map(l => ({ id: l.id, label: l.name, sub: l.location_type ?? '', tab: 'world' as Tab, glyph: '✦' })),
+          .map(l => ({ id: l.id, label: l.name, sub: l.location_type ?? '', tab: 'locations' as Tab, glyph: '✦' })),
         ...campaign.modules
           .filter(m => m.title.toLowerCase().includes(q.toLowerCase()))
           .slice(0, 3)
@@ -231,21 +232,22 @@ function InitiativePanel({ pcNames }: { pcNames: string[] }) {
         <div className="sb-init-controls">
           {!started ? (
             <>
-              <button className="sb-btn-ghost" onClick={rollNPCs}>Roll NPCs</button>
-              <button className="sb-btn-ghost" onClick={rollAll}>Roll All</button>
-              <button
-                className="sb-btn-primary"
+              <Button variant="ghost" size="sm" onClick={rollNPCs}>Roll NPCs</Button>
+              <Button variant="ghost" size="sm" onClick={rollAll}>Roll All</Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={start}
                 disabled={!allHaveRoll}
                 style={{ opacity: allHaveRoll ? 1 : 0.4 }}
               >
                 Start
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <button className="sb-btn-ghost" onClick={reset}>Reset</button>
-              <button className="sb-btn-primary" onClick={nextTurn}>Next ▶</button>
+              <Button variant="ghost" size="sm" onClick={reset}>Reset</Button>
+              <Button variant="primary" size="sm" onClick={nextTurn}>Next ▶</Button>
             </>
           )}
         </div>
@@ -312,8 +314,8 @@ function InitiativePanel({ pcNames }: { pcNames: string[] }) {
                 if (e.key === 'Escape') setAdding(false);
               }}
             />
-            <button className="sb-btn-primary" onClick={addRow}>Add</button>
-            <button className="sb-btn-ghost" onClick={() => setAdding(false)}>Cancel</button>
+            <Button variant="primary" size="sm" onClick={addRow}>Add</Button>
+            <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>Cancel</Button>
           </div>
         ) : (
           <button className="sb-init-add-btn" onClick={() => setAdding(true)}>

@@ -10,6 +10,7 @@ import type { useAIChat } from '../hooks/useAIChat';
 import type { ChatMessage, IngestState, PlanState, StagedChange } from '../hooks/useAIChat';
 import DocumentUploadButton from './DocumentUploadButton';
 import { MarkdownContent } from './ui/MarkdownContent';
+import { Button } from './ui/Button';
 
 type Chat = ReturnType<typeof useAIChat>;
 
@@ -268,24 +269,26 @@ function StagingTray({ chat }: { chat: Chat }) {
                 </span>
               </div>
               <div className="row">
-                <button className="btn btn-sm" onClick={chat.discardStaged} disabled={chat.committing}>
+                <Button size="sm" onClick={chat.discardStaged} disabled={chat.committing} style={{ flex: 1 }}>
                   Discard
-                </button>
-                <button
-                  className="btn btn-primary btn-sm"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={chat.commitStaged}
                   disabled={selectedStaged.length === 0 || chat.committing}
+                  style={{ flex: 1 }}
                 >
                   {chat.committing ? 'Committing…' : `Commit ${selectedStaged.length}`}
-                </button>
+                </Button>
               </div>
             </>
           ) : (
             <div className="commit-done">
               <span>✓ All changes committed to your {chat.scopeNoun}</span>
-              <button className="btn btn-sm" onClick={chat.discardStaged} disabled={chat.committing}>
+              <Button size="sm" onClick={chat.discardStaged} disabled={chat.committing} style={{ marginLeft: 'auto' }}>
                 Clear
-              </button>
+              </Button>
             </div>
           )}
         </div>

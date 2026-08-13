@@ -144,6 +144,7 @@ export interface Location {
   name: string;
   region: string | null;
   location_type: string | null;      // continent | city | town | dungeon | faction_hq | landmark
+  parent_id: string | null;          // self-FK — nests places into a tree (region › city › site)
   population: string | null;
   status: string | null;             // active | destroyed | unknown | compromised
   history: string | null;
@@ -173,14 +174,28 @@ export interface Hook {
   user_id: string;
   campaign_id: string;
   title: string;
-  category: string | null;           // main_plot | side_quest | character_arc | faction
+  category: string | null;           // kind: main_plot | side_quest | character_arc | faction
   description: string | null;
+  state: string | null;              // thread lifecycle: seed | active | cold | resolved
   last_updated_session: number | null;
   is_active: boolean;
   dm_only_notes: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export interface Idea {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  text: string;
+  tag: string | null;
+  promoted_hook_id: string | null;   // set when promoted into a Thread (hook)
+  created_at: string;
+  updated_at: string;
+}
+
+export type IdeaInsert = Omit<Idea, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
 export interface LoreEntry {
   id: string;
@@ -473,6 +488,12 @@ export interface Database {
         Row: Hook;
         Insert: Omit<Hook, 'id' | 'created_at' | 'updated_at'> & { id?: string };
         Update: Partial<Omit<Hook, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      ideas: {
+        Row: Idea;
+        Insert: Omit<Idea, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<Idea, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       lore_entries: {

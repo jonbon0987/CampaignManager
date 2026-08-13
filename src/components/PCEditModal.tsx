@@ -135,7 +135,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
       </Button>
       <div style={{ flex: 1 }}>
         <SaveStatusIndicator status={status} onRetry={saveNow} />
-        {error && <span style={{ color: '#e05c5c', fontSize: 11, marginLeft: 8 }}>{error}</span>}
+        {error && <span style={{ color: 'var(--red)', fontSize: 11, marginLeft: 8 }}>{error}</span>}
       </div>
       <Button variant="secondary" onClick={saveNow} disabled={status === 'saved' || status === 'idle' || status === 'saving'}>
         Save Now
@@ -266,10 +266,10 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
               <span style={{
                 fontSize: 9,
                 padding: '1px 5px',
-                borderRadius: 3,
-                backgroundColor: '#3a1a1a',
-                color: '#e05c5c',
-                border: '1px solid #5a2a2a',
+                borderRadius: 'var(--radius)',
+                backgroundColor: 'var(--red-bg)',
+                color: 'var(--red)',
+                border: '1px solid var(--red-line)',
                 verticalAlign: 'middle',
                 marginLeft: 4,
                 fontWeight: 600,

@@ -1,308 +1,275 @@
-import { useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { Modal } from '../Modal';
-import { FormField, inputStyle } from '../FormField';
-import { SectionHeader } from '../ui/SectionHeader';
-import { InlineEditCard } from '../ui/InlineEditCard';
-import { SearchBar } from '../ui/SearchBar';
-import { Button } from '../ui/Button';
+import { ListDetail, ListRow, DetailPanel, DetailSection, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
-import { EmptyState } from '../ui/EmptyState';
-import { AutoGrowTextarea } from '../ui/AutoGrowTextarea';
+import { OriginBand, type Origin } from '../ui/OriginBand';
+import { pushRecent } from '../Sidebar';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { OverflowMenu } from '../ui/OverflowMenu';
+import { AutosaveTextarea } from '../ui/MentionButton';
+import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { ListRowWithHover } from '../HoverPreview';
 import type { LoreEntry } from '../../lib/database.types';
 
+const GLYPH = '❦';
 const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
-type LoreCategory = typeof LORE_CATEGORIES[number];
 
-const categoryBadgeColor: Record<LoreCategory, 'blue' | 'green' | 'red' | 'gold' | 'muted'> = {
-  history: 'gold',
-  artifact: 'blue',
-  creature: 'red',
-  magic: 'muted',
-  religion: 'green',
+const categoryBadgeColor: Record<string, 'blue' | 'green' | 'red' | 'gold' | 'muted'> = {
+  history: 'gold', artifact: 'blue', creature: 'red', magic: 'muted', religion: 'green',
 };
 
-function formatCategory(c: string) {
-  return c.charAt(0).toUpperCase() + c.slice(1);
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+interface LoreItem {
+  id: string;
+  origin: Origin;
+  raw: LoreEntry;
 }
 
-type LoreForm = {
-  title: string;
-  category: LoreCategory;
-  content: string;
-  dm_only: boolean;
-};
-
-const emptyForm = (): LoreForm => ({
-  title: '',
-  category: 'history',
-  content: '',
-  dm_only: false,
-});
-
-const inputEditStyle: React.CSSProperties = {
-  backgroundColor: 'var(--bg)',
-  color: 'var(--ink)',
-  border: '1px solid #3a3660',
-  fontFamily: 'var(--serif)',
-  fontSize: '0.875rem',
-  borderRadius: '0.375rem',
-  padding: '0.375rem 0.5rem',
-  width: '100%',
-};
-
-const labelStyle: React.CSSProperties = {
-  color: 'var(--gold)',
-  fontSize: '0.65rem',
-  fontWeight: 600,
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-};
-
 export default function Lore() {
-  const { lore, upsertLore, deleteLore } = useCampaign();
+  const {
+    lore, globalLore, linkedLoreIds,
+    upsertLore, deleteLore, linkLoreToCampaign, unlinkLoreFromCampaign,
+  } = useCampaign();
+  const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
   const confirm = useConfirm();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState<LoreForm>(emptyForm());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
-  // Inline edit
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<LoreForm | null>(null);
-  const [saving, setSaving] = useState(false);
+  const all = useMemo<LoreItem[]>(() => {
+    const linked = new Set(linkedLoreIds);
+    return lore
+      .map(l => ({ id: l.id, origin: (linked.has(l.id) ? 'imported' : 'local') as Origin, raw: l }))
+      .filter(item => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return item.raw.title.toLowerCase().includes(q) || (item.raw.category ?? '').toLowerCase().includes(q);
+      });
+  }, [lore, linkedLoreIds, search]);
 
-  const filtered = lore.filter(entry => {
-    if (filterCategory !== 'all' && entry.category !== filterCategory) return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return entry.title.toLowerCase().includes(q) || (entry.content ?? '').toLowerCase().includes(q);
-  });
+  const imported = all.filter(i => i.origin === 'imported');
+  const local = all.filter(i => i.origin === 'local');
+  const selected = all.find(x => x.id === selectedId) || all[0] || null;
 
-  const openAdd = () => { setForm(emptyForm()); setModalOpen(true); };
+  const importPool = useMemo(() => {
+    const linked = new Set(linkedLoreIds);
+    return globalLore
+      .filter(l => !linked.has(l.id))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [globalLore, linkedLoreIds]);
 
-  const handleCreate = async () => {
-    if (!form.title.trim()) return;
-    await upsertLore({ ...form });
-    setModalOpen(false);
+  const handleSelect = (item: LoreItem) => {
+    setSelectedId(item.id);
+    pushRecent({ kind: 'lore', id: item.id, label: item.raw.title, tab: 'lore' });
   };
 
-  const startEdit = (entry: LoreEntry) => {
-    setEditingId(entry.id);
-    setEditForm({
-      title: entry.title,
-      category: (entry.category as LoreCategory) ?? 'history',
-      content: entry.content ?? '',
-      dm_only: entry.dm_only,
-    });
-    setExpandedId(entry.id);
+  const handleAdd = async () => {
+    const result = await upsertLore({ title: '', category: null, content: null, dm_only: false, world_id: null });
+    if (result) setSelectedId(result.id);
   };
 
-  const cancelEdit = () => { setEditingId(null); setEditForm(null); };
-
-  const saveEdit = async () => {
-    if (!editForm || !editingId) return;
-    setSaving(true);
-    await upsertLore({ id: editingId, ...editForm });
-    setSaving(false);
-    cancelEdit();
+  const importEntry = async (entry: LoreEntry) => {
+    await linkLoreToCampaign(entry.id);
+    setSelectedId(entry.id);
+    setShowImport(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (await confirm('Delete this lore entry?')) {
-      await deleteLore(id);
-      if (expandedId === id) setExpandedId(null);
-      if (editingId === id) cancelEdit();
-    }
+  const publish = async (entry: LoreEntry) => {
+    await upsertLore({
+      id: entry.id, title: entry.title, category: entry.category, content: entry.content,
+      dm_only: entry.dm_only, world_id: activeWorldId || entry.world_id || null,
+    }, 'global');
+    await linkLoreToCampaign(entry.id);
   };
+
+  const openInCanon = (id: string) => {
+    setWorldTab('lore');
+    setWorldSelected('lore', id);
+    backToWorld();
+  };
+
+  const renderRow = (item: LoreItem) => (
+    <ListRowWithHover key={item.id} entity={item.raw} kind="lore">
+      <ListRow
+        active={selected?.id === item.id}
+        onClick={() => handleSelect(item)}
+        glyph={GLYPH}
+        title={item.raw.title || 'Untitled Entry'}
+        subtitle={item.raw.category ? cap(item.raw.category) : ''}
+        meta={item.raw.dm_only ? 'DM only' : undefined}
+        badges={
+          <>
+            <Badge color={item.origin === 'imported' ? 'gold' : 'orange'} size="xs">
+              {item.origin === 'imported' ? 'imported' : 'only here'}
+            </Badge>
+            {item.raw.category && (
+              <Badge color={categoryBadgeColor[item.raw.category] ?? 'muted'}>{cap(item.raw.category)}</Badge>
+            )}
+          </>
+        }
+      />
+    </ListRowWithHover>
+  );
 
   return (
-    <div>
-      <SectionHeader title="Lore" onAdd={openAdd} addLabel="Add Lore Entry" />
+    <ListDetail
+      title="Lore"
+      count={all.length}
+      search={search}
+      onSearchChange={setSearch}
+      onAdd={handleAdd}
+      addLabel="+ Lore"
+      onImport={() => setShowImport(v => !v)}
+      importLabel={showImport ? '× Close import' : '+ Import from canon'}
+      list={
+        <>
+          {showImport && (
+            <div className="cm-importbrowse">
+              <div className="cm-importbrowse-head">Import from canon · {importPool.length} available</div>
+              {importPool.length === 0 ? (
+                <div className="cm-importbrowse-empty">Nothing left to import — every canon entry is already on this table.</div>
+              ) : (
+                importPool.map(l => (
+                  <button key={l.id} className="cm-importbrowse-row" onClick={() => importEntry(l)}>
+                    <span className="cm-importbrowse-glyph">{GLYPH}</span>
+                    <span className="cm-importbrowse-body">
+                      <span className="cm-importbrowse-name">{l.title || 'Untitled'}</span>
+                      <span className="cm-importbrowse-sub">{l.category ? cap(l.category) : 'Lore'}</span>
+                    </span>
+                    <span className="cm-importbrowse-cta">Import ↓</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
 
-      <div className="flex flex-wrap items-center gap-4 mb-4">
-        <div style={{ width: '220px' }}>
-          <SearchBar value={search} onChange={setSearch} placeholder="Search lore…" />
-        </div>
-        <select
-          value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
-          className="text-sm rounded px-2 py-1.5 outline-none"
-          style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid #3a3660', fontFamily: 'var(--serif)' }}
-        >
-          <option value="all">All Categories</option>
-          {LORE_CATEGORIES.map(c => (
-            <option key={c} value={c}>{formatCategory(c)}</option>
-          ))}
-        </select>
+          {all.length === 0 ? (
+            <div className="cm-empty is-inline">No lore yet — create one or import from canon</div>
+          ) : (
+            <>
+              {imported.length > 0 && (
+                <>
+                  <div className="cm-md-grouplabel">Imported from canon · {imported.length}</div>
+                  {imported.map(renderRow)}
+                </>
+              )}
+              {local.length > 0 && (
+                <>
+                  <div className="cm-md-grouplabel is-local">Created for this table · {local.length}</div>
+                  {local.map(renderRow)}
+                </>
+              )}
+            </>
+          )}
+        </>
+      }
+      detail={
+        selected ? (
+          <LoreDetail
+            key={selected.id}
+            entry={selected.raw}
+            origin={selected.origin}
+            onOpenInCanon={() => openInCanon(selected.id)}
+            onPublish={() => publish(selected.raw)}
+            onDetach={async () => { await unlinkLoreFromCampaign(selected.id); setSelectedId(null); }}
+            onDelete={async () => {
+              const yes = await confirm('Delete this lore entry?', 'This cannot be undone.');
+              if (yes) { await deleteLore(selected.id); setSelectedId(null); }
+            }}
+          />
+        ) : (
+          <EmptyDetail>Select an entry from the list</EmptyDetail>
+        )
+      }
+    />
+  );
+}
+
+interface LoreForm {
+  title: string;
+  category: string;
+  dm_only: boolean;
+  content: string;
+}
+
+function loreToForm(entry: LoreEntry): LoreForm {
+  return {
+    title: entry.title ?? '',
+    category: entry.category ?? 'history',
+    dm_only: entry.dm_only ?? false,
+    content: entry.content ?? '',
+  };
+}
+
+interface DetailProps {
+  origin: Origin;
+  onOpenInCanon: () => void;
+  onPublish: () => void;
+  onDetach: () => void;
+  onDelete: () => void;
+}
+
+function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelete }: { entry: LoreEntry } & DetailProps) {
+  const { upsertLore } = useCampaign();
+  const [form, setForm] = useState<LoreForm>(() => loreToForm(entry));
+
+  useEffect(() => { setForm(loreToForm(entry)); }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { status, saveNow } = useAutoSave<LoreForm>({
+    data: form,
+    onSave: async (data) => {
+      await upsertLore({
+        id: entry.id,
+        title: data.title || 'Untitled Entry',
+        category: data.category || null,
+        dm_only: data.dm_only,
+        content: data.content || null,
+        world_id: entry.world_id,
+      }, origin === 'imported' ? 'global' : 'campaign');
+    },
+    delay: 800,
+    enabled: true,
+  });
+
+  const set = <K extends keyof LoreForm>(key: K, value: LoreForm[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+
+  return (
+    <DetailPanel eyebrow="Lore" title="">
+      <OriginBand origin={origin} noun="lore entry" onOpenInCanon={onOpenInCanon} onPublish={onPublish} onDetach={onDetach} />
+
+      <div className="as-bar">
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <div className="as-spacer" />
+        <OverflowMenu items={[{ label: 'Delete entry', danger: true, onClick: onDelete }]} />
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          message={search || filterCategory !== 'all' ? 'No lore entries match your filters.' : 'No lore entries yet.'}
-          onAdd={!search && filterCategory === 'all' ? openAdd : undefined}
-          addLabel="Add Lore Entry"
-        />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map(entry => {
-            const isEditing = editingId === entry.id;
-            const isExpanded = expandedId === entry.id;
-            const cat = (entry.category as LoreCategory) ?? 'history';
+      <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" />
 
-            return (
-              <InlineEditCard
-                key={entry.id}
-                entityId={entry.id}
-                isEditing={isEditing}
-                onSave={saveEdit}
-                onCancel={cancelEdit}
-                onDelete={() => handleDelete(entry.id)}
-                saving={saving}
-              >
-                {isEditing && editForm ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block mb-1" style={labelStyle}>Title</label>
-                        <input
-                          type="text"
-                          value={editForm.title}
-                          onChange={e => setEditForm(prev => prev ? { ...prev, title: e.target.value } : prev)}
-                          autoFocus
-                          style={inputEditStyle}
-                        />
-                      </div>
-                      <div>
-                        <label className="block mb-1" style={labelStyle}>Category</label>
-                        <select
-                          value={editForm.category}
-                          onChange={e => setEditForm(prev => prev ? { ...prev, category: e.target.value as LoreCategory } : prev)}
-                          style={inputEditStyle}
-                        >
-                          {LORE_CATEGORIES.map(c => (
-                            <option key={c} value={c}>{formatCategory(c)}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block mb-1" style={labelStyle}>Content</label>
-                      <AutoGrowTextarea
-                        value={editForm.content}
-                        onChange={v => setEditForm(prev => prev ? { ...prev, content: v } : prev)}
-                        placeholder="Describe this piece of lore…"
-                        style={inputEditStyle}
-                        minRows={4}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`dm-only-${entry.id}`}
-                        checked={editForm.dm_only}
-                        onChange={e => setEditForm(prev => prev ? { ...prev, dm_only: e.target.checked } : prev)}
-                        style={{ accentColor: 'var(--gold)' }}
-                      />
-                      <label htmlFor={`dm-only-${entry.id}`} className="text-xs" style={{ color: 'var(--ink-2)' }}>DM only</label>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : entry.id)}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold" style={{ color: 'var(--ink)', fontFamily: 'var(--serif)' }}>
-                              {entry.title || 'Untitled'}
-                            </h3>
-                            {entry.dm_only && <Badge label="DM Only" color="red" size="xs" />}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Badge label={formatCategory(cat)} color={categoryBadgeColor[cat]} size="xs" />
-                          <span className="text-xs ml-1" style={{ color: 'var(--ink-3)' }}>{isExpanded ? '▲' : '▼'}</span>
-                        </div>
-                      </div>
-
-                      {entry.content && (
-                        <p className="text-sm mt-2" style={{ color: 'var(--ink-2)', lineHeight: '1.6', whiteSpace: isExpanded ? 'pre-wrap' : undefined }}>
-                          {isExpanded
-                            ? entry.content
-                            : entry.content.substring(0, 140) + (entry.content.length > 140 ? '…' : '')}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #2e2c4a' }}>
-                      <Button variant="ghost" size="sm" onClick={() => startEdit(entry)} title="Edit">
-                        <Pencil size={12} strokeWidth={1.5} />
-                      </Button>
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(entry.id)}>Delete</Button>
-                    </div>
-                  </div>
-                )}
-              </InlineEditCard>
-            );
-          })}
+      <div className="as-meta">
+        <div className="as-mi">
+          <span className="as-ml">Category</span>
+          <select className="as-select" value={form.category} onChange={e => set('category', e.target.value)}>
+            {LORE_CATEGORIES.map(c => <option key={c} value={c}>{cap(c)}</option>)}
+          </select>
         </div>
-      )}
+        <div className="as-mi">
+          <span className="as-ml">DM Only</span>
+          <div className="as-pills">
+            <button type="button" className={`as-pill-opt${form.dm_only ? ' is-active' : ''}`} onClick={() => set('dm_only', !form.dm_only)}>
+              {form.dm_only ? 'Hidden from players' : 'Visible to players'}
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Create modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="New Lore Entry"
-        onSave={handleCreate}
-        wide
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Title">
-            <input
-              type="text"
-              value={form.title}
-              onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="e.g., The Pale Chronicle"
-              style={inputStyle}
-              autoFocus
-            />
-          </FormField>
-          <FormField label="Category">
-            <select
-              value={form.category}
-              onChange={e => setForm(prev => ({ ...prev, category: e.target.value as LoreCategory }))}
-              style={inputStyle}
-            >
-              {LORE_CATEGORIES.map(c => (
-                <option key={c} value={c}>{formatCategory(c)}</option>
-              ))}
-            </select>
-          </FormField>
-        </div>
-        <FormField label="Content">
-          <AutoGrowTextarea
-            value={form.content}
-            onChange={v => setForm(prev => ({ ...prev, content: v }))}
-            placeholder="Describe this piece of lore — history, legend, artifact details, magical properties…"
-            style={{ ...inputStyle, lineHeight: '1.65' }}
-            minRows={5}
-          />
-        </FormField>
-        <div className="flex items-center gap-2 mt-1">
-          <input
-            type="checkbox"
-            id="new-lore-dm-only"
-            checked={form.dm_only}
-            onChange={e => setForm(prev => ({ ...prev, dm_only: e.target.checked }))}
-            style={{ accentColor: 'var(--gold)' }}
-          />
-          <label htmlFor="new-lore-dm-only" className="text-xs" style={{ color: 'var(--ink-2)' }}>DM only (hidden from players)</label>
-        </div>
-      </Modal>
-    </div>
+      <DetailSection title="Content">
+        <AutosaveTextarea value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" rows={8} />
+      </DetailSection>
+    </DetailPanel>
   );
 }

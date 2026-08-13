@@ -6,21 +6,10 @@
    ════════════════════════════════════════════════════════════════ */
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 
-/* ── Type metadata (colours + glyphs) for submodule & scene types ── */
-export interface TypeInfo { label: string; glyph: string; color: string; }
-
-export const TYPE_META: Record<string, TypeInfo> = {
-  location:    { label: 'Location',    glyph: '✦', color: '#7fb0e0' },
-  encounter:   { label: 'Encounter',   glyph: '⚔', color: '#e08585' },
-  heist:       { label: 'Heist',       glyph: '◈', color: '#c79ae6' },
-  event:       { label: 'Event',       glyph: '❂', color: '#7fb0e0' },
-  social:      { label: 'Social',      glyph: '❧', color: '#e0a866' },
-  puzzle:      { label: 'Puzzle',      glyph: '✧', color: '#7fd0a0' },
-  travel:      { label: 'Travel',      glyph: '➟', color: '#a8a090' },
-  trap:        { label: 'Trap',        glyph: '△', color: '#e0884a' },
-  exploration: { label: 'Exploration', glyph: '◇', color: '#7fd0a0' },
-  other:       { label: 'Other',       glyph: '•', color: '#9a8f78' },
-};
+/* Type metadata now lives in src/lib/theme.ts (audit F9) — re-export to keep this module's API. */
+import { moduleTypeMeta as TYPE_META, type TypeInfo } from '../../../lib/theme';
+export { TYPE_META };
+export type { TypeInfo };
 
 export const SUBMODULE_TYPES = ['location', 'encounter', 'social', 'heist', 'event', 'travel', 'exploration', 'other'];
 export const SCENE_TYPES = ['encounter', 'puzzle', 'social', 'trap', 'exploration', 'event', 'other'];

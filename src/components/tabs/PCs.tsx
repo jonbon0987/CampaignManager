@@ -72,7 +72,7 @@ export default function PCs() {
                                   backgroundColor: style.bg,
                                   color: style.text,
                                   border: `1px solid ${style.border}`,
-                                  borderRadius: 3,
+                                  borderRadius: 'var(--radius)',
                                   padding: '1px 5px',
                                   fontSize: 10,
                                   lineHeight: 1.3,
@@ -93,7 +93,7 @@ export default function PCs() {
                               type="button"
                               onClick={e => { e.stopPropagation(); openStatBlock(sb.id); }}
                               className="text-xs underline"
-                              style={{ color: '#70a0e0', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                              style={{ color: 'var(--info)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                               title="Open stat sheet"
                             >
                               {sb.name}

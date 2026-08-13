@@ -21,7 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const provider = resolveProvider(bodyProvider);
-    const raw = await generateText({ provider, prompt, maxTokens: 1024 });
+    // A full encounter can include several complete new stat blocks, so give it
+    // plenty of room — 1024 truncated multi-creature JSON responses.
+    const raw = await generateText({ provider, prompt, maxTokens: 8192 });
     return res.status(200).json({ text: raw });
   } catch (err) {
     return res.status(500).json({ error: friendlyError(err) });

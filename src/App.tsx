@@ -7,7 +7,10 @@ import Topbar from './components/Topbar';
 import Overview from './components/tabs/Overview';
 import SessionNotes from './components/tabs/SessionNotes';
 import Characters from './components/tabs/Characters';
-import LoreLocations from './components/tabs/LoreLocations';
+import Lore from './components/tabs/Lore';
+import Locations from './components/tabs/Locations';
+import Threads from './components/tabs/Threads';
+import Ideas from './components/tabs/Ideas';
 import Modules from './components/tabs/Modules';
 import CombatView from './components/tabs/CombatView';
 import Workbench from './components/Workbench';
@@ -35,24 +38,25 @@ import { WorldNPCsView, WorldLocationsView, WorldLoreView, WorldCombatView } fro
 import WorldTimeline from './components/world/WorldTimeline';
 import WorldImportDrawer from './components/world/WorldImportDrawer';
 
-// Consolidated from 10 tabs to 6 + settings (Scriptorium redesign)
-// cast = PCs + NPCs + Factions, world = Locations + Lore, combat = Stat Sheets + Encounters
-export type Tab = 'overview' | 'cast' | 'world' | 'modules' | 'sessions' | 'combat' | 'settings';
+// cast = PCs + NPCs + Factions; Lore & Locations are separate compendium tabs;
+// Threads & Ideas are separate play tabs; combat = Stat Sheets + Encounters
+export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'threads' | 'ideas' | 'modules' | 'sessions' | 'combat' | 'settings';
 
 // View options per tab — what the topbar segment control shows
 const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
   cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship Web' }],
+  threads:  [{ id: 'board', label: 'Board' }, { id: 'pipeline', label: 'Pipeline' }],
   modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Dependencies' }],
-  sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }, { id: 'hooks', label: 'Hooks' }],
+  sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }],
 };
 
 const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
-  cast: 'list', modules: 'list', sessions: 'log',
+  cast: 'list', threads: 'board', modules: 'list', sessions: 'log',
 };
 
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', modules: 'list', sessions: 'log' });
+  const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', threads: 'board', modules: 'list', sessions: 'log' });
   const [aiOpen, setAiOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
   const [isMobile, setIsMobile] = useState(false);
@@ -132,7 +136,8 @@ function AppInner({ user }: { user: User }) {
 
   // Get the display label for topbar breadcrumb
   const TAB_LABELS: Record<Tab, string> = {
-    overview: 'Overview', cast: 'Cast', world: 'World',
+    overview: 'Overview', cast: 'Cast', lore: 'Lore', locations: 'Locations',
+    threads: 'Threads', ideas: 'Ideas',
     modules: 'Modules', sessions: 'Sessions', combat: 'Combat',
     settings: 'Settings',
   };
@@ -186,7 +191,7 @@ function AppInner({ user }: { user: User }) {
 
           <div className="cm-canvas">
             {error && (
-              <div style={{ margin: '16px 28px', padding: '12px 16px', borderRadius: '6px', fontSize: '14px', backgroundColor: 'var(--redBg, #3a1a1a)', color: '#e05c5c', border: '1px solid #6a2a2a' }}>
+              <div style={{ margin: '16px 28px', padding: '12px 16px', borderRadius: 'var(--radius)', fontSize: '14px', backgroundColor: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-line)' }}>
                 Failed to load data: {error}
               </div>
             )}
@@ -196,7 +201,10 @@ function AppInner({ user }: { user: User }) {
               <>
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
                 {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} />}
-                {activeTab === 'world'     && <LoreLocations onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} />}
+                {activeTab === 'lore'      && <Lore />}
+                {activeTab === 'locations' && <Locations />}
+                {activeTab === 'threads'   && <Threads viewMode={viewModes.threads ?? 'board'} onNavigate={setActiveTab} />}
+                {activeTab === 'ideas'     && <Ideas onNavigate={setActiveTab} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} />}
                 {activeTab === 'combat'    && <CombatView onImportFromWorld={() => { setImportType('bestiary'); setImportOpen(true); }} />}
@@ -306,7 +314,7 @@ function LoginScreen() {
       style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)' }}
     >
       <div className="text-center">
-        <div className="text-5xl mb-4 select-none">⚔️</div>
+        <div className="text-5xl mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
         <h1
           className="text-3xl font-bold mb-2"
           style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
@@ -339,7 +347,7 @@ function LoginScreen() {
               style={inputStyle}
               data-testid="login-password"
             />
-            {error && <p className="text-xs" data-testid="login-error" style={{ color: '#e05c5c' }}>{error}</p>}
+            {error && <p className="text-xs" data-testid="login-error" style={{ color: 'var(--red)' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
@@ -371,12 +379,12 @@ function LoginScreen() {
               className="px-4 py-2 rounded text-sm outline-none"
               style={inputStyle}
             />
-            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
             >
               {loading ? '…' : 'Send reset link'}
             </button>
@@ -434,13 +442,13 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center gap-8"
-      style={{ backgroundColor: '#0f0e17', color: '#e8d5b0' }}
+      style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)' }}
     >
       <div className="text-center">
-        <div className="text-5xl mb-4 select-none">⚔️</div>
+        <div className="text-5xl mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
         <h1
           className="text-3xl font-bold mb-2"
-          style={{ color: '#c9a84c', fontFamily: 'Georgia, Cambria, serif' }}
+          style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
         >
           Set New Password
         </h1>
@@ -469,12 +477,12 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
               className="px-4 py-2 rounded text-sm outline-none"
               style={inputStyle}
             />
-            {error && <p className="text-xs" style={{ color: '#e05c5c' }}>{error}</p>}
+            {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: '#c9a84c', color: '#0f0e17' }}
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
             >
               {loading ? '…' : 'Update password'}
             </button>

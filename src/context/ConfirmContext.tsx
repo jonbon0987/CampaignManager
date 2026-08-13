@@ -64,8 +64,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               transform: 'translate(-50%, -50%)',
               zIndex: 9999,
               backgroundColor: 'var(--paper)',
-              border: '1px solid #3a3660',
-              borderRadius: '12px',
+              border: '1px solid var(--rule)',
+              borderRadius: 'var(--radius-lg)',
               padding: '24px',
               minWidth: '320px',
               maxWidth: '440px',
@@ -78,7 +78,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   margin: '0 0 8px',
                   fontSize: '16px',
                   fontWeight: 700,
-                  color: state.danger ? '#e05c5c' : 'var(--gold)',
+                  color: state.danger ? 'var(--red)' : 'var(--gold)',
                   fontFamily: 'var(--serif)',
                 }}
               >
@@ -100,8 +100,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 onClick={() => handleClose(false)}
                 style={{
                   background: 'none',
-                  border: '1px solid #3a3660',
-                  borderRadius: '6px',
+                  border: '1px solid var(--rule)',
+                  borderRadius: 'var(--radius)',
                   padding: '8px 16px',
                   fontSize: '13px',
                   color: 'var(--ink-2)',
@@ -116,14 +116,14 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 autoFocus
                 style={{
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: 'var(--radius)',
                   padding: '8px 16px',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   fontFamily: 'var(--serif)',
-                  backgroundColor: state.danger !== false ? '#c94c4c' : 'var(--gold)',
-                  color: '#fff',
+                  backgroundColor: state.danger !== false ? 'var(--red)' : 'var(--gold)',
+                  color: 'var(--bg)',
                 }}
               >
                 {state.confirmLabel ?? 'Delete'}

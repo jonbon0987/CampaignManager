@@ -26,6 +26,44 @@ function textFields(entity: Record<string, unknown>, keys: string[]): string {
   return lines.length ? '\n' + lines.join('\n') : '';
 }
 
+// ── Compact context block for one-shot generation prompts ──────────────────
+// Lighter than formatCampaignContext (no ids / full entity dump). Used by the
+// creature and encounter generators so a generated stat block or fight feels
+// native to the campaign.
+
+export type GenContextData = {
+  overview: { title: string; plotSummary: string };
+  sessions: Array<{ session_number: number | null; session_date: string | null; summary: string | null }>;
+  lore: Array<{ title: string; category: string | null; content: string | null }>;
+  locations: Array<{ name: string; region: string | null; location_type: string | null; description: string | null }>;
+};
+
+export function buildCampaignContextBlock(data: GenContextData): string {
+  const parts: string[] = ['\n\n== CAMPAIGN CONTEXT ==', `Campaign: ${data.overview.title || 'Unnamed'}`];
+  if (data.overview.plotSummary) parts.push(`Plot: ${data.overview.plotSummary}`);
+  if (data.sessions.length > 0) {
+    parts.push('\nRecent Sessions:');
+    data.sessions.slice(-5).forEach(s => {
+      if (s.summary) parts.push(`  Session #${s.session_number ?? '?'}: ${s.summary}`);
+    });
+  }
+  if (data.lore.length > 0) {
+    parts.push('\nLore:');
+    data.lore.slice(0, 10).forEach(l => {
+      const snippet = l.content ? l.content.substring(0, 120) + (l.content.length > 120 ? '…' : '') : '';
+      parts.push(`  [${l.category ?? 'lore'}] ${l.title}${snippet ? ': ' + snippet : ''}`);
+    });
+  }
+  if (data.locations.length > 0) {
+    parts.push('\nLocations:');
+    data.locations.slice(0, 10).forEach(l => {
+      parts.push(`  ${l.name} (${l.location_type ?? '?'})${l.region ? ` in ${l.region}` : ''}${l.description ? ': ' + l.description.substring(0, 80) + '…' : ''}`);
+    });
+  }
+  parts.push('\nUse this campaign context to make the generated content feel native to this world — reference appropriate locations, lore, and ongoing story threads where fitting.\n');
+  return parts.join('\n');
+}
+
 export function formatCampaignContext(data: {
   sessions: Session[];
   pcs: PlayerCharacter[];

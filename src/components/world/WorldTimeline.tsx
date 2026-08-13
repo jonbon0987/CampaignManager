@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { Pill } from '../ui/ListDetail';
+import { Button } from '../ui/Button';
 import type { WorldTimelineEvent, TimelineEventType } from '../../types/world';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -62,7 +63,7 @@ export default function WorldTimeline() {
           <div className="tl-eyebrow">{filtered.length} events · {activeWorld?.calendar ?? ''}</div>
           <h2 className="tl-title">World Timeline</h2>
         </div>
-        <button className="cm-md-add" onClick={() => setAddOpen(true)}>+ New Event</button>
+        <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>+ New Event</Button>
       </div>
 
       <div className="tl-filters">
@@ -119,10 +120,10 @@ export default function WorldTimeline() {
             })}
           </div>
         )}
-        <button className="tl-add" onClick={() => setAddOpen(true)}>
+        <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)} style={{ marginTop: 12 }}>
           <span style={{ color: 'var(--gold)' }}>+</span>
           Add event to timeline
-        </button>
+        </Button>
       </div>
 
       {addOpen && (
@@ -237,10 +238,10 @@ function TimelineEventCard({
             <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} />
           </div>
           <div className="tl-edit-actions">
-            <button className="ne-btn ne-btn-danger" onClick={onDelete}>Delete</button>
+            <Button variant="danger" onClick={onDelete}>Delete</Button>
             <div style={{ flex: 1 }} />
-            <button className="ne-btn" onClick={handleCancel}>Cancel</button>
-            <button className="ne-btn ne-btn-primary" onClick={handleSave} disabled={!title.trim()}>Save</button>
+            <Button variant="secondary" onClick={handleCancel}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave} disabled={!title.trim()}>Save</Button>
           </div>
         </div>
       </div>
@@ -295,8 +296,8 @@ function TimelineEventCard({
           </div>
           <div className="tl-event-expanded-desc">{event.desc}</div>
           <div className="tl-edit-actions" style={{ marginTop: 8 }}>
-            <button className="ne-btn ne-btn-primary" onClick={(e) => { e.stopPropagation(); onEdit(); }}>Edit</button>
-            <button className="ne-btn ne-btn-danger" onClick={(e) => { e.stopPropagation(); onDelete(); }}>Delete</button>
+            <Button variant="primary" onClick={(e) => { e.stopPropagation(); onEdit(); }}>Edit</Button>
+            <Button variant="danger" onClick={(e) => { e.stopPropagation(); onDelete(); }}>Delete</Button>
           </div>
         </div>
       )}
@@ -379,8 +380,8 @@ function NewEventModal({
           </div>
         </div>
         <div className="ne-foot">
-          <button className="ne-btn" onClick={onClose}>Cancel</button>
-          <button className="ne-btn ne-btn-primary" onClick={handleSave} disabled={!title.trim()}>Add Event</button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={handleSave} disabled={!title.trim()}>Add Event</Button>
         </div>
       </div>
     </div>

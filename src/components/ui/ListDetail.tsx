@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { Button } from './Button';
 
 export interface AddOption {
   label: string;
@@ -39,9 +40,9 @@ function AddMenu({ label, options }: { label: string; options: AddOption[] }) {
 
   return (
     <div ref={ref} className="as-ov">
-      <button className="cm-md-add" onClick={() => setOpen(o => !o)}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(o => !o)}>
         {label} ▾
-      </button>
+      </Button>
       {open && (
         <div className="as-ov-menu">
           {options.map((opt, i) => (
@@ -91,21 +92,26 @@ export function ListDetail({
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             {onGenerate && (
-              <button className="cm-md-add cm-md-generate" onClick={onGenerate}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onGenerate}
+                style={{ color: '#c060d0', background: '#2a1a3a', borderColor: '#5a2a7a' }}
+              >
                 {generateLabel}
-              </button>
+              </Button>
             )}
             {onImport && (
-              <button className="cm-md-add cm-md-import" onClick={onImport}>
+              <Button variant="secondary" size="sm" onClick={onImport} style={{ color: 'var(--ink-3)' }}>
                 {importLabel}
-              </button>
+              </Button>
             )}
             {addOptions ? (
               <AddMenu label={addLabel} options={addOptions} />
             ) : onAdd ? (
-              <button className="cm-md-add" onClick={onAdd}>
+              <Button variant="secondary" size="sm" onClick={onAdd}>
                 {addLabel}
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>

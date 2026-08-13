@@ -15,6 +15,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
+import type { WorldLocation } from '../../types/world';
 import type { ReactNode } from 'react';
 
 const VALID_CRS_SET = new Set([
@@ -239,57 +240,103 @@ function WorldNPCEditDetail({ entity }: { entity: any }) {
 // WORLD LOCATIONS VIEW
 // ═══════════════════════════════════════════
 
+const LOC_GLYPH: Record<string, string> = {
+  continent: '⛰', city: '⌖', town: '⌂', dungeon: '⌗', faction_hq: '◈', landmark: '✦', other: '✦',
+};
+const glyphForType = (t: string | null) => LOC_GLYPH[t ?? 'other'] ?? '✦';
+
 export function WorldLocationsView() {
-  const { locations, npcs, locById, selected, setSelected, createLocation } = useWorld();
+  const { locations, selected, setSelected, createLocation } = useWorld();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const types = useMemo(() => [...new Set(locations.map(l => l.type))], [locations]);
+  const byId = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations]);
 
-  const items = useMemo(() => {
-    return locations.filter(x => {
-      if (filter !== 'all' && x.type !== filter) return false;
-      if (search && !`${x.name} ${x.desc}`.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
+  // Group children by parent; a parent outside this world's set counts as a root.
+  const childrenOf = useMemo(() => {
+    const m = new Map<string | null, WorldLocation[]>();
+    for (const l of locations) {
+      const pid = l.parent && byId.has(l.parent) ? l.parent : null;
+      const arr = m.get(pid) ?? [];
+      arr.push(l);
+      m.set(pid, arr);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
+    return m;
+  }, [locations, byId]);
+
+  // Search → ids to show (matches plus their ancestors, keeping the tree connected).
+  const visible = useMemo(() => {
+    if (!search) return null;
+    const q = search.toLowerCase();
+    const match = (l: WorldLocation) => `${l.name} ${l.desc} ${l.type}`.toLowerCase().includes(q);
+    const show = new Set<string>();
+    for (const l of locations) {
+      if (!match(l)) continue;
+      let cur: WorldLocation | undefined = l;
+      while (cur && !show.has(cur.id)) {
+        show.add(cur.id);
+        cur = cur.parent ? byId.get(cur.parent) : undefined;
+      }
+    }
+    return show;
+  }, [search, locations, byId]);
+
+  const roots = childrenOf.get(null) ?? [];
+  const sel = (selected.locations && byId.get(selected.locations)) || roots[0] || null;
+
+  const toggle = (id: string) =>
+    setCollapsed(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
     });
-  }, [locations, filter, search]);
 
-  const sel = items.find(x => x.id === selected.locations) || items[0];
+  const renderNode = (l: WorldLocation, depth: number): React.ReactNode => {
+    if (visible && !visible.has(l.id)) return null;
+    const kids = (childrenOf.get(l.id) ?? []).filter(k => !visible || visible.has(k.id));
+    const isOpen = !collapsed.has(l.id);
+    return (
+      <div key={l.id}>
+        <div
+          className={`cm-tree-node ${sel?.id === l.id ? 'is-active' : ''}`}
+          style={{ paddingLeft: 8 + depth * 18 }}
+          onClick={() => setSelected('locations', l.id)}
+        >
+          {kids.length ? (
+            <button type="button" className="cm-tree-caret is-btn" onClick={e => { e.stopPropagation(); toggle(l.id); }}>
+              {isOpen ? '▾' : '▸'}
+            </button>
+          ) : (
+            <span className="cm-tree-caret" />
+          )}
+          <span className="cm-tree-glyph" style={{ color: 'var(--gold)' }}>{glyphForType(l.type)}</span>
+          <span className="cm-tree-name">{l.name || 'Unnamed Location'}</span>
+          <span className="cm-tree-type">{formatType(l.type)}</span>
+        </div>
+        {isOpen && kids.map(k => renderNode(k, depth + 1))}
+      </div>
+    );
+  };
 
   return (
     <ListDetail
       title="World Locations"
-      count={items.length}
+      count={visible ? visible.size : locations.length}
       search={search}
       onSearchChange={setSearch}
       onAdd={async () => { const id = await createLocation(); if (id) setSelected('locations', id); }}
-      filters={
-        <>
-          <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
-          {types.map(t => (
-            <Pill key={t} active={filter === t} onClick={() => setFilter(filter === t ? 'all' : t)}>{formatType(t)}</Pill>
-          ))}
-        </>
-      }
       list={
-        <div>
-          {items.map(x => {
-            const parent = x.parent ? locById[x.parent] : null;
-            return (
-              <ListRow
-                key={x.id}
-                active={sel?.id === x.id}
-                onClick={() => setSelected('locations', x.id)}
-                glyph="✦"
-                title={x.name}
-                subtitle={parent ? `${formatType(x.type)} · in ${parent.name}` : formatType(x.type)}
-                badges={x.tags.slice(0, 2).map(t => <SubtleTag key={t}>{t}</SubtleTag>)}
-              />
-            );
-          })}
-        </div>
+        locations.length === 0 ? (
+          <div className="cm-empty is-inline">No locations yet — add one to start the map</div>
+        ) : (
+          <>
+            <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>
+            <div className="cm-tree-legend"><span className="cm-tree-legend-dot is-gold" /> shared world canon</div>
+          </>
+        )
       }
-      detail={sel ? <WorldLocationDetail loc={sel} /> : <EmptyDetail>Select a location.</EmptyDetail>}
+      detail={sel ? <WorldLocationDetail loc={sel} allLocations={locations} /> : <EmptyDetail>Select a location.</EmptyDetail>}
     />
   );
 }
@@ -306,6 +353,7 @@ interface LocForm {
   name: string;
   region: string;
   location_type: string;
+  parent_id: string;
   population: string;
   status: string;
   description: string;
@@ -313,33 +361,38 @@ interface LocForm {
   dm_notes: string;
 }
 
-function WorldLocationDetail({ loc }: { loc: any }) {
+// Ids that can't be a parent of `loc`: itself and its descendants (would form a cycle).
+function forbiddenParents(loc: WorldLocation, all: WorldLocation[]): Set<string> {
+  const bad = new Set<string>([loc.id]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const l of all) {
+      if (l.parent && bad.has(l.parent) && !bad.has(l.id)) { bad.add(l.id); added = true; }
+    }
+  }
+  return bad;
+}
+
+function WorldLocationDetail({ loc, allLocations }: { loc: WorldLocation; allLocations: WorldLocation[] }) {
   const { upsertWorldLocation, deleteWorldLocation } = useWorld();
   const confirm = useConfirm();
 
-  const [form, setForm] = useState<LocForm>(() => ({
-    name: loc.name ?? '',
+  const toForm = (l: WorldLocation): LocForm => ({
+    name: l.name ?? '',
     region: '',
-    location_type: loc.type ?? 'landmark',
+    location_type: l.type ?? 'landmark',
+    parent_id: l.parent ?? '',
     population: '',
     status: 'active',
-    description: loc.desc ?? '',
+    description: l.desc ?? '',
     history: '',
     dm_notes: '',
-  }));
+  });
 
-  useEffect(() => {
-    setForm({
-      name: loc.name ?? '',
-      region: '',
-      location_type: loc.type ?? 'landmark',
-      population: '',
-      status: 'active',
-      description: loc.desc ?? '',
-      history: '',
-      dm_notes: '',
-    });
-  }, [loc.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [form, setForm] = useState<LocForm>(() => toForm(loc));
+
+  useEffect(() => { setForm(toForm(loc)); }, [loc.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { status, saveNow } = useAutoSave<LocForm>({
     data: form,
@@ -349,6 +402,7 @@ function WorldLocationDetail({ loc }: { loc: any }) {
         name: data.name || 'Unnamed Location',
         region: data.region || null,
         location_type: data.location_type || null,
+        parent_id: data.parent_id || null,
         population: data.population || null,
         status: data.status || null,
         description: data.description || null,
@@ -362,6 +416,11 @@ function WorldLocationDetail({ loc }: { loc: any }) {
 
   const set = <K extends keyof LocForm>(key: K, value: LocForm[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
+
+  const forbidden = useMemo(() => forbiddenParents(loc, allLocations), [loc, allLocations]);
+  const parentOptions = allLocations
+    .filter(l => !forbidden.has(l.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <DetailPanel eyebrow="Location" title="">
@@ -383,6 +442,13 @@ function WorldLocationDetail({ loc }: { loc: any }) {
           <span className="as-ml">Type</span>
           <select className="as-select" value={form.location_type} onChange={e => set('location_type', e.target.value)}>
             {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
+          </select>
+        </div>
+        <div className="as-mi">
+          <span className="as-ml">Within</span>
+          <select className="as-select" value={form.parent_id} onChange={e => set('parent_id', e.target.value)}>
+            <option value="">— Top level —</option>
+            {parentOptions.map(l => <option key={l.id} value={l.id}>{l.name || 'Unnamed'}</option>)}
           </select>
         </div>
         <div className="as-mi">
@@ -788,11 +854,11 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         saveLabel="Generate"
       >
         <div className="space-y-4">
-          <div className="flex rounded overflow-hidden" style={{ border: '1px solid #3a3660' }}>
+          <div className="flex rounded overflow-hidden" style={{ border: '1px solid var(--rule)' }}>
             {(['cr', 'party'] as const).map(mode => (
               <button key={mode} onClick={() => { setGenMode(mode); setGenError(''); }} disabled={genLoading}
                 className="flex-1 text-sm py-1.5 font-medium transition-colors"
-                style={{ backgroundColor: genMode === mode ? '#2a2050' : 'var(--paper)', color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)' }}>
+                style={{ backgroundColor: genMode === mode ? 'var(--gold-dim)' : 'var(--paper)', color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)' }}>
                 {mode === 'cr' ? 'By Challenge Rating' : 'By Party'}
               </button>
             ))}
@@ -838,7 +904,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               style={textareaStyle} disabled={genLoading} />
           </FormField>
 
-          {genError && <p className="text-sm" style={{ color: '#e05c5c' }}>{genError}</p>}
+          {genError && <p className="text-sm" style={{ color: 'var(--red)' }}>{genError}</p>}
           {genLoading && <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>Generating stat block…</p>}
         </div>
       </Modal>
@@ -850,30 +916,30 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             <div className="flex items-center gap-2 flex-wrap">
               {viewingStatblock.creature_type && (
                 <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: '#3a1a1a', color: '#e07070', borderColor: '#7a2a2a' }}>
+                  style={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)', borderColor: 'var(--red-line)' }}>
                   {viewingStatblock.creature_type}
                 </span>
               )}
               {viewingStatblock.challenge_rating && (
                 <span className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: '#2a1a1a', color: '#c08060', border: '1px solid #5a3a2a' }}>
+                  style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
                   CR {viewingStatblock.challenge_rating}
                 </span>
               )}
               {viewingStatblock.tags && (
-                <span className="text-xs" style={{ color: '#897f68' }}>{viewingStatblock.tags}</span>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewingStatblock.tags}</span>
               )}
             </div>
             {viewingStatblock.content && (
               <pre className="text-sm whitespace-pre-wrap rounded p-3"
-                style={{ color: '#e8dcc4', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
+                style={{ color: 'var(--ink)', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
                 {viewingStatblock.content}
               </pre>
             )}
             {viewingStatblock.dm_notes && (
               <div>
-                <div style={{ color: '#c9a84c', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.5rem' }}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.6', fontStyle: 'italic' }}>
+                <div style={{ color: 'var(--gold)', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.5rem' }}>DM Notes</div>
+                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
                   {viewingStatblock.dm_notes}
                 </p>
               </div>
@@ -1019,11 +1085,11 @@ function WorldBestiaryDetail({
         {/* Actions */}
         <div style={{ marginTop: 'auto', paddingTop: 20, borderTop: '1px solid var(--rule)', display: 'flex', gap: 8 }}>
           <button onClick={openEdit}
-            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 4, padding: '6px 14px', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
+            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '6px 14px', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
             Edit
           </button>
           <button onClick={handleDelete}
-            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 4, padding: '6px 12px', color: '#e05c5c', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
+            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '6px 12px', color: 'var(--red)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
             ✕ Delete
           </button>
         </div>
@@ -1047,7 +1113,7 @@ function WorldBestiaryDetail({
         <FormField label="Tags">
           <input type="text" value={form.tags} onChange={field('tags')} placeholder="Comma-separated: boss, undead, ranged..." style={inputStyle} />
         </FormField>
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
         <div className="grid grid-cols-3 gap-3">
           <div>
             <FormField label="Armor Class">
@@ -1100,7 +1166,7 @@ function WorldBestiaryDetail({
             <input type="text" value={form.languages} onChange={field('languages')} placeholder="e.g. Common, Draconic" style={inputStyle} />
           </FormField>
         </div>
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
         <FormField label="Actions & Traits">
           <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))}
             placeholder="Actions, bonus actions, reactions, legendary actions..." minHeight="280px" />

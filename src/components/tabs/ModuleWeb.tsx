@@ -15,6 +15,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { wouldCreateModuleCycle } from '../../lib/moduleUtils';
 import type { DependencyType, Module } from '../../lib/database.types';
+import { Button } from '../ui/Button';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ const ROW_GAP = 100;
 const STATUS_COLOR: Record<Module['status'], string> = {
   planned:   'var(--ink-3)',
   active:    'var(--gold)',
-  completed: '#4caf7d',
+  completed: 'var(--success)',
 };
 
 const STATUS_LABEL: Record<Module['status'], string> = {
@@ -306,7 +307,7 @@ export default function ModuleWeb({ onOpen }: { onOpen?: (id: string) => void })
               {/* Inline add-dependency (was a modal) */}
               <div className="mw-side-actions">
                 {!adding ? (
-                  <button className="mw-side-btn-primary" onClick={startAdd}>+ Add Dependency</button>
+                  <Button variant="primary" size="sm" onClick={startAdd}>+ Add Dependency</Button>
                 ) : (
                   <div className="mw-depadd">
                     <div className="mw-depadd-title">New prerequisite for <b>{focusedMod.title}</b></div>
@@ -328,8 +329,8 @@ export default function ModuleWeb({ onOpen }: { onOpen?: (id: string) => void })
                       onChange={e => setDepForm(f => ({ ...f, label: e.target.value }))} />
                     {depError && <div className="mw-depadd-err">{depError}</div>}
                     <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      <button className="mw-side-btn-primary" disabled={!depForm.prerequisite_id} onClick={handleSaveDep}>Add</button>
-                      <button className="mw-side-btn-ghost" onClick={() => setAdding(false)}>Cancel</button>
+                      <Button variant="primary" size="sm" disabled={!depForm.prerequisite_id} onClick={handleSaveDep}>Add</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>Cancel</Button>
                     </div>
                   </div>
                 )}

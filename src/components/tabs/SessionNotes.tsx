@@ -6,6 +6,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import type { Session } from '../../lib/database.types';
 
@@ -257,10 +258,10 @@ function SessionLog() {
             <div className="cm-md-eyebrow">{sessions.length} session{sessions.length !== 1 ? 's' : ''}</div>
             <div className="cm-md-title">Sessions</div>
           </div>
-          <button className="cm-md-add" onClick={handleAdd} title="New session">
+          <Button variant="secondary" size="sm" onClick={handleAdd} title="New session">
             <Plus size={13} strokeWidth={1.8} style={{ display: 'inline', verticalAlign: 'middle' }} />
             {' '}New
-          </button>
+          </Button>
         </div>
 
         {/* Search */}
@@ -526,9 +527,9 @@ function SessionPrepView() {
               minHeight="240px"
             />
             <div>
-              <button className="pw-action pw-action-primary" onClick={savePrep} disabled={savingPrep}>
+              <Button variant="primary" onClick={savePrep} disabled={savingPrep}>
                 {savingPrep ? 'Saving…' : 'Save prep notes'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -547,20 +548,20 @@ function SessionPrepView() {
                   <div className="pw-hook-title">{h.title}</div>
                   {h.description && <div className="pw-hook-desc">{h.description.replace(/[#*_`]/g, '').slice(0, 120)}</div>}
                 </div>
-                <button
-                  className="pw-action"
+                <Button
+                  variant="secondary"
                   style={{ color: 'var(--ink-3)', borderColor: 'var(--rule)', fontSize: 11 }}
                   onClick={() => saveDangledHooks(dangledIds.filter(id => id !== h.id))}
                 >
                   ✕ remove
-                </button>
+                </Button>
               </div>
             )) : (
               <p className="pw-empty">No hooks selected yet. Add hooks you want to dangle below.</p>
             )}
 
             {hookPickerOpen ? (
-              <div style={{ marginTop: 12, border: '1px solid var(--rule)', borderRadius: 8, padding: 8, backgroundColor: 'var(--paper)' }}>
+              <div style={{ marginTop: 12, border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: 8, backgroundColor: 'var(--paper)' }}>
                 {availableHooks.length === 0 ? (
                   <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
                     {activeHooks.length === 0 ? 'No active hooks. Add some in the Hooks & Ideas tab.' : 'All active hooks already added.'}
@@ -571,7 +572,7 @@ function SessionPrepView() {
                       <button
                         key={h.id}
                         onClick={() => { saveDangledHooks([...dangledIds, h.id]); setHookPickerOpen(false); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, border: 'none', background: 'none', color: 'var(--ink)', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 'var(--radius)', border: 'none', background: 'none', color: 'var(--ink)', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)')}
                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
@@ -590,14 +591,14 @@ function SessionPrepView() {
                 </button>
               </div>
             ) : (
-              <button
-                className="pw-action"
+              <Button
+                variant="secondary"
                 style={{ marginTop: 12, color: 'var(--gold)', borderColor: 'var(--rule)', borderStyle: 'dashed' }}
                 onClick={() => setHookPickerOpen(true)}
                 disabled={savingHooks}
               >
                 + Add hook
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -637,9 +638,9 @@ function SessionPrepView() {
 
       {/* Nav */}
       <div className="pw-nav">
-        <button className="pw-action" disabled={step === 0} onClick={() => setStep(s => s - 1)}>← Previous</button>
+        <Button variant="secondary" disabled={step === 0} onClick={() => setStep(s => s - 1)}>← Previous</Button>
         <span className="pw-nav-count">{step + 1} / {PREP_STEPS.length}</span>
-        <button className="pw-action pw-action-primary" disabled={step === PREP_STEPS.length - 1} onClick={() => setStep(s => s + 1)}>Next →</button>
+        <Button variant="primary" disabled={step === PREP_STEPS.length - 1} onClick={() => setStep(s => s + 1)}>Next →</Button>
       </div>
     </div>
   );
@@ -653,18 +654,6 @@ export default function SessionNotes({ viewMode = 'log' }: { viewMode?: string; 
       {viewMode === 'log'      && <SessionLog />}
       {viewMode === 'timeline' && <SessionTimeline />}
       {viewMode === 'prep'     && <SessionPrepView />}
-      {viewMode === 'hooks'    && <div style={{ height: '100%', overflowY: 'auto' }}><HooksIdeasLazy /></div>}
     </div>
   );
-}
-
-// Lazy import for HooksIdeas to avoid circular deps
-function HooksIdeasLazy() {
-  const [mod, setMod] = useState<{ default: React.ComponentType } | null>(null);
-  if (!mod) {
-    import('./HooksIdeas').then(setMod);
-    return <div style={{ padding: '32px', color: 'var(--ink-3)', textAlign: 'center' }}>Loading...</div>;
-  }
-  const HooksIdeas = mod.default;
-  return <HooksIdeas />;
 }

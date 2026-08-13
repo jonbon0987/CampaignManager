@@ -1,15 +1,17 @@
 /* ════════════════════════════════════════════════════════════════
    moduleDetail/ModuleOverview.tsx
    The "module overview" state shown when no submodule is selected.
-   Inline-autosaves module-level fields and renders a dependency map.
+   Edits module-level fields (saved via the bottom Save button) and
+   renders a dependency map.
    ════════════════════════════════════════════════════════════════ */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
-import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useManualSave } from '../../../hooks/useManualSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
+import { Button } from '../../ui/Button';
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
 import { typeInfo } from './pickers';
 
@@ -38,11 +40,12 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
   modRef.current = module;
 
   const [form, setForm] = useState<ModuleForm>(() => toForm(module));
-  useEffect(() => { setForm(toForm(module)); }, [module.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const prevId = useRef(module.id);
+  if (prevId.current !== module.id) { prevId.current = module.id; setForm(toForm(module)); }
 
-  const { status, saveNow } = useAutoSave<ModuleForm>({
+  const { status, save, isDirty } = useManualSave<ModuleForm>({
     data: form,
-    delay: 800,
+    resetKey: module.id,
     onSave: async (d) => {
       await upsertModule({
         id: module.id,
@@ -68,7 +71,6 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
     <div className="cm-detail">
       <div className="md-editor">
         <div className="as-bar">
-          <SaveStatusIndicator status={status} onRetry={saveNow} />
           <div className="as-spacer" />
           <OverflowMenu items={[{
             label: 'Delete Module', danger: true,
@@ -160,6 +162,13 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
                 })}
               </div>
             )}
+        </div>
+
+        {/* save bar */}
+        <div className="md-savebar">
+          <SaveStatusIndicator status={status} onRetry={save} />
+          <div className="as-spacer" />
+          <Button variant="primary" disabled={!isDirty} onClick={save}>Save changes</Button>
         </div>
       </div>
     </div>

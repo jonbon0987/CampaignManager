@@ -3,6 +3,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { InitiativeTracker } from '../InitiativeTracker';
+import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
 import type { Encounter, MonsterStatblock } from '../../lib/database.types';
 import {
   EncounterDetail,
@@ -25,6 +26,9 @@ export default function EncounterBuilder() {
 
   // Search
   const [search, setSearch] = useState('');
+
+  // AI encounter generator
+  const [genOpen, setGenOpen] = useState(false);
 
   // Initiative tracker
   const [runningEncounter, setRunningEncounter] = useState<Encounter | null>(null);
@@ -103,35 +107,53 @@ export default function EncounterBuilder() {
         className="flex flex-col shrink-0"
         style={{
           width: '220px',
-          borderRight: '1px solid #2e2820',
+          borderRight: '1px solid var(--rule)',
           height: '100%',
           overflowY: 'auto',
         }}
       >
         {/* Header */}
         <div style={{ padding: '20px 16px 10px' }}>
-          <div style={{ color: '#897f68', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
+          <div style={{ color: 'var(--ink-3)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
             {encounters.length} {encounters.length === 1 ? 'entry' : 'entries'}
           </div>
-          <div className="flex items-center justify-between">
-            <span style={{ color: '#e8dcc4', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
+          <div className="flex items-center justify-between gap-1">
+            <span style={{ color: 'var(--ink)', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
               Encounters
             </span>
-            <button
-              onClick={handleAdd}
-              style={{
-                color: '#c9a84c',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                backgroundColor: 'transparent',
-                border: '1px solid #3e3428',
-                borderRadius: '4px',
-                padding: '2px 8px',
-                cursor: 'pointer',
-              }}
-            >
-              + New
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setGenOpen(true)}
+                title="Generate a full encounter with AI"
+                style={{
+                  color: 'var(--arcane)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  backgroundColor: 'var(--arcane-bg)',
+                  border: '1px solid var(--arcane-line)',
+                  borderRadius: 'var(--radius)',
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                }}
+              >
+                ✦ Generate
+              </button>
+              <button
+                onClick={handleAdd}
+                style={{
+                  color: 'var(--gold)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--rule-hover)',
+                  borderRadius: 'var(--radius)',
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                }}
+              >
+                + New
+              </button>
+            </div>
           </div>
         </div>
 
@@ -144,12 +166,12 @@ export default function EncounterBuilder() {
             onChange={e => setSearch(e.target.value)}
             style={{
               width: '100%',
-              backgroundColor: '#1e1a14',
-              border: '1px solid #2e2820',
-              borderRadius: '4px',
+              backgroundColor: 'var(--bg-2)',
+              border: '1px solid var(--rule)',
+              borderRadius: 'var(--radius)',
               padding: '5px 10px',
               fontSize: '0.78rem',
-              color: '#e8dcc4',
+              color: 'var(--ink)',
               outline: 'none',
             }}
           />
@@ -158,7 +180,7 @@ export default function EncounterBuilder() {
         {/* List */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {filtered.length === 0 && (
-            <div style={{ padding: '24px 16px', color: '#897f68', fontSize: '0.78rem', textAlign: 'center' }}>
+            <div style={{ padding: '24px 16px', color: 'var(--ink-3)', fontSize: '0.78rem', textAlign: 'center' }}>
               {encounters.length === 0 ? 'No encounters yet.' : 'No matches.'}
             </div>
           )}
@@ -173,16 +195,16 @@ export default function EncounterBuilder() {
                 style={{
                   padding: '10px 12px',
                   cursor: 'pointer',
-                  backgroundColor: isActive ? '#1e1a14' : 'transparent',
-                  borderLeft: isActive ? '2px solid #c9a84c' : '2px solid transparent',
+                  backgroundColor: isActive ? 'var(--bg-2)' : 'transparent',
+                  borderLeft: isActive ? '2px solid var(--gold)' : '2px solid transparent',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '6px',
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: isActive ? '#e8dcc4' : '#c9b88a', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'var(--display)', marginBottom: '4px', lineHeight: 1.3 }}>
-                    {enc.name || <em style={{ color: '#5a5040' }}>Unnamed</em>}
+                  <div style={{ color: isActive ? 'var(--ink)' : 'var(--ink-2)', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'var(--display)', marginBottom: '4px', lineHeight: 1.3 }}>
+                    {enc.name || <em style={{ color: 'var(--ink-4)' }}>Unnamed</em>}
                   </div>
                   {/* Difficulty badge + status pill */}
                   <div className="flex flex-wrap items-center gap-1">
@@ -195,7 +217,7 @@ export default function EncounterBuilder() {
                         backgroundColor: dc.bg,
                         color: dc.text,
                         border: `1px solid ${dc.border}`,
-                        borderRadius: '3px',
+                        borderRadius: 'var(--radius)',
                         padding: '1px 5px',
                       }}>
                         {enc.difficulty}
@@ -209,7 +231,7 @@ export default function EncounterBuilder() {
                       backgroundColor: sc.bg,
                       color: sc.text,
                       border: `1px solid ${sc.border}`,
-                      borderRadius: '3px',
+                      borderRadius: 'var(--radius)',
                       padding: '1px 5px',
                     }}>
                       {enc.status}
@@ -227,7 +249,7 @@ export default function EncounterBuilder() {
       ============================================================ */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
         {!selectedEnc ? (
-          <div style={{ color: '#897f68', fontSize: '0.85rem', marginTop: '60px', textAlign: 'center' }}>
+          <div style={{ color: 'var(--ink-3)', fontSize: '0.85rem', marginTop: '60px', textAlign: 'center' }}>
             Select an encounter to view details, or create a new one.
           </div>
         ) : (
@@ -252,30 +274,30 @@ export default function EncounterBuilder() {
             <div className="flex items-center gap-2 flex-wrap">
               {viewingStatblock.creature_type && (
                 <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: '#3a1a1a', color: '#e07070', borderColor: '#7a2a2a' }}>
+                  style={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)', borderColor: 'var(--red-line)' }}>
                   {viewingStatblock.creature_type}
                 </span>
               )}
               {viewingStatblock.challenge_rating && (
                 <span className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: '#2a1a1a', color: '#c08060', border: '1px solid #5a3a2a' }}>
+                  style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
                   CR {viewingStatblock.challenge_rating}
                 </span>
               )}
               {viewingStatblock.tags && (
-                <span className="text-xs" style={{ color: '#897f68' }}>{viewingStatblock.tags}</span>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewingStatblock.tags}</span>
               )}
             </div>
             {viewingStatblock.content && (
               <pre className="text-sm whitespace-pre-wrap rounded p-3"
-                style={{ color: '#e8dcc4', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
+                style={{ color: 'var(--ink)', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
                 {viewingStatblock.content}
               </pre>
             )}
             {viewingStatblock.dm_notes && (
               <div>
                 <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: '#b9ac90', lineHeight: '1.6', fontStyle: 'italic' }}>
+                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
                   {viewingStatblock.dm_notes}
                 </p>
               </div>
@@ -285,10 +307,19 @@ export default function EncounterBuilder() {
       )}
 
       {/* ================================================================
+          AI ENCOUNTER GENERATOR
+      ================================================================ */}
+      <GenerateEncounterModal
+        isOpen={genOpen}
+        onClose={() => setGenOpen(false)}
+        onCreated={enc => { setGenOpen(false); setSelectedId(enc.id); }}
+      />
+
+      {/* ================================================================
           INITIATIVE TRACKER
       ================================================================ */}
       {runningEncounter && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: '#15120e' }}>
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
           <InitiativeTracker
             encounter={runningEncounter}
             statblocks={monsterStatblocks}

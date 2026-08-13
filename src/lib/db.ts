@@ -16,6 +16,7 @@ import type {
   Location, LocationInsert,
   Faction, FactionInsert,
   Hook, HookInsert,
+  Idea, IdeaInsert,
   LoreEntry, LoreEntryInsert,
   Module, ModuleInsert,
   CharacterRelationship, CharacterRelationshipInsert,
@@ -164,6 +165,36 @@ export const CampaignLocations = {
       .delete()
       .eq('campaign_id', campaignId)
       .eq('location_id', locationId);
+    if (error) throw error;
+  },
+};
+
+// Join table: canon (global) lore entries a campaign has imported.
+// Mirrors CampaignLocations — see migrations/0025_campaign_lore.sql.
+export const CampaignLore = {
+  async getLinkedLoreIds(campaignId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('campaign_lore')
+      .select('lore_id')
+      .eq('campaign_id', campaignId);
+    if (error) throw error;
+    return (data ?? []).map(row => row.lore_id);
+  },
+
+  async link(campaignId: string, loreId: string): Promise<void> {
+    const user_id = await getUserId();
+    const { error } = await supabase
+      .from('campaign_lore')
+      .upsert({ campaign_id: campaignId, lore_id: loreId, user_id });
+    if (error) throw error;
+  },
+
+  async unlink(campaignId: string, loreId: string): Promise<void> {
+    const { error } = await supabase
+      .from('campaign_lore')
+      .delete()
+      .eq('campaign_id', campaignId)
+      .eq('lore_id', loreId);
     if (error) throw error;
   },
 };
@@ -493,6 +524,38 @@ export const Hooks = {
 };
 
 // ============================================================
+// IDEAS (raw inbox notes that promote into a hook/thread)
+// ============================================================
+
+export const Ideas = {
+  async getAll(campaignId: string): Promise<Idea[]> {
+    const { data, error } = await supabase
+      .from('ideas')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(idea: IdeaInsert & { id?: string }): Promise<Idea> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('ideas')
+      .upsert({ ...idea, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('ideas').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
 // LORE ENTRIES (global — not campaign-scoped)
 // ============================================================
 
@@ -501,6 +564,17 @@ export const Lore = {
     const { data, error } = await supabase
       .from('lore_entries')
       .select('*')
+      .order('title');
+    if (error) throw error;
+    return data;
+  },
+
+  // Global (canon) lore — not tied to any campaign. Mirrors Locations.getGlobal.
+  async getGlobal(): Promise<LoreEntry[]> {
+    const { data, error } = await supabase
+      .from('lore_entries')
+      .select('*')
+      .is('campaign_id', null)
       .order('title');
     if (error) throw error;
     return data;

@@ -1,4 +1,5 @@
 import { useWorld } from '../../context/WorldContext';
+import { ToolbarButton } from '../ui/ToolbarButton';
 
 const WORLD_TAB_LABELS: Record<string, string> = {
   overview: 'Overview', lore: 'Lore', locations: 'Locations',
@@ -27,22 +28,19 @@ export default function WorldTopbar({ onToggleScratch, onToggleShortcuts, scratc
 
       <div className="cm-top-actions">
         {onToggleScratch && (
-          <button
+          <ToolbarButton
             onClick={onToggleScratch}
-            className={`cm-top-btn${scratchOpen ? ' is-on' : ''}`}
+            active={scratchOpen}
+            glyph="✎"
+            kbd="⌘."
             title="Scratchpad (⌘.)"
           >
-            <span className="cm-top-btn-glyph">✎</span>
             <span>Notes</span>
-            <kbd>⌘.</kbd>
-          </button>
+          </ToolbarButton>
         )}
 
         {onToggleShortcuts && (
-          <button onClick={onToggleShortcuts} className="cm-top-btn" title="Keyboard shortcuts (?)">
-            <span className="cm-top-btn-glyph">⌨</span>
-            <kbd>?</kbd>
-          </button>
+          <ToolbarButton onClick={onToggleShortcuts} glyph="⌨" kbd="?" title="Keyboard shortcuts (?)" />
         )}
       </div>
     </header>

@@ -142,10 +142,10 @@ export default function Overview({ onNavigate }: OverviewProps) {
 
       {/* 2-col: Active Hooks + Party */}
       <div className="ov-grid">
-        {/* Active Hooks */}
-        <div className="ov-card" onClick={() => onNavigate('sessions')}>
+        {/* Active Threads */}
+        <div className="ov-card" onClick={() => onNavigate('threads')}>
           <div className="ov-card-head">
-            <span className="ov-card-title">Active Hooks</span>
+            <span className="ov-card-title">Active Threads</span>
             <span className="ov-card-chevron">›</span>
           </div>
           <div className="ov-card-body">
@@ -304,11 +304,11 @@ function truncate(s: string, max: number) {
 
 function hookColor(category?: string | null): string {
   switch (category) {
-    case 'main_plot': return '#e05c5c';
-    case 'side':      return '#4ab8d4';
-    case 'character_arc': return '#c9a84c';
-    case 'lore':      return '#8aa56b';
-    default:          return '#897f68';
+    case 'main_plot': return 'var(--red)';
+    case 'side':      return 'var(--info)';
+    case 'character_arc': return 'var(--gold)';
+    case 'lore':      return 'var(--moss)';
+    default:          return 'var(--ink-3)';
   }
 }
 

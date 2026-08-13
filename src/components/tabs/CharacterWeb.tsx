@@ -3,6 +3,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
+import { Button } from '../ui/Button';
 import type { RelationshipType, CharacterKind } from '../../lib/database.types';
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -204,9 +205,9 @@ export default function CharacterWeb() {
             </>
           )}
           <span className="cm-filter-sep" />
-          <button className="cw-action" style={{ padding: '4px 12px', fontSize: 12 }} onClick={openAdd}>
+          <Button variant="secondary" size="xs" onClick={openAdd}>
             + Add Relationship
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -330,20 +331,22 @@ export default function CharacterWeb() {
                         <span className="cw-rel-arrow">{dir}</span>
                         <span className="cw-rel-name">{other?.label ?? otherId}</span>
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={ev => { ev.stopPropagation(); openEdit(e.id); }}
-                            className="cw-action-ghost"
-                            style={{ padding: '2px 8px', fontSize: 11, borderRadius: 3 }}
+                            style={{ padding: '2px 8px', fontSize: 11, borderRadius: 'var(--radius)' }}
                           >
                             Edit
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={ev => { ev.stopPropagation(); handleDelete(e.id); }}
-                            className="cw-action-ghost"
-                            style={{ padding: '2px 6px', fontSize: 11, borderRadius: 3, color: 'var(--accent)' }}
+                            style={{ padding: '2px 6px', fontSize: 11, borderRadius: 'var(--radius)', color: 'var(--accent)' }}
                           >
                             ✕
-                          </button>
+                          </Button>
                         </div>
                       </div>
                       {e.label && <div className="cw-rel-label">{e.label}</div>}
@@ -353,9 +356,9 @@ export default function CharacterWeb() {
               </div>
 
               <div className="cw-actions">
-                <button className="cw-action" onClick={openAdd}>
+                <Button variant="secondary" size="sm" onClick={openAdd}>
                   + Add relationship
-                </button>
+                </Button>
               </div>
             </>
           )}

@@ -16,6 +16,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
 import type { Module, Faction } from '../../lib/database.types';
+import { factionTypeColors } from '../../lib/theme';
 import ModuleDetail from './ModuleDetail';
 import ModuleWeb from './ModuleWeb';
 
@@ -38,11 +39,10 @@ const emptyModuleForm = (): ModuleForm => ({
   faction_id: null, node_role: null,
 });
 
-const FACTION_TYPE_COLORS: Record<string, string> = {
-  guild: 'var(--gold)', government: '#70a0e0', religious: '#d0c060',
-  criminal: '#e05c5c', military: '#60b0a0', arcane: '#b080e0',
-  merchant: '#e09050', other: 'var(--ink-2)',
-};
+// Derived from the single canonical taxonomy in lib/theme.ts (text swatch only).
+const FACTION_TYPE_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(factionTypeColors).map(([k, v]) => [k, v.text]),
+);
 
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
@@ -72,7 +72,7 @@ function ModuleList({ onOpen }: { onOpen: (id: string) => void }) {
             <div className="cm-md-eyebrow">Campaign</div>
             <div className="cm-md-title">Modules</div>
           </div>
-          <button className="cm-md-add" onClick={() => setCreating(true)}>+ Add</button>
+          <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>+ Add</Button>
         </div>
         <div className="cm-md-list-scroll">
           {modules.length === 0 ? (

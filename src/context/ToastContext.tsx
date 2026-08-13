@@ -60,15 +60,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               style={{
                 pointerEvents: 'auto',
                 padding: '10px 16px',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius)',
                 fontSize: '13px',
                 fontFamily: 'var(--serif)',
                 cursor: 'pointer',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
                 animation: 'toast-slide-in 0.2s ease-out',
-                backgroundColor: t.type === 'error' ? '#3a1a1a' : '#1a301a',
-                color: t.type === 'error' ? '#e05c5c' : '#6ab87a',
-                border: `1px solid ${t.type === 'error' ? '#6a2a2a' : '#2a6a2a'}`,
+                backgroundColor: t.type === 'error' ? 'var(--red-bg)' : '#1a301a',
+                color: t.type === 'error' ? 'var(--red)' : 'var(--success)',
+                border: `1px solid ${t.type === 'error' ? 'var(--red-line)' : '#2a6a2a'}`,
               }}
             >
               {t.type === 'error' ? '✕ ' : '✓ '}{t.message}

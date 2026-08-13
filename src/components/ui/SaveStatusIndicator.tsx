@@ -13,7 +13,7 @@ export function SaveStatusIndicator({ status, onRetry }: SaveStatusIndicatorProp
     saved: {
       icon: <Check size={14} />,
       text: 'Saved',
-      color: '#5a9a6a',
+      color: 'var(--success)',
     },
     saving: {
       icon: <Loader2 size={14} className="animate-spin" />,
@@ -21,14 +21,14 @@ export function SaveStatusIndicator({ status, onRetry }: SaveStatusIndicatorProp
       color: 'var(--ink-2)',
     },
     unsaved: {
-      icon: <Circle size={10} fill="#c9a84c" />,
+      icon: <Circle size={10} fill="var(--gold)" />,
       text: 'Unsaved changes',
       color: 'var(--gold)',
     },
     error: {
       icon: <AlertCircle size={14} />,
       text: 'Save failed',
-      color: '#e05c5c',
+      color: 'var(--red)',
     },
   };
 
@@ -54,7 +54,7 @@ export function SaveStatusIndicator({ status, onRetry }: SaveStatusIndicatorProp
           style={{
             background: 'none',
             border: 'none',
-            color: '#70a0e0',
+            color: 'var(--info)',
             cursor: 'pointer',
             fontSize: 12,
             textDecoration: 'underline',

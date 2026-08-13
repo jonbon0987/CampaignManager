@@ -24,20 +24,20 @@ export const VALID_CRS = [
 ];
 
 export const difficultyColors: Record<string, { bg: string; text: string; border: string }> = {
-  easy:   { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
-  medium: { bg: '#2a2a1a', text: '#d0c060', border: '#6a6020' },
-  hard:   { bg: '#3a2010', text: '#e09050', border: '#7a4a20' },
-  deadly: { bg: '#3a1010', text: '#e04040', border: '#7a2020' },
+  easy:   { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
+  medium: { bg: 'var(--warn-bg)',    text: 'var(--warn)',    border: 'var(--warn-line)' },
+  hard:   { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
+  deadly: { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
 };
 
 export const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-  draft:     { bg: '#211c16', text: '#897f68', border: '#2e2820' },
-  ready:     { bg: '#1a2a3a', text: '#70a0e0', border: '#2a4a7a' },
-  completed: { bg: '#1a2a1a', text: '#6ab87a', border: '#2a5a2a' },
+  draft:     { bg: 'var(--paper-2)',   text: 'var(--ink-3)',   border: 'var(--rule)' },
+  ready:     { bg: 'var(--info-bg)',   text: 'var(--info)',    border: 'var(--info-line)' },
+  completed: { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
 };
 
 export const sectionLabel: React.CSSProperties = {
-  color: '#c9a84c',
+  color: 'var(--gold)',
   fontSize: '0.65rem',
   fontWeight: 700,
   textTransform: 'uppercase',
@@ -116,26 +116,26 @@ export function CombatantRow({
   return (
     <div
       className="rounded p-3 flex flex-col gap-2"
-      style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}
+      style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}
     >
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-sm" style={{ color: '#e8dcc4', fontFamily: 'var(--display)' }}>
+          <span className="font-semibold text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
             {c.name}
           </span>
           {c.challenge_rating && (
-            <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#c08060' }}>
+            <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)' }}>
               CR {c.challenge_rating}
             </span>
           )}
           {c.creature_type && (
-            <span className="ml-1 text-xs capitalize" style={{ color: '#897f68' }}>{c.creature_type}</span>
+            <span className="ml-1 text-xs capitalize" style={{ color: 'var(--ink-3)' }}>{c.creature_type}</span>
           )}
           {c.source === 'saved' && statblockName && onViewSheet && (
             <button
               onClick={onViewSheet}
               className="ml-1 text-xs px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
+              style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}
             >
               Sheet
             </button>
@@ -145,19 +145,19 @@ export function CombatantRow({
           <button
             onClick={() => onCountChange(-1)}
             className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center"
-            style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}
+            style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
           >−</button>
-          <span className="text-sm font-semibold w-5 text-center" style={{ color: '#e8dcc4' }}>{c.count}</span>
+          <span className="text-sm font-semibold w-5 text-center" style={{ color: 'var(--ink)' }}>{c.count}</span>
           <button
             onClick={() => onCountChange(1)}
             className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center"
-            style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}
+            style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
           >+</button>
         </div>
         <button
           onClick={onRemove}
           className="text-xs px-2 py-1 rounded shrink-0"
-          style={{ backgroundColor: '#1e1a14', color: '#e05c5c', border: '1px solid #2e2820' }}
+          style={{ backgroundColor: 'var(--bg-2)', color: 'var(--red)', border: '1px solid var(--rule)' }}
         >✕</button>
       </div>
       <input
@@ -166,7 +166,7 @@ export function CombatantRow({
         onChange={e => onNotesChange(e.target.value)}
         placeholder="Notes for this combatant…"
         className="text-xs w-full px-2 py-1 rounded outline-none"
-        style={{ backgroundColor: '#1c1814', color: '#b9ac90', border: '1px solid #26211a' }}
+        style={{ backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)' }}
       />
     </div>
   );
@@ -290,9 +290,9 @@ export function EncounterDetail({
           <button
             onClick={onRun}
             style={{
-              fontSize: '0.75rem', fontWeight: 600, color: '#15120e',
-              backgroundColor: '#c9a84c', border: '1px solid #c9a84c',
-              borderRadius: '3px', padding: '6px 16px', cursor: 'pointer',
+              fontSize: '0.75rem', fontWeight: 600, color: 'var(--bg)',
+              backgroundColor: 'var(--gold)', border: '1px solid var(--gold)',
+              borderRadius: 'var(--radius)', padding: '6px 16px', cursor: 'pointer',
               fontFamily: 'var(--serif)',
             }}
           >
@@ -306,7 +306,7 @@ export function EncounterDetail({
 
       {/* ── Eyebrow ── */}
       <div style={{
-        color: '#897f68', fontSize: '0.6rem', fontWeight: 700,
+        color: 'var(--ink-3)', fontSize: '0.6rem', fontWeight: 700,
         letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px',
       }}>
         Encounter{diffVal ? ` · ${diffVal}` : ''}
@@ -381,7 +381,7 @@ export function EncounterDetail({
         <div style={sectionLabel}>Combatants</div>
         <div className="space-y-2 mb-3">
           {combatants.length === 0 && (
-            <p className="text-xs" style={{ color: '#897f68' }}>No combatants added yet.</p>
+            <p className="text-xs" style={{ color: 'var(--ink-3)' }}>No combatants added yet.</p>
           )}
           {combatants.map(c => {
             const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;
@@ -403,39 +403,39 @@ export function EncounterDetail({
           <div className="flex gap-2">
             {monsterStatblocks.length > 0 && (
               <button onClick={() => setAddCreatureMode('saved')} className="text-xs px-3 py-1.5 rounded"
-                style={{ backgroundColor: '#1a2a3a', color: '#70a0e0', border: '1px solid #2a4a7a' }}>
+                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}>
                 + From Library
               </button>
             )}
             <button onClick={() => setAddCreatureMode('custom')} className="text-xs px-3 py-1.5 rounded"
-              style={{ backgroundColor: '#1e1a14', color: '#b9ac90', border: '1px solid #2e2820' }}>
+              style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}>
               + Custom Creature
             </button>
           </div>
         )}
 
         {addCreatureMode === 'saved' && (
-          <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
-            <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Select from Library</p>
+          <div className="rounded p-3 space-y-2" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
+            <p className="text-xs font-semibold" style={{ color: 'var(--gold)' }}>Select from Library</p>
             <div className="max-h-48 overflow-y-auto space-y-1">
               {monsterStatblocks.map(m => (
                 <button key={m.id} onClick={() => addSavedCombatant(m.id)}
                   className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
-                  style={{ backgroundColor: '#1c1814', color: '#e8dcc4', border: '1px solid #26211a' }}>
+                  style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule-soft)' }}>
                   <span className="flex-1">{m.name}</span>
-                  {m.challenge_rating && <span style={{ color: '#c08060' }}>CR {m.challenge_rating}</span>}
-                  {m.creature_type && <span className="capitalize" style={{ color: '#897f68' }}>{m.creature_type}</span>}
+                  {m.challenge_rating && <span style={{ color: 'var(--cr)' }}>CR {m.challenge_rating}</span>}
+                  {m.creature_type && <span className="capitalize" style={{ color: 'var(--ink-3)' }}>{m.creature_type}</span>}
                 </button>
               ))}
             </div>
             <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
-              style={{ color: '#897f68', border: '1px solid #2e2820' }}>Cancel</button>
+              style={{ color: 'var(--ink-3)', border: '1px solid var(--rule)' }}>Cancel</button>
           </div>
         )}
 
         {addCreatureMode === 'custom' && (
-          <div className="rounded p-3 space-y-2" style={{ backgroundColor: '#15120e', border: '1px solid #2e2820' }}>
-            <p className="text-xs font-semibold" style={{ color: '#c9a84c' }}>Add Custom Creature</p>
+          <div className="rounded p-3 space-y-2" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
+            <p className="text-xs font-semibold" style={{ color: 'var(--gold)' }}>Add Custom Creature</p>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-3">
                 <input type="text" value={customCreatureName}
@@ -452,15 +452,15 @@ export function EncounterDetail({
             </div>
             <div className="flex gap-2">
               <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: '#a07830', color: '#e8dcc4' }}>Add</button>
+                style={{ backgroundColor: 'var(--gold-hover)', color: 'var(--ink)' }}>Add</button>
               <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
-                style={{ color: '#897f68', border: '1px solid #2e2820' }}>Cancel</button>
+                style={{ color: 'var(--ink-3)', border: '1px solid var(--rule)' }}>Cancel</button>
             </div>
           </div>
         )}
 
         {totalCreatures > 0 && (
-          <div style={{ marginTop: '8px', color: '#897f68', fontSize: '0.72rem', fontFamily: 'var(--mono)' }}>
+          <div style={{ marginTop: '8px', color: 'var(--ink-3)', fontSize: '0.72rem', fontFamily: 'var(--mono)' }}>
             {totalCreatures} {totalCreatures === 1 ? 'creature' : 'creatures'} total
           </div>
         )}
@@ -481,8 +481,8 @@ export function EncounterDetail({
         <button
           onClick={onRun}
           style={{
-            width: '100%', backgroundColor: '#c9a84c', color: '#15120e',
-            border: 'none', borderRadius: '4px', padding: '12px',
+            width: '100%', backgroundColor: 'var(--gold)', color: 'var(--bg)',
+            border: 'none', borderRadius: 'var(--radius)', padding: '12px',
             fontSize: '0.85rem', fontWeight: 700, fontFamily: 'var(--serif)',
             cursor: 'pointer', letterSpacing: '0.02em',
           }}

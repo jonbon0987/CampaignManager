@@ -8,6 +8,7 @@ import { getTypeStyle } from '../../lib/theme';
 import { StatBlockText } from '../ui/StatBlockText';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
+import { buildCampaignContextBlock } from '../../lib/campaignContext';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -134,43 +135,6 @@ export const ABILITY_KEYS: Array<{ key: keyof MonsterForm; label: string }> = [
 ];
 
 // ================================================================
-// Campaign context helper
-// ================================================================
-
-type CampaignContextData = {
-  overview: { title: string; plotSummary: string };
-  sessions: Array<{ session_number: number | null; session_date: string | null; summary: string | null }>;
-  lore: Array<{ title: string; category: string | null; content: string | null }>;
-  locations: Array<{ name: string; region: string | null; location_type: string | null; description: string | null }>;
-};
-
-function buildCampaignContextBlock(data: CampaignContextData): string {
-  const parts: string[] = ['\n\n== CAMPAIGN CONTEXT ==', `Campaign: ${data.overview.title || 'Unnamed'}`];
-  if (data.overview.plotSummary) parts.push(`Plot: ${data.overview.plotSummary}`);
-  if (data.sessions.length > 0) {
-    parts.push('\nRecent Sessions:');
-    data.sessions.slice(-5).forEach(s => {
-      if (s.summary) parts.push(`  Session #${s.session_number ?? '?'}: ${s.summary}`);
-    });
-  }
-  if (data.lore.length > 0) {
-    parts.push('\nLore:');
-    data.lore.slice(0, 10).forEach(l => {
-      const snippet = l.content ? l.content.substring(0, 120) + (l.content.length > 120 ? '…' : '') : '';
-      parts.push(`  [${l.category ?? 'lore'}] ${l.title}${snippet ? ': ' + snippet : ''}`);
-    });
-  }
-  if (data.locations.length > 0) {
-    parts.push('\nLocations:');
-    data.locations.slice(0, 10).forEach(l => {
-      parts.push(`  ${l.name} (${l.location_type ?? '?'})${l.region ? ` in ${l.region}` : ''}${l.description ? ': ' + l.description.substring(0, 80) + '…' : ''}`);
-    });
-  }
-  parts.push('\nUse this campaign context to make the generated content feel native to this world — reference appropriate locations, lore, and ongoing story threads where fitting.\n');
-  return parts.join('\n');
-}
-
-// ================================================================
 // Structured stat block viewer (shared by view modal and StatBlockPanel)
 // ================================================================
 
@@ -223,7 +187,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 
       {/* Ability scores */}
       {hasAbilityScores && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', borderTop: '1px solid #3a3660', borderBottom: '1px solid #3a3660', padding: '8px 0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', borderTop: '1px solid var(--rule)', borderBottom: '1px solid var(--rule)', padding: '8px 0' }}>
           {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map(key => {
             const score = m[key];
             return (
@@ -271,8 +235,8 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
               fontFamily: 'var(--display)',
               fontSize: '0.85rem',
               backgroundColor: 'var(--bg)',
-              border: '1px solid #3a3660',
-              borderRadius: '6px',
+              border: '1px solid var(--rule)',
+              borderRadius: 'var(--radius)',
               padding: '12px',
               whiteSpace: 'pre-wrap',
               margin: 0,
@@ -592,7 +556,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         <button
           onClick={openGenModal}
           className="px-3 py-1.5 rounded text-sm font-medium transition-colors"
-          style={{ backgroundColor: '#2a1a3a', color: '#c060d0', border: '1px solid #5a2a7a' }}
+          style={{ backgroundColor: 'var(--arcane-bg)', color: 'var(--arcane)', border: '1px solid var(--arcane-line)' }}
         >
           ✦ Generate
         </button>
@@ -623,16 +587,16 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 min-w-0 px-3 py-1.5 rounded text-sm outline-none"
-            style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid #3a3660', minWidth: '180px' }}
+            style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule)', minWidth: '180px' }}
           />
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={() => setFilterType('all')}
               className="text-xs px-2.5 py-1 rounded border"
               style={{
-                backgroundColor: filterType === 'all' ? '#2a2050' : 'var(--paper)',
+                backgroundColor: filterType === 'all' ? 'var(--gold-dim)' : 'var(--paper)',
                 color: filterType === 'all' ? 'var(--gold)' : 'var(--ink-2)',
-                borderColor: filterType === 'all' ? '#5a4a90' : 'var(--rule)',
+                borderColor: filterType === 'all' ? 'var(--gold-line)' : 'var(--rule)',
               }}
             >
               All
@@ -690,17 +654,17 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                       {m.name}
                     </span>
                     {m.challenge_rating && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#c08060' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)' }}>
                         CR {m.challenge_rating}
                       </span>
                     )}
                     {m.armor_class != null && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#1a2a1a', color: '#70a0a0' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--immune)' }}>
                         AC {m.armor_class}
                       </span>
                     )}
                     {m.hit_points != null && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#e07070' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--red)' }}>
                         {m.hit_points} HP
                       </span>
                     )}
@@ -713,21 +677,21 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                   <button
                     onClick={() => setViewing(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: '#1a1a3a', color: '#6090e0', border: '1px solid #3a3a7a' }}
+                    style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}
                   >
                     View
                   </button>
                   <button
                     onClick={() => openEdit(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
+                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(m)}
                     className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: 'var(--paper-2)', color: '#e05c5c', border: '1px solid #3a3660' }}
+                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--red)', border: '1px solid var(--rule)' }}
                   >
                     ✕
                   </button>
@@ -750,7 +714,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       >
         <div className="space-y-4">
           {/* Mode toggle */}
-          <div className="flex rounded overflow-hidden" style={{ border: '1px solid #3a3660' }}>
+          <div className="flex rounded overflow-hidden" style={{ border: '1px solid var(--rule)' }}>
             {(['cr', 'party'] as const).map(mode => (
               <button
                 key={mode}
@@ -758,7 +722,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 disabled={genLoading}
                 className="flex-1 text-sm py-1.5 font-medium transition-colors"
                 style={{
-                  backgroundColor: genMode === mode ? '#2a2050' : 'var(--paper)',
+                  backgroundColor: genMode === mode ? 'var(--gold-dim)' : 'var(--paper)',
                   color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)',
                 }}
               >
@@ -830,9 +794,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               disabled={genLoading}
               className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
               style={{
-                backgroundColor: genUseCampaignContext ? '#2a2050' : 'var(--paper)',
+                backgroundColor: genUseCampaignContext ? 'var(--gold-dim)' : 'var(--paper)',
                 color: genUseCampaignContext ? 'var(--gold)' : 'var(--ink-2)',
-                border: `1px solid ${genUseCampaignContext ? '#5a4090' : 'var(--rule)'}`,
+                border: `1px solid ${genUseCampaignContext ? 'var(--gold-line)' : 'var(--rule)'}`,
               }}
             >
               {genUseCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
@@ -857,7 +821,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           </FormField>
 
           {genError && (
-            <p className="text-sm" style={{ color: '#e05c5c' }}>{genError}</p>
+            <p className="text-sm" style={{ color: 'var(--red)' }}>{genError}</p>
           )}
           {genLoading && (
             <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
@@ -898,7 +862,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </FormField>
 
         {/* Divider */}
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
 
         {/* Row: AC / HP / Speed */}
         <div className="grid grid-cols-3 gap-3">
@@ -975,7 +939,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </div>
 
         {/* Divider */}
-        <div style={{ borderTop: '1px solid #3a3660', margin: '4px 0' }} />
+        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
 
         {/* Actions & Traits free-form */}
         <FormField label="Actions & Traits">
@@ -1010,7 +974,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 );
               })()}
               {viewing.challenge_rating && (
-                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#2a1a1a', color: '#c08060', border: '1px solid #5a3a2a' }}>
+                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
                   CR {viewing.challenge_rating}
                 </span>
               )}
@@ -1023,7 +987,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               <button
                 onClick={() => { setViewing(null); openEdit(viewing); }}
                 className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid #3a3660' }}
+                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
               >
                 Edit
               </button>
