@@ -10,7 +10,7 @@
 
 import './_env.js';
 import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenerativeAI, type GenerateContentRequest, type Part } from '@google/generative-ai';
+import { GoogleGenerativeAI, type GenerateContentRequest, type GenerationConfig, type Part } from '@google/generative-ai';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -65,20 +65,41 @@ export interface SimpleGenerateOpts {
   prompt: string;
   system?: string;
   maxTokens?: number;
+  /**
+   * Ask the model for strict JSON. On Gemini this switches on JSON mode
+   * (responseMimeType: application/json), which guarantees syntactically valid,
+   * properly-escaped JSON — without it, long free-text fields can contain raw
+   * newlines/quotes and JSON.parse fails with "Unterminated string". Claude is
+   * reliable enough at JSON that no special flag is needed there.
+   */
+  json?: boolean;
 }
 
 /** Generate a single text response (used by creature/encounter endpoints). */
 export async function generateText(opts: SimpleGenerateOpts): Promise<string> {
-  const { provider, prompt, system, maxTokens = 2048 } = opts;
+  const { provider, prompt, system, maxTokens = 2048, json = false } = opts;
 
   if (provider === 'gemini') {
     const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: GEMINI_MODEL });
+    // The deprecated @google/generative-ai SDK forwards generationConfig verbatim
+    // to the REST API, so thinkingConfig (absent from its types) still reaches
+    // Gemini. gemini-3.x flash "thinks" by default and those tokens count against
+    // the output budget — for a one-shot structured generation that can consume
+    // the whole budget and leave the JSON empty or truncated ("unexpected end of
+    // JSON" / "Unterminated string"). Disable thinking and give an explicit budget.
+    const generationConfig = {
+      maxOutputTokens: maxTokens,
+      ...(json ? { responseMimeType: 'application/json' } : {}),
+      thinkingConfig: { thinkingBudget: 0 },
+    } as GenerationConfig;
+    const model = client.getGenerativeModel({ model: GEMINI_MODEL, generationConfig });
     const parts: Part[] = [];
     if (system) parts.push({ text: system + '\n\n' });
     parts.push({ text: prompt });
     const result = await model.generateContent({ contents: [{ role: 'user', parts }] } as GenerateContentRequest);
-    return result.response.text();
+    const text = result.response.text();
+    if (!text.trim()) throw new Error('The model returned an empty response. Try again, or shorten the prompt.');
+    return text;
   }
 
   // Claude
