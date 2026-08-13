@@ -323,12 +323,16 @@ export const PlayerCharacters = {
 
 export const NPCs = {
   // Global NPCs (not tied to any campaign)
-  async getGlobal(): Promise<NPC[]> {
-    const { data, error } = await supabase
+  // Global (canon) NPCs — not tied to any campaign. Pass worldId to keep a
+  // campaign's canon pool scoped to its own world (imports/linking must not
+  // reference other worlds' data); omit it for the unscoped pool.
+  async getGlobal(worldId?: string): Promise<NPC[]> {
+    let query = supabase
       .from('npcs')
       .select('*')
-      .is('campaign_id', null)
-      .order('name');
+      .is('campaign_id', null);
+    if (worldId) query = query.eq('world_id', worldId);
+    const { data, error } = await query.order('name');
     if (error) throw error;
     return data;
   },
@@ -387,13 +391,15 @@ export const NPCs = {
 // ============================================================
 
 export const Locations = {
-  // Global locations (not tied to any campaign)
-  async getGlobal(): Promise<Location[]> {
-    const { data, error } = await supabase
+  // Global locations (not tied to any campaign). Pass worldId to scope a
+  // campaign's canon pool to its own world; omit for the unscoped pool.
+  async getGlobal(worldId?: string): Promise<Location[]> {
+    let query = supabase
       .from('locations')
       .select('*')
-      .is('campaign_id', null)
-      .order('name');
+      .is('campaign_id', null);
+    if (worldId) query = query.eq('world_id', worldId);
+    const { data, error } = await query.order('name');
     if (error) throw error;
     return data;
   },
@@ -569,13 +575,15 @@ export const Lore = {
     return data;
   },
 
-  // Global (canon) lore — not tied to any campaign. Mirrors Locations.getGlobal.
-  async getGlobal(): Promise<LoreEntry[]> {
-    const { data, error } = await supabase
+  // Global (canon) lore — not tied to any campaign. Mirrors Locations.getGlobal;
+  // pass worldId to scope a campaign's canon pool to its own world.
+  async getGlobal(worldId?: string): Promise<LoreEntry[]> {
+    let query = supabase
       .from('lore_entries')
       .select('*')
-      .is('campaign_id', null)
-      .order('title');
+      .is('campaign_id', null);
+    if (worldId) query = query.eq('world_id', worldId);
+    const { data, error } = await query.order('title');
     if (error) throw error;
     return data;
   },

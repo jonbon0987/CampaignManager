@@ -229,11 +229,20 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // The world the selected campaign belongs to. The canon (global) pools must be
+  // scoped to it so a campaign's imports/linking only reference its own world's
+  // data, not every world's. Null for a campaign not yet linked to a world →
+  // getGlobal falls back to the unscoped pool.
+  const selectedWorldId = useMemo(
+    () => campaigns.find(c => c.id === selectedCampaignId)?.world_id ?? null,
+    [campaigns, selectedCampaignId],
+  );
+
   // NPCs and Locations share the "linkable globals" pattern: campaign-specific
   // rows + a global pool that campaigns opt into. One generic hook backs both.
   const npcStore = useLinkableGlobals<NPC, NPCInsert>({
     getByCampaign: NPCsDB.getByCampaign,
-    getGlobal: NPCsDB.getGlobal,
+    getGlobal: () => NPCsDB.getGlobal(selectedWorldId ?? undefined),
     getLinkedIds: CampaignNPCsDB.getLinkedNPCIds,
     upsert: NPCsDB.upsert,
     remove: NPCsDB.delete,
@@ -243,7 +252,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
 
   const locationStore = useLinkableGlobals<Location, LocationInsert>({
     getByCampaign: LocationsDB.getByCampaign,
-    getGlobal: LocationsDB.getGlobal,
+    getGlobal: () => LocationsDB.getGlobal(selectedWorldId ?? undefined),
     getLinkedIds: CampaignLocationsDB.getLinkedLocationIds,
     upsert: LocationsDB.upsert,
     remove: LocationsDB.delete,
@@ -255,7 +264,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
   // a canon pool (campaign_id IS NULL) a campaign imports via campaign_lore.
   const loreStore = useLinkableGlobals<LoreEntry, LoreEntryInsert>({
     getByCampaign: LoreDB.getByCampaign,
-    getGlobal: LoreDB.getGlobal,
+    getGlobal: () => LoreDB.getGlobal(selectedWorldId ?? undefined),
     getLinkedIds: CampaignLoreDB.getLinkedLoreIds,
     upsert: LoreDB.upsert,
     remove: LoreDB.delete,
@@ -430,6 +439,19 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
     if (!selectedCampaignId) return;
     loadAll(selectedCampaignId);
   }, [selectedCampaignId, loadAll]);
+
+  // Re-scope the canon (global) pools when the campaign's world resolves or
+  // changes. loadAll already refreshes on campaign change; this additionally
+  // covers world_id becoming known *after* selection (e.g. the campaign was
+  // selected before the campaigns list finished loading), so the pools don't
+  // stay on the unscoped all-worlds fetch.
+  useEffect(() => {
+    if (!selectedCampaignId) return;
+    refreshNPCStore(selectedCampaignId);
+    refreshLocationStore(selectedCampaignId);
+    refreshLoreStore(selectedCampaignId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWorldId]);
 
   // Run localStorage migration after campaigns load and a campaign is selected
   useEffect(() => {
