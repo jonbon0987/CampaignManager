@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildCampaignContextBlock, formatCampaignContext, type GenContextData } from './campaignContext';
 import type { Session, PlayerCharacter, NPC, Location, Faction, Hook, LoreEntry, Module } from './database.types';
+import { makeNPC, makeLocation, makeStatblock } from '../test/fixtures';
 
 const emptyGen: GenContextData = {
   overview: { title: '', plotSummary: '' },
@@ -80,8 +81,8 @@ describe('formatCampaignContext', () => {
   it('emits an [id:...] tag for each entity (relied on by entity matching)', () => {
     const out = formatCampaignContext({
       ...baseData,
-      npcs: [{ id: 'npc-1', name: 'Kutter', role: 'smith', affiliation: 'Guild', status: 'active', met_by_pcs: true } as unknown as NPC],
-      locations: [{ id: 'loc-1', name: 'Duskward', location_type: 'city', region: 'North' } as unknown as Location],
+      npcs: [makeNPC({ id: 'npc-1', name: 'Kutter', role: 'smith', affiliation: 'Guild', status: 'active', met_by_pcs: true })],
+      locations: [makeLocation({ id: 'loc-1', name: 'Duskward', location_type: 'city', region: 'North' })],
     });
     expect(out).toContain('NPCS (1):');
     expect(out).toContain('Kutter');
@@ -93,7 +94,7 @@ describe('formatCampaignContext', () => {
   it('truncates entity text fields longer than 500 chars', () => {
     const out = formatCampaignContext({
       ...baseData,
-      npcs: [{ id: 'n', name: 'X', role: null, affiliation: null, status: 'active', met_by_pcs: false, description: 'd'.repeat(600) } as unknown as NPC],
+      npcs: [makeNPC({ id: 'n', name: 'X', description: 'd'.repeat(600) })],
     });
     expect(out).toContain('d'.repeat(500) + '…');
     expect(out).not.toContain('d'.repeat(501));
@@ -102,7 +103,7 @@ describe('formatCampaignContext', () => {
   it('counts stat sheets when provided', () => {
     const out = formatCampaignContext({
       ...baseData,
-      monsterStatblocks: [{ id: 's1', name: 'Troll', creature_type: 'giant', challenge_rating: '5' } as any],
+      monsterStatblocks: [makeStatblock({ id: 's1', name: 'Troll', creature_type: 'giant', challenge_rating: '5' })],
     });
     expect(out).toContain('STAT SHEETS (1):');
     expect(out).toContain('Troll');

@@ -5,44 +5,29 @@ import {
   wouldCreateSubmoduleCycle,
   isSubmoduleUnlocked,
 } from './moduleUtils';
-import type {
-  Module,
-  ModuleDependency,
-  SubmoduleDependency,
-  Submodule,
-  DependencyType,
-} from './database.types';
+import type { Submodule } from './database.types';
+import {
+  makeModule as mod,
+  makeModuleDep,
+  makeSubmoduleDep as subDep,
+} from '../test/fixtures';
 
-// --- fixture factories (only the fields these functions read are meaningful) ---
-
-function mod(id: string, status: Module['status'] = 'active'): Module {
-  return { id, status } as unknown as Module;
-}
-
+// Local wrapper keeps the readable { dependent, prereq, type, group, threshold }
+// shape these tests use on top of the shared makeModuleDep factory.
 function dep(o: {
   dependent: string;
   prereq: string;
-  type?: DependencyType;
+  type?: 'required' | 'optional';
   group?: string | null;
   threshold?: number | null;
   id?: string;
-}): ModuleDependency {
-  return {
-    id: o.id ?? `${o.dependent}->${o.prereq}`,
-    dependent_id: o.dependent,
-    prerequisite_id: o.prereq,
+}) {
+  return makeModuleDep(o.dependent, o.prereq, {
     dependency_type: o.type ?? 'required',
     group_id: o.group ?? null,
     threshold: o.threshold ?? null,
-  } as unknown as ModuleDependency;
-}
-
-function subDep(dependent: string, prereq: string): SubmoduleDependency {
-  return {
-    id: `${dependent}->${prereq}`,
-    dependent_id: dependent,
-    prerequisite_id: prereq,
-  } as unknown as SubmoduleDependency;
+    ...(o.id ? { id: o.id } : {}),
+  });
 }
 
 describe('isModuleUnlocked', () => {
