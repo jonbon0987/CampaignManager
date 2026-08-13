@@ -349,6 +349,12 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
               onClick={() => openCampaign(heroCampaign.id)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCampaign(heroCampaign.id); }}
             >
+              {/* eslint-disable-next-line no-restricted-syntax -- bespoke sidebar affordance */}
+              <button className="wc-hero-del" title="Delete campaign"
+                onClick={e => handleDeleteCampaign(e, heroCampaign.id, heroCampaign.name)}
+              >
+                ✕
+              </button>
               <div className="wc-hero-eyebrow">
                 <span className={`wc-dot wc-dot-${heroCampaign.status}`} />
                 {activeCampaignId === heroCampaign.id ? 'Now playing' : CAMPAIGN_EYEBROW[heroCampaign.status]}

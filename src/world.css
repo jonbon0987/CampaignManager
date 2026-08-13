@@ -370,6 +370,9 @@
 .wc-row-del { display: none; background: transparent; border: none; color: var(--ink-3); font-size: 12px; line-height: 1; padding: 2px 4px; cursor: pointer; flex: 0 0 auto; }
 .wc-row:hover .wc-row-del { display: block; }
 .wc-row-del:hover { color: var(--red); }
+.wc-hero-del { position: absolute; top: 8px; right: 8px; z-index: 1; display: none; background: transparent; border: none; color: var(--ink-3); font-size: 12px; line-height: 1; padding: 3px 5px; cursor: pointer; }
+.wc-hero:hover .wc-hero-del { display: block; }
+.wc-hero-del:hover { color: var(--red); }
 
 /* Status dots (shared by hero eyebrow + rows) */
 .wc-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; display: inline-block; }
