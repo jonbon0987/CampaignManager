@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { CSSProperties, ChangeEvent } from 'react';
+import { CharCounter } from './CharCounter';
 
 interface AutoGrowTextareaProps {
   value: string;
@@ -10,6 +11,8 @@ interface AutoGrowTextareaProps {
   disabled?: boolean;
   minRows?: number;
   autoFocus?: boolean;
+  /** Soft character limit — drives a warning counter, does NOT block typing. */
+  maxLength?: number;
 }
 
 /**
@@ -25,6 +28,7 @@ export function AutoGrowTextarea({
   disabled,
   minRows = 3,
   autoFocus,
+  maxLength,
 }: AutoGrowTextareaProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -44,21 +48,24 @@ export function AutoGrowTextarea({
   };
 
   return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={handleChange}
-      placeholder={placeholder}
-      disabled={disabled}
-      autoFocus={autoFocus}
-      rows={minRows}
-      className={`w-full outline-none ${className}`}
-      style={{
-        resize: 'none',
-        overflow: 'hidden',
-        lineHeight: '1.65',
-        ...style,
-      }}
-    />
+    <>
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={handleChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        rows={minRows}
+        className={`w-full outline-none ${className}`}
+        style={{
+          resize: 'none',
+          overflow: 'hidden',
+          lineHeight: '1.65',
+          ...style,
+        }}
+      />
+      <CharCounter value={value} limit={maxLength} />
+    </>
   );
 }

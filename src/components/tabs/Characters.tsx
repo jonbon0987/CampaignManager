@@ -13,6 +13,7 @@ import CharacterWeb from './CharacterWeb';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { AutosaveTextarea } from '../ui/MentionButton';
+import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
@@ -370,12 +371,14 @@ function NPCDetail({
         value={form.name}
         onChange={e => set('name', e.target.value)}
         placeholder="Character name…"
+        maxLength={limitFor('npcs', 'name')}
       />
       <input
         className="as-sub"
         value={form.role ?? ''}
         onChange={e => set('role', e.target.value || null)}
         placeholder="Role or title…"
+        maxLength={limitFor('npcs', 'role')}
       />
 
       {/* Meta strip: status pills + met toggle */}
@@ -414,6 +417,7 @@ function NPCDetail({
             value={form.affiliation ?? ''}
             onChange={e => set('affiliation', e.target.value || null)}
             placeholder="Guild, city, group…"
+            maxLength={limitFor('npcs', 'affiliation')}
           />
         </div>
         <div className="as-fl">
@@ -423,6 +427,7 @@ function NPCDetail({
             value={form.location ?? ''}
             onChange={e => set('location', e.target.value || null)}
             placeholder="Where found…"
+            maxLength={limitFor('npcs', 'location')}
           />
         </div>
         <div className="as-fl">
@@ -430,6 +435,8 @@ function NPCDetail({
           <input
             className="as-input"
             type="number"
+            min={minFor('npcs', 'first_session')}
+            max={maxFor('npcs', 'first_session')}
             value={form.first_session ?? ''}
             onChange={e => set('first_session', e.target.value ? parseInt(e.target.value, 10) : null)}
             placeholder="e.g. 3"
@@ -445,6 +452,7 @@ function NPCDetail({
           onChange={v => set('description', v || null)}
           placeholder="Physical appearance, personality, quirks…"
           rows={5}
+          maxLength={limitFor('npcs', 'description')}
         />
       </div>
 
@@ -456,6 +464,7 @@ function NPCDetail({
           onChange={v => set('hooks_motivations', v || null)}
           placeholder="What drives this NPC? What plot hooks do they offer?"
           rows={4}
+          maxLength={limitFor('npcs', 'hooks_motivations')}
         />
       </div>
 
@@ -510,6 +519,7 @@ function NPCDetail({
           onChange={v => set('dm_notes', v || null)}
           placeholder="Private notes, secrets, plans…"
           rows={4}
+          maxLength={limitFor('npcs', 'dm_notes')}
         />
       </div>
 
@@ -660,12 +670,14 @@ function PCDetail({
         value={form.character_name}
         onChange={e => set('character_name', e.target.value)}
         placeholder="Character name…"
+        maxLength={limitFor('player_characters', 'character_name')}
       />
       <input
         className="as-sub"
         value={form.player_name ?? ''}
         onChange={e => set('player_name', e.target.value || null)}
         placeholder="Player name…"
+        maxLength={limitFor('player_characters', 'player_name')}
       />
 
       {/* Active toggle */}
@@ -690,6 +702,7 @@ function PCDetail({
             value={form.race ?? ''}
             onChange={e => set('race', e.target.value || null)}
             placeholder="e.g. Dwarf"
+            maxLength={limitFor('player_characters', 'race')}
           />
         </div>
         <div className="as-fl">
@@ -699,6 +712,7 @@ function PCDetail({
             value={form.class ?? ''}
             onChange={e => set('class', e.target.value || null)}
             placeholder="e.g. Fighter"
+            maxLength={limitFor('player_characters', 'class')}
           />
         </div>
       </div>
@@ -711,6 +725,7 @@ function PCDetail({
           onChange={v => set('background', v || null)}
           placeholder="Character background and history…"
           rows={5}
+          maxLength={limitFor('player_characters', 'background')}
         />
       </div>
 
@@ -722,6 +737,7 @@ function PCDetail({
           onChange={v => set('story_hooks', v || null)}
           placeholder="Personal quests, motivations…"
           rows={4}
+          maxLength={limitFor('player_characters', 'story_hooks')}
         />
       </div>
 
@@ -733,6 +749,7 @@ function PCDetail({
           onChange={v => set('key_npcs', v || null)}
           placeholder="Relationships with NPCs…"
           rows={4}
+          maxLength={limitFor('player_characters', 'key_npcs')}
         />
       </div>
 
@@ -744,6 +761,7 @@ function PCDetail({
           onChange={v => set('dm_notes', v || null)}
           placeholder="Private notes, secrets, plans…"
           rows={4}
+          maxLength={limitFor('player_characters', 'dm_notes')}
         />
       </div>
 
@@ -864,6 +882,7 @@ function FactionDetail({
         value={form.name}
         onChange={e => set('name', e.target.value)}
         placeholder="Faction name…"
+        maxLength={limitFor('factions', 'name')}
       />
 
       {/* Type select */}
@@ -888,6 +907,7 @@ function FactionDetail({
           onChange={v => set('overview', v || null)}
           placeholder="What is this faction about?"
           rows={5}
+          maxLength={limitFor('factions', 'overview')}
         />
       </div>
 
@@ -899,6 +919,7 @@ function FactionDetail({
           onChange={v => set('key_figures', v || null)}
           placeholder="Important members…"
           rows={4}
+          maxLength={limitFor('factions', 'key_figures')}
         />
       </div>
 
@@ -910,6 +931,7 @@ function FactionDetail({
           onChange={v => set('agenda', v || null)}
           placeholder="Goals and plans…"
           rows={4}
+          maxLength={limitFor('factions', 'agenda')}
         />
       </div>
 
@@ -921,6 +943,7 @@ function FactionDetail({
           onChange={v => set('dm_notes', v || null)}
           placeholder="Hidden agendas, secrets…"
           rows={4}
+          maxLength={limitFor('factions', 'dm_notes')}
         />
       </div>
     </div>

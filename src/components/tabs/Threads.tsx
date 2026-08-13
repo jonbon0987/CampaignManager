@@ -6,6 +6,7 @@ import type { Tab } from '../../App';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
 import { SlashField } from '../ui/SlashField';
+import { limitFor } from '../../lib/fieldLimits';
 import { SectionHeader } from '../ui/SectionHeader';
 import { SearchBar } from '../ui/SearchBar';
 import { Button } from '../ui/Button';
@@ -188,7 +189,7 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Thread' : 'New Thread'} onSave={save}>
         <FormField label="Title">
-          <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Seventh Shard" style={inputStyle} />
+          <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Seventh Shard" maxLength={limitFor('hooks', 'title')} style={inputStyle} />
         </FormField>
         <FormField label="Kind">
           <div className="flex gap-2 flex-wrap">
@@ -234,7 +235,7 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
           </div>
         </FormField>
         <FormField label="Summary / Notes">
-          <SlashField value={form.description ?? ''} onChange={v => setForm(p => ({ ...p, description: v }))} placeholder="What is this thread about? Who and where does it touch?" minHeight="180px" />
+          <SlashField value={form.description ?? ''} onChange={v => setForm(p => ({ ...p, description: v }))} placeholder="What is this thread about? Who and where does it touch?" minHeight="180px" maxLength={limitFor('hooks', 'description')} />
         </FormField>
       </Modal>
     </div>

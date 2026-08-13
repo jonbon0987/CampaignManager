@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { CharCounter } from './CharCounter';
 
 interface MentionEntry {
   id: string;
@@ -96,9 +97,11 @@ interface AutosaveTextareaProps {
   placeholder?: string;
   rows?: number;
   mention?: boolean;
+  /** Soft character limit — drives a warning counter, does NOT block typing. */
+  maxLength?: number;
 }
 
-export function AutosaveTextarea({ value, onChange, placeholder, rows = 4, mention = true }: AutosaveTextareaProps) {
+export function AutosaveTextarea({ value, onChange, placeholder, rows = 4, mention = true, maxLength }: AutosaveTextareaProps) {
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   const insert = (text: string) => {
@@ -126,6 +129,7 @@ export function AutosaveTextarea({ value, onChange, placeholder, rows = 4, menti
         rows={rows}
       />
       {mention && <MentionButton onInsert={insert} />}
+      <CharCounter value={value ?? ''} limit={maxLength} />
     </div>
   );
 }

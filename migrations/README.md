@@ -41,3 +41,18 @@ migrations apply in order from an empty database.
 - Migrations should be idempotent where practical (`CREATE TABLE IF NOT EXISTS`,
   `ADD COLUMN IF NOT EXISTS`, etc.).
 - Each file runs in its own transaction and rolls back on error.
+
+## Generated migrations
+
+`0028_field_length_constraints.sql` is **generated** from `src/lib/fieldLimits.ts`
+(the single source of truth for per-field length/range limits). Do not hand-edit
+it. To change a limit, edit `fieldLimits.ts` and regenerate:
+
+```bash
+npm run migrate:gen-constraints            # rewrite the .sql
+npm run migrate:gen-constraints -- --check # verify it's in sync (CI)
+```
+
+Caveat: once `0028` has been applied to a database, the "never edit an applied
+migration" rule wins — add a *new* `NNNN_*.sql` for the delta rather than
+regenerating `0028`.

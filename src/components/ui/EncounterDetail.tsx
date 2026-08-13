@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from './OverflowMenu';
 import { SlashField } from './SlashField';
+import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
@@ -318,6 +319,7 @@ export function EncounterDetail({
         value={form.name}
         onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
         placeholder="Encounter name…"
+        maxLength={limitFor('encounters', 'name')}
         style={{ marginBottom: '20px', display: 'block', width: '100%' }}
       />
 
@@ -333,7 +335,7 @@ export function EncounterDetail({
         <div className="as-mi">
           <div className="as-ml">Environment</div>
           <input className="as-input" list="env-list-ed" value={form.environment}
-            onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))} placeholder="—" />
+            onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))} placeholder="—" maxLength={limitFor('encounters', 'environment')} />
           <datalist id="env-list-ed">
             {ENVIRONMENTS.map(env => <option key={env} value={env} />)}
           </datalist>
@@ -373,6 +375,7 @@ export function EncounterDetail({
           value={form.description ?? ''}
           onChange={v => setForm(prev => ({ ...prev, description: v }))}
           placeholder="Scene-setting description for the encounter…"
+          maxLength={limitFor('encounters', 'description')}
         />
       </div>
 
@@ -473,6 +476,7 @@ export function EncounterDetail({
           value={form.dm_notes ?? ''}
           onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))}
           placeholder="Tactics, pacing tips, dramatic moments…"
+          maxLength={limitFor('encounters', 'dm_notes')}
         />
       </div>
 

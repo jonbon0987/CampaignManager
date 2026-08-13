@@ -23,6 +23,8 @@ import {
   type SeedHook,
 } from '../../lib/campaignSeeds';
 import { generateCampaignDraft, type CampaignDraft } from '../../lib/generateCampaign';
+import { limitFor } from '../../lib/fieldLimits';
+import { CharCounter } from '../ui/CharCounter';
 import './firstWorldGate.css';
 
 type Route = 'menu' | 'scratch' | 'template' | 'import' | 'ai';
@@ -170,6 +172,7 @@ function ScratchPanel({ onBack, onClose }: PanelProps) {
         <input ref={ref} className="fwg-inp" value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+          maxLength={limitFor('campaigns', 'name')}
           placeholder="e.g. The Gathering Storm" />
       </div>
       <div className="fwg-field">
@@ -177,6 +180,7 @@ function ScratchPanel({ onBack, onClose }: PanelProps) {
         <textarea className="fwg-inp" value={premise}
           onChange={e => setPremise(e.target.value)}
           placeholder="A sentence or two on the situation, the stakes, and what the party does." />
+        <CharCounter value={premise} limit={limitFor('campaigns', 'plot_summary')} />
         <div className="fwg-hint">Shown on the campaign overview. Edit it anytime.</div>
       </div>
       <div className="fwg-field">
@@ -184,6 +188,7 @@ function ScratchPanel({ onBack, onClose }: PanelProps) {
         <input className="fwg-inp" value={party}
           onChange={e => setParty(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+          maxLength={limitFor('campaigns', 'party')}
           placeholder="e.g. Four level-3 adventurers from the Free Cities" />
         <div className="fwg-hint">A short line describing the party — shown on the overview. Add full character sheets later in Cast.</div>
       </div>
@@ -373,11 +378,12 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
           <div className="fwg-field">
             <label className="fwg-label">Campaign name</label>
             <input className="fwg-inp" value={name} onChange={e => setName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') create(); }} />
+              onKeyDown={e => { if (e.key === 'Enter') create(); }} maxLength={limitFor('campaigns', 'name')} />
           </div>
           <div className="fwg-field">
             <label className="fwg-label">Premise</label>
             <textarea className="fwg-inp" value={premise} onChange={e => setPremise(e.target.value)} />
+            <CharCounter value={premise} limit={limitFor('campaigns', 'plot_summary')} />
           </div>
           {err && <div className="fwg-error">{err}</div>}
           <div className="fwg-btn-row">

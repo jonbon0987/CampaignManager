@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useCampaign } from '../context/CampaignContext';
 import { Modal } from './Modal';
 import { FormField, inputStyle, textareaStyle } from './FormField';
+import { limitFor } from '../lib/fieldLimits';
+import { CharCounter } from './ui/CharCounter';
 import { Button } from './ui/Button';
 
 export default function CampaignSelector() {
@@ -179,6 +181,7 @@ export default function CampaignSelector() {
             value={newName}
             onChange={e => setNewName(e.target.value)}
             placeholder="e.g., The Sunken Citadel"
+            maxLength={limitFor('campaigns', 'name')}
             style={inputStyle}
             autoFocus
             onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }}
@@ -191,6 +194,7 @@ export default function CampaignSelector() {
             placeholder="A short description of this campaign..."
             style={{ ...textareaStyle, minHeight: '70px' }}
           />
+          <CharCounter value={newDescription} limit={limitFor('campaigns', 'description')} />
         </FormField>
       </Modal>
 
@@ -207,6 +211,7 @@ export default function CampaignSelector() {
             value={editName}
             onChange={e => setEditName(e.target.value)}
             placeholder="e.g., The Sunken Citadel"
+            maxLength={limitFor('campaigns', 'name')}
             style={inputStyle}
             autoFocus
             onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit(); }}
@@ -219,6 +224,7 @@ export default function CampaignSelector() {
             placeholder="A short description of this campaign..."
             style={{ ...textareaStyle, minHeight: '70px' }}
           />
+          <CharCounter value={editDescription} limit={limitFor('campaigns', 'description')} />
         </FormField>
       </Modal>
 

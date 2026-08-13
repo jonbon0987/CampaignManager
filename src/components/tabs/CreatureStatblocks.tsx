@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SlashField } from '../ui/SlashField';
+import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
@@ -851,14 +852,14 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             </select>
           </FormField>
           <FormField label="Challenge Rating">
-            <input type="text" value={form.challenge_rating} onChange={field('challenge_rating')} placeholder="e.g., 1/4, 5, 17" style={inputStyle} />
+            <input type="text" value={form.challenge_rating} onChange={field('challenge_rating')} placeholder="e.g., 1/4, 5, 17" maxLength={limitFor('monster_statblocks', 'challenge_rating')} style={inputStyle} />
           </FormField>
         </div>
         <FormField label="Name">
-          <input type="text" value={form.name} onChange={field('name')} placeholder="e.g., Cave Troll, Shadow Drake" style={inputStyle} />
+          <input type="text" value={form.name} onChange={field('name')} placeholder="e.g., Cave Troll, Shadow Drake" maxLength={limitFor('monster_statblocks', 'name')} style={inputStyle} />
         </FormField>
         <FormField label="Tags">
-          <input type="text" value={form.tags} onChange={field('tags')} placeholder="Comma-separated: boss, undead, ranged..." style={inputStyle} />
+          <input type="text" value={form.tags} onChange={field('tags')} placeholder="Comma-separated: boss, undead, ranged..." maxLength={limitFor('monster_statblocks', 'tags')} style={inputStyle} />
         </FormField>
 
         {/* Divider */}
@@ -875,23 +876,25 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               value={form.ac_descriptor}
               onChange={field('ac_descriptor')}
               placeholder="e.g. natural armor"
+              maxLength={limitFor('monster_statblocks', 'ac_descriptor')}
               style={{ ...inputStyle, marginTop: '4px', fontSize: '0.75rem' }}
             />
           </div>
           <div>
             <FormField label="Hit Points">
-              <input type="number" min={1} value={form.hit_points} onChange={field('hit_points')} placeholder="e.g. 45" style={inputStyle} />
+              <input type="number" min={1} max={maxFor('monster_statblocks', 'hit_points')} value={form.hit_points} onChange={field('hit_points')} placeholder="e.g. 45" style={inputStyle} />
             </FormField>
             <input
               type="text"
               value={form.hit_dice}
               onChange={field('hit_dice')}
               placeholder="e.g. 6d10+12"
+              maxLength={limitFor('monster_statblocks', 'hit_dice')}
               style={{ ...inputStyle, marginTop: '4px', fontSize: '0.75rem' }}
             />
           </div>
           <FormField label="Speed">
-            <input type="text" value={form.speed} onChange={field('speed')} placeholder="e.g. 30 ft., fly 60 ft." style={inputStyle} />
+            <input type="text" value={form.speed} onChange={field('speed')} placeholder="e.g. 30 ft., fly 60 ft." maxLength={limitFor('monster_statblocks', 'speed')} style={inputStyle} />
           </FormField>
         </div>
 
@@ -908,33 +911,33 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         {/* Saving throws + skills */}
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Saving Throws">
-            <input type="text" value={form.saving_throws} onChange={field('saving_throws')} placeholder="e.g. Dex +4, Con +6" style={inputStyle} />
+            <input type="text" value={form.saving_throws} onChange={field('saving_throws')} placeholder="e.g. Dex +4, Con +6" maxLength={limitFor('monster_statblocks', 'saving_throws')} style={inputStyle} />
           </FormField>
           <FormField label="Skills">
-            <input type="text" value={form.skills} onChange={field('skills')} placeholder="e.g. Perception +5, Stealth +4" style={inputStyle} />
+            <input type="text" value={form.skills} onChange={field('skills')} placeholder="e.g. Perception +5, Stealth +4" maxLength={limitFor('monster_statblocks', 'skills')} style={inputStyle} />
           </FormField>
         </div>
 
         {/* Immunities / resistances */}
         <div className="grid grid-cols-3 gap-3">
           <FormField label="Damage Resistances">
-            <input type="text" value={form.damage_resistances} onChange={field('damage_resistances')} placeholder="e.g. fire, cold" style={inputStyle} />
+            <input type="text" value={form.damage_resistances} onChange={field('damage_resistances')} placeholder="e.g. fire, cold" maxLength={limitFor('monster_statblocks', 'damage_resistances')} style={inputStyle} />
           </FormField>
           <FormField label="Damage Immunities">
-            <input type="text" value={form.damage_immunities} onChange={field('damage_immunities')} placeholder="e.g. poison, psychic" style={inputStyle} />
+            <input type="text" value={form.damage_immunities} onChange={field('damage_immunities')} placeholder="e.g. poison, psychic" maxLength={limitFor('monster_statblocks', 'damage_immunities')} style={inputStyle} />
           </FormField>
           <FormField label="Condition Immunities">
-            <input type="text" value={form.condition_immunities} onChange={field('condition_immunities')} placeholder="e.g. charmed, frightened" style={inputStyle} />
+            <input type="text" value={form.condition_immunities} onChange={field('condition_immunities')} placeholder="e.g. charmed, frightened" maxLength={limitFor('monster_statblocks', 'condition_immunities')} style={inputStyle} />
           </FormField>
         </div>
 
         {/* Senses + languages */}
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Senses">
-            <input type="text" value={form.senses} onChange={field('senses')} placeholder="e.g. darkvision 60 ft., passive Perception 15" style={inputStyle} />
+            <input type="text" value={form.senses} onChange={field('senses')} placeholder="e.g. darkvision 60 ft., passive Perception 15" maxLength={limitFor('monster_statblocks', 'senses')} style={inputStyle} />
           </FormField>
           <FormField label="Languages">
-            <input type="text" value={form.languages} onChange={field('languages')} placeholder="e.g. Common, Draconic" style={inputStyle} />
+            <input type="text" value={form.languages} onChange={field('languages')} placeholder="e.g. Common, Draconic" maxLength={limitFor('monster_statblocks', 'languages')} style={inputStyle} />
           </FormField>
         </div>
 
@@ -943,10 +946,10 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
         {/* Actions & Traits free-form */}
         <FormField label="Actions & Traits">
-          <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" />
+          <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" maxLength={limitFor('monster_statblocks', 'content')} />
         </FormField>
         <FormField label="DM Notes">
-          <SlashField value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" />
+          <SlashField value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" maxLength={limitFor('monster_statblocks', 'dm_notes')} />
         </FormField>
       </Modal>
 
