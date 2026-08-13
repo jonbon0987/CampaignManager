@@ -4,14 +4,14 @@ import './index.css'
 import './world.css'
 import './slashField.css'
 import App from './App.tsx'
-// import { Analytics } from "@vercel/analytics/next"
-// import { SpeedInsights } from "@vercel/speed-insights/react"
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-    {/* <Analytics />
-    <SpeedInsights /> */}
+    <Analytics />
+    <SpeedInsights />
   </StrictMode>,
 )
 
