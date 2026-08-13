@@ -10,24 +10,33 @@
 
 import './_env.js';
 import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenerativeAI, type GenerateContentRequest, type GenerationConfig, type Part } from '@google/generative-ai';
+import Groq from 'groq-sdk';
+import { GoogleGenerativeAI, GoogleGenerativeAIFetchError, type GenerateContentRequest, type GenerationConfig, type Part } from '@google/generative-ai';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-export type AIProvider = 'claude' | 'gemini';
+export type AIProvider = 'claude' | 'gemini' | 'groq';
 
 // Gemini model id — overridable via env so it can track new releases without a
-// code change. Defaults to gemini-3.6-flash: the current Flash model, and (per
-// the AI Studio rate-limits table) free-tier eligible at generous limits.
-// Fall back to gemini-2.5-flash-lite via GEMINI_MODEL if a given account/region
-// doesn't have free access to 3.6.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+// code change. Defaults to gemini-3.5-flash: Google blocks the older 2.5-flash
+// family for newly-created API keys ("no longer available to new users"), and
+// 3.5-flash is the current Flash model that accepts the request shapes we send
+// (streaming, JSON mode, and thinkingBudget:0 — the -lite/-latest variants
+// reject thinkingBudget:0). On a project without billing it's free-tier.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+
+// Groq chat model. Free tier, OpenAI-compatible. llama-3.3-70b-versatile is the
+// quality default; override via GROQ_MODEL (e.g. llama-3.1-8b-instant for volume).
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 export function resolveProvider(bodyProvider?: string): AIProvider {
   // Default provider is Gemini (free tier). Set the request `provider` field or
-  // VITE_AI_PROVIDER=claude to use Anthropic instead.
+  // VITE_AI_PROVIDER to override. Chat resolves its own provider separately (see
+  // CHAT_AI_PROVIDER in api/chat.ts) so it can run on Groq while imports stay on
+  // Gemini's large-context free tier.
   const p = (bodyProvider || process.env.VITE_AI_PROVIDER || 'gemini').toLowerCase();
   if (p === 'claude') return 'claude';
+  if (p === 'groq') return 'groq';
   return 'gemini';
 }
 
@@ -56,6 +65,16 @@ export function getGeminiClient(): GoogleGenerativeAI {
     _gemini = new GoogleGenerativeAI(key);
   }
   return _gemini;
+}
+
+let _groq: Groq | null = null;
+export function getGroqClient(): Groq {
+  if (!_groq) {
+    const key = process.env.GROQ_API_KEY;
+    if (!key) throw new Error('GROQ_API_KEY is not set. Get a free key at https://console.groq.com/keys');
+    _groq = new Groq({ apiKey: key });
+  }
+  return _groq;
 }
 
 // ── Simple text generation (non-streaming) ─────────────────────────────────────
@@ -148,6 +167,37 @@ export async function streamChat(opts: StreamChatOpts): Promise<void> {
     for await (const chunk of result.stream) {
       const text = chunk.text();
       if (text) onText(text);
+    }
+    return;
+  }
+
+  if (provider === 'groq') {
+    // OpenAI-compatible: system is the first message, then the turn history.
+    // Retry only transient 5xx — a 429 (free-tier cap) surfaces immediately via
+    // friendlyError so the user is told to wait rather than silently looping.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const client = getGroqClient();
+        const stream = await client.chat.completions.create({
+          model: GROQ_MODEL,
+          max_tokens: maxTokens,
+          stream: true,
+          messages: [{ role: 'system', content: system }, ...messages],
+        });
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content;
+          if (text) onText(text);
+        }
+        return;
+      } catch (err) {
+        const status = err instanceof Groq.APIError ? err.status : undefined;
+        const isRetryable = status != null && status >= 500 && attempt < 2;
+        if (isRetryable) {
+          await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+          continue;
+        }
+        throw err;
+      }
     }
     return;
   }
@@ -317,13 +367,57 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
 
 // ── Error formatting ───────────────────────────────────────────────────────────
 
+// Pull the RetryInfo "retryDelay" (e.g. "37s") out of a Gemini error's details,
+// so a rate-limit message can tell the user roughly how long to wait.
+function retryDelaySeconds(details: unknown): number | null {
+  if (!Array.isArray(details)) return null;
+  for (const d of details) {
+    const rec = d as Record<string, unknown>;
+    const type = rec['@type'];
+    if (typeof type === 'string' && type.includes('RetryInfo') && typeof rec.retryDelay === 'string') {
+      const m = rec.retryDelay.match(/(\d+)/);
+      if (m) return parseInt(m[1], 10);
+    }
+  }
+  return null;
+}
+
+const RATE_LIMIT_MESSAGE =
+  "The free-tier limit was reached (rate or daily quota). Wait a moment and try again — the per-minute limit clears quickly, and the daily quota resets at midnight Pacific.";
+
 export function friendlyError(err: unknown): string {
   if (err instanceof Anthropic.APIError) {
+    if (err.status === 429) return `Claude: ${RATE_LIMIT_MESSAGE}`;
     if (err.status === 529 || err.status === 502) return 'Claude is temporarily unavailable. Please wait a moment and try again.';
     const body = err.error as { error?: { message?: string } } | undefined;
     if (body?.error?.message) return body.error.message;
     if (err.status) return `API error (${err.status}): ${err.message}`;
     return err.message || 'Unknown API error';
+  }
+
+  // Groq (chat) — free tier is capped at 30 req/min and ~1K req/day per model.
+  if (err instanceof Groq.APIError) {
+    if (err.status === 429) return `Groq: ${RATE_LIMIT_MESSAGE}`;
+    if (err.status != null && err.status >= 500) return 'Groq is temporarily unavailable. Please wait a moment and try again.';
+    if (err.status) return `Groq API error (${err.status}): ${err.message}`;
+    return err.message || 'Unknown Groq API error';
+  }
+
+  // Gemini (imports/generation) — a 429 means the free-tier rate/quota was hit.
+  if (err instanceof GoogleGenerativeAIFetchError) {
+    if (err.status === 429) {
+      const wait = retryDelaySeconds(err.errorDetails);
+      const lead = wait ? `Wait about ${wait}s and try again` : 'Wait a moment and try again';
+      return `Gemini's free-tier limit was reached (rate or daily quota). ${lead}. The daily quota resets at midnight Pacific.`;
+    }
+    if (err.status === 503 || err.status === 500) return 'Gemini is temporarily unavailable. Please wait a moment and try again.';
+    if (err.status) return `Gemini API error (${err.status}): ${err.message}`;
+  }
+
+  // Last resort: some SDK errors get wrapped and only carry the signal in text.
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/\b429\b|RESOURCE_EXHAUSTED|rate limit|quota/i.test(msg)) {
+    return `An AI provider free-tier limit was reached. ${RATE_LIMIT_MESSAGE}`;
   }
   return err instanceof Error ? err.message : 'Unknown error';
 }

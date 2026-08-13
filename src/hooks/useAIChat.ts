@@ -415,7 +415,7 @@ export function useAIChat(backend: AssistantBackend) {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ messages: apiMessages, system: systemPrompt, provider: getAIProvider() }),
+        body: JSON.stringify({ messages: apiMessages, system: systemPrompt }),
         signal: controller.signal,
       });
 
