@@ -2,7 +2,7 @@
  * Shared AI provider abstraction.
  *
  * Reads the provider from the request body (`provider` field) or falls back to
- * the VITE_AI_PROVIDER env var, defaulting to "claude".
+ * the VITE_AI_PROVIDER env var, defaulting to "gemini" (free tier).
  *
  * This module exposes thin helpers so each endpoint can call Claude or Gemini
  * without duplicating provider-selection logic.
@@ -16,10 +16,19 @@ import { GoogleGenerativeAI, type GenerateContentRequest, type Part } from '@goo
 
 export type AIProvider = 'claude' | 'gemini';
 
+// Gemini model id — overridable via env so it can track new releases without a
+// code change. Defaults to gemini-3.6-flash: the current Flash model, and (per
+// the AI Studio rate-limits table) free-tier eligible at generous limits.
+// Fall back to gemini-2.5-flash-lite via GEMINI_MODEL if a given account/region
+// doesn't have free access to 3.6.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+
 export function resolveProvider(bodyProvider?: string): AIProvider {
-  const p = (bodyProvider || process.env.VITE_AI_PROVIDER || 'claude').toLowerCase();
-  if (p === 'gemini') return 'gemini';
-  return 'claude';
+  // Default provider is Gemini (free tier). Set the request `provider` field or
+  // VITE_AI_PROVIDER=claude to use Anthropic instead.
+  const p = (bodyProvider || process.env.VITE_AI_PROVIDER || 'gemini').toLowerCase();
+  if (p === 'claude') return 'claude';
+  return 'gemini';
 }
 
 // ── Clients (lazy singletons) ──────────────────────────────────────────────────
@@ -64,7 +73,7 @@ export async function generateText(opts: SimpleGenerateOpts): Promise<string> {
 
   if (provider === 'gemini') {
     const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = client.getGenerativeModel({ model: GEMINI_MODEL });
     const parts: Part[] = [];
     if (system) parts.push({ text: system + '\n\n' });
     parts.push({ text: prompt });
@@ -75,7 +84,7 @@ export async function generateText(opts: SimpleGenerateOpts): Promise<string> {
   // Claude
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-sonnet-5',
     max_tokens: maxTokens,
     ...(system ? { system } : {}),
     messages: [{ role: 'user', content: prompt }],
@@ -104,7 +113,7 @@ export async function streamChat(opts: StreamChatOpts): Promise<void> {
   if (provider === 'gemini') {
     const client = getGeminiClient();
     const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
+      model: GEMINI_MODEL,
       systemInstruction: { role: 'user', parts: [{ text: system }] },
     });
 
@@ -164,7 +173,7 @@ export async function streamSummary(opts: StreamSummaryOpts): Promise<void> {
   if (provider === 'gemini') {
     const client = getGeminiClient();
     const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
+      model: GEMINI_MODEL,
       systemInstruction: { role: 'user', parts: [{ text: system }] },
     });
     const result = await model.generateContentStream({
@@ -224,7 +233,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
   if (provider === 'gemini') {
     const client = getGeminiClient();
     const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
+      model: GEMINI_MODEL,
       systemInstruction: { role: 'user', parts: [{ text: system }] },
       generationConfig: {
         responseMimeType: 'application/json',
@@ -253,7 +262,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
     try {
       const client = getAnthropicClient();
       const stream = client.messages.stream({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         max_tokens: 8192,
         system,
         tools: [

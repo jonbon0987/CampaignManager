@@ -13,6 +13,7 @@ import {
 } from '../lib/documentImport';
 import { normalizeAssistantPayload } from '../lib/assistantNormalize';
 import type { PendingAction } from './useAIChat';
+import type { WorldTimelineEvent } from '../types/world';
 
 export interface AssistantBackend {
   /** Header title, e.g. "Campaign Assistant". */
@@ -21,6 +22,8 @@ export interface AssistantBackend {
   subtitle: string;
   /** Noun for toasts/tray copy: "campaign" | "world". */
   scopeNoun: string;
+  /** Which document-extraction pass set + prompt vocabulary the server uses. */
+  scope: 'campaign' | 'world';
   /** localStorage namespace so scopes keep separate threads + trays. */
   storageKey: string;
   /** Whether the composer offers document attachment. */
@@ -173,6 +176,7 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     title: 'Campaign Assistant',
     subtitle: `Workbench · ${campaign.selectedCampaign?.name ?? 'Campaign'} · sees your whole campaign`,
     scopeNoun: 'campaign',
+    scope: 'campaign',
     storageKey: 'ai-chat',
     supportsDocuments: true,
     composerPlaceholder: 'Ask about your campaign, or describe what to build…',
@@ -197,11 +201,11 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
 // world views expose. Statblocks, timeline events, factions, and document
 // import are deliberately out of scope for this first pass.
 
-const WORLD_TYPES: ReadonlySet<ImportActionType> = new Set(['upsertNPC', 'upsertLocation', 'upsertLore']);
+const WORLD_TYPES: ReadonlySet<ImportActionType> = new Set(['upsertNPC', 'upsertLocation', 'upsertLore', 'upsertTimelineEvent']);
 
 export function useWorldAssistantBackend(): AssistantBackend {
   const world = useWorld();
-  const { activeWorld, npcs, locations, lore, factions } = world;
+  const { activeWorld, npcs, locations, lore, factions, timeline } = world;
 
   // World data is exposed as reduced view types; re-express the existing record
   // in DB-field vocabulary so diffs and merges speak the same language as the
@@ -219,6 +223,10 @@ export function useWorldAssistantBackend(): AssistantBackend {
     if (type === 'upsertLore') {
       const e = lore.find(x => x.id === id);
       return e ? { title: e.title, content: e.desc } : null;
+    }
+    if (type === 'upsertTimelineEvent') {
+      const t = timeline.find(x => x.id === id);
+      return t ? { title: t.title, description: t.desc, year: t.year, display_date: t.date, event_type: t.type, era: t.era } : null;
     }
     return null;
   }
@@ -239,6 +247,9 @@ ${locations.map(l => `  ${l.name} — ${l.type || '?'} [id:${l.id}]${trunc(l.des
 
 LORE ENTRIES (${lore.length}):
 ${lore.map(e => `  ${e.title} [id:${e.id}]${trunc(e.desc) ? `\n    content: "${trunc(e.desc)}"` : ''}`).join('\n') || '  (none)'}
+
+TIMELINE EVENTS (${timeline.length}):
+${[...timeline].sort((a, b) => a.year - b.year).map(t => `  ${t.date || t.year} — ${t.title} (${t.type}${t.era ? `, ${t.era}` : ''}) [id:${t.id}]${trunc(t.desc, 200) ? `\n    ${trunc(t.desc, 200)}` : ''}`).join('\n') || '  (none)'}
 
 FACTIONS (${factions.length}, reference only — you cannot edit factions):
 ${factions.map(f => `  ${f.name} (${f.type || '?'}) [id:${f.id}]`).join('\n') || '  (none)'}`;
@@ -262,7 +273,7 @@ ${formatContext()}
 
 4. Keep prose minimal — the DM sees every change as a card with a full diff.
 
-5. You can ONLY create/update three kinds of world record: NPCs, Locations, and Lore entries. You cannot edit factions, statblocks, timeline events, or anything campaign-specific. If asked for those, say so briefly and do what you can within these three.
+5. You can ONLY create/update four kinds of world record: NPCs, Locations, Lore entries, and Timeline events. You cannot edit factions, statblocks, or anything campaign-specific (sessions, PCs, encounters, plot hooks). If asked for those, say so briefly and do what you can within these four.
 
 6. If the DM is just asking a question (not requesting changes), respond normally without JSON.
 
@@ -289,8 +300,11 @@ To UPDATE an existing record, set "id" to its id from the data above. Omit "id" 
   { "type": "upsertNPC", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "role": "...", "status": "active|deceased|unknown", "description": "...", "location": "..." } }
   { "type": "upsertLocation", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "location_type": "continent|city|town|dungeon|landmark", "region": "...", "description": "...", "history": "..." } }
   { "type": "upsertLore", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "history|artifact|creature|magic|religion", "content": "..." } }
+  { "type": "upsertTimelineEvent", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "year": <integer>, "display_date": "e.g. CR 1247", "event_type": "cataclysm|founding|treaty|war|political|magical|custom", "era": "...", "description": "..." } }
 
-Delete: { "type": "deleteNPC", "reasoning": "...", "confidence": 0.9, "id": "<id>", "label": "<name>" } (same for deleteLocation, deleteLore)
+A timeline event needs at least a "title" and a numeric "year" (used to order it); "display_date" is the label shown to the DM (default it to the year if none is given), and "era" groups events on the timeline — reuse an era string already present in the world data above when one fits.
+
+Delete: { "type": "deleteNPC", "reasoning": "...", "confidence": 0.9, "id": "<id>", "label": "<name>" } (same for deleteLocation, deleteLore, deleteTimelineEvent)
 
 Before creating ANY record, scan the CURRENT WORLD DATA above for one describing the same thing and reuse its id to update it instead of making a duplicate.`;
   }
@@ -313,6 +327,25 @@ Before creating ANY record, scan the CURRENT WORLD DATA above for one describing
       const id = matchedId ?? (await world.createLoreEntry());
       if (!id) throw new Error('Could not create lore entry');
       await world.upsertWorldLore({ ...merged, id } as Parameters<typeof world.upsertWorldLore>[0]);
+    } else if (type === 'upsertTimelineEvent') {
+      // The import/chat contract speaks DB vocabulary (event_type, display_date,
+      // description); the world timeline functions take the reduced view type
+      // (type, date, desc). Translate before writing.
+      const m = merged as Record<string, unknown>;
+      const year = Number(m.year) || 0;
+      const view = {
+        title: (m.title as string) ?? '',
+        desc: (m.description as string) ?? '',
+        year,
+        date: (m.display_date as string) || String(year),
+        type: (m.event_type as WorldTimelineEvent['type']) ?? 'custom',
+        era: (m.era as string) ?? '',
+      };
+      if (matchedId) {
+        await world.upsertTimelineEvent({ ...view, id: matchedId });
+      } else {
+        await world.createTimelineEvent(view);
+      }
     } else {
       throw new Error(`The world assistant cannot write ${type}.`);
     }
@@ -322,15 +355,17 @@ Before creating ANY record, scan the CURRENT WORLD DATA above for one describing
     switch (action.type) {
       case 'upsertNPC':
       case 'upsertLocation':
-      case 'upsertLore': {
+      case 'upsertLore':
+      case 'upsertTimelineEvent': {
         const payload = action.payload as Record<string, unknown>;
         const matchedId = (payload.id as string) ?? null;
         await upsertWorld(action.type, payload, matchedId);
         break;
       }
-      case 'deleteNPC':      await world.deleteWorldNPC(action.id); break;
-      case 'deleteLocation': await world.deleteWorldLocation(action.id); break;
-      case 'deleteLore':     await world.deleteWorldLore(action.id); break;
+      case 'deleteNPC':          await world.deleteWorldNPC(action.id); break;
+      case 'deleteLocation':     await world.deleteWorldLocation(action.id); break;
+      case 'deleteLore':         await world.deleteWorldLore(action.id); break;
+      case 'deleteTimelineEvent': await world.deleteTimelineEvent(action.id); break;
       default:
         throw new Error(`The world assistant cannot write ${action.type}.`);
     }
@@ -347,13 +382,14 @@ Before creating ANY record, scan the CURRENT WORLD DATA above for one describing
     title: 'World Assistant',
     subtitle: `Workbench · ${activeWorld?.name ?? 'World'} · sees your whole setting`,
     scopeNoun: 'world',
+    scope: 'world',
     storageKey: 'world-ai-chat',
-    supportsDocuments: false,
+    supportsDocuments: true,
     composerPlaceholder: 'Ask about your world, or describe what to build…',
     samples: [
       { glyph: '⬡', text: 'Flesh out a new location' },
       { glyph: '◇', text: 'Add an NPC to the world' },
-      { glyph: '✦', text: 'Write a piece of lore' },
+      { glyph: '❖', text: 'Add an event to the timeline' },
     ],
     buildSystemPrompt,
     formatContext,

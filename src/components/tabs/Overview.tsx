@@ -187,9 +187,16 @@ export default function Overview({ onNavigate }: OverviewProps) {
           </div>
           <div className="ov-card-body">
             {activePCs.length === 0 ? (
-              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
-                No active PCs
-              </div>
+              overview.party ? (
+                <div>
+                  <div style={{ color: 'var(--ink-2)', fontSize: '13px', lineHeight: 1.5 }}>{overview.party}</div>
+                  <div style={{ color: 'var(--ink-4)', fontSize: '12px', marginTop: '6px' }}>Add full character sheets in Cast ›</div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
+                  No active PCs
+                </div>
+              )
             ) : (
               <div>
                 {activePCs.map(pc => (

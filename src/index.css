@@ -506,6 +506,35 @@ input:focus, textarea:focus, select:focus {
   min-height: 0;
 }
 
+/* Canvas-level loading state (world entities / campaign data still fetching) */
+@keyframes cm-spin { to { transform: rotate(360deg); } }
+.cm-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  padding: 96px 24px;
+  color: var(--ink-3);
+}
+.cm-loading-spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--rule-hover);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: cm-spin .8s linear infinite;
+}
+.cm-loading-label {
+  font-size: 14px;
+  color: var(--ink-3);
+  letter-spacing: .01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-loading-spinner { animation-duration: 1.8s; }
+}
+
 /* ═══ Master-Detail layout ═══ */
 .cm-md {
   display: grid;

@@ -19,6 +19,7 @@ import type {
   SceneInsert,
   CharacterRelationshipInsert,
   MonsterStatblockInsert,
+  TimelineEventInsert,
 } from './database.types';
 
 // ── ImportAction discriminated union ───────────────────────────────────────
@@ -50,7 +51,8 @@ export type ImportAction =
   | ImportActionBase<'upsertSubmodule', SubmoduleInsert>
   | ImportActionBase<'upsertScene', SceneInsert>
   | ImportActionBase<'upsertRelationship', Omit<CharacterRelationshipInsert, 'campaign_id'>>
-  | ImportActionBase<'upsertMonsterStatblock', Omit<MonsterStatblockInsert, 'campaign_id'>>;
+  | ImportActionBase<'upsertMonsterStatblock', Omit<MonsterStatblockInsert, 'campaign_id'>>
+  | ImportActionBase<'upsertTimelineEvent', Omit<TimelineEventInsert, 'world_id'>>;
 
 export type ImportActionType = ImportAction['type'];
 
@@ -92,6 +94,7 @@ export const entityMeta: Record<ImportActionType, {
   upsertScene:        { label: 'Scene',        badgeColor: 'muted',  glyph: '▸', nameField: 'title' },
   upsertRelationship:      { label: 'Relationship', badgeColor: 'muted',  glyph: '⧉', nameField: 'label' },
   upsertMonsterStatblock:  { label: 'Stat Sheet',   badgeColor: 'blue',   glyph: '☠', nameField: 'name' },
+  upsertTimelineEvent:     { label: 'Timeline Event', badgeColor: 'muted', glyph: '❖', nameField: 'title' },
 };
 
 // ── Field diffing for the staging tray ────────────────────────────────────
@@ -219,6 +222,7 @@ export async function submitDocument(
   onPass?: (pass: { index: number; total: number; label: string }) => void,
   signal?: AbortSignal,
   provider?: string,
+  scope: 'campaign' | 'world' = 'campaign',
 ): Promise<ParseDocumentResponse> {
   const endpoint = import.meta.env.VITE_MOCK_PARSE === 'true'
     ? '/api/parse-document-mock'
@@ -226,7 +230,7 @@ export async function submitDocument(
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: await authHeaders(),
-    body: JSON.stringify({ ...input, campaignContext, userInstructions, provider }),
+    body: JSON.stringify({ ...input, campaignContext, userInstructions, provider, scope }),
     signal,
   });
 
@@ -381,6 +385,9 @@ export function lookupExistingEntity(
     upsertScene: campaign.scenes,
     upsertRelationship: campaign.relationships,
     upsertMonsterStatblock: campaign.monsterStatblocks,
+    // Timeline events are world-scoped only; the campaign context has no list
+    // to match against, so a campaign lookup always reads as a create.
+    upsertTimelineEvent: [],
   };
 
   const list = listMap[actionType];

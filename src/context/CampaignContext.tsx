@@ -185,7 +185,7 @@ interface CampaignContextType {
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
 
-export function CampaignProvider({ children }: { children: ReactNode }) {
+export function CampaignProvider({ children, campaignId }: { children: ReactNode; campaignId?: string | null }) {
   const toast = useToast();
 
   /** Wrap an async mutation with error toast. Re-throws so callers can still catch. */
@@ -290,6 +290,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     plotSummary: selectedCampaign?.plot_summary ?? '',
     majorCharacters: selectedCampaign?.major_characters ?? '',
     worldInfo: selectedCampaign?.world_info ?? '',
+    party: selectedCampaign?.party ?? '',
   }), [selectedCampaign]);
 
   // setOverview saves to the campaigns table
@@ -410,6 +411,18 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       // migration failure is non-fatal
     }
   }, []);
+
+  // The world flow (WorldContext) opens a campaign by id via the `campaignId`
+  // prop. CampaignContext keeps its own selection in a separate localStorage key,
+  // so without this sync a freshly-opened (or just-created) campaign wouldn't
+  // actually be selected — the overview would show the wrong/stale campaign or
+  // "Untitled Campaign". Depends ONLY on `campaignId`: each open re-syncs, but the
+  // in-view CampaignSelector (Topbar) can still switch campaigns without being
+  // reverted. Declared before loadCampaigns so it wins the initial selection.
+  useEffect(() => {
+    if (campaignId) setSelectedCampaignId(campaignId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
 
   useEffect(() => { loadCampaigns(); }, [loadCampaigns]);
 

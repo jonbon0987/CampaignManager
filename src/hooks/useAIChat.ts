@@ -4,7 +4,7 @@ import useLocalStorage from './useLocalStorage';
 import type {
   SessionInsert, PlayerCharacterInsert, NPCInsert, LocationInsert,
   FactionInsert, HookInsert, LoreEntryInsert, ModuleInsert,
-  MonsterStatblockInsert,
+  MonsterStatblockInsert, TimelineEventInsert,
 } from '../lib/database.types';
 import {
   submitDocument, entityMeta, computeDiffRows, fieldLabel, actionName, normalizeConfidence,
@@ -33,6 +33,7 @@ export type PendingAction =
   | { type: 'upsertLore';      payload: LoreEntryInsert & { id?: string } }
   | { type: 'upsertModule';    payload: ModuleInsert & { id?: string } }
   | { type: 'upsertMonsterStatblock'; payload: MonsterStatblockInsert & { id?: string } }
+  | { type: 'upsertTimelineEvent'; payload: TimelineEventInsert & { id?: string } }
   | { type: 'deleteSession';   id: string; label: string }
   | { type: 'deleteNPC';       id: string; label: string }
   | { type: 'deletePC';        id: string; label: string }
@@ -41,7 +42,8 @@ export type PendingAction =
   | { type: 'deleteHook';      id: string; label: string }
   | { type: 'deleteLore';      id: string; label: string }
   | { type: 'deleteModule';    id: string; label: string }
-  | { type: 'deleteMonsterStatblock'; id: string; label: string };
+  | { type: 'deleteMonsterStatblock'; id: string; label: string }
+  | { type: 'deleteTimelineEvent'; id: string; label: string };
 
 export type StageVerb = 'create' | 'update' | 'delete';
 
@@ -105,6 +107,8 @@ const CHAT_ACTION_TYPES: Record<string, ImportActionType> = {
   upsertModule: 'upsertModule',   deleteModule: 'upsertModule',
   upsertMonsterStatblock: 'upsertMonsterStatblock',
   deleteMonsterStatblock: 'upsertMonsterStatblock',
+  upsertTimelineEvent: 'upsertTimelineEvent',
+  deleteTimelineEvent: 'upsertTimelineEvent',
 };
 
 // Returns null for anything the model invented. An unrecognised type would
@@ -574,6 +578,7 @@ export function useAIChat(backend: AssistantBackend) {
         },
         controller.signal,
         aiProvider,
+        backend.scope,
       );
 
       // The tool schema constrains the type, but a stray one would throw on

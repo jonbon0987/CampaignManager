@@ -49,6 +49,17 @@ describe('normalizeAssistantPayload', () => {
       .toEqual({ title: 'Prophecy', category: 'prophecy' });
   });
 
+  it('keeps timeline columns and coerces event_type', () => {
+    expect(normalizeAssistantPayload('upsertTimelineEvent', {
+      title: 'The Sundering', year: 812, display_date: 'CR 812', event_type: 'Cataclysm', era: 'First Silence', bogus: 1,
+    })).toEqual({ title: 'The Sundering', year: 812, display_date: 'CR 812', event_type: 'cataclysm', era: 'First Silence' });
+    // 'campaign' is not world-writable, and junk types fall back to custom.
+    expect(normalizeAssistantPayload('upsertTimelineEvent', { event_type: 'campaign' }))
+      .toEqual({ event_type: 'custom' });
+    expect(normalizeAssistantPayload('upsertTimelineEvent', { event_type: 'skirmish' }))
+      .toEqual({ event_type: 'custom' });
+  });
+
   it('passes non-object payloads and unknown types through', () => {
     expect(normalizeAssistantPayload('deleteNPC', undefined)).toBeUndefined();
     const unknown = { anything: true };

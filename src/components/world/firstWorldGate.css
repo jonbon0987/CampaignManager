@@ -1,0 +1,123 @@
+/* ============================================================================
+ * WorldCreationGate — styles (fwg- = "first world gate", kept for stability)
+ * Every value references an existing token from src/index.css :root.
+ * No hardcoded hex. All classes are namespaced `fwg-` to avoid collisions.
+ * ========================================================================== */
+
+.fwg-gate {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; padding: 56px 24px; overflow-y: auto;
+  z-index: 50;
+  /* align-items:center + child margin:auto keeps the crest reachable on short
+     viewports. Do NOT add justify-content:center — it clips. */
+  background: radial-gradient(120% 90% at 50% -10%, #1b1710 0%, var(--bg) 60%);
+}
+/* Additional-world mode: same gate as an overlay above the app chrome. */
+.fwg-gate.fwg-overlay { z-index: 9500; }
+.fwg-close {
+  position: fixed; top: 20px; right: 22px;
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  background: var(--paper); border: 1px solid var(--rule);
+  border-radius: var(--radius); color: var(--ink-3);
+  font-size: 15px; cursor: pointer;
+  transition: color .14s, border-color .14s, background .14s;
+}
+.fwg-close:hover { color: var(--ink); border-color: var(--gold-line); background: var(--paper-2); }
+
+.fwg-col { width: 100%; max-width: 600px; margin: auto; }
+.fwg-fade { animation: fwg-fade .28s ease both; }
+@keyframes fwg-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.fwg-head { text-align: center; margin-bottom: 34px; }
+.fwg-crest { font-size: 38px; color: var(--gold); line-height: 1; margin-bottom: 16px; text-shadow: 0 0 28px rgba(201,168,76,0.25); }
+.fwg-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); opacity: .85; margin-bottom: 14px; }
+.fwg-title { font-family: var(--serif); font-weight: 600; font-size: 44px; line-height: 1.06; margin: 0 0 12px; letter-spacing: -.01em; text-wrap: balance; color: var(--ink); }
+.fwg-sub { font-size: 17px; color: var(--ink-2); margin: 0 auto; max-width: 44ch; text-wrap: pretty; }
+
+/* option list */
+.fwg-opts { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.fwg-opt { display: flex; align-items: center; gap: 15px; width: 100%; text-align: left; padding: 15px 16px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); cursor: pointer; transition: border-color .14s, background .14s, transform .14s; }
+.fwg-opt:hover { background: var(--paper-2); border-color: var(--gold-line); transform: translateY(-1px); }
+.fwg-opt-glyph { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center; font-size: 20px; border-radius: var(--radius); border: 1px solid; }
+.fwg-opt-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fwg-opt-title { font-size: 17px; color: var(--ink); font-weight: 500; }
+.fwg-opt-desc { font-size: 13.5px; color: var(--ink-3); margin-top: 1px; }
+.fwg-opt-arrow { color: var(--ink-4); font-size: 20px; transition: color .14s, transform .14s; }
+.fwg-opt:hover .fwg-opt-arrow { color: var(--gold); transform: translateX(2px); }
+
+.fwg-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--rule-soft); }
+.fwg-foot-id { font-family: var(--mono); font-size: 11px; color: var(--ink-4); }
+.fwg-foot-id b { color: var(--ink-3); font-weight: 500; }
+.fwg-linkbtn { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
+.fwg-linkbtn:hover { color: var(--gold); }
+
+/* panels */
+.fwg-back { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; padding: 6px 0; margin-bottom: 18px; cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.fwg-back:hover { color: var(--gold); }
+.fwg-h { font-family: var(--serif); font-weight: 600; font-size: 30px; margin: 0 0 8px; letter-spacing: -.01em; color: var(--ink); }
+.fwg-psub { font-size: 15px; color: var(--ink-2); margin: 0 0 24px; max-width: 48ch; }
+
+.fwg-field { margin-bottom: 16px; }
+.fwg-label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 7px; }
+.fwg-inp { width: 100%; padding: 11px 13px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); color: var(--ink); font-size: 16px; font-family: var(--serif); }
+.fwg-inp::placeholder { color: var(--ink-4); }
+textarea.fwg-inp { resize: vertical; min-height: 96px; line-height: 1.5; }
+.fwg-inp:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 0 3px rgba(201,168,76,0.12); }
+.fwg-hint { font-size: 12.5px; color: var(--ink-4); margin-top: 6px; }
+.fwg-error { font-size: 13px; color: var(--red); margin-top: 14px; }
+
+.fwg-btn-row { display: flex; align-items: center; gap: 10px; margin-top: 26px; }
+.fwg-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: var(--radius); font-size: 15px; font-weight: 500; cursor: pointer; border: 1px solid transparent; font-family: var(--serif); transition: opacity .14s, background .14s, border-color .14s; }
+.fwg-btn-primary { background: var(--gold); color: #211a0c; border-color: var(--gold); }
+.fwg-btn-primary:hover { background: var(--gold-2); }
+.fwg-btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+.fwg-btn-ghost { background: transparent; color: var(--ink-2); border-color: var(--rule); }
+.fwg-btn-ghost:hover { color: var(--ink); border-color: var(--rule-hover); }
+.fwg-btn-ghost:disabled { opacity: .4; cursor: not-allowed; }
+
+/* example cards */
+.fwg-ex-list { display: flex; flex-direction: column; gap: 10px; }
+.fwg-ex { display: flex; align-items: flex-start; gap: 14px; width: 100%; text-align: left; padding: 15px 16px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); cursor: pointer; transition: border-color .14s, background .14s; }
+.fwg-ex:hover { border-color: var(--rule-hover); background: var(--paper-2); }
+.fwg-ex.is-sel { border-color: var(--gold); background: var(--gold-dim); }
+.fwg-ex-glyph { flex: 0 0 34px; width: 34px; height: 34px; display: grid; place-items: center; font-size: 17px; color: var(--moss); border: 1px solid color-mix(in srgb, var(--moss) 28%, transparent); border-radius: var(--radius); margin-top: 2px; }
+.fwg-ex-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fwg-ex-name { display: block; font-size: 17px; color: var(--ink); font-weight: 500; }
+.fwg-ex-tag { display: block; font-size: 14px; font-style: italic; color: var(--ink-2); margin: 1px 0 7px; }
+.fwg-ex-meta { display: flex; flex-wrap: wrap; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.fwg-ex-meta span { white-space: nowrap; }
+.fwg-ex-check { flex: 0 0 20px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--rule-hover); display: grid; place-items: center; color: var(--bg); font-size: 11px; margin-top: 8px; }
+.fwg-ex.is-sel .fwg-ex-check { background: var(--gold); border-color: var(--gold); }
+
+/* dropzone + file chip */
+.fwg-drop { border: 1.5px dashed var(--rule-hover); border-radius: var(--radius-lg); padding: 38px 24px; text-align: center; transition: border-color .14s, background .14s; cursor: pointer; }
+.fwg-drop:hover, .fwg-drop.is-drag { border-color: var(--gold-line); background: var(--gold-dim); }
+.fwg-drop-glyph { font-size: 30px; color: var(--ink-3); margin-bottom: 12px; }
+.fwg-drop-title { font-size: 16px; color: var(--ink); }
+.fwg-drop-sub { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; color: var(--ink-4); margin-top: 6px; }
+.fwg-file-chip { display: flex; align-items: center; gap: 11px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); margin-bottom: 16px; }
+.fwg-file-chip-glyph { color: var(--sky); font-size: 16px; }
+.fwg-file-chip-name { flex: 1; font-size: 14.5px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fwg-file-chip-size { font-family: var(--mono); font-size: 11px; color: var(--ink-4); }
+.fwg-file-chip-read { font-family: var(--mono); font-size: 11px; color: var(--success); }
+
+/* working / spinner */
+.fwg-working { display: flex; align-items: center; gap: 13px; padding: 22px 4px; color: var(--ink-2); font-size: 15px; }
+.fwg-spinner { flex: 0 0 20px; width: 20px; height: 20px; border: 2px solid var(--rule-hover); border-top-color: var(--gold); border-radius: 50%; animation: fwg-spin .8s linear infinite; }
+@keyframes fwg-spin { to { transform: rotate(360deg); } }
+
+/* ai */
+.fwg-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.fwg-chip { padding: 6px 12px; background: var(--paper); border: 1px solid var(--rule); border-radius: 999px; font-size: 13px; color: var(--ink-2); cursor: pointer; font-family: var(--serif); transition: border-color .14s, color .14s; }
+.fwg-chip:hover { border-color: var(--gold-line); color: var(--ink); }
+.fwg-result { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: 18px 20px; margin-top: 4px; }
+.fwg-result-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.fwg-result-name { font-size: 24px; font-weight: 600; color: var(--ink); }
+.fwg-result-tag { font-size: 15px; font-style: italic; color: var(--ink-2); margin: 2px 0 14px; }
+.fwg-seeds { display: flex; flex-direction: column; gap: 7px; }
+.fwg-seed { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--ink-2); }
+.fwg-seed-glyph { color: var(--moss); font-size: 13px; }
+
+@media (max-width: 620px) { .fwg-title { font-size: 34px; } }
