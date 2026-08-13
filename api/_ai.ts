@@ -10,7 +10,7 @@
 
 import './_env.js';
 import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenerativeAI, type GenerateContentRequest, type Part } from '@google/generative-ai';
+import { GoogleGenerativeAI, type GenerateContentRequest, type GenerationConfig, type Part } from '@google/generative-ai';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -81,15 +81,25 @@ export async function generateText(opts: SimpleGenerateOpts): Promise<string> {
 
   if (provider === 'gemini') {
     const client = getGeminiClient();
-    const model = client.getGenerativeModel({
-      model: GEMINI_MODEL,
-      ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
-    });
+    // The deprecated @google/generative-ai SDK forwards generationConfig verbatim
+    // to the REST API, so thinkingConfig (absent from its types) still reaches
+    // Gemini. gemini-3.x flash "thinks" by default and those tokens count against
+    // the output budget — for a one-shot structured generation that can consume
+    // the whole budget and leave the JSON empty or truncated ("unexpected end of
+    // JSON" / "Unterminated string"). Disable thinking and give an explicit budget.
+    const generationConfig = {
+      maxOutputTokens: maxTokens,
+      ...(json ? { responseMimeType: 'application/json' } : {}),
+      thinkingConfig: { thinkingBudget: 0 },
+    } as GenerationConfig;
+    const model = client.getGenerativeModel({ model: GEMINI_MODEL, generationConfig });
     const parts: Part[] = [];
     if (system) parts.push({ text: system + '\n\n' });
     parts.push({ text: prompt });
     const result = await model.generateContent({ contents: [{ role: 'user', parts }] } as GenerateContentRequest);
-    return result.response.text();
+    const text = result.response.text();
+    if (!text.trim()) throw new Error('The model returned an empty response. Try again, or shorten the prompt.');
+    return text;
   }
 
   // Claude
