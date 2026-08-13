@@ -9,6 +9,7 @@ import { pushRecent } from '../Sidebar';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { AutosaveTextarea } from '../ui/MentionButton';
+import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
 import type { LoreEntry } from '../../lib/database.types';
@@ -248,7 +249,7 @@ function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelet
         <OverflowMenu items={[{ label: 'Delete entry', danger: true, onClick: onDelete }]} />
       </div>
 
-      <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" />
+      <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" maxLength={limitFor('lore_entries', 'title')} />
 
       <div className="as-meta">
         <div className="as-mi">
@@ -268,7 +269,7 @@ function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelet
       </div>
 
       <DetailSection title="Content">
-        <AutosaveTextarea value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" rows={8} />
+        <AutosaveTextarea value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" rows={8} maxLength={limitFor('lore_entries', 'content')} />
       </DetailSection>
     </DetailPanel>
   );

@@ -12,6 +12,7 @@
    ════════════════════════════════════════════════════════════════ */
 import { useState } from 'react';
 import { SlashField } from '../ui/SlashField';
+import { limitFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
@@ -164,7 +165,7 @@ function ModuleCreatePanel({
       <div className="cm-detail-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Module ID">
-            <input type="text" value={form.chapter ?? ''} onChange={e => setForm(p => ({ ...p, chapter: e.target.value }))} placeholder="e.g., 1" style={inputStyle} autoFocus />
+            <input type="text" value={form.chapter ?? ''} onChange={e => setForm(p => ({ ...p, chapter: e.target.value }))} placeholder="e.g., 1" maxLength={limitFor('modules', 'chapter')} style={inputStyle} autoFocus />
           </FormField>
           <FormField label="Status">
             <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as Module['status'] }))} style={inputStyle}>
@@ -175,7 +176,7 @@ function ModuleCreatePanel({
           </FormField>
         </div>
         <FormField label="Name">
-          <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Train Heist" style={inputStyle} />
+          <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Train Heist" maxLength={limitFor('modules', 'title')} style={inputStyle} />
         </FormField>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Faction / Storyline">
@@ -193,13 +194,13 @@ function ModuleCreatePanel({
           </FormField>
         </div>
         <FormField label="Synopsis">
-          <SlashField value={form.synopsis ?? ''} onChange={v => setForm(p => ({ ...p, synopsis: v }))} placeholder="Overview of this chapter's events…" minHeight="80px" />
+          <SlashField value={form.synopsis ?? ''} onChange={v => setForm(p => ({ ...p, synopsis: v }))} placeholder="Overview of this chapter's events…" minHeight="80px" maxLength={limitFor('modules', 'synopsis')} />
         </FormField>
         <FormField label="Encounters & Story Beats">
-          <SlashField value={form.encounters ?? ''} onChange={v => setForm(p => ({ ...p, encounters: v }))} placeholder="Key scenes, encounters…" minHeight="100px" />
+          <SlashField value={form.encounters ?? ''} onChange={v => setForm(p => ({ ...p, encounters: v }))} placeholder="Key scenes, encounters…" minHeight="100px" maxLength={limitFor('modules', 'encounters')} />
         </FormField>
         <FormField label="DM Notes">
-          <SlashField value={form.dm_notes ?? ''} onChange={v => setForm(p => ({ ...p, dm_notes: v }))} placeholder="Hidden info, fallbacks…" minHeight="60px" />
+          <SlashField value={form.dm_notes ?? ''} onChange={v => setForm(p => ({ ...p, dm_notes: v }))} placeholder="Hidden info, fallbacks…" minHeight="60px" maxLength={limitFor('modules', 'dm_notes')} />
         </FormField>
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button variant="primary" size="sm" onClick={handleCreate} disabled={!form.title.trim() || saving}>{saving ? 'Creating…' : 'Create Module'}</Button>

@@ -8,6 +8,7 @@ import { pushRecent } from '../Sidebar';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { AutosaveTextarea } from '../ui/MentionButton';
+import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { Location } from '../../lib/database.types';
 
@@ -327,8 +328,8 @@ function LocationDetail({ location, origin, allLocations, onOpenInCanon, onPubli
         <OverflowMenu items={[{ label: 'Delete Location', danger: true, onClick: onDelete }]} />
       </div>
 
-      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" />
-      <input className="as-sub" value={form.region} onChange={e => set('region', e.target.value)} placeholder="Region…" />
+      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" maxLength={limitFor('locations', 'name')} />
+      <input className="as-sub" value={form.region} onChange={e => set('region', e.target.value)} placeholder="Region…" maxLength={limitFor('locations', 'region')} />
 
       <div className="as-meta">
         <div className="as-mi">
@@ -357,20 +358,20 @@ function LocationDetail({ location, origin, allLocations, onOpenInCanon, onPubli
         </div>
         <div className="as-mi">
           <span className="as-ml">Population</span>
-          <input className="as-input" value={form.population} onChange={e => set('population', e.target.value)} placeholder="e.g. ~12,000" />
+          <input className="as-input" value={form.population} onChange={e => set('population', e.target.value)} placeholder="e.g. ~12,000" maxLength={limitFor('locations', 'population')} />
         </div>
       </div>
 
       <DetailSection title="Description">
-        <AutosaveTextarea value={form.description} onChange={v => set('description', v)} placeholder="Describe this place…" rows={4} />
+        <AutosaveTextarea value={form.description} onChange={v => set('description', v)} placeholder="Describe this place…" rows={4} maxLength={limitFor('locations', 'description')} />
       </DetailSection>
 
       <DetailSection title="History">
-        <AutosaveTextarea value={form.history} onChange={v => set('history', v)} placeholder="Historical events…" rows={4} />
+        <AutosaveTextarea value={form.history} onChange={v => set('history', v)} placeholder="Historical events…" rows={4} maxLength={limitFor('locations', 'history')} />
       </DetailSection>
 
       <DetailSection title="DM Notes">
-        <AutosaveTextarea value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" rows={3} />
+        <AutosaveTextarea value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" rows={3} maxLength={limitFor('locations', 'dm_notes')} />
       </DetailSection>
     </DetailPanel>
   );

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SlashField } from '../ui/SlashField';
+import { limitFor } from '../../lib/fieldLimits';
 import { Pencil, Eye } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -278,19 +279,19 @@ export default function Factions() {
                           <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Overview
                           </label>
-                          <SlashField value={editForm.overview ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, overview: v || null } : prev)} placeholder="Describe this faction's purpose, history, and public face…" minHeight="100px" />
+                          <SlashField value={editForm.overview ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, overview: v || null } : prev)} placeholder="Describe this faction's purpose, history, and public face…" minHeight="100px" maxLength={limitFor('factions', 'overview')} />
                         </div>
                         <div>
                           <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Key Figures
                           </label>
-                          <SlashField value={editForm.key_figures ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, key_figures: v || null } : prev)} placeholder="Notable members, leaders, agents…" minHeight="60px" />
+                          <SlashField value={editForm.key_figures ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, key_figures: v || null } : prev)} placeholder="Notable members, leaders, agents…" minHeight="60px" maxLength={limitFor('factions', 'key_figures')} />
                         </div>
                         <div>
                           <label className="block text-xs mb-1" style={{ color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
                             Agenda
                           </label>
-                          <SlashField value={editForm.agenda ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, agenda: v || null } : prev)} placeholder="Goals, plans, and public agenda…" minHeight="60px" />
+                          <SlashField value={editForm.agenda ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, agenda: v || null } : prev)} placeholder="Goals, plans, and public agenda…" minHeight="60px" maxLength={limitFor('factions', 'agenda')} />
                         </div>
                         <div
                           className="rounded border p-3"
@@ -308,7 +309,7 @@ export default function Factions() {
                               DM Only
                             </span>
                           </div>
-                          <SlashField value={editForm.dm_notes ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, dm_notes: v || null } : prev)} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="60px" />
+                          <SlashField value={editForm.dm_notes ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, dm_notes: v || null } : prev)} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="60px" maxLength={limitFor('factions', 'dm_notes')} />
                         </div>
                         <div className="flex gap-2">
                           <Button variant="primary" size="sm" onClick={saveEdit} disabled={saving}>
@@ -413,16 +414,16 @@ export default function Factions() {
           </div>
         </FormField>
         <FormField label="Overview">
-          <SlashField value={form.overview ?? ''} onChange={v => setForm(prev => ({ ...prev, overview: v || null }))} placeholder="Describe this faction's purpose, history, and public face…" minHeight="120px" />
+          <SlashField value={form.overview ?? ''} onChange={v => setForm(prev => ({ ...prev, overview: v || null }))} placeholder="Describe this faction's purpose, history, and public face…" minHeight="120px" maxLength={limitFor('factions', 'overview')} />
         </FormField>
         <FormField label="Key Figures">
-          <SlashField value={form.key_figures ?? ''} onChange={v => setForm(prev => ({ ...prev, key_figures: v || null }))} placeholder="Notable members, leaders, agents…" minHeight="80px" />
+          <SlashField value={form.key_figures ?? ''} onChange={v => setForm(prev => ({ ...prev, key_figures: v || null }))} placeholder="Notable members, leaders, agents…" minHeight="80px" maxLength={limitFor('factions', 'key_figures')} />
         </FormField>
         <FormField label="Agenda">
-          <SlashField value={form.agenda ?? ''} onChange={v => setForm(prev => ({ ...prev, agenda: v || null }))} placeholder="Goals, plans, and public agenda…" minHeight="80px" />
+          <SlashField value={form.agenda ?? ''} onChange={v => setForm(prev => ({ ...prev, agenda: v || null }))} placeholder="Goals, plans, and public agenda…" minHeight="80px" maxLength={limitFor('factions', 'agenda')} />
         </FormField>
         <FormField label="DM Notes (Hidden Agendas / Secrets)">
-          <SlashField value={form.dm_notes ?? ''} onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="80px" />
+          <SlashField value={form.dm_notes ?? ''} onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))} placeholder="Hidden agendas, secret alliances, true motivations…" minHeight="80px" maxLength={limitFor('factions', 'dm_notes')} />
         </FormField>
       </Modal>
     </div>

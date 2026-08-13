@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SlashField } from './ui/SlashField';
+import { limitFor } from '../lib/fieldLimits';
 import { Trash2 } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { useConfirm } from '../context/ConfirmContext';
@@ -171,6 +172,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
                 onChange={e => update('character_name', e.target.value)}
                 placeholder="e.g., Thorin Ironforge"
                 autoFocus
+                maxLength={limitFor('player_characters', 'character_name')}
                 style={inputStyle}
               />
             </FormField>
@@ -180,6 +182,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
                 value={form.player_name ?? ''}
                 onChange={e => update('player_name', e.target.value)}
                 placeholder="e.g., John"
+                maxLength={limitFor('player_characters', 'player_name')}
                 style={inputStyle}
               />
             </FormField>
@@ -191,6 +194,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
                 value={form.race ?? ''}
                 onChange={e => update('race', e.target.value)}
                 placeholder="e.g., Dwarf"
+                maxLength={limitFor('player_characters', 'race')}
                 style={inputStyle}
               />
             </FormField>
@@ -200,6 +204,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
                 value={form.class ?? ''}
                 onChange={e => update('class', e.target.value)}
                 placeholder="e.g., Fighter"
+                maxLength={limitFor('player_characters', 'class')}
                 style={inputStyle}
               />
             </FormField>
@@ -239,6 +244,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
               onChange={v => update('background', v)}
               placeholder="Character background and history..."
               minHeight="100px"
+              maxLength={limitFor('player_characters', 'background')}
             />
           </FormField>
 
@@ -248,6 +254,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
               onChange={v => update('story_hooks', v)}
               placeholder="Personal quests, unresolved story threads, motivations..."
               minHeight="80px"
+              maxLength={limitFor('player_characters', 'story_hooks')}
             />
           </FormField>
 
@@ -257,6 +264,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
               onChange={v => update('key_npcs', v)}
               placeholder="Relationships with NPCs, other PCs, factions..."
               minHeight="80px"
+              maxLength={limitFor('player_characters', 'key_npcs')}
             />
           </FormField>
 
@@ -284,6 +292,7 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
               onChange={v => update('dm_notes', v)}
               placeholder="Private notes, secrets, plans..."
               minHeight="80px"
+              maxLength={limitFor('player_characters', 'dm_notes')}
             />
           </FormField>
         </div>

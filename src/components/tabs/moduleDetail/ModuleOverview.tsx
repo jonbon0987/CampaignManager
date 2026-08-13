@@ -11,6 +11,7 @@ import { useManualSave } from '../../../hooks/useManualSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
+import { limitFor } from '../../../lib/fieldLimits';
 import { Button } from '../../ui/Button';
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
 import { typeInfo } from './pickers';
@@ -80,14 +81,14 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
 
         <div className="md-eyebrow">Module overview</div>
         <input className="as-title" value={form.title} placeholder="Module title…"
-          onChange={e => set('title', e.target.value)} />
+          onChange={e => set('title', e.target.value)} maxLength={limitFor('modules', 'title')} />
 
         {/* meta controls */}
         <div className="as-meta" style={{ marginTop: 12 }}>
           <label className="as-mi">
             <span className="as-ml">Chapter</span>
             <input className="md-mini-in" style={{ width: 64 }} value={form.chapter}
-              onChange={e => set('chapter', e.target.value)} placeholder="—" />
+              onChange={e => set('chapter', e.target.value)} placeholder="—" maxLength={limitFor('modules', 'chapter')} />
           </label>
           <label className="as-mi">
             <span className="as-ml">Status</span>
@@ -113,19 +114,19 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
         <div className="as-fl" style={{ marginTop: 18 }}>
           <span className="as-ll">Synopsis</span>
           <SlashField value={form.synopsis} onChange={v => set('synopsis', v)}
-            placeholder="Overview of this chapter's events, goals and themes…" minHeight="120px" />
+            placeholder="Overview of this chapter's events, goals and themes…" minHeight="120px" maxLength={limitFor('modules', 'synopsis')} />
         </div>
 
         <div className="as-fl">
           <span className="as-ll">Rewards</span>
           <SlashField value={form.rewards} onChange={v => set('rewards', v)}
-            placeholder="Loot, level-ups, plot rewards…" minHeight="60px" />
+            placeholder="Loot, level-ups, plot rewards…" minHeight="60px" maxLength={limitFor('modules', 'rewards')} />
         </div>
 
         <div className="md-dm">
           <div className="md-dm-label">DM Notes</div>
           <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)}
-            placeholder="Secrets, fallbacks, hidden motives…" minHeight="60px" />
+            placeholder="Secrets, fallbacks, hidden motives…" minHeight="60px" maxLength={limitFor('modules', 'dm_notes')} />
         </div>
 
         {/* dependency map */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SlashField } from '../ui/SlashField';
+import { limitFor } from '../../lib/fieldLimits';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
@@ -252,6 +253,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
                 value={form.title}
                 onChange={e => updateField('title', e.target.value)}
                 placeholder="e.g., Age of Wild Magic"
+                maxLength={limitFor('campaigns', 'title')}
                 style={inputStyle}
               />
             </FormField>
@@ -262,6 +264,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
                 onChange={v => updateField('plotSummary', v)}
                 placeholder="The overarching story, main conflicts, and campaign themes..."
                 minHeight="160px"
+                maxLength={limitFor('campaigns', 'plot_summary')}
               />
             </FormField>
 
@@ -272,6 +275,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
                   onChange={v => updateField('majorCharacters', v)}
                   placeholder="Key villains, allies, and important figures..."
                   minHeight="120px"
+                  maxLength={limitFor('campaigns', 'major_characters')}
                 />
               </FormField>
 
@@ -281,6 +285,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
                   onChange={v => updateField('worldInfo', v)}
                   placeholder="Setting details, house rules, tone, important context..."
                   minHeight="120px"
+                  maxLength={limitFor('campaigns', 'world_info')}
                 />
               </FormField>
             </div>

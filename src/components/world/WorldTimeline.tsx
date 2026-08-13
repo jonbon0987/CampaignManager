@@ -3,6 +3,8 @@ import { useWorld } from '../../context/WorldContext';
 import { Pill } from '../ui/ListDetail';
 import { Button } from '../ui/Button';
 import type { WorldTimelineEvent, TimelineEventType } from '../../types/world';
+import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
+import { CharCounter } from '../ui/CharCounter';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -203,16 +205,16 @@ function TimelineEventCard({
         <div className="tl-edit-form">
           <div className="ne-field">
             <label>Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+            <input value={title} onChange={e => setTitle(e.target.value)} autoFocus maxLength={limitFor('timeline_events', 'title')} />
           </div>
           <div className="ne-row">
             <div className="ne-field">
               <label>Year ({calendar})</label>
-              <input type="number" value={year} onChange={e => setYear(e.target.value)} />
+              <input type="number" value={year} onChange={e => setYear(e.target.value)} min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
             </div>
             <div className="ne-field">
               <label>Display Date</label>
-              <input value={date} onChange={e => setDate(e.target.value)} />
+              <input value={date} onChange={e => setDate(e.target.value)} maxLength={limitFor('timeline_events', 'display_date')} />
             </div>
           </div>
           <div className="ne-row">
@@ -236,6 +238,7 @@ function TimelineEventCard({
           <div className="ne-field">
             <label>Description</label>
             <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} />
+            <CharCounter value={desc} limit={limitFor('timeline_events', 'description')} />
           </div>
           <div className="tl-edit-actions">
             <Button variant="danger" onClick={onDelete}>Delete</Button>
@@ -347,16 +350,16 @@ function NewEventModal({
         <div className="ne-body">
           <div className="ne-field">
             <label>Event Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. The Battle of Ashfield" autoFocus />
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. The Battle of Ashfield" autoFocus maxLength={limitFor('timeline_events', 'title')} />
           </div>
           <div className="ne-row">
             <div className="ne-field">
               <label>Year ({calendar})</label>
-              <input type="number" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. 701" />
+              <input type="number" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. 701" min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
             </div>
             <div className="ne-field">
               <label>Display Date</label>
-              <input value={date} onChange={e => setDate(e.target.value)} placeholder="e.g. CR 701, Midsummer" />
+              <input value={date} onChange={e => setDate(e.target.value)} placeholder="e.g. CR 701, Midsummer" maxLength={limitFor('timeline_events', 'display_date')} />
             </div>
           </div>
           <div className="ne-row">
@@ -371,12 +374,13 @@ function NewEventModal({
             </div>
             <div className="ne-field">
               <label>Era</label>
-              <input value={era} onChange={e => setEra(e.target.value)} placeholder="e.g. Fourth Silence" />
+              <input value={era} onChange={e => setEra(e.target.value)} placeholder="e.g. Fourth Silence" maxLength={limitFor('timeline_events', 'era')} />
             </div>
           </div>
           <div className="ne-field">
             <label>Description</label>
             <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What happened and why it matters…" rows={3} />
+            <CharCounter value={desc} limit={limitFor('timeline_events', 'description')} />
           </div>
         </div>
         <div className="ne-foot">

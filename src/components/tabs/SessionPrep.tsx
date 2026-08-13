@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { SlashField } from '../ui/SlashField';
+import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { Pencil, Plus, X } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -336,6 +337,7 @@ export default function SessionPrep() {
                               value={editForm.session_number}
                               onChange={e => setEditForm(prev => prev ? { ...prev, session_number: parseInt(e.target.value) || 1 } : prev)}
                               min={1}
+                              max={maxFor('session_prep', 'session_number')}
                               className="w-full px-2 py-1.5 rounded text-sm outline-none"
                               style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)', border: '1px solid var(--rule)', fontFamily: 'var(--serif)' }}
                             />
@@ -362,6 +364,7 @@ export default function SessionPrep() {
                             onChange={v => setEditForm(prev => prev ? { ...prev, notes: v || null } : prev)}
                             placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
                             minHeight="200px"
+                            maxLength={limitFor('session_prep', 'notes')}
                           />
                         </div>
 
@@ -443,6 +446,7 @@ export default function SessionPrep() {
               value={form.session_number}
               onChange={e => setForm(prev => ({ ...prev, session_number: parseInt(e.target.value) || 1 }))}
               min={1}
+              max={maxFor('session_prep', 'session_number')}
               style={inputStyle}
             />
           </FormField>
@@ -461,6 +465,7 @@ export default function SessionPrep() {
             onChange={v => setForm(prev => ({ ...prev, notes: v || null }))}
             placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
             minHeight="200px"
+            maxLength={limitFor('session_prep', 'notes')}
           />
         </FormField>
         <div className="mt-2">
