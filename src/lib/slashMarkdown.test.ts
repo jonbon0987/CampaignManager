@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { parseToHTML, serialize, indentListItem, outdentListItem } from './slashMarkdown';
+import {
+  parseToHTML, serialize, indentListItem, outdentListItem,
+  normalizeKind, serializeRef, refRegex, hasRefs, parseSegments,
+  esc, pillHTML, mdToPlain,
+} from './slashMarkdown';
+
+const NEW = '@[Kutter](npc:abc-123)';
+const LEGACY = '[[npc:12345678-1234-1234-1234-123456789012:Kutter]]';
 
 /** Round-trip markdown → DOM (via parseToHTML) → markdown (via serialize). */
 function roundTrip(md: string): string {
@@ -111,5 +118,132 @@ describe('outdentListItem (Shift+Tab)', () => {
     indentListItem(li);
     outdentListItem(li);
     expect(serialize(ed)).toBe(md);
+  });
+});
+
+describe('normalizeKind', () => {
+  it('maps the legacy "creature" kind to "statblock"', () => {
+    expect(normalizeKind('creature')).toBe('statblock');
+  });
+  it('passes other kinds through unchanged', () => {
+    expect(normalizeKind('npc')).toBe('npc');
+    expect(normalizeKind('location')).toBe('location');
+  });
+});
+
+describe('serializeRef', () => {
+  it('emits the canonical @[Label](kind:id) form', () => {
+    expect(serializeRef('npc', 'abc-123', 'Kutter')).toBe('@[Kutter](npc:abc-123)');
+  });
+  it('normalizes creature → statblock in the output', () => {
+    expect(serializeRef('creature', 'x1', 'Troll')).toBe('@[Troll](statblock:x1)');
+  });
+});
+
+describe('refRegex', () => {
+  it('returns a fresh regex each call (no shared lastIndex)', () => {
+    const a = refRegex();
+    const b = refRegex();
+    expect(a).not.toBe(b);
+    a.exec(`x ${NEW}`);
+    // b is fresh, so it still matches from the start
+    expect(b.exec(`x ${NEW}`)).not.toBeNull();
+  });
+});
+
+describe('hasRefs', () => {
+  it('detects new-format references', () => {
+    expect(hasRefs(`hello ${NEW} world`)).toBe(true);
+  });
+  it('detects legacy-format references', () => {
+    expect(hasRefs(`see ${LEGACY}`)).toBe(true);
+  });
+  it('is false for plain text', () => {
+    expect(hasRefs('just some prose, no refs')).toBe(false);
+  });
+});
+
+describe('parseSegments', () => {
+  it('returns a single text segment for plain text', () => {
+    expect(parseSegments('hello world')).toEqual([{ type: 'text', value: 'hello world' }]);
+  });
+
+  it('returns an empty array for an empty string', () => {
+    expect(parseSegments('')).toEqual([]);
+  });
+
+  it('splits surrounding text around a new-format reference', () => {
+    expect(parseSegments(`Hi ${NEW}!`)).toEqual([
+      { type: 'text', value: 'Hi ' },
+      { type: 'entity', entityType: 'npc', id: 'abc-123', displayName: 'Kutter' },
+      { type: 'text', value: '!' },
+    ]);
+  });
+
+  it('parses a legacy reference and keeps the uuid + name', () => {
+    expect(parseSegments(LEGACY)).toEqual([
+      { type: 'entity', entityType: 'npc', id: '12345678-1234-1234-1234-123456789012', displayName: 'Kutter' },
+    ]);
+  });
+
+  it('normalizes a legacy creature reference to statblock', () => {
+    const seg = parseSegments('[[creature:12345678-1234-1234-1234-123456789012:Troll]]');
+    expect(seg).toEqual([
+      { type: 'entity', entityType: 'statblock', id: '12345678-1234-1234-1234-123456789012', displayName: 'Troll' },
+    ]);
+  });
+
+  it('handles multiple references in one string', () => {
+    const segs = parseSegments(`${NEW} and @[Duskward](location:loc-9)`);
+    expect(segs.filter(s => s.type === 'entity')).toHaveLength(2);
+  });
+});
+
+describe('esc', () => {
+  it('escapes HTML-significant characters', () => {
+    expect(esc('a & b < c > d "e"')).toBe('a &amp; b &lt; c &gt; d &quot;e&quot;');
+  });
+  it('leaves safe text untouched', () => {
+    expect(esc("Kutter's forge")).toBe("Kutter's forge");
+  });
+});
+
+describe('pillHTML', () => {
+  it('embeds escaped kind/id/label data attributes and the kind glyph', () => {
+    const html = pillHTML('npc', 'id-1', 'Kutter');
+    expect(html).toContain('class="rre-pill"');
+    expect(html).toContain('data-ref-kind="npc"');
+    expect(html).toContain('data-ref-id="id-1"');
+    expect(html).toContain('data-ref-label="Kutter"');
+    expect(html).toContain('◇'); // npc glyph
+  });
+  it('normalizes creature → statblock', () => {
+    expect(pillHTML('creature', 'x', 'T')).toContain('data-ref-kind="statblock"');
+  });
+  it('escapes a label containing HTML', () => {
+    expect(pillHTML('npc', 'x', '<b>&')).toContain('data-ref-label="&lt;b&gt;&amp;"');
+  });
+});
+
+describe('mdToPlain', () => {
+  it('returns an empty string for null/undefined', () => {
+    expect(mdToPlain(null)).toBe('');
+    expect(mdToPlain(undefined)).toBe('');
+  });
+  it('strips heading markers', () => {
+    expect(mdToPlain('## The Citadel')).toBe('The Citadel');
+  });
+  it('turns list markers into bullets', () => {
+    expect(mdToPlain('- one\n- two')).toBe('• one • two');
+  });
+  it('reduces references to their label / name', () => {
+    expect(mdToPlain(`Meet ${NEW}`)).toBe('Meet Kutter');
+    expect(mdToPlain(LEGACY)).toBe('Kutter');
+  });
+  it('strips bold and italic emphasis', () => {
+    expect(mdToPlain('a **bold** and *italic* word')).toBe('a bold and italic word');
+  });
+  it('collapses whitespace and drops divider lines', () => {
+    expect(mdToPlain('one\n---\ntwo')).toBe('one two');
   });
 });
