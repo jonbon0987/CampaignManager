@@ -10,7 +10,7 @@ import {
   submitDocument, entityMeta, computeDiffRows, fieldLabel, actionName, normalizeConfidence,
   type ImportAction, type ImportActionType, type DocumentInput,
 } from '../lib/documentImport';
-import { getAIProvider, setAIProvider, type AIProvider } from '../lib/aiProvider';
+import { getAIProvider } from '../lib/aiProvider';
 import { authHeaders } from '../lib/apiClient';
 import { errorMessage } from '../lib/errors';
 import {
@@ -142,7 +142,6 @@ export function useAIChat(backend: AssistantBackend) {
   const [committing, setCommitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [pendingDocument, setPendingDocument] = useState<DocumentInput | null>(null);
-  const [aiProvider, setAiProvider] = useState<AIProvider>(getAIProvider);
   const importPlaceholderRef = useRef<number>(-1);
   const abortControllerRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -176,12 +175,6 @@ export function useAIChat(backend: AssistantBackend) {
       abortControllerRef.current = null;
     }
     setLoading(false);
-  }
-
-  function toggleProvider() {
-    const next = aiProvider === 'claude' ? 'gemini' : 'claude';
-    setAiProvider(next);
-    setAIProvider(next);
   }
 
   function clearMessages() {
@@ -422,7 +415,7 @@ export function useAIChat(backend: AssistantBackend) {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ messages: apiMessages, system: systemPrompt, provider: aiProvider }),
+        body: JSON.stringify({ messages: apiMessages, system: systemPrompt, provider: getAIProvider() }),
         signal: controller.signal,
       });
 
@@ -577,7 +570,7 @@ export function useAIChat(backend: AssistantBackend) {
           });
         },
         controller.signal,
-        aiProvider,
+        getAIProvider(),
         backend.scope,
       );
 
@@ -652,8 +645,6 @@ export function useAIChat(backend: AssistantBackend) {
     setApiError,
     pendingDocument,
     setPendingDocument,
-    aiProvider,
-    toggleProvider,
     sendMessage,
     stopGeneration,
     clearMessages,
