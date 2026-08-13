@@ -242,7 +242,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
   // rows + a global pool that campaigns opt into. One generic hook backs both.
   const npcStore = useLinkableGlobals<NPC, NPCInsert>({
     getByCampaign: NPCsDB.getByCampaign,
-    getGlobal: () => NPCsDB.getGlobal(selectedWorldId ?? undefined),
+    getGlobal: () => selectedWorldId ? NPCsDB.getGlobal(selectedWorldId) : Promise.resolve([]),
     getLinkedIds: CampaignNPCsDB.getLinkedNPCIds,
     upsert: NPCsDB.upsert,
     remove: NPCsDB.delete,
@@ -252,7 +252,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
 
   const locationStore = useLinkableGlobals<Location, LocationInsert>({
     getByCampaign: LocationsDB.getByCampaign,
-    getGlobal: () => LocationsDB.getGlobal(selectedWorldId ?? undefined),
+    getGlobal: () => selectedWorldId ? LocationsDB.getGlobal(selectedWorldId) : Promise.resolve([]),
     getLinkedIds: CampaignLocationsDB.getLinkedLocationIds,
     upsert: LocationsDB.upsert,
     remove: LocationsDB.delete,
@@ -264,7 +264,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
   // a canon pool (campaign_id IS NULL) a campaign imports via campaign_lore.
   const loreStore = useLinkableGlobals<LoreEntry, LoreEntryInsert>({
     getByCampaign: LoreDB.getByCampaign,
-    getGlobal: () => LoreDB.getGlobal(selectedWorldId ?? undefined),
+    getGlobal: () => selectedWorldId ? LoreDB.getGlobal(selectedWorldId) : Promise.resolve([]),
     getLinkedIds: CampaignLoreDB.getLinkedLoreIds,
     upsert: LoreDB.upsert,
     remove: LoreDB.delete,

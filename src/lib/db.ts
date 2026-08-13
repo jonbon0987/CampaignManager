@@ -323,16 +323,16 @@ export const PlayerCharacters = {
 
 export const NPCs = {
   // Global NPCs (not tied to any campaign)
-  // Global (canon) NPCs — not tied to any campaign. Pass worldId to keep a
-  // campaign's canon pool scoped to its own world (imports/linking must not
-  // reference other worlds' data); omit it for the unscoped pool.
-  async getGlobal(worldId?: string): Promise<NPC[]> {
-    let query = supabase
+  // Global (canon) NPCs — not tied to any campaign, scoped to one world.
+  // worldId is REQUIRED: a campaign's canon pool must never reference another
+  // world's data (imports/linking).
+  async getGlobal(worldId: string): Promise<NPC[]> {
+    const { data, error } = await supabase
       .from('npcs')
       .select('*')
-      .is('campaign_id', null);
-    if (worldId) query = query.eq('world_id', worldId);
-    const { data, error } = await query.order('name');
+      .is('campaign_id', null)
+      .eq('world_id', worldId)
+      .order('name');
     if (error) throw error;
     return data;
   },
@@ -354,16 +354,6 @@ export const NPCs = {
       .from('npcs')
       .select('*')
       .eq('campaign_id', campaignId)
-      .order('name');
-    if (error) throw error;
-    return data;
-  },
-
-  async getByStatus(status: NPC['status']): Promise<NPC[]> {
-    const { data, error } = await supabase
-      .from('npcs')
-      .select('*')
-      .eq('status', status)
       .order('name');
     if (error) throw error;
     return data;
@@ -391,15 +381,15 @@ export const NPCs = {
 // ============================================================
 
 export const Locations = {
-  // Global locations (not tied to any campaign). Pass worldId to scope a
-  // campaign's canon pool to its own world; omit for the unscoped pool.
-  async getGlobal(worldId?: string): Promise<Location[]> {
-    let query = supabase
+  // Global locations (not tied to any campaign), scoped to one world.
+  // worldId is REQUIRED — a campaign's canon pool stays within its own world.
+  async getGlobal(worldId: string): Promise<Location[]> {
+    const { data, error } = await supabase
       .from('locations')
       .select('*')
-      .is('campaign_id', null);
-    if (worldId) query = query.eq('world_id', worldId);
-    const { data, error } = await query.order('name');
+      .is('campaign_id', null)
+      .eq('world_id', worldId)
+      .order('name');
     if (error) throw error;
     return data;
   },
@@ -566,24 +556,15 @@ export const Ideas = {
 // ============================================================
 
 export const Lore = {
-  async getAll(): Promise<LoreEntry[]> {
+  // Global (canon) lore — not tied to any campaign, scoped to one world.
+  // worldId is REQUIRED — mirrors Locations.getGlobal; canon stays within its world.
+  async getGlobal(worldId: string): Promise<LoreEntry[]> {
     const { data, error } = await supabase
       .from('lore_entries')
       .select('*')
+      .is('campaign_id', null)
+      .eq('world_id', worldId)
       .order('title');
-    if (error) throw error;
-    return data;
-  },
-
-  // Global (canon) lore — not tied to any campaign. Mirrors Locations.getGlobal;
-  // pass worldId to scope a campaign's canon pool to its own world.
-  async getGlobal(worldId?: string): Promise<LoreEntry[]> {
-    let query = supabase
-      .from('lore_entries')
-      .select('*')
-      .is('campaign_id', null);
-    if (worldId) query = query.eq('world_id', worldId);
-    const { data, error } = await query.order('title');
     if (error) throw error;
     return data;
   },
@@ -606,16 +587,6 @@ export const Lore = {
       .from('lore_entries')
       .select('*')
       .eq('campaign_id', campaignId)
-      .order('title');
-    if (error) throw error;
-    return data;
-  },
-
-  async getByCategory(category: string): Promise<LoreEntry[]> {
-    const { data, error } = await supabase
-      .from('lore_entries')
-      .select('*')
-      .eq('category', category)
       .order('title');
     if (error) throw error;
     return data;
