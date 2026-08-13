@@ -65,15 +65,26 @@ export interface SimpleGenerateOpts {
   prompt: string;
   system?: string;
   maxTokens?: number;
+  /**
+   * Ask the model for strict JSON. On Gemini this switches on JSON mode
+   * (responseMimeType: application/json), which guarantees syntactically valid,
+   * properly-escaped JSON — without it, long free-text fields can contain raw
+   * newlines/quotes and JSON.parse fails with "Unterminated string". Claude is
+   * reliable enough at JSON that no special flag is needed there.
+   */
+  json?: boolean;
 }
 
 /** Generate a single text response (used by creature/encounter endpoints). */
 export async function generateText(opts: SimpleGenerateOpts): Promise<string> {
-  const { provider, prompt, system, maxTokens = 2048 } = opts;
+  const { provider, prompt, system, maxTokens = 2048, json = false } = opts;
 
   if (provider === 'gemini') {
     const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: GEMINI_MODEL });
+    const model = client.getGenerativeModel({
+      model: GEMINI_MODEL,
+      ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
+    });
     const parts: Part[] = [];
     if (system) parts.push({ text: system + '\n\n' });
     parts.push({ text: prompt });
