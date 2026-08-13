@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const provider = resolveProvider(bodyProvider);
-    const raw = await generateText({ provider, prompt });
+    const raw = await generateText({ provider, prompt, maxTokens: 4096, json: true });
     return res.status(200).json({ text: raw });
   } catch (err) {
     return res.status(500).json({ error: friendlyError(err) });
