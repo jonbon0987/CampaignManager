@@ -10,7 +10,7 @@ function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -19,11 +19,14 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     res.write(`data: ${JSON.stringify(obj)}\n\n`);
   }
 
+  const scope = (req.body as { scope?: string })?.scope === 'world' ? 'world' : 'campaign';
+
   // 1. Stream a summary sentence word by word
-  const summaryWords = [
-    'Parsed', 'the', 'campaign', 'document.', 'Found', '2', 'NPCs,', '1', 'location,',
-    '1', 'faction,', '1', 'session,', 'and', '1', 'plot', 'hook.', 'Extracting', 'changes', 'now...',
-  ];
+  const summaryWords = scope === 'world'
+    ? ['Parsed', 'the', 'setting', 'document.', 'Found', '1', 'NPC,', '1', 'location,', '1',
+       'lore', 'entry,', 'and', '1', 'timeline', 'event.', 'Extracting', 'changes', 'now...']
+    : ['Parsed', 'the', 'campaign', 'document.', 'Found', '2', 'NPCs,', '1', 'location,',
+       '1', 'faction,', '1', 'session,', 'and', '1', 'plot', 'hook.', 'Extracting', 'changes', 'now...'];
   for (const word of summaryWords) {
     send({ type: 'text', text: word + ' ' });
     await sleep(60);
@@ -33,8 +36,76 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   send({ type: 'extracting' });
   await sleep(300);
 
-  // 3. Four passes with actions
-  const passes = [
+  // 3a. World-scope passes — only world-writable types (NPCs, Locations, Lore, Timeline)
+  const worldPasses = [
+    {
+      label: 'characters',
+      actions: [
+        {
+          type: 'upsertNPC',
+          matched_id: null,
+          reasoning: 'New world NPC: the archivist Sethri Vael, keeper of the drowned library.',
+          payload: {
+            name: 'Sethri Vael',
+            role: 'Archivist',
+            description: 'Keeper of the drowned library beneath Duskward; speaks only in questions.',
+            status: 'active',
+          },
+        },
+      ],
+    },
+    {
+      label: 'locations',
+      actions: [
+        {
+          type: 'upsertLocation',
+          matched_id: null,
+          reasoning: 'New location described in the document: the Drowned Library.',
+          payload: {
+            name: 'The Drowned Library',
+            location_type: 'landmark',
+            description: 'A flooded archive whose shelves are read by wading between them.',
+          },
+        },
+      ],
+    },
+    {
+      label: 'lore',
+      actions: [
+        {
+          type: 'upsertLore',
+          matched_id: null,
+          reasoning: 'New lore: the myth of the First Silence.',
+          payload: {
+            title: 'The First Silence',
+            category: 'history',
+            content: 'The age when the gods first stopped answering, and mortals learned to keep records.',
+          },
+        },
+      ],
+    },
+    {
+      label: 'timeline events',
+      actions: [
+        {
+          type: 'upsertTimelineEvent',
+          matched_id: null,
+          reasoning: 'Dated event anchoring the founding of the archive.',
+          payload: {
+            title: 'The Archive Is Founded',
+            year: 412,
+            display_date: 'CR 412',
+            event_type: 'founding',
+            era: 'First Silence',
+            description: 'Sethri Vael begins the collection that will become the Drowned Library.',
+          },
+        },
+      ],
+    },
+  ];
+
+  // 3b. Campaign passes with actions
+  const campaignPasses = [
     {
       label: 'characters',
       actions: [
@@ -118,6 +189,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       actions: [],  // nothing in this pass — tests empty-pass handling
     },
   ];
+
+  const passes = scope === 'world' ? worldPasses : campaignPasses;
 
   for (let i = 0; i < passes.length; i++) {
     const pass = passes[i];

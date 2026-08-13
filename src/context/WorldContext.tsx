@@ -161,13 +161,19 @@ interface WorldContextType {
   setActiveWorldId: (id: string) => void;
   activeWorld: World | null;
   loading: boolean;
+  /** True while the active world's entities (NPCs, locations, lore, …) are being fetched. */
+  entitiesLoading: boolean;
 
-  createWorld: (name: string, tagline: string) => Promise<void>;
+  /** Create a world; the optional `seed` inserts its starter entities before the
+   *  world is activated, so its data loads in one pass rather than two. */
+  createWorld: (name: string, tagline: string, seed?: (worldId: string) => Promise<void>) => Promise<World>;
   updateWorld: (id: string, changes: Partial<World>) => Promise<void>;
   deleteWorld: (id: string) => Promise<void>;
+  /** Re-fetch the active world's entities — call after seeding a freshly-created world. */
+  reloadWorldEntities: () => void;
 
   campaigns: WorldCampaign[];
-  createCampaign: (name: string) => Promise<void>;
+  createCampaign: (name: string, fields?: { party?: string; plot_summary?: string }) => Promise<WorldCampaign>;
   updateCampaign: (id: string, changes: Partial<WorldCampaign>) => Promise<void>;
   deleteCampaign: (id: string) => Promise<void>;
 
@@ -247,6 +253,12 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const [rawStatblocks, setRawStatblocks] = useState<MonsterStatblock[]>([]);
   const [rawEncounters, setRawEncounters] = useState<Encounter[]>([]);
   const [timeline, setTimeline] = useState<WorldTimelineEvent[]>([]);
+  // Bumped by reloadWorldEntities() to force a re-fetch of the active world's
+  // entities — used after the first-world gate seeds a freshly-created world.
+  const [entityReloadKey, setEntityReloadKey] = useState(0);
+  // True while the active world's entities are being fetched — start true so the
+  // world view shows a loader on mount rather than a flash of empty content.
+  const [entitiesLoading, setEntitiesLoading] = useState(true);
 
   // Load worlds and campaigns on mount
   useEffect(() => {
@@ -285,9 +297,11 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     if (!activeWorldId) {
       setNpcs([]); setFactions([]); setLocations([]); setLore([]);
       setRawStatblocks([]); setRawEncounters([]); setTimeline([]);
+      setEntitiesLoading(false);
       return;
     }
     let cancelled = false;
+    setEntitiesLoading(true);
     async function loadEntities() {
       try {
         const [dbNpcs, dbFactions, dbLocations, dbLore, dbBestiary, dbEncounters, dbTimeline] = await Promise.all([
@@ -309,13 +323,20 @@ export function WorldProvider({ children }: { children: ReactNode }) {
         setTimeline(dbTimeline.map(dbToWorldTimelineEvent));
       } catch (e) {
         console.error('WorldContext: failed to load world entities', e);
+      } finally {
+        // A superseded run leaves entitiesLoading true; the newer run (which set
+        // it true again) owns clearing it, so the flag tracks the latest world.
+        if (!cancelled) setEntitiesLoading(false);
       }
     }
     loadEntities();
     return () => { cancelled = true; };
     // Re-runs on activeCampaignId too: a campaign can edit/publish shared canon
     // (its own WorldContext copy goes stale), so re-fetch when returning to world.
-  }, [activeWorldId, activeCampaignId]);
+    // entityReloadKey lets callers (e.g. the first-world gate after seeding) force a re-fetch.
+  }, [activeWorldId, activeCampaignId, entityReloadKey]);
+
+  const reloadWorldEntities = useCallback(() => setEntityReloadKey(k => k + 1), []);
 
   const activeWorld = useMemo(
     () => worlds.find(w => w.id === activeWorldId) ?? null,
@@ -333,7 +354,11 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const facById  = useMemo(() => Object.fromEntries(factions.map(f => [f.id, f])),  [factions]);
   const sbById   = useMemo(() => Object.fromEntries(bestiary.map(b => [b.id, b])),  [bestiary]);
 
-  const createWorld = useCallback(async (name: string, tagline: string) => {
+  const createWorld = useCallback(async (
+    name: string,
+    tagline: string,
+    seed?: (worldId: string) => Promise<void>,
+  ) => {
     const dbWorld = await WorldsDB.upsert({
       name,
       tagline: tagline || 'A new world awaits',
@@ -343,10 +368,21 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       sort_order: Math.floor(Date.now() / 1000),
     });
     const newWorld = dbToWorld(dbWorld, []);
+    // Seed the world's entities BEFORE it becomes active, so the single entity
+    // fetch triggered by setActiveWorldId already sees the full data set. Doing
+    // it after would cause a create → empty → reload → full double-load flicker.
+    if (seed) {
+      try { await seed(newWorld.id); }
+      catch (e) { console.error('createWorld: seeding failed', e); }
+    }
     setWorlds(prev => [...prev, newWorld]);
+    // Mark loading before activating so the world view shows the loader on the
+    // very next render rather than a frame of empty content, then the fetch runs.
+    setEntitiesLoading(true);
     setActiveWorldId(newWorld.id);
     setWorldTab('overview');
     setActiveCampaignId(null);
+    return newWorld;
   }, [setActiveWorldId]);
 
   const updateWorld = useCallback(async (id: string, changes: Partial<World>) => {
@@ -364,26 +400,31 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteWorld = useCallback(async (id: string) => {
-    if (worlds.length <= 1) return;
     await WorldsDB.delete(id);
     setWorlds(prev => {
       const next = prev.filter(w => w.id !== id);
+      // Deleting the active world reselects the first remaining one; deleting the
+      // last world clears the selection, which drops the user back onto the
+      // first-world gate (worlds.length === 0) via WorldRoot.
       if (id === activeWorldId) setActiveWorldId(next[0]?.id ?? '');
       return next;
     });
     setAllCampaigns(prev => prev.filter(c => c.worldId !== id));
-  }, [worlds.length, activeWorldId, setActiveWorldId]);
+  }, [activeWorldId, setActiveWorldId]);
 
-  const createCampaign = useCallback(async (name: string) => {
+  const createCampaign = useCallback(async (
+    name: string,
+    fields?: { party?: string; plot_summary?: string },
+  ): Promise<WorldCampaign> => {
     const dbCampaign = await CampaignsDB.upsert({
       world_id: activeWorldId,
       name,
       description: null,
-      title: null,
-      plot_summary: null,
+      title: name, // the campaign Overview heading reads `title`, not `name`
+      plot_summary: fields?.plot_summary ?? null,
       major_characters: null,
       world_info: null,
-      party: '',
+      party: fields?.party ?? '',
       status: 'active',
       last_played: '',
       sort_order: Math.floor(Date.now() / 1000),
@@ -395,6 +436,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
         ? { ...w, campaignIds: [...w.campaignIds, newCampaign.id] }
         : w
     ));
+    return newCampaign;
   }, [activeWorldId]);
 
   const updateCampaign = useCallback(async (id: string, changes: Partial<WorldCampaign>) => {
@@ -716,9 +758,11 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     setActiveWorldId,
     activeWorld,
     loading,
+    entitiesLoading,
     createWorld,
     updateWorld,
     deleteWorld,
+    reloadWorldEntities,
     campaigns,
     createCampaign,
     updateCampaign,
@@ -766,8 +810,8 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     selected,
     setSelected,
   }), [
-    worlds, activeWorldId, setActiveWorldId, activeWorld, loading,
-    createWorld, updateWorld, deleteWorld,
+    worlds, activeWorldId, setActiveWorldId, activeWorld, loading, entitiesLoading,
+    createWorld, updateWorld, deleteWorld, reloadWorldEntities,
     campaigns, createCampaign, updateCampaign, deleteCampaign,
     activeCampaignId, activeCampaign, openCampaign, backToWorld,
     worldTab, handleSetWorldTab,

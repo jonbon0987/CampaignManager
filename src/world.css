@@ -67,16 +67,18 @@
 .ws-drop-item-name { font-family: var(--display); font-size: 15px; }
 .ws-drop-item-sub { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-top: 1px; }
 .ws-drop-item-delete {
-  display: none;
+  display: block;
   background: transparent; border: none;
-  color: var(--ink-3); font-size: 12px;
+  color: var(--ink-4); font-size: 12px;
   padding: 2px 5px; cursor: pointer;
   border-radius: var(--radius);
   line-height: 1;
   flex: 0 0 auto;
+  opacity: .55;
+  transition: opacity .12s, color .12s;
 }
-.ws-drop-item:hover .ws-drop-item-delete { display: block; }
-.ws-drop-item-delete:hover { color: var(--red); }
+.ws-drop-item:hover .ws-drop-item-delete { opacity: 1; }
+.ws-drop-item-delete:hover { color: var(--red); opacity: 1; }
 .ws-drop-sep { height: 1px; background: var(--rule-soft); margin: 4px 8px; }
 .ws-drop-new {
   display: flex; align-items: center; gap: 8px;

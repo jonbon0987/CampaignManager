@@ -33,6 +33,7 @@ const COLUMNS: Record<string, string[]> = {
   upsertSubmodule: ['module_id', 'title', 'submodule_type', 'summary', 'content', 'dm_notes', 'sort_order', 'linked_monster_ids', 'linked_encounter_ids'],
   upsertScene: ['submodule_id', 'title', 'scene_type', 'summary', 'content', 'dm_notes', 'sort_order', 'linked_monster_ids'],
   upsertRelationship: ['from_id', 'from_kind', 'to_id', 'to_kind', 'relationship_type', 'label'],
+  upsertTimelineEvent: ['title', 'description', 'year', 'display_date', 'event_type', 'era', 'sort_order'],
 };
 
 const ALLOWED: Record<string, Set<string>> = Object.fromEntries(
@@ -42,6 +43,10 @@ const ALLOWED: Record<string, Set<string>> = Object.fromEntries(
 const NPC_STATUS = new Set(['active', 'deceased', 'unknown']);
 const MODULE_STATUS = new Set(['planned', 'active', 'completed']);
 const RELATIONSHIP_TYPE = new Set(['ally', 'rival', 'foe', 'neutral']);
+// Timeline event_type keys the world timeline renders (TIMELINE_TYPE_CONFIG).
+// 'campaign' is excluded — the world assistant seeds setting history, not
+// campaign-specific markers — so those coerce down to 'custom'.
+const TIMELINE_TYPE = new Set(['cataclysm', 'founding', 'treaty', 'war', 'political', 'magical', 'custom']);
 
 /** Coerce a single field to one of `allowed` (case-insensitive), else `fallback`. */
 function coerce(value: unknown, allowed: Set<string>, fallback: string): string {
@@ -74,6 +79,8 @@ export function normalizeAssistantPayload<T>(type: string, payload: T): T {
     out.status = coerce(out.status, MODULE_STATUS, 'planned');
   } else if (type === 'upsertRelationship' && 'relationship_type' in out) {
     out.relationship_type = coerce(out.relationship_type, RELATIONSHIP_TYPE, 'neutral');
+  } else if (type === 'upsertTimelineEvent' && 'event_type' in out) {
+    out.event_type = coerce(out.event_type, TIMELINE_TYPE, 'custom');
   }
 
   return out as T;

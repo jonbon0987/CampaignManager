@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import WorldCreationGate from './WorldCreationGate';
+import CampaignCreationGate from './CampaignCreationGate';
 import { signOut } from '../../lib/auth';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import type { WorldTab, WorldCampaign } from '../../types/world';
@@ -36,12 +38,10 @@ const CAMPAIGN_CTA: Record<WorldCampaign['status'], string> = {
 // ── World Selector dropdown ─────────────────────────────────────────────────
 
 function WorldSelector() {
-  const { worlds, activeWorldId, setActiveWorldId, createWorld, deleteWorld } = useWorld();
+  const { worlds, activeWorldId, setActiveWorldId, deleteWorld } = useWorld();
   const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newTagline, setNewTagline] = useState('');
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
@@ -68,23 +68,19 @@ function WorldSelector() {
     setOpen(o => !o);
   };
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    await createWorld(newName.trim(), newTagline.trim());
-    setNewName(''); setNewTagline(''); setCreating(false); setOpen(false);
-  };
-
   const handleDeleteWorld = async (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
+    const isLast = worlds.length <= 1;
     const ok = await confirm({
       title: 'Delete world',
-      message: `Delete "${name}" and all its campaigns? This cannot be undone.`,
+      message: isLast
+        ? `Delete "${name}" and all its campaigns, lore, locations, and cast? This cannot be undone. It's your only world, so you'll be returned to world creation.`
+        : `Delete "${name}" and all its campaigns, lore, locations, and cast? This cannot be undone.`,
+      confirmLabel: 'Delete world',
       danger: true,
     });
     if (ok) { await deleteWorld(id); setOpen(false); }
   };
-
-  const cancelCreate = () => { setCreating(false); setNewName(''); setNewTagline(''); };
 
   return (
     <>
@@ -111,34 +107,19 @@ function WorldSelector() {
                   {w.campaignIds.length} campaign{w.campaignIds.length !== 1 ? 's' : ''}
                 </div>
               </div>
-              {worlds.length > 1 && (
-                <button className="ws-drop-item-delete"
-                  onClick={e => handleDeleteWorld(e, w.id, w.name)} title="Delete world">✕</button>
-              )}
+              <button className="ws-drop-item-delete"
+                onClick={e => handleDeleteWorld(e, w.id, w.name)} title="Delete world">✕</button>
             </div>
           ))}
           <div className="ws-drop-sep" />
-          {!creating ? (
-            <button className="ws-drop-new" onClick={() => setCreating(true)}>
-              <span>+</span> Create new world
-            </button>
-          ) : (
-            <div className="ws-create-form">
-              <input autoFocus className="ws-create-input" value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') cancelCreate(); }}
-                placeholder="World name…" />
-              <input className="ws-create-input ws-create-tagline" value={newTagline}
-                onChange={e => setNewTagline(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') cancelCreate(); }}
-                placeholder="A brief tagline…" />
-              <div className="ws-create-actions">
-                <button className="ws-create-cancel" onClick={cancelCreate}>Cancel</button>
-                <button className="ws-create-submit" onClick={handleCreate} disabled={!newName.trim()}>Create</button>
-              </div>
-            </div>
-          )}
+          <button className="ws-drop-new" onClick={() => { setOpen(false); setCreating(true); }}>
+            <span>+</span> Create new world
+          </button>
         </div>,
+        document.body
+      )}
+      {creating && createPortal(
+        <WorldCreationGate onClose={() => setCreating(false)} />,
         document.body
       )}
     </>
@@ -219,14 +200,13 @@ function CampaignFlyout({ campaigns, activeCampaignId, openCampaign }: CampaignF
 export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () => void; onOpenDice?: () => void }) {
   const {
     activeWorld, campaigns, worldTab, setWorldTab, loading,
-    activeCampaignId, openCampaign, createCampaign, deleteCampaign,
+    activeCampaignId, openCampaign, deleteCampaign,
     npcs, factions, locations, lore, bestiary, encounters, timeline,
   } = useWorld();
   const confirm = useConfirm();
 
   const [collapsed, setCollapsed] = useLocalStorage('world-side-collapsed', false);
-  const [creatingCampaign, setCreatingCampaign] = useState(false);
-  const [newCampName, setNewCampName] = useState('');
+  const [campaignGateOpen, setCampaignGateOpen] = useState(false);
 
   // Toggle w-side-collapsed on the parent .cm-shell so the grid column resizes
   useEffect(() => {
@@ -235,11 +215,6 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
     return () => { shell?.classList.remove('w-side-collapsed'); };
   }, [collapsed]);
 
-  const submitNewCampaign = async () => {
-    if (!newCampName.trim()) return;
-    await createCampaign(newCampName.trim());
-    setNewCampName(''); setCreatingCampaign(false);
-  };
   const handleDeleteCampaign = async (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
     const ok = await confirm({
@@ -312,6 +287,7 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
   const otherCampaigns = campaigns.filter(c => c.id !== heroCampaign?.id);
 
   return (
+    <>
     <aside className="w-side">
       <div className="w-side-head">
         <div className="w-side-scope">
@@ -408,26 +384,10 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
             </div>
           ))}
 
-          {creatingCampaign ? (
-            <div className="w-camp-new-form">
-              <input autoFocus className="w-camp-name-input" value={newCampName}
-                onChange={e => setNewCampName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') submitNewCampaign();
-                  if (e.key === 'Escape') { setCreatingCampaign(false); setNewCampName(''); }
-                }}
-                placeholder="Campaign name…" />
-              <div className="ws-create-actions">
-                <button className="ws-create-cancel" onClick={() => { setCreatingCampaign(false); setNewCampName(''); }}>Cancel</button>
-                <button className="ws-create-submit" onClick={submitNewCampaign} disabled={!newCampName.trim()}>Create</button>
-              </div>
-            </div>
-          ) : (
-            /* eslint-disable-next-line no-restricted-syntax -- bespoke sidebar affordance */
-            <button className="wc-newrow" onClick={() => setCreatingCampaign(true)}>
-              <b>+</b><span>New campaign</span>
-            </button>
-          )}
+          {/* eslint-disable-next-line no-restricted-syntax -- bespoke sidebar affordance */}
+          <button className="wc-newrow" onClick={() => setCampaignGateOpen(true)}>
+            <b>+</b><span>New campaign</span>
+          </button>
         </div>
       </div>
 
@@ -444,5 +404,10 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
         </button>
       </div>
     </aside>
+    {campaignGateOpen && createPortal(
+      <CampaignCreationGate onClose={() => setCampaignGateOpen(false)} />,
+      document.body
+    )}
+    </>
   );
 }

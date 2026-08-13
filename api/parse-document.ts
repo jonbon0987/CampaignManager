@@ -9,9 +9,10 @@ type RequestBody = {
   kind: 'text' | 'docx' | 'pdf' | 'gdocs-url';
   payload: string;          // raw text, base64 for docx/pdf, or URL for gdocs-url
   filename?: string;
-  campaignContext: string;  // pre-formatted campaign entity listing
+  campaignContext: string;  // pre-formatted campaign (or world) entity listing
   userInstructions?: string; // optional DM instructions to guide the parse
   provider?: string;
+  scope?: 'campaign' | 'world'; // which entity set to extract into (default campaign)
 };
 
 // ── Tool schema builder ─────────────────────────────────────────────────────
@@ -222,6 +223,70 @@ Do NOT extract NPCs, PCs, locations, or other narrative data here — only mecha
   },
 ];
 
+// World-scope passes. The world (setting bible) is a shared layer above any
+// single campaign: its writable records are NPCs, Locations, Lore, and Timeline
+// events — no sessions, PCs, factions, hooks, modules, or stat blocks. Each pass
+// is narrowed to a single world entity type so the model never proposes an
+// action the world assistant can't commit.
+const worldExtractionPasses: ExtractionPass[] = [
+  {
+    label: 'characters',
+    focusInstruction: 'Extract ONLY NPCs — the notable people and creatures that inhabit this setting. Include roles, statuses (active, deceased, unknown), descriptions, motivations, and where they can be found. Do NOT extract player characters or anything tied to a single campaign.',
+    actionSchemas: [
+      propertiesForAction('upsertNPC', {
+        name: { type: 'string' },
+        role: { type: ['string', 'null'] },
+        status: { type: ['string', 'null'], enum: ['active', 'deceased', 'unknown', null] },
+        description: { type: ['string', 'null'] },
+        location: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+      }, ['name']),
+    ],
+  },
+  {
+    label: 'locations',
+    focusInstruction: 'Extract ONLY locations — the places of this setting. Include regions, types, populations, histories, and descriptions.',
+    actionSchemas: [
+      propertiesForAction('upsertLocation', {
+        name: { type: 'string' },
+        region: { type: ['string', 'null'] },
+        location_type: { type: ['string', 'null'] },
+        population: { type: ['string', 'null'] },
+        status: { type: ['string', 'null'] },
+        history: { type: ['string', 'null'] },
+        description: { type: ['string', 'null'] },
+        dm_notes: { type: ['string', 'null'] },
+      }, ['name']),
+    ],
+  },
+  {
+    label: 'lore',
+    focusInstruction: 'Extract ONLY lore entries — the setting\'s history, myths, religions, artifacts, and other background knowledge. Include a title, a category, and the content.',
+    actionSchemas: [
+      propertiesForAction('upsertLore', {
+        title: { type: 'string' },
+        category: { type: ['string', 'null'] },
+        content: { type: ['string', 'null'] },
+        dm_only: { type: 'boolean' },
+      }, ['title']),
+    ],
+  },
+  {
+    label: 'timeline events',
+    focusInstruction: 'Extract ONLY timeline events — dated moments in the setting\'s history (cataclysms, foundings, treaties, wars, political shifts, magical events). Give each a title and a numeric "year" that orders it. "display_date" is the label the DM sees (e.g. "CR 1247"); default it to the year if the document gives no other form. "era" groups events into an age — reuse an era already shown in the world data when one fits. "event_type" must be one of cataclysm, founding, treaty, war, political, magical, or custom.',
+    actionSchemas: [
+      propertiesForAction('upsertTimelineEvent', {
+        title: { type: 'string' },
+        year: { type: 'number', description: 'Integer year used to sort the event on the timeline.' },
+        display_date: { type: ['string', 'null'], description: 'Human-readable date label, e.g. "CR 1247".' },
+        event_type: { type: ['string', 'null'], enum: ['cataclysm', 'founding', 'treaty', 'war', 'political', 'magical', 'custom', null] },
+        era: { type: ['string', 'null'] },
+        description: { type: ['string', 'null'] },
+      }, ['title', 'year']),
+    ],
+  },
+];
+
 function buildPassSchema(pass: ExtractionPass) {
   return {
     type: 'object' as const,
@@ -238,12 +303,16 @@ function buildPassSchema(pass: ExtractionPass) {
   };
 }
 
-function buildExtractionSystemPrompt(campaignContext: string, pass: ExtractionPass, userInstructions?: string): string {
+function buildExtractionSystemPrompt(campaignContext: string, pass: ExtractionPass, userInstructions?: string, scope: 'campaign' | 'world' = 'campaign'): string {
   const instructionBlock = userInstructions?.trim()
     ? `\n\n== DM'S INSTRUCTIONS (HIGHEST PRIORITY) ==\n\nThe DM gave these specific instructions:\n"${userInstructions.trim()}"\n\nYou MUST follow these instructions exactly. If the DM asked to create a specific entity type (e.g. "upload as a submodule", "create a module", "add as lore"), ONLY create that entity type — do NOT extract other entity types unless the DM explicitly asked for them. The DM's instructions override the default extraction behavior.\n\nIf this extraction pass does not match what the DM asked for, return an empty actions array.`
     : '';
 
-  return `You extract campaign updates from a DM's session document and propose structured changes.
+  const intro = scope === 'world'
+    ? `You extract worldbuilding updates from a DM's setting document and propose structured changes to the world (setting bible) — the reusable layer shared across campaigns.`
+    : `You extract campaign updates from a DM's session document and propose structured changes.`;
+
+  return `${intro}
 
 ${campaignContext}
 
@@ -278,16 +347,24 @@ Return your proposals via the propose_import_actions tool. If the document has n
 Return ONLY via the propose_import_actions tool call. Do not emit plain text.`;
 }
 
-function buildSummarySystemPrompt(campaignContext: string, userInstructions?: string): string {
+function buildSummarySystemPrompt(campaignContext: string, userInstructions?: string, scope: 'campaign' | 'world' = 'campaign'): string {
   const instructionBlock = userInstructions?.trim()
     ? `\n\nThe DM gave these specific instructions for how to process this document:\n"${userInstructions.trim()}"\n\nYou MUST acknowledge these instructions in your summary. Describe what the document contains AND confirm you will follow the DM's instructions. For example, if they said "upload as a submodule", confirm you'll create a submodule — do NOT say you'll extract NPCs, locations, etc. unless the DM asked for that.`
     : '';
 
-  return `You are a D&D campaign assistant. The DM has uploaded a document for you to analyze.
+  const preamble = scope === 'world'
+    ? `You are a worldbuilding assistant for a tabletop RPG setting. The DM has uploaded a document for you to analyze into the world (setting bible) — its NPCs, locations, lore, and timeline events.`
+    : `You are a D&D campaign assistant. The DM has uploaded a document for you to analyze.`;
+  const scopeNoun = scope === 'world' ? 'world' : 'campaign';
+  const example = scope === 'world'
+    ? `This gazetteer describes 3 NPCs, 2 locations, and 4 timeline events. I'll extract all changes now.`
+    : `This session recap covers 3 NPCs, 2 new locations, and advances the main plot hook. I'll extract all changes now.`;
+
+  return `${preamble}
 
 ${campaignContext}
 
-Read the document and write a brief 2-3 sentence summary of what you found — what kind of document it is, what entities it mentions, and what updates you'll be proposing to the campaign. Be specific about names and numbers (e.g. "This session recap covers 3 NPCs, 2 new locations, and advances the main plot hook. I'll extract all changes now.").${instructionBlock}
+Read the document and write a brief 2-3 sentence summary of what you found — what kind of document it is, what entities it mentions, and what updates you'll be proposing to the ${scopeNoun}. Be specific about names and numbers (e.g. "${example}").${instructionBlock}
 
 IMPORTANT RULES:
 - Do NOT ask follow-up questions. Do NOT ask the user what to prioritize or what they'd like to do.
@@ -325,9 +402,10 @@ async function runExtractionPass(
   userInstructions?: string,
   // Claude-only: full content blocks for PDF support
   claudeUserContent?: Anthropic.ContentBlockParam[],
+  scope: 'campaign' | 'world' = 'campaign',
 ): Promise<unknown[]> {
   const schema = buildPassSchema(pass);
-  const systemPrompt = buildExtractionSystemPrompt(campaignContext, pass, userInstructions);
+  const systemPrompt = buildExtractionSystemPrompt(campaignContext, pass, userInstructions, scope);
 
   if (provider === 'gemini') {
     const result = await structuredExtract({
@@ -346,7 +424,7 @@ async function runExtractionPass(
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const stream = client.messages.stream({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         max_tokens: 8192,
         system: systemPrompt,
         tools: [
@@ -399,6 +477,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const provider = resolveProvider(body.provider);
+  const scope: 'campaign' | 'world' = body.scope === 'world' ? 'world' : 'campaign';
+  const passes = scope === 'world' ? worldExtractionPasses : extractionPasses;
 
   // Switch to SSE streaming
   res.setHeader('Content-Type', 'text/event-stream');
@@ -508,7 +588,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await streamSummary({
       provider,
-      system: buildSummarySystemPrompt(body.campaignContext, body.userInstructions),
+      system: buildSummarySystemPrompt(body.campaignContext, body.userInstructions, scope),
       userContent: summaryInput,
       onText(text) {
         send({ type: 'text', text });
@@ -525,10 +605,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const allActions: unknown[] = [];
     try {
-      for (let pi = 0; pi < extractionPasses.length; pi++) {
-        const pass = extractionPasses[pi];
+      for (let pi = 0; pi < passes.length; pi++) {
+        const pass = passes[pi];
         // Tell the client which pass we're on
-        send({ type: 'pass', index: pi, total: extractionPasses.length, label: pass.label });
+        send({ type: 'pass', index: pi, total: passes.length, label: pass.label });
 
         try {
           const passActions = await runExtractionPass(
@@ -538,6 +618,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             pass,
             body.userInstructions,
             claudeUserContent,
+            scope,
           );
 
           // Stream each action to the client immediately

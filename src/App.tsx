@@ -37,6 +37,8 @@ import WorldOverview from './components/world/WorldOverview';
 import { WorldNPCsView, WorldLocationsView, WorldLoreView, WorldCombatView } from './components/world/WorldViews';
 import WorldTimeline from './components/world/WorldTimeline';
 import WorldImportDrawer from './components/world/WorldImportDrawer';
+import WorldCreationGate from './components/world/WorldCreationGate';
+import CanvasLoading from './components/ui/CanvasLoading';
 
 // cast = PCs + NPCs + Factions; Lore & Locations are separate compendium tabs;
 // Threads & Ideas are separate play tabs; combat = Stat Sheets + Encounters
@@ -196,7 +198,7 @@ function AppInner({ user }: { user: User }) {
               </div>
             )}
             {loading ? (
-              <div style={{ textAlign: 'center', paddingTop: '96px', color: 'var(--ink-3)' }}>Loading campaign data…</div>
+              <CanvasLoading label="Loading campaign data…" />
             ) : (
               <>
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
@@ -494,7 +496,14 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
 }
 
 function WorldContent() {
-  const { worldTab } = useWorld();
+  const { worldTab, entitiesLoading, activeWorldId } = useWorld();
+
+  // Hold the view behind a loader while this world's entities are still fetching,
+  // so tabs render with real data rather than briefly showing empty/stale state.
+  if (activeWorldId && entitiesLoading) {
+    return <CanvasLoading label="Loading world…" />;
+  }
+
   switch (worldTab) {
     case 'overview': return <WorldOverview />;
     case 'npcs': return <WorldNPCsView />;
@@ -574,11 +583,30 @@ function WorldShell() {
 }
 
 function WorldRoot({ user }: { user: User }) {
-  const { activeCampaignId } = useWorld();
+  const { worlds, loading, activeCampaignId } = useWorld();
+
+  // Don't flash the gate while worlds are still loading from Supabase.
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg)', color: 'var(--ink-3)' }}
+      >
+        Loading…
+      </div>
+    );
+  }
+
+  // Zero worlds → block the whole app until the user creates their first one.
+  // createWorld() flips worlds 0 → 1, so this re-renders and falls through to
+  // WorldShell, landing the user on the new (now-existing) World Overview.
+  if (worlds.length === 0) {
+    return <WorldCreationGate user={user} />;
+  }
 
   if (activeCampaignId) {
     return (
-      <CampaignProvider>
+      <CampaignProvider campaignId={activeCampaignId}>
         <StatBlockPanelProvider>
           <AppInner user={user} />
         </StatBlockPanelProvider>

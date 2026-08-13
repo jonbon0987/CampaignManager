@@ -9,15 +9,17 @@ export function getAIProvider(): AIProvider {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
+      if (parsed === 'claude') return 'claude';
       if (parsed === 'gemini') return 'gemini';
     }
   } catch {
     // ignore
   }
-  // Fall back to env var
+  // Fall back to env var. Default is Gemini (free tier); set VITE_AI_PROVIDER=claude
+  // (or pick Claude in the in-app provider toggle) to use Anthropic instead.
   const env = import.meta.env.VITE_AI_PROVIDER;
-  if (env === 'gemini') return 'gemini';
-  return 'claude';
+  if (env === 'claude') return 'claude';
+  return 'gemini';
 }
 
 export function setAIProvider(provider: AIProvider) {
