@@ -26,7 +26,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+
+// Load .env first, then .env.local (Vite's convention). .env.local wins for
+// any overlapping keys, matching how the app itself resolves env vars.
+loadEnv();
+loadEnv({ path: '.env.local', override: true });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');

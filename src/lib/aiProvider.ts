@@ -2,26 +2,9 @@
 
 export type AIProvider = 'claude' | 'gemini';
 
-const STORAGE_KEY = 'dnd-ai-provider';
-
+// The active provider is controlled solely by VITE_AI_PROVIDER in the .env
+// files — there is no in-app switch. Default is Gemini (free tier); set
+// VITE_AI_PROVIDER=claude to use Anthropic instead.
 export function getAIProvider(): AIProvider {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed === 'claude') return 'claude';
-      if (parsed === 'gemini') return 'gemini';
-    }
-  } catch {
-    // ignore
-  }
-  // Fall back to env var. Default is Gemini (free tier); set VITE_AI_PROVIDER=claude
-  // (or pick Claude in the in-app provider toggle) to use Anthropic instead.
-  const env = import.meta.env.VITE_AI_PROVIDER;
-  if (env === 'claude') return 'claude';
-  return 'gemini';
-}
-
-export function setAIProvider(provider: AIProvider) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(provider));
+  return import.meta.env.VITE_AI_PROVIDER === 'claude' ? 'claude' : 'gemini';
 }

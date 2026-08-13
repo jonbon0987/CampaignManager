@@ -583,7 +583,7 @@ function WorldShell() {
 }
 
 function WorldRoot({ user }: { user: User }) {
-  const { worlds, loading, activeCampaignId } = useWorld();
+  const { worlds, loading, activeCampaignId, activeWorldId } = useWorld();
 
   // Don't flash the gate while worlds are still loading from Supabase.
   if (loading) {
@@ -606,7 +606,7 @@ function WorldRoot({ user }: { user: User }) {
 
   if (activeCampaignId) {
     return (
-      <CampaignProvider campaignId={activeCampaignId}>
+      <CampaignProvider campaignId={activeCampaignId} worldId={activeWorldId || undefined}>
         <StatBlockPanelProvider>
           <AppInner user={user} />
         </StatBlockPanelProvider>

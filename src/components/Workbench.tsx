@@ -340,13 +340,6 @@ export default function Workbench({
             <div className="t">{chat.title}</div>
             <div className="s">{chat.subtitle}</div>
           </div>
-          <button
-            className={`prov ${chat.aiProvider}`}
-            onClick={chat.toggleProvider}
-            title="Switch model"
-          >
-            {chat.aiProvider === 'claude' ? '✦ Claude' : '◆ Gemini'}
-          </button>
           {chat.messages.length > 0 && (
             <button className="icon-btn" onClick={chat.clearMessages} title="Clear conversation">⌫</button>
           )}

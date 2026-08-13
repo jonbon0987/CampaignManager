@@ -2,6 +2,7 @@ import './_env.js';
 import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mammoth from 'mammoth';
+import { extractText, getDocumentProxy } from 'unpdf';
 import { resolveProvider, streamSummary, structuredExtract, friendlyError, type AIProvider } from './_ai.js';
 import { requireAuth } from './_auth.js';
 
@@ -400,8 +401,6 @@ async function runExtractionPass(
   userContentText: string,
   pass: ExtractionPass,
   userInstructions?: string,
-  // Claude-only: full content blocks for PDF support
-  claudeUserContent?: Anthropic.ContentBlockParam[],
   scope: 'campaign' | 'world' = 'campaign',
 ): Promise<unknown[]> {
   const schema = buildPassSchema(pass);
@@ -419,7 +418,7 @@ async function runExtractionPass(
     return Array.isArray(parsed?.actions) ? parsed.actions : [];
   }
 
-  // Claude — tool use with retry (uses full content blocks for PDF support)
+  // Claude — tool use with retry
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -435,7 +434,7 @@ async function runExtractionPass(
           },
         ],
         tool_choice: { type: 'tool', name: 'propose_import_actions' },
-        messages: [{ role: 'user', content: claudeUserContent || userContentText }],
+        messages: [{ role: 'user', content: userContentText }],
       });
 
       const finalMessage = await stream.finalMessage();
@@ -490,9 +489,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // ── 1. Turn the input into text (and optionally Claude content blocks) ──
+    // ── 1. Turn the input into text ────────────────────────────────────────
     let userContentText = '';
-    let claudeUserContent: Anthropic.ContentBlockParam[] | undefined;
 
     switch (body.kind) {
       case 'text': {
@@ -528,22 +526,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.end();
           return;
         }
-        if (provider === 'gemini') {
-          // Gemini doesn't support PDF content blocks the same way — we note this
-          send({ type: 'error', message: 'PDF parsing with Gemini is not yet supported. Please convert to .txt or .docx, or switch to Claude for PDF imports.' });
+        // Extract the PDF's text layer server-side (like mammoth for .docx) so
+        // the plain text flows through the same path every provider handles —
+        // no provider-native PDF ingestion required.
+        let pdfBytes: Uint8Array;
+        try {
+          pdfBytes = new Uint8Array(Buffer.from(body.payload, 'base64'));
+        } catch {
+          send({ type: 'error', message: 'Invalid base64 payload for pdf' });
           res.end();
           return;
         }
-        // Claude gets native PDF content blocks
-        claudeUserContent = [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: body.payload },
-            title: body.filename ?? 'uploaded.pdf',
-          },
-          { type: 'text', text: 'Parse the attached document and propose campaign updates.' },
-        ];
-        userContentText = 'Parse the attached document and propose campaign updates.';
+        let extracted: string;
+        try {
+          const pdf = await getDocumentProxy(pdfBytes);
+          const { text } = await extractText(pdf, { mergePages: true });
+          extracted = text;
+        } catch (err) {
+          send({ type: 'error', message: `Couldn't read that PDF (${err instanceof Error ? err.message : 'unknown error'}). If it's a scanned or image-only PDF, export a text-based version or paste the text directly.` });
+          res.end();
+          return;
+        }
+        if (!extracted.trim()) {
+          send({ type: 'error', message: 'No text could be extracted from that PDF. It may be a scanned or image-only document — export a text-based PDF, or convert it to .txt or .docx.' });
+          res.end();
+          return;
+        }
+        userContentText = `Document: ${body.filename ?? 'uploaded.pdf'}\n\n${extracted}`;
         break;
       }
       case 'gdocs-url': {
@@ -576,20 +585,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (instructionsSuffix) {
       userContentText += instructionsSuffix;
-      if (claudeUserContent) {
-        claudeUserContent.push({ type: 'text', text: instructionsSuffix });
-      }
     }
 
     // ── 3. Phase 1: stream a summary of what was found ──────────────────────
-    const summaryInput = claudeUserContent
-      ? claudeUserContent.map(b => 'text' in b ? (b as { text: string }).text : '[attached file]').join('\n')
-      : userContentText;
-
     await streamSummary({
       provider,
       system: buildSummarySystemPrompt(body.campaignContext, body.userInstructions, scope),
-      userContent: summaryInput,
+      userContent: userContentText,
       onText(text) {
         send({ type: 'text', text });
       },
@@ -617,7 +619,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             userContentText,
             pass,
             body.userInstructions,
-            claudeUserContent,
             scope,
           );
 

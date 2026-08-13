@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useLinkableGlobals } from '../hooks/useLinkableGlobals';
@@ -185,7 +185,7 @@ interface CampaignContextType {
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
 
-export function CampaignProvider({ children, campaignId }: { children: ReactNode; campaignId?: string | null }) {
+export function CampaignProvider({ children, campaignId, worldId }: { children: ReactNode; campaignId?: string | null; worldId?: string | null }) {
   const toast = useToast();
 
   /** Wrap an async mutation with error toast. Re-throws so callers can still catch. */
@@ -234,15 +234,23 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
   // data, not every world's. Null for a campaign not yet linked to a world →
   // getGlobal falls back to the unscoped pool.
   const selectedWorldId = useMemo(
-    () => campaigns.find(c => c.id === selectedCampaignId)?.world_id ?? null,
-    [campaigns, selectedCampaignId],
+    () => worldId ?? campaigns.find(c => c.id === selectedCampaignId)?.world_id ?? null,
+    [worldId, campaigns, selectedCampaignId],
   );
+
+  // The campaigns list is scoped to the active world so the Topbar switcher only
+  // ever shows (and switches between) campaigns from the world you're in — never
+  // another world's. Kept in a ref so the many callbacks that reload the list
+  // (create/update/delete/overview) can read the current world without each
+  // needing it in their dependency arrays. Undefined → unscoped fallback.
+  const worldIdRef = useRef<string | null | undefined>(worldId);
+  useEffect(() => { worldIdRef.current = worldId; });
 
   // NPCs and Locations share the "linkable globals" pattern: campaign-specific
   // rows + a global pool that campaigns opt into. One generic hook backs both.
   const npcStore = useLinkableGlobals<NPC, NPCInsert>({
     getByCampaign: NPCsDB.getByCampaign,
-    getGlobal: () => NPCsDB.getGlobal(selectedWorldId ?? undefined),
+    getGlobal: () => selectedWorldId ? NPCsDB.getGlobal(selectedWorldId) : Promise.resolve([]),
     getLinkedIds: CampaignNPCsDB.getLinkedNPCIds,
     upsert: NPCsDB.upsert,
     remove: NPCsDB.delete,
@@ -252,7 +260,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
 
   const locationStore = useLinkableGlobals<Location, LocationInsert>({
     getByCampaign: LocationsDB.getByCampaign,
-    getGlobal: () => LocationsDB.getGlobal(selectedWorldId ?? undefined),
+    getGlobal: () => selectedWorldId ? LocationsDB.getGlobal(selectedWorldId) : Promise.resolve([]),
     getLinkedIds: CampaignLocationsDB.getLinkedLocationIds,
     upsert: LocationsDB.upsert,
     remove: LocationsDB.delete,
@@ -264,7 +272,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
   // a canon pool (campaign_id IS NULL) a campaign imports via campaign_lore.
   const loreStore = useLinkableGlobals<LoreEntry, LoreEntryInsert>({
     getByCampaign: LoreDB.getByCampaign,
-    getGlobal: () => LoreDB.getGlobal(selectedWorldId ?? undefined),
+    getGlobal: () => selectedWorldId ? LoreDB.getGlobal(selectedWorldId) : Promise.resolve([]),
     getLinkedIds: CampaignLoreDB.getLinkedLoreIds,
     upsert: LoreDB.upsert,
     remove: LoreDB.delete,
@@ -318,13 +326,13 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
       major_characters: next.majorCharacters,
       world_info: next.worldInfo,
     });
-    setCampaigns(await CampaignsDB.getAll());
+    setCampaigns(await CampaignsDB.getAll(worldIdRef.current ?? undefined));
   }, [selectedCampaignId, selectedCampaign, overview]);
 
   // Phase 1: load campaigns list
   const loadCampaigns = useCallback(async () => {
     try {
-      const all = await CampaignsDB.getAll();
+      const all = await CampaignsDB.getAll(worldIdRef.current ?? undefined);
       setCampaigns(all);
       setSelectedCampaignId(prev => {
         if (prev && all.find(c => c.id === prev)) return prev;
@@ -415,7 +423,7 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
         world_info: parsed.worldInfo || null,
       });
       localStorage.removeItem(legacyKey);
-      setCampaigns(await CampaignsDB.getAll());
+      setCampaigns(await CampaignsDB.getAll(worldIdRef.current ?? undefined));
     } catch {
       // migration failure is non-fatal
     }
@@ -464,8 +472,8 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
   // ---- Campaign management ----
   const createCampaign = useCallback(async (name: string, description?: string): Promise<Campaign> => {
     const maxOrder = campaigns.reduce((max, c) => Math.max(max, c.sort_order), -1);
-    const campaign = await CampaignsDB.upsert({ name, description: description ?? null, sort_order: maxOrder + 1, title: name, plot_summary: description ?? null, major_characters: null, world_info: null });
-    const all = await CampaignsDB.getAll();
+    const campaign = await CampaignsDB.upsert({ name, description: description ?? null, sort_order: maxOrder + 1, title: name, plot_summary: description ?? null, major_characters: null, world_info: null, world_id: worldIdRef.current ?? null });
+    const all = await CampaignsDB.getAll(worldIdRef.current ?? undefined);
     setCampaigns(all);
     return campaign;
   }, [campaigns]);
@@ -474,12 +482,12 @@ export function CampaignProvider({ children, campaignId }: { children: ReactNode
     const existing = campaigns.find(c => c.id === id);
     if (!existing) return;
     await CampaignsDB.upsert({ id, name: existing.name, description: existing.description, sort_order: existing.sort_order, title: existing.title, plot_summary: existing.plot_summary, major_characters: existing.major_characters, world_info: existing.world_info, ...data });
-    setCampaigns(await CampaignsDB.getAll());
+    setCampaigns(await CampaignsDB.getAll(worldIdRef.current ?? undefined));
   }, [campaigns]);
 
   const deleteCampaign = useCallback(async (id: string) => {
     await CampaignsDB.delete(id);
-    const all = await CampaignsDB.getAll();
+    const all = await CampaignsDB.getAll(worldIdRef.current ?? undefined);
     setCampaigns(all);
     // If we deleted the selected campaign, switch to the first available
     if (id === selectedCampaignId) {
