@@ -24,10 +24,12 @@ export function makeCampaignContext(over: Record<string, unknown> = {}) {
     // collections
     ideas: [], npcs: [], pcs: [], factions: [], locations: [], lore: [],
     sessions: [], hooks: [], modules: [], relationships: [], monsterStatblocks: [],
+    // canon pools + link state (compendium tabs)
+    globalLore: [], linkedLoreIds: [], globalLocations: [], linkedLocationIds: [],
     // common mutations
     upsertIdea: fn(), deleteIdea: fn(), promoteIdea: fn(),
-    upsertLore: fn(), deleteLore: fn(),
-    upsertLocation: fn(), deleteLocation: fn(),
+    upsertLore: fn(), deleteLore: fn(), linkLoreToCampaign: fn(), unlinkLoreFromCampaign: fn(),
+    upsertLocation: fn(), deleteLocation: fn(), linkLocationToCampaign: fn(), unlinkLocationFromCampaign: fn(),
     upsertNPC: fn(), deleteNPC: fn(),
     upsertFaction: fn(), deleteFaction: fn(),
     upsertHook: fn(), deleteHook: fn(),
@@ -40,10 +42,13 @@ export function makeCampaignContext(over: Record<string, unknown> = {}) {
 export function makeWorldContext(over: Record<string, unknown> = {}) {
   return {
     activeWorld: { id: 'w1', name: 'Test World', calendar: 'CR', tagline: '', era: '', year: 0 },
+    activeWorldId: 'w1',
     worlds: [], campaigns: [], timeline: [], factions: [], lore: [], locations: [], npcs: [],
     createCampaign: fn(), openCampaign: vi.fn(),
     createTimelineEvent: fn(), upsertTimelineEvent: fn(), deleteTimelineEvent: fn(),
     timelineTypeConfig: {}, eraConfig: {},
+    // navigation used by compendium tabs to jump back into world/canon views
+    backToWorld: vi.fn(), setWorldTab: vi.fn(), setSelected: vi.fn(),
     ...over,
   };
 }
