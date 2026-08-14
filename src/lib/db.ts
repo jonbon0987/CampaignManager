@@ -6,6 +6,7 @@
 // -----------------------------------------------------------
 
 import { supabase } from './supabase';
+import { validateFieldLimits } from './fieldLimits';
 import type {
   DbWorld, DbWorldInsert,
   Campaign, CampaignInsert, CampaignWithCount,
@@ -53,6 +54,7 @@ export const Worlds = {
   },
 
   async upsert(world: DbWorldInsert & { id?: string }): Promise<DbWorld> {
+    validateFieldLimits('worlds', world);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('worlds')
@@ -89,6 +91,7 @@ export const Campaigns = {
   },
 
   async upsert(campaign: CampaignInsert & { id?: string }): Promise<Campaign> {
+    validateFieldLimits('campaigns', campaign);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('campaigns')
@@ -226,6 +229,7 @@ export const Sessions = {
   },
 
   async upsert(session: SessionInsert): Promise<Session> {
+    validateFieldLimits('sessions', session);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('sessions')
@@ -258,6 +262,7 @@ export const SessionPreps = {
   },
 
   async upsert(prep: SessionPrepInsert): Promise<SessionPrep> {
+    validateFieldLimits('session_prep', prep);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('session_prep')
@@ -301,6 +306,7 @@ export const PlayerCharacters = {
   },
 
   async upsert(pc: PlayerCharacterInsert & { id?: string }): Promise<PlayerCharacter> {
+    validateFieldLimits('player_characters', pc);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('player_characters')
@@ -360,6 +366,7 @@ export const NPCs = {
   },
 
   async upsert(npc: NPCInsert & { id?: string }): Promise<NPC> {
+    validateFieldLimits('npcs', npc);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('npcs')
@@ -417,6 +424,7 @@ export const Locations = {
   },
 
   async upsert(location: LocationInsert & { id?: string }): Promise<Location> {
+    validateFieldLimits('locations', location);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('locations')
@@ -460,6 +468,7 @@ export const Factions = {
   },
 
   async upsert(faction: FactionInsert & { id?: string }): Promise<Faction> {
+    validateFieldLimits('factions', faction);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('factions')
@@ -503,6 +512,7 @@ export const Hooks = {
   },
 
   async upsert(hook: HookInsert & { id?: string }): Promise<Hook> {
+    validateFieldLimits('hooks', hook);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('hooks')
@@ -535,6 +545,7 @@ export const Ideas = {
   },
 
   async upsert(idea: IdeaInsert & { id?: string }): Promise<Idea> {
+    validateFieldLimits('ideas', idea);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('ideas')
@@ -593,6 +604,7 @@ export const Lore = {
   },
 
   async upsert(entry: LoreEntryInsert & { id?: string }): Promise<LoreEntry> {
+    validateFieldLimits('lore_entries', entry);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('lore_entries')
@@ -626,6 +638,7 @@ export const TimelineEvents = {
   },
 
   async upsert(entry: TimelineEventInsert & { id?: string }): Promise<TimelineEvent> {
+    validateFieldLimits('timeline_events', entry);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('timeline_events')
@@ -669,6 +682,7 @@ export const Modules = {
   },
 
   async upsert(module: ModuleInsert & { id?: string }): Promise<Module> {
+    validateFieldLimits('modules', module);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('modules')
@@ -701,6 +715,7 @@ export const Relationships = {
   },
 
   async upsert(rel: CharacterRelationshipInsert & { id?: string }): Promise<CharacterRelationship> {
+    validateFieldLimits('character_relationships', rel);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('character_relationships')
@@ -733,6 +748,7 @@ export const Submodules = {
   },
 
   async upsert(sub: SubmoduleInsert & { id?: string }): Promise<Submodule> {
+    validateFieldLimits('submodules', sub);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('submodules')
@@ -765,6 +781,7 @@ export const Scenes = {
   },
 
   async upsert(scene: SceneInsert & { id?: string }): Promise<Scene> {
+    validateFieldLimits('scenes', scene);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('scenes')
@@ -808,6 +825,7 @@ export const MonsterStatblocks = {
   },
 
   async upsert(monster: MonsterStatblockInsert & { id?: string }): Promise<MonsterStatblock> {
+    validateFieldLimits('monster_statblocks', monster);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('monster_statblocks')
@@ -851,6 +869,7 @@ export const Encounters = {
   },
 
   async upsert(encounter: EncounterInsert & { id?: string }): Promise<Encounter> {
+    validateFieldLimits('encounters', encounter);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('encounters')
@@ -883,6 +902,7 @@ export const ModuleSheets = {
   },
 
   async upsert(sheet: ModuleSheetInsert & { id?: string }): Promise<ModuleSheet> {
+    validateFieldLimits('module_sheets', sheet);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('module_sheets')
@@ -915,6 +935,7 @@ export const ModuleDeps = {
   },
 
   async upsert(dep: ModuleDependencyInsert & { id?: string }): Promise<ModuleDependency> {
+    validateFieldLimits('module_dependencies', dep);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('module_dependencies')
@@ -956,6 +977,7 @@ export const SubmoduleDeps = {
   },
 
   async upsert(dep: SubmoduleDependencyInsert & { id?: string }): Promise<SubmoduleDependency> {
+    validateFieldLimits('submodule_dependencies', dep);
     const user_id = await getUserId();
     const { data, error } = await supabase
       .from('submodule_dependencies')

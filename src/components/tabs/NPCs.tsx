@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SlashField } from '../ui/SlashField';
+import { limitFor } from '../../lib/fieldLimits';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -248,11 +249,11 @@ export default function NPCs() {
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Description</label>
-                      <SlashField value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Physical appearance, personality..." minHeight="60px" />
+                      <SlashField value={editForm.description ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, description: v } : prev)} placeholder="Physical appearance, personality..." minHeight="60px" maxLength={limitFor('npcs', 'description')} />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Hooks & Motivations</label>
-                      <SlashField value={editForm.hooks_motivations ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, hooks_motivations: v } : prev)} placeholder="Personal goals, secrets..." minHeight="60px" />
+                      <SlashField value={editForm.hooks_motivations ?? ''} onChange={v => setEditForm(prev => prev ? { ...prev, hooks_motivations: v } : prev)} placeholder="Personal goals, secrets..." minHeight="60px" maxLength={limitFor('npcs', 'hooks_motivations')} />
                     </div>
                     <div>
                       <label className="block mb-1" style={labelStyle}>Factions</label>
@@ -439,10 +440,10 @@ export default function NPCs() {
           </FormField>
         </div>
         <FormField label="Description">
-          <SlashField value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Physical appearance, personality..." minHeight="80px" />
+          <SlashField value={form.description ?? ''} onChange={v => setForm(prev => ({ ...prev, description: v }))} placeholder="Physical appearance, personality..." minHeight="80px" maxLength={limitFor('npcs', 'description')} />
         </FormField>
         <FormField label="Hooks & Motivations">
-          <SlashField value={form.hooks_motivations ?? ''} onChange={v => setForm(prev => ({ ...prev, hooks_motivations: v }))} placeholder="Personal goals, secrets..." minHeight="100px" />
+          <SlashField value={form.hooks_motivations ?? ''} onChange={v => setForm(prev => ({ ...prev, hooks_motivations: v }))} placeholder="Personal goals, secrets..." minHeight="100px" maxLength={limitFor('npcs', 'hooks_motivations')} />
         </FormField>
         <FormField label="Factions">
           <FactionPillSelector

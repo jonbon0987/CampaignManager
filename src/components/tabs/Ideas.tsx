@@ -7,6 +7,8 @@ import { EmptyState } from '../ui/EmptyState';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import type { Idea } from '../../lib/database.types';
+import { limitFor } from '../../lib/fieldLimits';
+import { CharCounter } from '../ui/CharCounter';
 
 // Compact relative age, e.g. "2d", "3w", "just now".
 function formatAge(iso: string): string {
@@ -94,12 +96,14 @@ function QuickIdeaDrawer({ open, onClose, onAdd }: { open: boolean; onClose: () 
           onChange={e => setText(e.target.value)}
           autoFocus={open}
         />
+        <CharCounter value={text} limit={limitFor('ideas', 'text')} />
         <input
           className="cm-drawer-tag"
           placeholder="optional tag (e.g. twist, npc, set-piece)"
           value={tag}
           onChange={e => setTag(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') save(); }}
+          maxLength={limitFor('ideas', 'tag')}
         />
         <div className="cm-drawer-foot">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

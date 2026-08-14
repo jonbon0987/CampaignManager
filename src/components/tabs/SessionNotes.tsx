@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SlashField } from '../ui/SlashField';
+import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -146,6 +147,7 @@ function SessionDetail({
               style={{ width: 80, colorScheme: 'dark' }}
               value={form.session_number}
               min={1}
+              max={maxFor('sessions', 'session_number')}
               onChange={e => setForm(prev => ({ ...prev, session_number: parseInt(e.target.value) || 1 }))}
             />
           </div>
@@ -168,6 +170,7 @@ function SessionDetail({
             value={form.summary ?? ''}
             onChange={v => setForm(prev => ({ ...prev, summary: v || null }))}
             placeholder="What happened this session..."
+            maxLength={limitFor('sessions', 'summary')}
           />
         </div>
 
@@ -178,6 +181,7 @@ function SessionDetail({
             value={form.combats ?? ''}
             onChange={v => setForm(prev => ({ ...prev, combats: v || null }))}
             placeholder="Describe combats that took place…"
+            maxLength={limitFor('sessions', 'combats')}
           />
           </SessionSection>
           <SessionSection icon={Gift} label="Loot & Rewards">
@@ -185,6 +189,7 @@ function SessionDetail({
             value={form.loot_rewards ?? ''}
             onChange={v => setForm(prev => ({ ...prev, loot_rewards: v || null }))}
             placeholder="Items, gold, or rewards gained…"
+            maxLength={limitFor('sessions', 'loot_rewards')}
           />
           </SessionSection>
           <SessionSection icon={Lightbulb} label="Hook Follow-ups">
@@ -192,6 +197,7 @@ function SessionDetail({
             value={form.hooks_notes ?? ''}
             onChange={v => setForm(prev => ({ ...prev, hooks_notes: v || null }))}
             placeholder="Which hooks were advanced or introduced…"
+            maxLength={limitFor('sessions', 'hooks_notes')}
           />
           </SessionSection>
           <SessionSection icon={Eye} label="DM Notes" dmOnly>
@@ -199,6 +205,7 @@ function SessionDetail({
             value={form.dm_notes ?? ''}
             onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))}
             placeholder="Private notes, reminders, secrets…"
+            maxLength={limitFor('sessions', 'dm_notes')}
           />
           </SessionSection>
         </div>
@@ -525,6 +532,7 @@ function SessionPrepView() {
               onChange={v => setPrepText(v)}
               placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
               minHeight="240px"
+              maxLength={limitFor('session_prep', 'notes')}
             />
             <div>
               <Button variant="primary" onClick={savePrep} disabled={savingPrep}>

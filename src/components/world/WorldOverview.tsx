@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useWorld } from '../../context/WorldContext';
+import { limitFor } from '../../lib/fieldLimits';
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -28,12 +29,14 @@ function InlineEdit({
   className,
   inputClassName,
   as: Tag = 'span',
+  maxLength,
 }: {
   value: string;
   onSave: (v: string) => void;
   className?: string;
   inputClassName?: string;
   as?: 'h1' | 'p' | 'span';
+  maxLength?: number;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -60,6 +63,7 @@ function InlineEdit({
         onChange={e => setDraft(e.target.value)}
         onBlur={save}
         onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
+        maxLength={maxLength}
       />
     );
   }
@@ -94,6 +98,7 @@ export default function WorldOverview() {
           inputClassName="w-hero-title-input"
           value={activeWorld.name}
           onSave={v => updateWorld(activeWorld.id, { name: v })}
+          maxLength={limitFor('worlds', 'name')}
         />
         <InlineEdit
           as="p"
@@ -101,6 +106,7 @@ export default function WorldOverview() {
           inputClassName="w-hero-tag-input"
           value={activeWorld.tagline}
           onSave={v => updateWorld(activeWorld.id, { tagline: v })}
+          maxLength={limitFor('worlds', 'tagline')}
         />
         <div className="w-hero-stats">
           <Stat label="Campaigns" value={campaigns.length} />

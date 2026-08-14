@@ -32,6 +32,7 @@ import {
   type WorldSeed,
 } from '../../lib/worldSeeds';
 import { generateWorldDraft, type WorldDraft } from '../../lib/generateWorld';
+import { limitFor } from '../../lib/fieldLimits';
 import './firstWorldGate.css';
 
 type Route = 'menu' | 'scratch' | 'example' | 'import' | 'ai';
@@ -213,6 +214,7 @@ function ScratchPanel({ onBack, afterCreate }: PanelProps) {
         <input ref={ref} className="fwg-inp" value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+          maxLength={limitFor('worlds', 'name')}
           placeholder="e.g. The Amber Waste" />
       </div>
       <div className="fwg-field">
@@ -220,6 +222,7 @@ function ScratchPanel({ onBack, afterCreate }: PanelProps) {
         <input className="fwg-inp" value={tag}
           onChange={e => setTag(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+          maxLength={limitFor('worlds', 'tagline')}
           placeholder="A line that captures its feel." />
         <div className="fwg-hint">Shown under the world title on your overview.</div>
       </div>
@@ -420,12 +423,12 @@ function ImportPanel({ onBack, afterCreate }: PanelProps) {
           <div className="fwg-field">
             <label className="fwg-label">World name</label>
             <input className="fwg-inp" value={name} onChange={e => setName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') create(); }} />
+              onKeyDown={e => { if (e.key === 'Enter') create(); }} maxLength={limitFor('worlds', 'name')} />
           </div>
           <div className="fwg-field">
             <label className="fwg-label">Tagline</label>
             <input className="fwg-inp" value={tag} onChange={e => setTag(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') create(); }} />
+              onKeyDown={e => { if (e.key === 'Enter') create(); }} maxLength={limitFor('worlds', 'tagline')} />
           </div>
           {err && <div className="fwg-error">{err}</div>}
           <div className="fwg-btn-row">

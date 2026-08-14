@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "migrate": "tsx scripts/migrate.ts"
+    "migrate": "tsx scripts/migrate.ts",
+    "migrate:gen-constraints": "tsx scripts/genFieldConstraints.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

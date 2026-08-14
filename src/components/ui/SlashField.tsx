@@ -127,9 +127,17 @@ interface SlashFieldProps {
   placeholder?: string;
   minHeight?: string;
   variant?: 'fluid' | 'sectioned' | 'default';
+  /**
+   * Soft character limit. When set, a live counter is shown; it turns into a
+   * warning once the (serialized markdown) length exceeds the limit. This is a
+   * soft cap — the authoritative block happens on save (see lib/fieldLimits +
+   * the db.ts write layer). A hard cap mid-typing is avoided because this is a
+   * contentEditable rich editor, not a plain textarea.
+   */
+  maxLength?: number;
 }
 
-export function SlashField({ value, onChange, placeholder, minHeight, variant = 'sectioned' }: SlashFieldProps) {
+export function SlashField({ value, onChange, placeholder, minHeight, variant = 'sectioned', maxLength }: SlashFieldProps) {
   const { entities, detailFor, openRef } = useEntityRefs();
   const edRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -139,12 +147,14 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
   const overCard = useRef(false);
   const lastEmit = useRef(value || '');
   const mounted = useRef(false);
+  const [charCount, setCharCount] = useState(value?.length ?? 0);
 
   // mount once — DOM authoritative afterward (component is keyed per field)
   useEffect(() => {
     if (mounted.current || !edRef.current) return;
     edRef.current.innerHTML = parseToHTML(value || '') || '<p><br></p>';
     lastEmit.current = value || '';
+    setCharCount((value || '').length);
     updateEmpty();
     mounted.current = true;
     try { document.execCommand('styleWithCSS', false, 'false'); } catch { /* noop */ }
@@ -161,6 +171,7 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
     const ed = edRef.current; if (!ed) return;
     updateEmpty();
     const md = serialize(ed);
+    setCharCount(md.length);
     if (md !== lastEmit.current) { lastEmit.current = md; onChange?.(md); }
   };
 
@@ -383,6 +394,23 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
         onMouseOut={onOut}
         onBlur={() => setTimeout(() => setMenu(null), 160)}
       />
+      {maxLength != null && (
+        <div
+          className="sf-counter"
+          aria-live="polite"
+          style={{
+            textAlign: 'right',
+            fontSize: '11px',
+            fontFamily: 'var(--serif)',
+            marginTop: '2px',
+            color: charCount > maxLength ? 'var(--red)' : 'var(--ink-3)',
+          }}
+        >
+          {charCount > maxLength
+            ? `${(charCount - maxLength).toLocaleString()} over limit`
+            : `${charCount.toLocaleString()} / ${maxLength.toLocaleString()}`}
+        </div>
+      )}
       {menu && createPortal(
         <div className="sf-menu" style={{ left: menu.left, top: menu.top }} onMouseDown={e => e.preventDefault()}>
           {menu.type === 'slash'

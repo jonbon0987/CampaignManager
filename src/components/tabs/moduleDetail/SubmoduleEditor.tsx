@@ -12,6 +12,7 @@ import { useManualSave } from '../../../hooks/useManualSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
+import { limitFor } from '../../../lib/fieldLimits';
 import { Button } from '../../ui/Button';
 import { wouldCreateSubmoduleCycle } from '../../../lib/moduleUtils';
 import type { Module, Submodule, Scene, MonsterStatblock, Encounter } from '../../../lib/database.types';
@@ -83,9 +84,9 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
         <span className="md-scene-dot" style={{ background: info.color }} title={info.label} />
         <div className="md-scene-main">
           <input className="md-scene-title-in" value={form.title} placeholder="Scene title"
-            onChange={e => set('title', e.target.value)} />
+            onChange={e => set('title', e.target.value)} maxLength={limitFor('scenes', 'title')} />
           <input className="md-scene-sum-in" value={form.summary} placeholder="one-line beat"
-            onChange={e => set('summary', e.target.value)} />
+            onChange={e => set('summary', e.target.value)} maxLength={limitFor('scenes', 'summary')} />
         </div>
         <span style={{ marginRight: 4 }}><SaveStatusIndicator status={status} /></span>
         <TypeTag type={form.scene_type} types={SCENE_TYPES} onPick={t => set('scene_type', t)} />
@@ -96,7 +97,7 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
       {open && (
         <div className="md-scene-body">
           <SlashField value={form.content} onChange={v => set('content', v)}
-            placeholder="Scene detail — read-aloud text, tactics, outcomes…" minHeight="120px" />
+            placeholder="Scene detail — read-aloud text, tactics, outcomes…" minHeight="120px" maxLength={limitFor('scenes', 'content')} />
           <div style={{ marginTop: 12 }}>
             <div className="md-eyebrow" style={{ marginBottom: 6 }}>Stat Sheets</div>
             <div className="md-chips">
@@ -234,27 +235,27 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
         </div>
 
         <input className="as-title" value={form.title} placeholder="Submodule title…"
-          onChange={e => set('title', e.target.value)} />
+          onChange={e => set('title', e.target.value)} maxLength={limitFor('submodules', 'title')} />
 
         {/* summary */}
         <div className="as-fl" style={{ marginTop: 10 }}>
           <span className="as-ll">Summary</span>
           <SlashField value={form.summary} onChange={v => set('summary', v)}
-            placeholder="Short summary shown in the outline…" minHeight="50px" />
+            placeholder="Short summary shown in the outline…" minHeight="50px" maxLength={limitFor('submodules', 'summary')} />
         </div>
 
         {/* content */}
         <div className="as-fl">
           <span className="as-ll">Full Write-Up</span>
           <SlashField value={form.content} onChange={v => set('content', v)}
-            placeholder="History, atmosphere, key details, DM guidance…" minHeight="220px" />
+            placeholder="History, atmosphere, key details, DM guidance…" minHeight="220px" maxLength={limitFor('submodules', 'content')} />
         </div>
 
         {/* dm notes */}
         <div className="md-dm">
           <div className="md-dm-label">DM Notes</div>
           <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)}
-            placeholder="Hidden info, contingencies, secrets…" minHeight="50px" />
+            placeholder="Hidden info, contingencies, secrets…" minHeight="50px" maxLength={limitFor('submodules', 'dm_notes')} />
         </div>
 
         {/* linked stat sheets */}
