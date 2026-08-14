@@ -8,7 +8,7 @@ import { EncounterDetail } from '../ui/EncounterDetail';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
-import { StatBlockBody, emptyMonsterForm, CREATURE_TYPES, ABILITY_KEYS, abilityMod } from '../tabs/CreatureStatblocks';
+import { StatBlockBody, emptyMonsterForm, CREATURE_TYPES, ABILITY_KEYS, AbilityInput } from '../tabs/CreatureStatblocks';
 import type { MonsterForm } from '../tabs/CreatureStatblocks';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
@@ -42,23 +42,17 @@ function WorldBadge() {
   return <span className="w-inherited">⊕ World-scoped</span>;
 }
 
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="cm-stat">
-      <div className="cm-stat-label">{label}</div>
-      <div className="cm-stat-value">{value}</div>
-    </div>
-  );
-}
-
 // ═══════════════════════════════════════════
 // WORLD NPCs VIEW
 // ═══════════════════════════════════════════
 
 export function WorldNPCsView() {
-  const { npcs, factions, facById, locById, selected, setSelected, createNPC } = useWorld();
+  const { npcs, factions, selected, setSelected, createNPC, createFaction } = useWorld();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'npc' | 'faction'>('all');
+
+  const addCharacter = async () => { const id = await createNPC(); if (id) setSelected('npcs', id); };
+  const addFaction = async () => { const id = await createFaction(); if (id) setSelected('npcs', id); };
 
   type ListItem = { id: string; name: string; kind: 'npc' | 'faction'; role?: string; type?: string; status?: string; era?: string; desc?: string; factions?: string[]; location?: string | null; tags?: string[]; tone?: string; };
 
@@ -86,7 +80,12 @@ export function WorldNPCsView() {
       count={items.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={async () => { const id = await createNPC(); if (id) setSelected('npcs', id); }}
+      onAdd={filter === 'faction' ? addFaction : addCharacter}
+      addLabel={filter === 'faction' ? '+ Faction' : filter === 'npc' ? '+ Character' : '+ New'}
+      addOptions={filter === 'all' ? [
+        { label: 'Character', onClick: addCharacter },
+        { label: 'Faction', onClick: addFaction },
+      ] : undefined}
       filters={
         <>
           <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
@@ -131,36 +130,106 @@ interface NPCForm {
 }
 
 function WorldNPCDetail({ entity }: { entity: any }) {
-  const { npcs, facById, locById, upsertWorldNPC, deleteWorldNPC } = useWorld();
-  const confirm = useConfirm();
-
   if (entity.kind === 'faction') {
-    const members = npcs.filter(n => n.factions?.includes(entity.id));
-    return (
-      <DetailPanel eyebrow={`World Faction · ${formatType(entity.type)}`} title={entity.name} subtitle={entity.desc}>
-        <WorldBadge />
-        <div className="cm-stat-strip">
-          <Stat label="Type" value={formatType(entity.type)} />
-          <Stat label="Members" value={members.length} />
-        </div>
-        <DetailSection title="Known Members">
-          {members.length === 0 ? (
-            <p className="cm-prose" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>No known members.</p>
-          ) : (
-            <div className="cm-chip-list">
-              {members.map(n => (
-                <span key={n.id} className="cm-chip">
-                  <span className="cm-chip-glyph">◇</span>{n.name}
-                </span>
-              ))}
-            </div>
-          )}
-        </DetailSection>
-      </DetailPanel>
-    );
+    return <WorldFactionEditDetail key={entity.id} entity={entity} />;
   }
 
   return <WorldNPCEditDetail key={entity.id} entity={entity} />;
+}
+
+const FACTION_TYPES = ['guild', 'government', 'religious', 'criminal', 'military', 'arcane', 'merchant', 'other'] as const;
+
+interface FactionForm {
+  name: string;
+  faction_type: string;
+  overview: string;
+  dm_notes: string;
+}
+
+function WorldFactionEditDetail({ entity }: { entity: any }) {
+  const { npcs, upsertWorldFaction, deleteWorldFaction } = useWorld();
+  const confirm = useConfirm();
+
+  const [form, setForm] = useState<FactionForm>(() => ({
+    name: entity.name ?? '',
+    faction_type: entity.type ?? '',
+    overview: entity.desc ?? '',
+    dm_notes: entity.dmNotes ?? '',
+  }));
+
+  useEffect(() => {
+    setForm({
+      name: entity.name ?? '',
+      faction_type: entity.type ?? '',
+      overview: entity.desc ?? '',
+      dm_notes: entity.dmNotes ?? '',
+    });
+  }, [entity.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { status, saveNow } = useAutoSave<FactionForm>({
+    data: form,
+    onSave: async (data) => {
+      await upsertWorldFaction({
+        id: entity.id,
+        name: data.name || 'Unnamed Faction',
+        faction_type: data.faction_type || null,
+        overview: data.overview || null,
+        dm_notes: data.dm_notes || null,
+      });
+    },
+    delay: 800,
+    enabled: true,
+  });
+
+  const set = <K extends keyof FactionForm>(key: K, value: FactionForm[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+
+  const members = npcs.filter(n => n.factions?.includes(entity.id));
+
+  return (
+    <DetailPanel eyebrow="World Faction" title="">
+      <div className="as-bar">
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <div className="as-spacer" />
+        <OverflowMenu items={[
+          { label: 'Delete Faction', danger: true, onClick: async () => {
+            if (await confirm('Delete this faction?', 'This cannot be undone.')) {
+              await deleteWorldFaction(entity.id);
+            }
+          }},
+        ]} />
+      </div>
+      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Faction name…" maxLength={limitFor('factions', 'name')} />
+      <div className="as-meta">
+        <div className="as-mi">
+          <span className="as-ml">Type</span>
+          <select className="as-select" value={form.faction_type} onChange={e => set('faction_type', e.target.value)}>
+            <option value="">—</option>
+            {FACTION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
+          </select>
+        </div>
+      </div>
+      <DetailSection title="Overview">
+        <SlashField value={form.overview} onChange={v => set('overview', v)} placeholder="Describe this faction…" maxLength={limitFor('factions', 'overview')} />
+      </DetailSection>
+      <DetailSection title="DM Notes">
+        <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" maxLength={limitFor('factions', 'dm_notes')} />
+      </DetailSection>
+      <DetailSection title="Known Members">
+        {members.length === 0 ? (
+          <p className="cm-prose" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>No known members.</p>
+        ) : (
+          <div className="cm-chip-list">
+            {members.map(n => (
+              <span key={n.id} className="cm-chip">
+                <span className="cm-chip-glyph">◇</span>{n.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </DetailSection>
+    </DetailPanel>
+  );
 }
 
 function WorldNPCEditDetail({ entity }: { entity: any }) {
@@ -331,10 +400,7 @@ export function WorldLocationsView() {
         locations.length === 0 ? (
           <div className="cm-empty is-inline">No locations yet — add one to start the map</div>
         ) : (
-          <>
-            <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>
-            <div className="cm-tree-legend"><span className="cm-tree-legend-dot is-gold" /> shared world canon</div>
-          </>
+          <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>
         )
       }
       detail={sel ? <WorldLocationDetail loc={sel} allLocations={locations} /> : <EmptyDetail>Select a location.</EmptyDetail>}
@@ -1047,21 +1113,6 @@ function WorldBestiaryDetail({
     if (ok) { await deleteBestiaryEntry(statblock.id); onDeleted(); }
   };
 
-  // Ability score input
-  const AbilityInput = ({ k, label }: { k: keyof MonsterForm; label: string }) => {
-    const val = form[k] as string;
-    const score = parseInt(val, 10);
-    const mod = !isNaN(score) ? abilityMod(score) : null;
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
-        <input type="number" min={1} max={30} value={val} onChange={field(k)} placeholder="—"
-          style={{ ...inputStyle, textAlign: 'center', padding: '4px 2px', width: '100%' }} />
-        <div style={{ fontSize: '0.65rem', color: 'var(--ink-2)', marginTop: '3px', minHeight: '1em' }}>{mod ?? ''}</div>
-      </div>
-    );
-  };
-
   return (
     <>
       <DetailPanel
@@ -1137,7 +1188,7 @@ function WorldBestiaryDetail({
         <div>
           <div style={{ color: 'var(--gold)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem', marginTop: '4px' }}>Ability Scores</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
-            {ABILITY_KEYS.map(({ key, label }) => <AbilityInput key={key} k={key} label={label} />)}
+            {ABILITY_KEYS.map(({ key, label }) => <AbilityInput key={key} label={label} value={form[key] as string} onChange={field(key)} />)}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
