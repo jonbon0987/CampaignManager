@@ -285,7 +285,7 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
     const to = e.relatedTarget as HTMLElement | null;
     if (to && to.closest && to.closest('.sf-hovercard')) return;
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    hoverTimer.current = setTimeout(() => { if (!overCard.current) setHover(null); }, 170);
+    hoverTimer.current = setTimeout(() => { if (!overCard.current) setHover(null); }, 240);
   };
 
   const slashItems = menu && menu.type === 'slash' ? rankCmds(menu.query) : [];
@@ -470,6 +470,13 @@ function RefMenu({ items, active, query, kind, onPick, setActive }: { items: Ent
   );
 }
 
+/** Cap the hover-card description so a long entry can't make the card huge. */
+const HOVER_DESC_MAX = 240;
+function clampDesc(value: string): string {
+  const trimmed = value.trim();
+  return trimmed.length <= HOVER_DESC_MAX ? trimmed : trimmed.slice(0, HOVER_DESC_MAX).trimEnd() + '…';
+}
+
 function HoverCard({ kind, detail, left, top, flip, onOpen, onEnter, onLeave }: HoverState & { detail: { label: string; sub: string; desc: string; meta: string[] }; onOpen: () => void; onEnter: () => void; onLeave: () => void; }) {
   return (
     <div className={`sf-hovercard ${flip ? 'flip' : ''}`} style={{ left, top }} onMouseEnter={onEnter} onMouseLeave={onLeave}>
@@ -477,7 +484,7 @@ function HoverCard({ kind, detail, left, top, flip, onOpen, onEnter, onLeave }: 
         <div className="sf-hc-glyph">{KIND_GLYPH[kind]}</div>
         <div><div className="sf-hc-name">{detail.label}</div><div className="sf-hc-kind">{KIND_LABEL[kind]}{detail.sub ? ` · ${detail.sub}` : ''}</div></div>
       </div>
-      <p className="sf-hc-desc">{detail.desc}</p>
+      {detail.desc && <p className="sf-hc-desc">{clampDesc(detail.desc)}</p>}
       {detail.meta && detail.meta.length > 0 && <div className="sf-hc-meta">{detail.meta.map((m, i) => <span key={i} className="sf-hc-tag">{m}</span>)}</div>}
       <div className="sf-hc-actions"><span className="sf-hc-btn primary" onMouseDown={e => { e.preventDefault(); onOpen(); }}>Open ↗</span></div>
     </div>

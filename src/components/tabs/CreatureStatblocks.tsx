@@ -135,6 +135,35 @@ export const ABILITY_KEYS: Array<{ key: keyof MonsterForm; label: string }> = [
   { key: 'cha', label: 'CHA' },
 ];
 
+// Ability score input cell. Module-scoped so its identity is stable across
+// renders — defining it inside the editor remounted the <input> on every
+// keystroke, which dropped focus after each character.
+export function AbilityInput({ label, value, onChange }: {
+  label: string;
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+}) {
+  const score = parseInt(value, 10);
+  const mod = !isNaN(score) ? abilityMod(score) : null;
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
+      <input
+        type="number"
+        min={1}
+        max={30}
+        value={value}
+        onChange={onChange}
+        placeholder="—"
+        style={{ ...inputStyle, textAlign: 'center', padding: '4px 2px', width: '100%' }}
+      />
+      <div style={{ fontSize: '0.65rem', color: 'var(--ink-2)', marginTop: '3px', minHeight: '1em' }}>
+        {mod ?? ''}
+      </div>
+    </div>
+  );
+}
+
 // ================================================================
 // Structured stat block viewer (shared by view modal and StatBlockPanel)
 // ================================================================
@@ -519,30 +548,6 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
   const usedTypes = Array.from(new Set(monsterStatblocks.map(m => m.creature_type ?? 'other'))).sort();
 
-  // Ability score input cell
-  const AbilityInput = ({ k, label }: { k: keyof MonsterForm; label: string }) => {
-    const val = form[k] as string;
-    const score = parseInt(val, 10);
-    const mod = !isNaN(score) ? abilityMod(score) : null;
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
-        <input
-          type="number"
-          min={1}
-          max={30}
-          value={val}
-          onChange={field(k)}
-          placeholder="—"
-          style={{ ...inputStyle, textAlign: 'center', padding: '4px 2px', width: '100%' }}
-        />
-        <div style={{ fontSize: '0.65rem', color: 'var(--ink-2)', marginTop: '3px', minHeight: '1em' }}>
-          {mod ?? ''}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div style={{ maxWidth: '900px', padding: '28px' }}>
       {/* Header */}
@@ -903,7 +908,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           <div style={{ ...sectionLabel, marginTop: '4px' }}>Ability Scores</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
             {ABILITY_KEYS.map(({ key, label }) => (
-              <AbilityInput key={key} k={key} label={label} />
+              <AbilityInput key={key} label={label} value={form[key] as string} onChange={field(key)} />
             ))}
           </div>
         </div>

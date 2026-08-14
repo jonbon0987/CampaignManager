@@ -15,6 +15,7 @@ export interface WorldFaction {
   type: string;
   tone: string;
   desc: string;
+  dmNotes?: string;
 }
 
 export interface WorldNPC {

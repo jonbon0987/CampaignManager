@@ -76,6 +76,7 @@ function dbFactionToWorldFaction(f: Faction): WorldFaction {
     type: f.faction_type ?? '',
     tone: '',
     desc: f.overview ?? '',
+    dmNotes: f.dm_notes ?? '',
   };
 }
 
@@ -206,6 +207,9 @@ interface WorldContextType {
   createNPC: () => Promise<string | null>;
   upsertWorldNPC: (data: Partial<NPC> & { id: string }) => Promise<void>;
   deleteWorldNPC: (id: string) => Promise<void>;
+  createFaction: () => Promise<string | null>;
+  upsertWorldFaction: (data: Partial<Faction> & { id: string }) => Promise<void>;
+  deleteWorldFaction: (id: string) => Promise<void>;
   createBestiaryEntry: () => Promise<string | null>;
   upsertWorldStatblock: (data: Omit<MonsterStatblockInsert, 'world_id' | 'campaign_id'> & { id?: string }) => Promise<MonsterStatblock>;
   deleteBestiaryEntry: (id: string) => Promise<void>;
@@ -566,6 +570,44 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     setNpcs(prev => prev.filter(n => n.id !== id));
   }, []);
 
+  const createFaction = useCallback(async (): Promise<string | null> => {
+    if (!activeWorldId) return null;
+    const dbEntry = await FactionsDB.upsert({
+      name: '',
+      world_id: activeWorldId,
+      campaign_id: null,
+      faction_type: null,
+      overview: null,
+      key_figures: null,
+      agenda: null,
+      dm_notes: null,
+    });
+    setFactions(prev => [...prev, dbFactionToWorldFaction(dbEntry)]);
+    return dbEntry.id;
+  }, [activeWorldId]);
+
+  const upsertWorldFaction = useCallback(async (
+    data: Partial<Faction> & { id: string },
+  ): Promise<void> => {
+    const dbEntry = await FactionsDB.upsert({
+      name: data.name ?? '',
+      world_id: activeWorldId,
+      campaign_id: null,
+      faction_type: data.faction_type ?? null,
+      overview: data.overview ?? null,
+      key_figures: data.key_figures ?? null,
+      agenda: data.agenda ?? null,
+      dm_notes: data.dm_notes ?? null,
+      id: data.id,
+    });
+    setFactions(prev => prev.map(f => f.id === dbEntry.id ? dbFactionToWorldFaction(dbEntry) : f));
+  }, [activeWorldId]);
+
+  const deleteWorldFaction = useCallback(async (id: string): Promise<void> => {
+    await FactionsDB.delete(id);
+    setFactions(prev => prev.filter(f => f.id !== id));
+  }, []);
+
   const upsertWorldLore = useCallback(async (
     data: Partial<LoreEntry> & { id: string },
   ): Promise<void> => {
@@ -794,6 +836,9 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     createNPC,
     upsertWorldNPC,
     deleteWorldNPC,
+    createFaction,
+    upsertWorldFaction,
+    deleteWorldFaction,
     createBestiaryEntry,
     upsertWorldStatblock,
     deleteBestiaryEntry,
@@ -821,6 +866,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     createLoreEntry, upsertWorldLore, deleteWorldLore,
     createLocation, upsertWorldLocation, deleteWorldLocation,
     createNPC, upsertWorldNPC, deleteWorldNPC,
+    createFaction, upsertWorldFaction, deleteWorldFaction,
     createBestiaryEntry, upsertWorldStatblock, deleteBestiaryEntry, createEncounter, deleteEncounter, upsertWorldEncounter,
     npcById, locById, loreById, facById, sbById,
     selected, setSelected,
