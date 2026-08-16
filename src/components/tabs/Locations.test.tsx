@@ -38,15 +38,11 @@ describe('Locations', () => {
     );
   });
 
-  it('toggles the import-from-canon panel', () => {
-    h.campaign.value = makeCampaignContext({
-      globalLocations: [makeLocation({ id: 'g1', name: 'Canon City' })],
-      linkedLocationIds: [],
-    });
-    render(<Locations />);
-    fireEvent.click(screen.getByRole('button', { name: '+ Import from canon' }));
-    expect(screen.getByText(/Import from canon · 1 available/)).toBeTruthy();
-    expect(screen.getByText('Canon City')).toBeTruthy();
+  it('opens the world-import drawer from the header button', () => {
+    const onImportFromWorld = vi.fn();
+    render(<Locations onImportFromWorld={onImportFromWorld} />);
+    fireEvent.click(screen.getByRole('button', { name: '⊕ Import Location' }));
+    expect(onImportFromWorld).toHaveBeenCalled();
   });
 
   it('renders the location tree and collapses a parent to hide its children', () => {

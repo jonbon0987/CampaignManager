@@ -18,12 +18,14 @@ import { GoogleGenerativeAI, GoogleGenerativeAIFetchError, type GenerateContentR
 export type AIProvider = 'claude' | 'gemini' | 'groq';
 
 // Gemini model id — overridable via env so it can track new releases without a
-// code change. Defaults to gemini-3.5-flash: Google blocks the older 2.5-flash
-// family for newly-created API keys ("no longer available to new users"), and
-// 3.5-flash is the current Flash model that accepts the request shapes we send
-// (streaming, JSON mode, and thinkingBudget:0 — the -lite/-latest variants
-// reject thinkingBudget:0). On a project without billing it's free-tier.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+// code change. Defaults to gemini-3.5-flash-lite: cheaper/faster than the full
+// Flash model and free-tier eligible. Unlike gemini-3.5-flash, -lite (and
+// -latest) variants reject an explicit thinkingConfig — see the guard in
+// generateText below, which omits it for those model ids.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+// -lite/-latest Gemini variants error on an explicit thinkingConfig (they have
+// no "thinking" mode to configure), so generateText must not send one for them.
+const GEMINI_SUPPORTS_THINKING_CONFIG = !/-lite\b|-latest\b/.test(GEMINI_MODEL);
 
 // Groq chat model. Free tier, OpenAI-compatible. llama-3.3-70b-versatile is the
 // quality default; override via GROQ_MODEL (e.g. llama-3.1-8b-instant for volume).
@@ -105,11 +107,13 @@ export async function generateText(opts: SimpleGenerateOpts): Promise<string> {
     // Gemini. gemini-3.x flash "thinks" by default and those tokens count against
     // the output budget — for a one-shot structured generation that can consume
     // the whole budget and leave the JSON empty or truncated ("unexpected end of
-    // JSON" / "Unterminated string"). Disable thinking and give an explicit budget.
+    // JSON" / "Unterminated string"). Disable thinking and give an explicit budget
+    // — except on -lite/-latest models, which have no thinking mode and reject
+    // the field outright (see GEMINI_SUPPORTS_THINKING_CONFIG above).
     const generationConfig = {
       maxOutputTokens: maxTokens,
       ...(json ? { responseMimeType: 'application/json' } : {}),
-      thinkingConfig: { thinkingBudget: 0 },
+      ...(GEMINI_SUPPORTS_THINKING_CONFIG ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
     } as GenerationConfig;
     const model = client.getGenerativeModel({ model: GEMINI_MODEL, generationConfig });
     const parts: Part[] = [];
@@ -297,6 +301,43 @@ export interface StructuredExtractOpts {
   schemaDescription: string;
 }
 
+// Recover as many complete objects as possible from the `actions` array of a
+// truncated JSON response. gemini-*-lite can hit the output-token cap mid-array,
+// producing JSON that never closes — rather than lose the whole extraction pass
+// (and surface a raw "Expected ',' or ']'" parser error to the DM), salvage the
+// action objects that finished streaming before the cutoff. Quote/escape-aware
+// so braces inside string values don't throw off the depth count.
+function salvageActionsArray(text: string): unknown[] | null {
+  const keyIdx = text.indexOf('"actions"');
+  if (keyIdx < 0) return null;
+  const arrStart = text.indexOf('[', keyIdx);
+  if (arrStart < 0) return null;
+
+  const objects: string[] = [];
+  let depth = 0, objStart = -1, inStr = false, escaped = false;
+  for (let i = arrStart + 1; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === '{') { if (depth === 0) objStart = i; depth++; }
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0 && objStart >= 0) { objects.push(text.slice(objStart, i + 1)); objStart = -1; }
+    } else if (ch === ']' && depth === 0) break; // reached a clean array close
+  }
+
+  const parsed: unknown[] = [];
+  for (const obj of objects) {
+    try { parsed.push(JSON.parse(obj)); } catch { /* trailing partial object — skip */ }
+  }
+  return parsed.length ? parsed : null;
+}
+
 /** Extract structured JSON using tool use (Claude) or JSON-prompted generation (Gemini). */
 export async function structuredExtract(opts: StructuredExtractOpts): Promise<unknown> {
   const { provider, system, userContent, schema, schemaDescription } = opts;
@@ -308,24 +349,64 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
       systemInstruction: { role: 'user', parts: [{ text: system }] },
       generationConfig: {
         responseMimeType: 'application/json',
+        // Without an explicit cap this falls back to the model's default —
+        // noticeably smaller on -lite tiers than on full Flash. JSON mode still
+        // returns syntactically valid JSON when the response is cut short, so a
+        // too-small default silently truncates the actions array (a handful of
+        // entities instead of everything the document actually has) rather than
+        // erroring. 8192 matches the cap Claude's branch below uses for parity.
+        maxOutputTokens: 8192,
       },
     });
 
     const jsonSchemaHint = `\n\nYou MUST respond with valid JSON matching this schema:\n${JSON.stringify(schema, null, 2)}\n\nReturn ONLY the JSON object, no other text.`;
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: userContent + jsonSchemaHint }] }],
-    } as GenerateContentRequest);
+    // A document import fires several of these calls back to back (one per
+    // extraction pass, plus the summary/title calls) — enough to tip over a
+    // free-tier per-minute rate limit partway through. Unlike the Claude branch
+    // below, this had no retry at all: a single transient/rate-limit error on
+    // one pass silently zeroed out that whole category of entities (the outer
+    // per-pass catch in parse-document.ts logs a warning and moves on). Retry
+    // with backoff — honoring Google's suggested retryDelay on a 429 — so a
+    // rate-limited pass gets a second chance instead of coming back empty.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: userContent + jsonSchemaHint }] }],
+        } as GenerateContentRequest);
 
-    const text = result.response.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      // Try to extract JSON from the response if it has extra text
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) return JSON.parse(match[0]);
-      throw new Error('Gemini returned invalid JSON for structured extraction');
+        const text = result.response.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          // The model wrapped the object in prose (rare with JSON mode) — retry a
+          // clean parse of just the outermost object.
+          const match = text.match(/\{[\s\S]*\}/);
+          if (match) {
+            try { return JSON.parse(match[0]); } catch { /* likely truncated — fall through to salvage */ }
+          }
+          // The response was cut off (usually the output-token cap) mid-array.
+          // Recover whatever complete actions finished before the cutoff rather
+          // than failing the whole pass.
+          const salvaged = salvageActionsArray(text);
+          if (salvaged) return { actions: salvaged };
+          throw new Error('This section of the document was too long for the AI to read in one pass. Try a smaller document, or split it into sections and import them separately.');
+        }
+      } catch (err) {
+        const isRateLimit = err instanceof GoogleGenerativeAIFetchError && err.status === 429;
+        const isRetryable = isRateLimit ||
+          (err instanceof GoogleGenerativeAIFetchError && (err.status === 503 || err.status === 500));
+        if (isRetryable && attempt < 2) {
+          const suggested = isRateLimit ? retryDelaySeconds((err as GoogleGenerativeAIFetchError).errorDetails) : null;
+          // Cap the honored wait so one slow pass can't stall the whole import.
+          const waitMs = suggested != null ? Math.min(suggested, 20) * 1000 : (attempt + 1) * 3000;
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+        throw err;
+      }
     }
+    throw new Error('Gemini structured extraction failed after retries');
   }
 
   // Claude — tool use with retry

@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mammoth from 'mammoth';
 import { extractText, getDocumentProxy } from 'unpdf';
-import { resolveProvider, streamSummary, structuredExtract, friendlyError, type AIProvider } from './_ai.js';
+import { resolveProvider, streamSummary, structuredExtract, generateText, friendlyError, type AIProvider } from './_ai.js';
 import { requireAuth } from './_auth.js';
 
 type RequestBody = {
@@ -14,6 +14,10 @@ type RequestBody = {
   userInstructions?: string; // optional DM instructions to guide the parse
   provider?: string;
   scope?: 'campaign' | 'world'; // which entity set to extract into (default campaign)
+  // Creation gates: ask for a name + short descriptor (a world tagline or a
+  // campaign premise, per scope) drawn from the document itself instead of
+  // falling back to the uploaded filename + parse summary client-side.
+  deriveTitle?: boolean;
 };
 
 // ── Tool schema builder ─────────────────────────────────────────────────────
@@ -323,6 +327,8 @@ ${pass.focusInstruction}${instructionBlock}
 
 Return your proposals via the propose_import_actions tool. If the document has no relevant content for this category, return an empty actions array.
 
+Be exhaustive. Propose an action for EVERY matching entity the document mentions — not just the most prominent ones. A document with fifteen NPCs should produce fifteen actions, not a representative handful. Skimming or sampling is a failure mode here: err toward including a minor, briefly-mentioned entity rather than silently dropping it. Only omit something if it is truly out of scope for this pass (see YOUR TASK above).
+
 == RULES ==
 
 1. **Matching**: Set "matched_id" to the existing entity's id (shown in [id:...] brackets above) when updating an existing entity. Set to null for new entities. Be willing to match across minor naming differences.
@@ -344,6 +350,8 @@ Return your proposals via the propose_import_actions tool. If the document has n
 8. **Hooks**: category must be main_plot, side_quest, character_arc, faction, or null. Match a hook to an existing entry in HOOKS & IDEAS whenever they describe the same quest or storyline — even if the document's title is reworded, shortened, or summarized differently. Set matched_id and merge the new developments into the existing description rather than proposing a duplicate hook. Only create a new hook when the storyline has no counterpart above.
 
 9. **Prefer updates over near-duplicates**.
+
+10. **Exhaustiveness**: Do not stop after a handful of examples. If the document names ten locations, propose ten upsertLocation actions. Under-extracting is the more common failure — when in doubt, include it.
 
 Return ONLY via the propose_import_actions tool call. Do not emit plain text.`;
 }
@@ -371,6 +379,55 @@ IMPORTANT RULES:
 - Do NOT ask follow-up questions. Do NOT ask the user what to prioritize or what they'd like to do.
 - End with a statement like "Extracting changes now..." because the system will automatically extract all structured data after your summary.
 - Keep it to 2-3 sentences maximum. No bullet points, no lists.`;
+}
+
+// ── Title derivation (creation gates) ───────────────────────────────────────
+// A one-shot, best-effort call that runs alongside the summary phase so a
+// creation gate can prefill the new world's / campaign's name and short
+// descriptor from the document's own content rather than from the uploaded
+// filename. Failure here never breaks the parse — the client already has a
+// filename-based fallback. The JSON `tagline` field is uniform on the wire but
+// scope-specific in content: a world's tagline, or a campaign's premise.
+function buildTitleSystemPrompt(scope: 'campaign' | 'world'): string {
+  if (scope === 'world') {
+    return `You name tabletop RPG settings. Read the document and suggest a name and tagline for the setting it describes.
+
+Rules:
+- If the document explicitly states the setting's own proper name (a title page, a heading, a "Welcome to <Name>" line), use that name exactly.
+- Otherwise, invent a name that fits the setting's tone and content — 2 to 5 words. Do not use generic words like "Campaign", "World", "Setting", or "Untitled" unless the document itself uses them as part of its actual name.
+- The tagline is a single sentence, under 140 characters, capturing the setting's core hook or feel.
+- Never use a filename or file extension as the name.
+
+Respond with ONLY this JSON object and nothing else: {"name": "...", "tagline": "..."}`;
+  }
+  return `You name tabletop RPG campaigns. Read the document and suggest a name and a premise for the campaign it describes.
+
+Rules:
+- If the document explicitly states the campaign's own proper name (a title page, a heading, a "Campaign: <Name>" line), use that name exactly.
+- Otherwise, invent a name that fits the campaign's tone and content — 2 to 6 words. Do not use generic words like "Campaign", "Adventure", "Session", or "Untitled" unless the document itself uses them as part of its actual name.
+- The premise is 1 to 3 sentences describing the situation, the stakes, and what the party does. Write it as the campaign's own premise — describe the story, NOT the document (never begin with "This document...", "These notes...", or similar).
+- Never use a filename or file extension as the name.
+
+Respond with ONLY this JSON object and nothing else, where "tagline" holds the premise: {"name": "...", "tagline": "..."}`;
+}
+
+async function deriveTitle(provider: AIProvider, userContentText: string, scope: 'campaign' | 'world'): Promise<{ name: string; tagline: string } | null> {
+  try {
+    const text = await generateText({
+      provider,
+      prompt: userContentText,
+      system: buildTitleSystemPrompt(scope),
+      maxTokens: 400,
+      json: true,
+    });
+    const parsed = JSON.parse(text) as { name?: unknown; tagline?: unknown };
+    const name = typeof parsed.name === 'string' ? parsed.name.trim() : '';
+    const tagline = typeof parsed.tagline === 'string' ? parsed.tagline.trim() : '';
+    return name ? { name, tagline } : null;
+  } catch (err) {
+    console.error('deriveTitle failed', err);
+    return null;
+  }
 }
 
 function extractDocIdFromGoogleDocsUrl(url: string): string | null {
@@ -588,6 +645,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ── 3. Phase 1: stream a summary of what was found ──────────────────────
+    // The title-derivation call (creation gates only, per the deriveTitle flag)
+    // runs alongside the summary rather than after it, so it doesn't add to the
+    // wait.
+    const titlePromise = body.deriveTitle
+      ? deriveTitle(provider, userContentText, scope)
+      : Promise.resolve(null);
+
     await streamSummary({
       provider,
       system: buildSummarySystemPrompt(body.campaignContext, body.userInstructions, scope),
@@ -596,6 +660,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         send({ type: 'text', text });
       },
     });
+
+    const title = await titlePromise;
+    if (title) send({ type: 'title', name: title.name, tagline: title.tagline });
 
     // ── 4. Phase 2: chunked extraction — one pass per entity category ───────
     send({ type: 'extracting' });
@@ -628,9 +695,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             allActions.push(action);
           }
         } catch (err) {
-          // Log but continue with remaining passes
+          // A distinct event type, not 'text' — that channel feeds the narrative
+          // summary the gates turn into the campaign premise / world tagline, so
+          // a warning sent as text would silently leak into that field instead
+          // of reaching the DM as an actual error. Log but continue with the
+          // remaining passes; the client decides how to surface this.
           const msg = err instanceof Error ? err.message : 'Unknown error';
-          send({ type: 'text', text: `\n\n_Warning: failed to extract ${pass.label} (${msg}). Continuing with remaining categories..._` });
+          send({ type: 'warning', label: pass.label, message: msg });
         }
       }
     } finally {

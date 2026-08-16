@@ -213,14 +213,19 @@ function ModuleCreatePanel({
 
 // ─── shell ────────────────────────────────────────────────────────────────────
 
-export default function Modules({ viewMode = 'list' }: { viewMode?: string; setViewMode?: (v: string) => void }) {
+export default function Modules({ viewMode = 'list', setViewMode }: { viewMode?: string; setViewMode?: (v: string) => void }) {
   const { modules } = useCampaign();
   const [openId, setOpenId] = useState<string | null>(null);
   const openModule = openId ? modules.find(m => m.id === openId) ?? null : null;
 
-  // An open module takes over the whole Modules area as [outline rail | editor],
-  // reachable from BOTH the list and the web view. ‹ Modules returns here.
-  if (openModule) {
+  // Opening a module from the web jumps to the full editor — leave the web view
+  // so the editor (which takes over) actually shows instead of staying on the web.
+  const openInEditor = (id: string) => { setOpenId(id); if (viewMode === 'web') setViewMode?.('list'); };
+
+  // An open module takes over the whole area as [outline rail | editor] — EXCEPT
+  // in the web view, where an open module instead drills the graph into its
+  // submodules (so "Dependencies" with a module open shows that module's web).
+  if (openModule && viewMode !== 'web') {
     return (
       <ModuleDetail
         module={openModule}
@@ -233,7 +238,7 @@ export default function Modules({ viewMode = 'list' }: { viewMode?: string; setV
   return (
     <div style={{ height: '100%', overflow: viewMode === 'list' ? 'auto' : 'hidden' }}>
       {viewMode === 'list' && <ModuleList onOpen={setOpenId} />}
-      {viewMode === 'web'  && <ModuleWeb onOpen={setOpenId} />}
+      {viewMode === 'web'  && <ModuleWeb onOpen={openInEditor} initialModuleId={openId} />}
     </div>
   );
 }

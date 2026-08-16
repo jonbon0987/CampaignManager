@@ -47,6 +47,7 @@ interface Combatant {
 interface HpSnapshot {
   id: string;
   currentHp: number;
+  maxHp: number;
   temp: number;
   conditions: Condition[];
   deathSaves: DeathSaves;
@@ -223,6 +224,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
       historyRef.current.push({
         id,
         currentHp: c.currentHp,
+        maxHp: c.maxHp,
         temp: c.temp,
         conditions: [...c.conditions],
         deathSaves: { ...c.deathSaves },
@@ -276,6 +278,40 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
     mutate(id, c => ({ ...c, temp: Math.max(c.temp, n) }));
   };
 
+  // Manually set current HP to an exact value (clamped to [0, max]). Mirrors the
+  // damage/heal death-state rules so a direct edit down to 0 (or back up) leaves
+  // conditions consistent.
+  const setCurrentHp = (id: string, value: number) => {
+    if (!(value >= 0)) return;
+    mutate(id, c => {
+      const newHp = clampHp(value, c.maxHp);
+      const conditions = new Set(c.conditions);
+      DEATH_STATE.forEach(s => conditions.delete(s));
+      let deathSaves = c.deathSaves;
+      if (newHp <= 0 && c.maxHp > 0) {
+        if (c.isPC) { conditions.add('dying'); deathSaves = { s: 0, f: 0 }; }
+        else conditions.add('unconscious');
+      } else {
+        deathSaves = { s: 0, f: 0 };
+      }
+      return { ...c, currentHp: newHp, conditions, deathSaves };
+    });
+  };
+
+  // Override a combatant's max HP for this combat (e.g. a buffed boss, or a PC
+  // whose HP wasn't configured). Current HP is re-clamped to the new max;
+  // configuring a max for the first time defaults current to full.
+  const setMaxHp = (id: string, value: number) => {
+    if (!(value >= 0)) return;
+    mutate(id, c => {
+      const newMax = Math.max(0, Math.floor(value));
+      let newHp = c.currentHp;
+      if (newMax > 0 && c.maxHp === 0 && c.currentHp === 0) newHp = newMax; // first-time config → full
+      else if (newMax > 0) newHp = Math.min(c.currentHp, newMax);
+      return { ...c, maxHp: newMax, currentHp: newHp };
+    });
+  };
+
   const setDeathSave = (id: string, key: 's' | 'f', val: number) => {
     mutate(id, c => {
       const deathSaves: DeathSaves = { ...c.deathSaves, [key]: val };
@@ -293,7 +329,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
     if (!snap) return;
     setHistoryLen(historyRef.current.length);
     setCombatants(prev => prev.map(c => c.id === snap.id
-      ? { ...c, currentHp: snap.currentHp, temp: snap.temp, conditions: new Set(snap.conditions), deathSaves: snap.deathSaves }
+      ? { ...c, currentHp: snap.currentHp, maxHp: snap.maxHp, temp: snap.temp, conditions: new Set(snap.conditions), deathSaves: snap.deathSaves }
       : c));
   };
 
@@ -441,6 +477,8 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
             onDamage={damage}
             onHeal={heal}
             onTemp={addTemp}
+            onSetHp={setCurrentHp}
+            onSetMax={setMaxHp}
             onDeathSave={setDeathSave}
           />
         ))}
@@ -644,17 +682,36 @@ interface CombatantRowProps {
   onDamage: (id: string, n: number) => void;
   onHeal: (id: string, n: number) => void;
   onTemp: (id: string, n: number) => void;
+  onSetHp: (id: string, n: number) => void;
+  onSetMax: (id: string, n: number) => void;
   onDeathSave: (id: string, key: 's' | 'f', val: number) => void;
 }
 
 function CombatantRow({
   c, isCurrent, started, conditionMenuOpen,
   onSetInitiative, onViewStatblock, onToggleCondition, onToggleConditionMenu,
-  onRemove, onDamage, onHeal, onTemp, onDeathSave,
+  onRemove, onDamage, onHeal, onTemp, onSetHp, onSetMax, onDeathSave,
 }: CombatantRowProps) {
   const [val, setVal] = useState('');
   const [tempOpen, setTempOpen] = useState(false);
   const [tempVal, setTempVal] = useState('');
+
+  // Inline editor for the current-HP number / the max-HP override.
+  const [editing, setEditing] = useState<null | 'hp' | 'max'>(null);
+  const [editVal, setEditVal] = useState('');
+  const cancelNextBlur = useRef(false);
+
+  const startEdit = (which: 'hp' | 'max') => {
+    setEditing(which);
+    setEditVal(String(which === 'hp' ? c.currentHp : c.maxHp));
+  };
+  const commitEdit = () => {
+    const n = parseInt(editVal, 10);
+    if (!isNaN(n) && n >= 0) {
+      if (editing === 'hp') onSetHp(c.id, n); else if (editing === 'max') onSetMax(c.id, n);
+    }
+    setEditing(null); setEditVal('');
+  };
 
   const hasMax = c.maxHp > 0;
   const down = hasMax && c.currentHp <= 0;
@@ -786,8 +843,34 @@ function CombatantRow({
         <div className="itk-hp">
           <div className="itk-hp-top">
             <div className="itk-hp-read">
-              <span className="itk-hp-num" style={{ color: hpColor(c.currentHp, c.maxHp) }}>{c.currentHp}</span>
-              {hasMax && <span className="itk-hp-max">/{c.maxHp}</span>}
+              {editing === 'hp' ? (
+                <input
+                  className="itk-hp-edit num"
+                  autoFocus
+                  inputMode="numeric"
+                  value={editVal}
+                  onChange={e => setEditVal(e.target.value.replace(/[^0-9]/g, ''))}
+                  onFocus={e => e.currentTarget.select()}
+                  onBlur={() => { if (cancelNextBlur.current) { cancelNextBlur.current = false; setEditing(null); } else commitEdit(); }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { cancelNextBlur.current = true; e.currentTarget.blur(); } }}
+                />
+              ) : (
+                <span className="itk-hp-num itk-hp-editable" style={{ color: hpColor(c.currentHp, c.maxHp) }} title="Click to set current HP" onClick={() => startEdit('hp')}>{c.currentHp}</span>
+              )}
+              {editing === 'max' ? (
+                <input
+                  className="itk-hp-edit max"
+                  autoFocus
+                  inputMode="numeric"
+                  value={editVal}
+                  onChange={e => setEditVal(e.target.value.replace(/[^0-9]/g, ''))}
+                  onFocus={e => e.currentTarget.select()}
+                  onBlur={() => { if (cancelNextBlur.current) { cancelNextBlur.current = false; setEditing(null); } else commitEdit(); }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { cancelNextBlur.current = true; e.currentTarget.blur(); } }}
+                />
+              ) : (
+                <span className="itk-hp-max itk-hp-editable" title="Click to override max HP for this combat" onClick={() => startEdit('max')}>/{hasMax ? c.maxHp : '—'}</span>
+              )}
               {showTemp && <span className="itk-hp-temp">+{c.temp} temp</span>}
             </div>
             {down ? (
@@ -959,6 +1042,11 @@ const HP_ZONE_CSS = `
 .itk-hp-read{display:flex;align-items:baseline;gap:2px}
 .itk-hp-num{font-family:var(--mono);font-weight:700;font-size:28px;line-height:1;letter-spacing:-.01em}
 .itk-hp-max{font-family:var(--mono);font-size:14px;color:var(--ink-4)}
+.itk-hp-editable{cursor:pointer;border-radius:4px;transition:background .1s}
+.itk-hp-editable:hover{background:var(--gold-dim);text-decoration:underline dotted;text-underline-offset:3px}
+.itk-hp-edit{font-family:var(--mono);font-weight:700;background:var(--bg-2);border:1px solid var(--gold-line);border-radius:5px;color:var(--ink);outline:none;text-align:center;padding:0 2px}
+.itk-hp-edit.num{font-size:24px;width:64px;height:32px;line-height:1}
+.itk-hp-edit.max{font-size:14px;width:48px;height:24px;color:var(--ink-3);margin-left:2px}
 .itk-hp-temp{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--info);background:rgba(112,160,224,.12);border:1px solid rgba(112,160,224,.4);border-radius:999px;padding:2px 8px;margin-left:10px;white-space:nowrap}
 .itk-hp-status{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
 .itk-hp-status.bloodied{color:var(--orange)}

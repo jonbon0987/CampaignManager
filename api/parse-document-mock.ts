@@ -19,7 +19,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.write(`data: ${JSON.stringify(obj)}\n\n`);
   }
 
-  const scope = (req.body as { scope?: string })?.scope === 'world' ? 'world' : 'campaign';
+  const body = req.body as { scope?: string; deriveTitle?: boolean };
+  const scope = body?.scope === 'world' ? 'world' : 'campaign';
 
   // 1. Stream a summary sentence word by word
   const summaryWords = scope === 'world'
@@ -30,6 +31,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   for (const word of summaryWords) {
     send({ type: 'text', text: word + ' ' });
     await sleep(60);
+  }
+
+  if (body?.deriveTitle) {
+    await sleep(150);
+    if (scope === 'world') {
+      send({ type: 'title', name: 'The Drowned Archive', tagline: 'A flooded library keeps every secret it has ever swallowed.' });
+    } else {
+      // For campaign scope the `tagline` field carries the premise.
+      send({ type: 'title', name: 'The Silence Beneath', tagline: 'The party is hired to recover a book from the Drowned Library before the Archivist finishes reading it aloud — and the First Silence returns.' });
+    }
   }
 
   // 2. Signal extraction start

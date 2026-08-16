@@ -12,6 +12,7 @@ import { SearchBar } from '../ui/SearchBar';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { MarkdownContent } from '../ui/MarkdownContent';
+import { PromoteThreadModal } from './PromoteThreadModal';
 import { hookCategoryStyles, threadStateMeta, THREAD_STATES, getThreadState } from '../../lib/theme';
 import type { Hook } from '../../lib/database.types';
 
@@ -43,6 +44,7 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
   const [form, setForm] = useState<ThreadForm>(emptyForm());
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState<string>('all');
+  const [promoting, setPromoting] = useState<Hook | null>(null);
 
   const threads = hooks.filter(h => {
     if (search && !h.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -109,6 +111,7 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
             {THREAD_STATES.map(s => <option key={s} value={s}>{threadStateMeta[s].label}</option>)}
           </select>
           <div style={{ flex: 1 }} />
+          <Button variant="ghost" size="sm" onClick={() => setPromoting(h)} title="Promote to a module, submodule, or scene">↗</Button>
           <Button variant="ghost" size="sm" onClick={() => openEdit(h)} title="Edit"><Pencil size={12} strokeWidth={1.5} /></Button>
           <Button variant="danger" size="sm" onClick={() => handleDelete(h.id)}>×</Button>
         </div>
@@ -238,6 +241,8 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
           <SlashField value={form.description ?? ''} onChange={v => setForm(p => ({ ...p, description: v }))} placeholder="What is this thread about? Who and where does it touch?" minHeight="180px" maxLength={limitFor('hooks', 'description')} />
         </FormField>
       </Modal>
+
+      {promoting && <PromoteThreadModal thread={promoting} onClose={() => setPromoting(null)} />}
     </div>
   );
 }

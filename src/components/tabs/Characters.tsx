@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useWorld } from '../../context/WorldContext';
 import { ListDetail, ListRow, EmptyDetail, Pill, FilterSep } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
+import { OriginBand, type Origin } from '../ui/OriginBand';
 import { Button } from '../ui/Button';
 import { FactionPillSelector } from '../ui/FactionPillSelector';
 import { SearchableSelect } from '../ui/SearchableSelect';
@@ -12,7 +14,7 @@ import { pushRecent } from '../Sidebar';
 import CharacterWeb from './CharacterWeb';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
-import { AutosaveTextarea } from '../ui/MentionButton';
+import { SlashField } from '../ui/SlashField';
 import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
@@ -40,29 +42,41 @@ interface CastItem {
 
 const GLYPHS: Record<CastKind, string> = { pc: '◈', npc: '◇', faction: '⬡' };
 
-export default function Characters({ viewMode = 'list', onImportFromWorld }: { viewMode?: string; setViewMode?: (v: string) => void; onImportFromWorld?: () => void }) {
+export default function Characters({ viewMode = 'list', onImportFromWorld, openId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; onImportFromWorld?: () => void; openId?: string | null; onOpenConsumed?: () => void }) {
   return (
     <div style={{ height: '100%', overflow: viewMode === 'list' ? 'hidden' : 'auto' }}>
-      {viewMode === 'list' && <CastList onImportFromWorld={onImportFromWorld} />}
+      {viewMode === 'list' && <CastList onImportFromWorld={onImportFromWorld} openId={openId} onOpenConsumed={onOpenConsumed} />}
       {viewMode === 'web'  && <CharacterWeb />}
     </div>
   );
 }
 
-function CastList({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
+function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromWorld?: () => void; openId?: string | null; onOpenConsumed?: () => void }) {
   const {
     pcs, npcs, factions,
     upsertPC,
     upsertNPC,
     upsertFaction,
     monsterStatblocks,
+    linkedNPCIds,
   } = useCampaign();
   const { openStatBlock } = useStatBlockPanel();
+
+  // NPCs linked from world canon (vs. campaign-local) — used to badge their rows.
+  const linkedNPCSet = useMemo(() => new Set(linkedNPCIds), [linkedNPCIds]);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [metFilter, setMetFilter] = useState<MetFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Open a record requested from outside the tab (e.g. the sidebar "Recent"
+  // list), then clear the request so it doesn't re-fire. Syncing selection to an
+  // incoming external request is the legitimate case for setState in an effect.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openId) { setSelectedId(openId); onOpenConsumed?.(); }
+  }, [openId, onOpenConsumed]);
 
   // Build unified list
   const all = useMemo<CastItem[]>(() => {
@@ -185,9 +199,12 @@ function CastList({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
                 subtitle={item.subtitle}
                 meta={item.meta}
                 badges={
-                  item.kind === 'npc' && (item.raw as NPC).met_by_pcs
-                    ? <Badge color="green">Met</Badge>
-                    : undefined
+                  item.kind === 'npc' ? (
+                    <>
+                      {linkedNPCSet.has(item.id) && <Badge color="gold" size="xs">imported</Badge>}
+                      {(item.raw as NPC).met_by_pcs && <Badge color="green">Met</Badge>}
+                    </>
+                  ) : undefined
                 }
               />
             </ListRowWithHover>
@@ -270,8 +287,14 @@ function NPCDetail({
   onDeselect: () => void;
 }) {
   const npc = item.raw as NPC;
-  const { upsertNPC, deleteNPC } = useCampaign();
+  const { upsertNPC, deleteNPC, linkedNPCIds, linkNPCToCampaign, unlinkNPCFromCampaign } = useCampaign();
+  const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
   const confirm = useConfirm();
+
+  // Imported (linked from world canon) vs. local (this campaign only). Drives the
+  // provenance banner AND the save scope: editing an imported NPC must write to
+  // the canon row ('global'), not accidentally re-scope it to this campaign.
+  const origin: Origin = linkedNPCIds.includes(npc.id) ? 'imported' : 'local';
 
   const [form, setForm] = useState<NPCFormData>({
     name: npc.name,
@@ -323,7 +346,7 @@ function NPCDetail({
         met_by_pcs: data.met_by_pcs,
         faction_ids: data.faction_ids,
         statblock_id: data.statblock_id,
-      });
+      }, origin === 'imported' ? 'global' : 'campaign');
     },
     delay: 800,
   });
@@ -346,6 +369,29 @@ function NPCDetail({
     }
   };
 
+  // Provenance actions (mirror Lore/Locations): jump to the canon NPC, promote a
+  // local NPC into shared canon, or detach a linked one back to this campaign only.
+  const openInCanon = () => {
+    setWorldSelected('npcs', npc.id);
+    setWorldTab('npcs');
+    backToWorld();
+  };
+  const publishToCanon = async () => {
+    await upsertNPC({
+      id: npc.id,
+      name: form.name, role: form.role, affiliation: form.affiliation, status: form.status,
+      description: form.description, hooks_motivations: form.hooks_motivations, dm_notes: form.dm_notes,
+      location: form.location, first_session: form.first_session, met_by_pcs: form.met_by_pcs,
+      faction_ids: form.faction_ids, statblock_id: form.statblock_id,
+      world_id: activeWorldId || npc.world_id || null,
+    }, 'global');
+    await linkNPCToCampaign(npc.id); // keep it visible in this campaign after promoting
+  };
+  const detachFromCanon = async () => {
+    await unlinkNPCFromCampaign(npc.id);
+    onDeselect();
+  };
+
   const statblockOptions = statblocks.map(m => ({ id: m.id, label: m.name }));
 
   const set = <K extends keyof NPCFormData>(key: K, val: NPCFormData[K]) =>
@@ -353,6 +399,8 @@ function NPCDetail({
 
   return (
     <div className="as-detail-root">
+      <OriginBand origin={origin} noun="NPC" onOpenInCanon={openInCanon} onPublish={publishToCanon} onDetach={detachFromCanon} />
+
       {/* Action bar */}
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
@@ -447,11 +495,11 @@ function NPCDetail({
       {/* Description */}
       <div className="as-fl">
         <label className="as-ll">Description</label>
-        <AutosaveTextarea
-          value={form.description}
+        <SlashField
+          value={form.description ?? ''}
           onChange={v => set('description', v || null)}
           placeholder="Physical appearance, personality, quirks…"
-          rows={5}
+          minHeight="120px"
           maxLength={limitFor('npcs', 'description')}
         />
       </div>
@@ -459,11 +507,11 @@ function NPCDetail({
       {/* Hooks & Motivations */}
       <div className="as-fl">
         <label className="as-ll">Hooks &amp; Motivations</label>
-        <AutosaveTextarea
-          value={form.hooks_motivations}
+        <SlashField
+          value={form.hooks_motivations ?? ''}
           onChange={v => set('hooks_motivations', v || null)}
           placeholder="What drives this NPC? What plot hooks do they offer?"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('npcs', 'hooks_motivations')}
         />
       </div>
@@ -514,11 +562,11 @@ function NPCDetail({
       {/* DM Notes */}
       <div className="as-fl">
         <label className="as-ll">DM Notes</label>
-        <AutosaveTextarea
-          value={form.dm_notes}
+        <SlashField
+          value={form.dm_notes ?? ''}
           onChange={v => set('dm_notes', v || null)}
           placeholder="Private notes, secrets, plans…"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('npcs', 'dm_notes')}
         />
       </div>
@@ -720,11 +768,11 @@ function PCDetail({
       {/* Background */}
       <div className="as-fl">
         <label className="as-ll">Background</label>
-        <AutosaveTextarea
-          value={form.background}
+        <SlashField
+          value={form.background ?? ''}
           onChange={v => set('background', v || null)}
           placeholder="Character background and history…"
-          rows={5}
+          minHeight="120px"
           maxLength={limitFor('player_characters', 'background')}
         />
       </div>
@@ -732,11 +780,11 @@ function PCDetail({
       {/* Story Hooks */}
       <div className="as-fl">
         <label className="as-ll">Story Hooks</label>
-        <AutosaveTextarea
-          value={form.story_hooks}
+        <SlashField
+          value={form.story_hooks ?? ''}
           onChange={v => set('story_hooks', v || null)}
           placeholder="Personal quests, motivations…"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('player_characters', 'story_hooks')}
         />
       </div>
@@ -744,11 +792,11 @@ function PCDetail({
       {/* Key NPCs */}
       <div className="as-fl">
         <label className="as-ll">Key NPCs</label>
-        <AutosaveTextarea
-          value={form.key_npcs}
+        <SlashField
+          value={form.key_npcs ?? ''}
           onChange={v => set('key_npcs', v || null)}
           placeholder="Relationships with NPCs…"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('player_characters', 'key_npcs')}
         />
       </div>
@@ -756,11 +804,11 @@ function PCDetail({
       {/* DM Notes */}
       <div className="as-fl">
         <label className="as-ll">DM Notes</label>
-        <AutosaveTextarea
-          value={form.dm_notes}
+        <SlashField
+          value={form.dm_notes ?? ''}
           onChange={v => set('dm_notes', v || null)}
           placeholder="Private notes, secrets, plans…"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('player_characters', 'dm_notes')}
         />
       </div>
@@ -902,11 +950,11 @@ function FactionDetail({
       {/* Overview */}
       <div className="as-fl">
         <label className="as-ll">Overview</label>
-        <AutosaveTextarea
-          value={form.overview}
+        <SlashField
+          value={form.overview ?? ''}
           onChange={v => set('overview', v || null)}
           placeholder="What is this faction about?"
-          rows={5}
+          minHeight="120px"
           maxLength={limitFor('factions', 'overview')}
         />
       </div>
@@ -914,11 +962,11 @@ function FactionDetail({
       {/* Key Figures */}
       <div className="as-fl">
         <label className="as-ll">Key Figures</label>
-        <AutosaveTextarea
-          value={form.key_figures}
+        <SlashField
+          value={form.key_figures ?? ''}
           onChange={v => set('key_figures', v || null)}
           placeholder="Important members…"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('factions', 'key_figures')}
         />
       </div>
@@ -926,11 +974,11 @@ function FactionDetail({
       {/* Agenda */}
       <div className="as-fl">
         <label className="as-ll">Agenda</label>
-        <AutosaveTextarea
-          value={form.agenda}
+        <SlashField
+          value={form.agenda ?? ''}
           onChange={v => set('agenda', v || null)}
           placeholder="Goals and plans…"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('factions', 'agenda')}
         />
       </div>
@@ -938,11 +986,11 @@ function FactionDetail({
       {/* DM Notes */}
       <div className="as-fl">
         <label className="as-ll">DM Notes</label>
-        <AutosaveTextarea
-          value={form.dm_notes}
+        <SlashField
+          value={form.dm_notes ?? ''}
           onChange={v => set('dm_notes', v || null)}
           placeholder="Hidden agendas, secrets…"
-          rows={4}
+          minHeight="96px"
           maxLength={limitFor('factions', 'dm_notes')}
         />
       </div>

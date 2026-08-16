@@ -26,10 +26,13 @@ import type { User } from '@supabase/supabase-js';
 import { useWorld } from '../../context/WorldContext';
 import { signOut } from '../../lib/auth';
 import { getAIProvider } from '../../lib/aiProvider';
-import { extractClientSide, submitDocument } from '../../lib/documentImport';
 import {
-  EXAMPLE_WORLDS, exampleCounts, seedWorldEntities, importActionsToSeed,
-  type WorldSeed,
+  extractClientSide, submitDocument, importSizeError, MAX_IMPORT_LABEL,
+  passProgressText, READING_MESSAGE, EXTRACTING_MESSAGE,
+} from '../../lib/documentImport';
+import {
+  EXAMPLE_WORLDS, exampleCounts, seedWorldEntities, importActionsToSeed, seedTotal,
+  summarizeWorldSeed, type WorldSeed,
 } from '../../lib/worldSeeds';
 import { generateWorldDraft, type WorldDraft } from '../../lib/generateWorld';
 import { limitFor } from '../../lib/fieldLimits';
@@ -68,7 +71,7 @@ const NEW_WORLD_CONTEXT =
 function useCreateSeededWorld() {
   const { createWorld } = useWorld();
   return useCallback(async (name: string, tagline: string, seed?: WorldSeed) => {
-    const hasSeed = !!seed && !!(seed.factions.length || seed.locations.length || seed.npcs.length || seed.lore.length);
+    const hasSeed = !!seed && seedTotal(seed) > 0;
     return hasSeed
       ? createWorld(name, tagline, worldId => seedWorldEntities(worldId, seed!))
       : createWorld(name, tagline);
@@ -312,11 +315,16 @@ function taglineFromSummary(summary: string): string {
 
 function ImportPanel({ onBack, afterCreate }: PanelProps) {
   const createSeeded = useCreateSeededWorld();
-  const [stage, setStage] = useState<'drop' | 'reading' | 'ready'>('drop');
+  const [stage, setStage] = useState<'drop' | 'staged' | 'reading' | 'ready'>('drop');
   const [name, setName] = useState('');
   const [tag, setTag] = useState('');
-  const [file, setFile] = useState<{ name: string; size: number } | null>(null);
+  // Held from the moment a file is picked until reset() — staging (choosing a
+  // file) is decoupled from starting the parse, so this survives staged →
+  // reading → ready untouched; only startImport() and reset() ever branch on it.
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [seed, setSeed] = useState<WorldSeed>({ factions: [], locations: [], npcs: [], lore: [] });
+  const [progress, setProgress] = useState(READING_MESSAGE);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -325,28 +333,53 @@ function ImportPanel({ onBack, afterCreate }: PanelProps) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  const onFile = async (f: File) => {
+  /** Pick or drop a file — just stages it for review, doesn't parse it yet. */
+  const stageFile = (f: File) => {
+    const sizeError = importSizeError(f);
+    if (sizeError) { setErr(sizeError); return; } // reject up front — stay on the drop screen
     setErr('');
-    setFile({ name: f.name, size: f.size });
+    setPendingFile(f);
+    setStage('staged');
+  };
+
+  /** DM clicked "Start import" — actually reads and parses the staged file. */
+  const startImport = async () => {
+    if (!pendingFile) return;
+    const f = pendingFile;
+    setErr('');
+    setProgress(READING_MESSAGE);
+    setWarnings([]);
     setStage('reading');
     const controller = new AbortController();
     abortRef.current = controller;
+    // Set as soon as the title event streams in, ahead of the extraction
+    // passes. Falls back to the filename/summary heuristics below only if the
+    // model never returned one (a bare setting bible with no clear name, or a
+    // best-effort failure server-side).
+    let titleReceived = false;
     try {
       const input = await extractClientSide(f);
       const { summary, actions } = await submitDocument(
-        input, NEW_WORLD_CONTEXT, undefined, undefined, undefined, undefined,
+        input, NEW_WORLD_CONTEXT, undefined,
+        undefined,                                    // onText
+        () => setProgress(EXTRACTING_MESSAGE),        // onExtracting
+        p => setProgress(passProgressText(p)),        // onPass
         controller.signal, getAIProvider(), 'world',
+        true,                                          // deriveTitle
+        t => { titleReceived = true; setName(t.name); setTag(t.tagline); }, // onTitle
+        w => setWarnings(prev => [...prev, `${w.label}: ${w.message}`]),    // onWarning
       );
       const parsedSeed = importActionsToSeed(actions);
       setSeed(parsedSeed);
-      setName(nameFromFilename(f.name));
-      setTag(taglineFromSummary(summary));
+      if (!titleReceived) {
+        setName(nameFromFilename(f.name));
+        setTag(taglineFromSummary(summary));
+      }
       setStage('ready');
     } catch (e) {
       if ((e as Error)?.name === 'AbortError') return;
       setErr(errMsg(e));
-      setStage('drop');
-      setFile(null);
+      setStage('staged'); // keep the staged file — let the DM retry without re-picking
     }
   };
 
@@ -364,20 +397,23 @@ function ImportPanel({ onBack, afterCreate }: PanelProps) {
 
   const reset = () => {
     abortRef.current?.abort();
-    setStage('drop'); setFile(null); setName(''); setTag('');
-    setSeed({ factions: [], locations: [], npcs: [], lore: [] }); setErr('');
+    setStage('drop'); setPendingFile(null); setName(''); setTag('');
+    setSeed({ factions: [], locations: [], npcs: [], lore: [] });
+    setProgress(READING_MESSAGE); setWarnings([]); setErr('');
   };
 
-  const seedCount = seed.factions.length + seed.locations.length + seed.npcs.length + seed.lore.length;
+  const entityCount = seedTotal(seed);
+  // What the parsed document will create, grouped by entity kind for the DM.
+  const seedSummary = summarizeWorldSeed(seed);
 
   return (
     <div className="fwg-col fwg-fade" style={{ maxWidth: 560 }}>
       <BackBtn onBack={onBack} />
       <h2 className="fwg-h">Import from a document</h2>
-      <p className="fwg-psub">Bring in a world bible or setting doc. We’ll read it, pull out a name and summary, and stage the rest for review.</p>
+      <p className="fwg-psub">Bring in a world bible or setting doc. We’ll read it, pull out a name and summary, and seed its cast, places, and lore for review.</p>
 
       <input ref={fileRef} type="file" accept=".pdf,.docx,.md,.txt" hidden
-        onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) stageFile(f); e.target.value = ''; }} />
 
       {stage === 'drop' && (
         <>
@@ -388,25 +424,43 @@ function ImportPanel({ onBack, afterCreate }: PanelProps) {
             onDragLeave={() => setDragging(false)}
             onDrop={e => {
               e.preventDefault(); setDragging(false);
-              const f = e.dataTransfer.files?.[0]; if (f) onFile(f);
+              const f = e.dataTransfer.files?.[0]; if (f) stageFile(f);
             }}
           >
             <div className="fwg-drop-glyph" aria-hidden="true">❦{'︎'}</div>
             <div className="fwg-drop-title">Drop a file here, or <span style={{ color: 'var(--gold)' }}>browse</span></div>
-            <div className="fwg-drop-sub">PDF · DOCX · MARKDOWN · TXT</div>
+            <div className="fwg-drop-sub">PDF · DOCX · MARKDOWN · TXT · MAX {MAX_IMPORT_LABEL}</div>
           </div>
           {err && <div className="fwg-error">{err}</div>}
         </>
+      )}
+
+      {stage === 'staged' && (
+        <div className="fwg-fade">
+          <div className="fwg-file-chip">
+            <span className="fwg-file-chip-glyph" aria-hidden="true">❦{'︎'}</span>
+            <span className="fwg-file-chip-name">{pendingFile?.name}</span>
+            {pendingFile && <span className="fwg-file-chip-size">{prettySize(pendingFile.size)}</span>}
+          </div>
+          <p className="fwg-hint" style={{ margin: '10px 0 0' }}>
+            Ready when you are — nothing's created yet. We'll read it, draft a name and summary, and stage anything it describes for your review.
+          </p>
+          {err && <div className="fwg-error">{err}</div>}
+          <div className="fwg-btn-row">
+            <button className="fwg-btn fwg-btn-primary" onClick={startImport}>Start import</button>
+            <button className="fwg-btn fwg-btn-ghost" onClick={reset}>Choose a different file</button>
+          </div>
+        </div>
       )}
 
       {stage === 'reading' && (
         <div>
           <div className="fwg-file-chip">
             <span className="fwg-file-chip-glyph" aria-hidden="true">❦{'︎'}</span>
-            <span className="fwg-file-chip-name">{file?.name}</span>
-            {file && <span className="fwg-file-chip-size">{prettySize(file.size)}</span>}
+            <span className="fwg-file-chip-name">{pendingFile?.name}</span>
+            {pendingFile && <span className="fwg-file-chip-size">{prettySize(pendingFile.size)}</span>}
           </div>
-          <div className="fwg-working"><span className="fwg-spinner" aria-hidden="true" />Reading your document…</div>
+          <div className="fwg-working" aria-live="polite"><span className="fwg-spinner" aria-hidden="true" />{progress}</div>
         </div>
       )}
 
@@ -414,12 +468,30 @@ function ImportPanel({ onBack, afterCreate }: PanelProps) {
         <div className="fwg-fade">
           <div className="fwg-file-chip">
             <span className="fwg-file-chip-glyph" aria-hidden="true">❦{'︎'}</span>
-            <span className="fwg-file-chip-name">{file?.name}</span>
+            <span className="fwg-file-chip-name">{pendingFile?.name}</span>
             <span className="fwg-file-chip-read">✓ read</span>
           </div>
-          <p className="fwg-hint" style={{ margin: '0 0 16px' }}>
-            We found a title and summary{seedCount > 0 ? `, plus ${seedCount} ${seedCount === 1 ? 'entry' : 'entries'} to seed` : ''}. Edit anything before creating.
+          <p className="fwg-hint" style={{ margin: '0 0 12px' }}>
+            We found a title and summary{entityCount > 0 ? `, plus ${entityCount} ${entityCount === 1 ? 'entry' : 'entries'} to seed` : ''}. Edit anything before creating.
           </p>
+          {warnings.length > 0 && (
+            <div className="fwg-warn">
+              Couldn't fully read {warnings.length === 1 ? 'one category' : `${warnings.length} categories`} — results below may be thinner than expected:
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                {warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+          {seedSummary.length > 0 && (
+            <div className="fwg-seeds" style={{ margin: '0 0 16px' }}>
+              {seedSummary.map(s => (
+                <div className="fwg-seed" key={s.type}>
+                  <span className="fwg-seed-glyph" aria-hidden="true">{s.glyph}</span>
+                  {s.count} {s.label}{s.count === 1 ? '' : 's'}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="fwg-field">
             <label className="fwg-label">World name</label>
             <input className="fwg-inp" value={name} onChange={e => setName(e.target.value)}

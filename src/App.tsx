@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
 import { WorldProvider, useWorld } from './context/WorldContext';
@@ -72,6 +72,15 @@ function AppInner({ user }: { user: User }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState('all');
+  // A record the user asked to open (e.g. from the sidebar "Recent" list). The
+  // destination tab reads its id, selects that record, then clears the target.
+  const [openTarget, setOpenTarget] = useState<{ tab: Tab; id: string } | null>(null);
+
+  const openRecord = useCallback((tab: Tab, id: string) => {
+    setActiveTab(tab);
+    setOpenTarget({ tab, id });
+  }, []);
+  const clearOpenTarget = useCallback(() => setOpenTarget(null), []);
 
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
@@ -172,6 +181,7 @@ function AppInner({ user }: { user: User }) {
           runMode={runMode}
           isMobile={isMobile}
           onCloseMobile={() => setMobileMenuOpen(false)}
+          onOpenRecent={openRecord}
         />
 
         {/* Main column */}
@@ -202,9 +212,9 @@ function AppInner({ user }: { user: User }) {
             ) : (
               <>
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
-                {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} />}
-                {activeTab === 'lore'      && <Lore />}
-                {activeTab === 'locations' && <Locations />}
+                {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} openId={openTarget?.tab === 'cast' ? openTarget.id : null} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'lore'      && <Lore openId={openTarget?.tab === 'lore' ? openTarget.id : null} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('lore'); setImportOpen(true); }} />}
+                {activeTab === 'locations' && <Locations openId={openTarget?.tab === 'locations' ? openTarget.id : null} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
                 {activeTab === 'threads'   && <Threads viewMode={viewModes.threads ?? 'board'} onNavigate={setActiveTab} />}
                 {activeTab === 'ideas'     && <Ideas onNavigate={setActiveTab} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} />}
@@ -249,7 +259,6 @@ function AppInner({ user }: { user: User }) {
           open={importOpen}
           onClose={() => setImportOpen(false)}
           entityType={importType}
-          onImport={() => setImportOpen(false)}
         />
       </div>
       </CampaignEntityRefProvider>
@@ -516,8 +525,6 @@ function WorldContent() {
 }
 
 function WorldShell() {
-  const [importOpen, setImportOpen] = useState(false);
-  const [importType, setImportType] = useState('all');
   const [scratchOpen, setScratchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -569,12 +576,6 @@ function WorldShell() {
       </div>
       <Workbench open={aiOpen} onClose={() => setAiOpen(false)} chat={chat} />
       <DiceRoller open={diceOpen} onClose={() => setDiceOpen(false)} />
-      <WorldImportDrawer
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        entityType={importType}
-        onImport={() => setImportOpen(false)}
-      />
       <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
       <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>

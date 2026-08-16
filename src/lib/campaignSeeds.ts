@@ -12,8 +12,30 @@
 //    the Import path can stage real threads.
 // ---------------------------------------------------------------------------
 
-import { Hooks as HooksDB } from './db';
-import type { ImportAction } from './documentImport';
+import {
+  Sessions as SessionsDB,
+  PlayerCharacters as PlayerCharactersDB,
+  NPCs as NPCsDB,
+  Locations as LocationsDB,
+  Factions as FactionsDB,
+  Hooks as HooksDB,
+  Lore as LoreDB,
+  Modules as ModulesDB,
+  MonsterStatblocks as MonsterStatblocksDB,
+} from './db';
+import { normalizeAssistantPayload } from './assistantNormalize';
+import { entityMeta, type ImportAction, type ImportActionType } from './documentImport';
+import type {
+  SessionInsert,
+  PlayerCharacterInsert,
+  NPCInsert,
+  LocationInsert,
+  FactionInsert,
+  HookInsert,
+  LoreEntryInsert,
+  ModuleInsert,
+  MonsterStatblockInsert,
+} from './database.types';
 
 /** A starter plot thread. category: main_plot | side_quest | character_arc | faction. */
 export interface SeedHook {
@@ -114,12 +136,23 @@ export async function seedCampaignHooks(campaignId: string, hooks: SeedHook[]): 
   }
 }
 
-// ── Import → hooks mapping ──────────────────────────────────────────────────
+// ── Import → full-entity seeding ────────────────────────────────────────────
+
+// The entity kinds a brand-new campaign can be seeded with directly from a
+// parsed document. Cross-referential kinds (submodules/scenes/relationships,
+// which point at other rows' ids) and world-scoped ones (timeline events) are
+// intentionally excluded: the fresh campaign has no ids to reference yet.
+const SEEDABLE_TYPES: ImportActionType[] = [
+  'upsertSession', 'upsertPC', 'upsertNPC', 'upsertLocation',
+  'upsertFaction', 'upsertHook', 'upsertLore', 'upsertModule',
+  'upsertMonsterStatblock',
+];
+const SEEDABLE = new Set<ImportActionType>(SEEDABLE_TYPES);
 
 /**
  * Pull the plot-hook create actions out of a parsed document into starter
- * threads. Other campaign entity types (sessions, PCs, NPCs, …) are left for
- * the full campaign importer; a brand-new campaign just wants its threads.
+ * threads. Kept for callers that only want threads; the import path now seeds
+ * every entity kind via seedCampaignEntities instead.
  */
 export function importActionsToHooks(actions: ImportAction[]): SeedHook[] {
   const hooks: SeedHook[] = [];
@@ -134,4 +167,55 @@ export function importActionsToHooks(actions: ImportAction[]): SeedHook[] {
     }
   }
   return hooks;
+}
+
+/**
+ * Group a parsed document's seedable actions by kind, in a stable display
+ * order, so the import panel can tell the DM exactly what it will create.
+ */
+export function summarizeSeedActions(
+  actions: ImportAction[],
+): { type: ImportActionType; label: string; count: number }[] {
+  const counts = new Map<ImportActionType, number>();
+  for (const a of actions) {
+    if (!SEEDABLE.has(a.type)) continue;
+    counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
+  }
+  return SEEDABLE_TYPES
+    .filter(t => counts.has(t))
+    .map(t => ({ type: t, label: entityMeta[t].label, count: counts.get(t)! }));
+}
+
+/**
+ * Seed every entity a parsed document produced against a freshly-created
+ * campaign. Everything is treated as a create — a new campaign has nothing to
+ * update against — so ids in the AI payload are dropped and campaign_id is
+ * stamped on. Best-effort per row: a single failed insert is logged and
+ * skipped rather than aborting, matching seedCampaignHooks.
+ */
+export async function seedCampaignEntities(campaignId: string, actions: ImportAction[]): Promise<void> {
+  for (const a of actions) {
+    if (!SEEDABLE.has(a.type)) continue;
+    // Strip stray columns / coerce enums the same way the campaign write path
+    // does, then force a create scoped to the new campaign.
+    const payload = normalizeAssistantPayload(a.type, { ...(a.payload as Record<string, unknown>) }) as Record<string, unknown>;
+    delete payload.id;
+    payload.campaign_id = campaignId;
+    try {
+      switch (a.type) {
+        case 'upsertSession':          await SessionsDB.upsert(payload as unknown as SessionInsert); break;
+        case 'upsertPC':               await PlayerCharactersDB.upsert(payload as unknown as PlayerCharacterInsert); break;
+        case 'upsertNPC':              await NPCsDB.upsert(payload as unknown as NPCInsert); break;
+        case 'upsertLocation':         await LocationsDB.upsert(payload as unknown as LocationInsert); break;
+        case 'upsertFaction':          await FactionsDB.upsert(payload as unknown as FactionInsert); break;
+        // Starter threads carry the 'seed' state the template/AI paths use.
+        case 'upsertHook':             await HooksDB.upsert({ state: 'seed', ...payload } as unknown as HookInsert); break;
+        case 'upsertLore':             await LoreDB.upsert(payload as unknown as LoreEntryInsert); break;
+        case 'upsertModule':           await ModulesDB.upsert(payload as unknown as ModuleInsert); break;
+        case 'upsertMonsterStatblock': await MonsterStatblocksDB.upsert(payload as unknown as MonsterStatblockInsert); break;
+      }
+    } catch (e) {
+      console.error('seedCampaignEntities: insert failed', a.type, e);
+    }
+  }
 }

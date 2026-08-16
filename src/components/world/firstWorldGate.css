@@ -67,6 +67,9 @@ textarea.fwg-inp { resize: vertical; min-height: 96px; line-height: 1.5; }
 .fwg-inp:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 0 3px rgba(201,168,76,0.12); }
 .fwg-hint { font-size: 12.5px; color: var(--ink-4); margin-top: 6px; }
 .fwg-error { font-size: 13px; color: var(--red); margin-top: 14px; }
+/* Partial-failure notice (e.g. one extraction pass came back thin) — distinct
+   from .fwg-error since the parse as a whole still succeeded. */
+.fwg-warn { font-size: 12.5px; color: var(--gold-2); background: var(--gold-dim); border: 1px solid var(--gold-line); border-radius: var(--radius); padding: 8px 11px; margin: 0 0 14px; line-height: 1.5; }
 
 .fwg-btn-row { display: flex; align-items: center; gap: 10px; margin-top: 26px; }
 .fwg-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: var(--radius); font-size: 15px; font-weight: 500; cursor: pointer; border: 1px solid transparent; font-family: var(--serif); transition: opacity .14s, background .14s, border-color .14s; }

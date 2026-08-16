@@ -175,11 +175,46 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+// Upload ceiling for a single import. Kept well under Vercel's ~4.5 MB
+// request-body limit — .docx/.pdf are base64-encoded for transport, which
+// inflates their size by ~33% — and in a range the extraction model can read
+// completely. Enforced client-side so an oversized file gets a clear message
+// here instead of an opaque 413 from Vercel before the function even runs.
+export const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+export const MAX_IMPORT_LABEL = '2 MB';
+
+function formatMB(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isTextFile(file: File): boolean {
+  const lower = file.name.toLowerCase();
+  return lower.endsWith('.txt') || lower.endsWith('.md') || file.type.startsWith('text/');
+}
+
+/**
+ * Returns a user-facing error string if a file is too large to import, or null
+ * if it's fine. Shared so a gate can reject the moment a file is picked (before
+ * staging) and extractClientSide can guard the actual read — one message, one
+ * limit. The advice is tailored: a file that's already plain text can only be
+ * split, but anything else usually shrinks dramatically once exported to text.
+ */
+export function importSizeError(file: File): string | null {
+  if (file.size <= MAX_IMPORT_BYTES) return null;
+  const shrinkTip = isTextFile(file)
+    ? 'Try splitting it into smaller sections and importing them one at a time.'
+    : 'Saving it as plain text (.txt or .md) strips out images and formatting and usually shrinks it well under the limit — or split it into smaller sections and import them one at a time.';
+  return `That file is ${formatMB(file.size)} — imports are limited to ${MAX_IMPORT_LABEL}. ${shrinkTip}`;
+}
+
 export async function extractClientSide(file: File): Promise<DocumentInput> {
   const name = file.name;
   const lower = name.toLowerCase();
 
-  if (lower.endsWith('.txt') || lower.endsWith('.md') || file.type.startsWith('text/')) {
+  const sizeError = importSizeError(file);
+  if (sizeError) throw new Error(sizeError);
+
+  if (isTextFile(file)) {
     const text = await file.text();
     if (!text.trim()) throw new Error('That file appears to be empty.');
     return { kind: 'text', payload: text, filename: name };
@@ -206,6 +241,21 @@ export function parseGoogleDocsUrl(url: string): DocumentInput {
   return { kind: 'gdocs-url', payload: trimmed };
 }
 
+// ── Import progress messages ────────────────────────────────────────────────
+// The parse streams a summary phase, then one extraction pass per entity
+// category. These map those streaming events to a friendly one-line status the
+// creation gates show while the (multi-second) parse runs.
+
+/** Status shown once the summary phase ends and extraction begins. */
+export const EXTRACTING_MESSAGE = 'Understanding what’s inside…';
+/** Status shown before any streaming event has arrived. */
+export const READING_MESSAGE = 'Reading your document…';
+
+/** Progress line for a single extraction pass, e.g. "Extracting characters… (1 of 5)". */
+export function passProgressText(pass: { index: number; total: number; label: string }): string {
+  return `Extracting ${pass.label}… (${pass.index + 1} of ${pass.total})`;
+}
+
 // ── API call ───────────────────────────────────────────────────────────────
 
 export interface ParseDocumentResponse {
@@ -223,6 +273,15 @@ export async function submitDocument(
   signal?: AbortSignal,
   provider?: string,
   scope: 'campaign' | 'world' = 'campaign',
+  // Creation gates: ask the server to suggest a name + short descriptor drawn
+  // from the document itself, delivered via onTitle as soon as it's ready. The
+  // `tagline` field carries a world tagline or a campaign premise, per scope.
+  deriveTitle?: boolean,
+  onTitle?: (title: { name: string; tagline: string }) => void,
+  // Fires when one extraction pass fails after retries (rate limit, transient
+  // API error, malformed model output, ...) — the rest of the passes still
+  // run, so this pass's entity category just comes back thinner than expected.
+  onWarning?: (warning: { label: string; message: string }) => void,
 ): Promise<ParseDocumentResponse> {
   const endpoint = import.meta.env.VITE_MOCK_PARSE === 'true'
     ? '/api/parse-document-mock'
@@ -230,7 +289,7 @@ export async function submitDocument(
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: await authHeaders(),
-    body: JSON.stringify({ ...input, campaignContext, userInstructions, provider, scope }),
+    body: JSON.stringify({ ...input, campaignContext, userInstructions, provider, scope, deriveTitle }),
     signal,
   });
 
@@ -268,6 +327,9 @@ export async function submitDocument(
       index?: number;
       total?: number;
       label?: string;
+      // Title-derivation fields (world-creation gate only)
+      name?: string;
+      tagline?: string;
     };
     try {
       event = JSON.parse(line.slice(6));
@@ -282,6 +344,10 @@ export async function submitDocument(
       onExtracting?.();
     } else if (event.type === 'pass' && event.index != null && event.total != null && event.label) {
       onPass?.({ index: event.index, total: event.total, label: event.label });
+    } else if (event.type === 'title' && event.name) {
+      onTitle?.({ name: event.name, tagline: event.tagline ?? '' });
+    } else if (event.type === 'warning' && event.label) {
+      onWarning?.({ label: event.label, message: event.message ?? 'Unknown error' });
     } else if (event.type === 'action' && event.action) {
       // Individual action event
       actions.push({
