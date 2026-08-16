@@ -7,7 +7,7 @@ import { OriginBand, type Origin } from '../ui/OriginBand';
 import { pushRecent } from '../Sidebar';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
-import { AutosaveTextarea } from '../ui/MentionButton';
+import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { Location } from '../../lib/database.types';
@@ -25,9 +25,9 @@ function formatType(t: string | null) {
   return t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-export default function Locations() {
+export default function Locations({ openId, onOpenConsumed, onImportFromWorld }: { openId?: string | null; onOpenConsumed?: () => void; onImportFromWorld?: () => void } = {}) {
   const {
-    locations, globalLocations, linkedLocationIds,
+    locations, linkedLocationIds,
     upsertLocation, deleteLocation, linkLocationToCampaign, unlinkLocationFromCampaign,
   } = useCampaign();
   const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
@@ -35,8 +35,15 @@ export default function Locations() {
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showImport, setShowImport] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Open a record requested from outside the tab (e.g. the sidebar "Recent"
+  // list), then clear the request so it doesn't re-fire. Syncing selection to an
+  // incoming external request is the legitimate case for setState in an effect.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openId) { setSelectedId(openId); onOpenConsumed?.(); }
+  }, [openId, onOpenConsumed]);
 
   const linkedSet = useMemo(() => new Set(linkedLocationIds), [linkedLocationIds]);
   const originOf = (id: string): Origin => (linkedSet.has(id) ? 'imported' : 'local');
@@ -78,11 +85,6 @@ export default function Locations() {
   const roots = childrenOf.get(null) ?? [];
   const selected = selectedId ? byId.get(selectedId) ?? null : (roots[0] ?? null);
 
-  const importPool = useMemo(
-    () => globalLocations.filter(l => !linkedSet.has(l.id)).sort((a, b) => a.name.localeCompare(b.name)),
-    [globalLocations, linkedSet],
-  );
-
   const totalShown = visible ? visible.size : locations.length;
 
   const handleSelect = (loc: Location) => {
@@ -97,12 +99,6 @@ export default function Locations() {
       description: null, dm_notes: null, history: null, population: null, status: null, world_id: null,
     });
     if (result) setSelectedId(result.id);
-  };
-
-  const importLoc = async (loc: Location) => {
-    await linkLocationToCampaign(loc.id);
-    setSelectedId(loc.id);
-    setShowImport(false);
   };
 
   const publish = async (loc: Location) => {
@@ -170,29 +166,10 @@ export default function Locations() {
       onSearchChange={setSearch}
       onAdd={handleAdd}
       addLabel={selected ? '+ Place here' : '+ Location'}
-      onImport={() => setShowImport(v => !v)}
-      importLabel={showImport ? '× Close import' : '+ Import from canon'}
+      onImport={onImportFromWorld}
+      importLabel="⊕ Import Location"
       list={
         <>
-          {showImport && (
-            <div className="cm-importbrowse">
-              <div className="cm-importbrowse-head">Import from canon · {importPool.length} available</div>
-              {importPool.length === 0 ? (
-                <div className="cm-importbrowse-empty">Nothing left to import — every canon place is already on this table.</div>
-              ) : (
-                importPool.map(l => (
-                  <button key={l.id} className="cm-importbrowse-row" onClick={() => importLoc(l)}>
-                    <span className="cm-importbrowse-glyph">{glyphFor(l.location_type)}</span>
-                    <span className="cm-importbrowse-body">
-                      <span className="cm-importbrowse-name">{l.name || 'Untitled'}</span>
-                      <span className="cm-importbrowse-sub">{formatType(l.location_type) || 'Place'}</span>
-                    </span>
-                    <span className="cm-importbrowse-cta">Import ↓</span>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
 
           {locations.length === 0 ? (
             <div className="cm-empty is-inline">No places yet — create one or import from canon</div>
@@ -363,15 +340,15 @@ function LocationDetail({ location, origin, allLocations, onOpenInCanon, onPubli
       </div>
 
       <DetailSection title="Description">
-        <AutosaveTextarea value={form.description} onChange={v => set('description', v)} placeholder="Describe this place…" rows={4} maxLength={limitFor('locations', 'description')} />
+        <SlashField value={form.description ?? ''} onChange={v => set('description', v)} placeholder="Describe this place…" minHeight="96px" maxLength={limitFor('locations', 'description')} />
       </DetailSection>
 
       <DetailSection title="History">
-        <AutosaveTextarea value={form.history} onChange={v => set('history', v)} placeholder="Historical events…" rows={4} maxLength={limitFor('locations', 'history')} />
+        <SlashField value={form.history ?? ''} onChange={v => set('history', v)} placeholder="Historical events…" minHeight="96px" maxLength={limitFor('locations', 'history')} />
       </DetailSection>
 
       <DetailSection title="DM Notes">
-        <AutosaveTextarea value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" rows={3} maxLength={limitFor('locations', 'dm_notes')} />
+        <SlashField value={form.dm_notes ?? ''} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" minHeight="72px" maxLength={limitFor('locations', 'dm_notes')} />
       </DetailSection>
     </DetailPanel>
   );

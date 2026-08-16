@@ -19,7 +19,7 @@ import {
   Locations as LocationsDB,
   Lore as LoreDB,
 } from './db';
-import type { ImportAction } from './documentImport';
+import { entityMeta, type ImportAction } from './documentImport';
 
 export interface SeedFaction {
   name: string;
@@ -240,9 +240,9 @@ export async function seedWorldEntities(worldId: string, seed: WorldSeed): Promi
 
 /**
  * Pull the world-relevant create actions (NPC / Location / Faction / Lore) out
- * of a parsed document's action list and shape them into a WorldSeed. Session-,
- * campaign-, and module-scoped actions are ignored — those don't belong on a
- * bare world.
+ * of a parsed action list and shape them into a WorldSeed. Session-, module-,
+ * and campaign-scoped actions are ignored — those belong to a campaign the DM
+ * fleshes out later, not to a bare world.
  */
 export function importActionsToSeed(actions: ImportAction[]): WorldSeed {
   const seed: WorldSeed = { factions: [], locations: [], npcs: [], lore: [] };
@@ -265,4 +265,29 @@ export function importActionsToSeed(actions: ImportAction[]): WorldSeed {
     }
   }
   return seed;
+}
+
+/** One row of a WorldSeed's entity breakdown, for the import-review UI. */
+export interface WorldSeedSummaryRow {
+  type: 'upsertNPC' | 'upsertLocation' | 'upsertFaction' | 'upsertLore';
+  label: string;
+  glyph: string;
+  count: number;
+}
+
+/**
+ * Break a WorldSeed down by entity kind, in a stable display order, so the
+ * import panel can show the DM exactly what it will create — mirroring
+ * summarizeSeedActions on the campaign import path.
+ */
+export function summarizeWorldSeed(seed: WorldSeed): WorldSeedSummaryRow[] {
+  const rows: { type: WorldSeedSummaryRow['type']; count: number }[] = [
+    { type: 'upsertNPC', count: seed.npcs.length },
+    { type: 'upsertLocation', count: seed.locations.length },
+    { type: 'upsertFaction', count: seed.factions.length },
+    { type: 'upsertLore', count: seed.lore.length },
+  ];
+  return rows
+    .filter(r => r.count > 0)
+    .map(r => ({ ...r, label: entityMeta[r.type].label, glyph: entityMeta[r.type].glyph }));
 }

@@ -98,7 +98,7 @@ export default function EncounterBuilder() {
   // ================================================================
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', height: '100%', minHeight: 0, overflow: 'hidden' }}>
 
       {/* ============================================================
           LEFT SIDEBAR — list
@@ -109,7 +109,11 @@ export default function EncounterBuilder() {
           width: '220px',
           borderRight: '1px solid var(--rule)',
           height: '100%',
-          overflowY: 'auto',
+          minHeight: 0,
+          // The header (with the New button) + search stay fixed; only the list
+          // below scrolls. Letting the whole sidebar scroll would push the New
+          // button out of view.
+          overflow: 'hidden',
         }}
       >
         {/* Header */}
@@ -117,43 +121,46 @@ export default function EncounterBuilder() {
           <div style={{ color: 'var(--ink-3)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
             {encounters.length} {encounters.length === 1 ? 'entry' : 'entries'}
           </div>
-          <div className="flex items-center justify-between gap-1">
-            <span style={{ color: 'var(--ink)', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
-              Encounters
-            </span>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => setGenOpen(true)}
-                title="Generate a full encounter with AI"
-                style={{
-                  color: 'var(--arcane)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  backgroundColor: 'var(--arcane-bg)',
-                  border: '1px solid var(--arcane-line)',
-                  borderRadius: 'var(--radius)',
-                  padding: '2px 8px',
-                  cursor: 'pointer',
-                }}
-              >
-                ✦ Generate
-              </button>
-              <button
-                onClick={handleAdd}
-                style={{
-                  color: 'var(--gold)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  backgroundColor: 'transparent',
-                  border: '1px solid var(--rule-hover)',
-                  borderRadius: 'var(--radius)',
-                  padding: '2px 8px',
-                  cursor: 'pointer',
-                }}
-              >
-                + New
-              </button>
-            </div>
+          <div style={{ color: 'var(--ink)', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
+            Encounters
+          </div>
+          {/* Buttons sit on their own row so they fit the narrow list column. */}
+          <div className="flex items-center gap-1" style={{ marginTop: '8px' }}>
+            <button
+              onClick={() => setGenOpen(true)}
+              title="Generate a full encounter with AI"
+              style={{
+                flex: 1,
+                color: 'var(--arcane)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                backgroundColor: 'var(--arcane-bg)',
+                border: '1px solid var(--arcane-line)',
+                borderRadius: 'var(--radius)',
+                padding: '3px 8px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ✦ Generate
+            </button>
+            <button
+              onClick={handleAdd}
+              style={{
+                flex: 1,
+                color: 'var(--gold)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                backgroundColor: 'transparent',
+                border: '1px solid var(--rule-hover)',
+                borderRadius: 'var(--radius)',
+                padding: '3px 8px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              + New
+            </button>
           </div>
         </div>
 
@@ -178,7 +185,7 @@ export default function EncounterBuilder() {
         </div>
 
         {/* List */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {filtered.length === 0 && (
             <div style={{ padding: '24px 16px', color: 'var(--ink-3)', fontSize: '0.78rem', textAlign: 'center' }}>
               {encounters.length === 0 ? 'No encounters yet.' : 'No matches.'}
@@ -247,7 +254,10 @@ export default function EncounterBuilder() {
       {/* ============================================================
           RIGHT DETAIL PANEL
       ============================================================ */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
+      {/* minWidth:0 lets this flex child shrink to the available width; without
+          it, wide detail content forces the whole row wider than the container
+          and crowds the list panel on the left. */}
+      <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '32px 36px' }}>
         {!selectedEnc ? (
           <div style={{ color: 'var(--ink-3)', fontSize: '0.85rem', marginTop: '60px', textAlign: 'center' }}>
             Select an encounter to view details, or create a new one.

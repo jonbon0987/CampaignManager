@@ -3,10 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CampaignCreationGate from './CampaignCreationGate';
 
-const { createCampaign, openCampaign, seedCampaignHooks } = vi.hoisted(() => ({
+const { createCampaign, openCampaign, seedCampaignHooks, extractClientSide, submitDocument } = vi.hoisted(() => ({
   createCampaign: vi.fn(),
   openCampaign: vi.fn(),
   seedCampaignHooks: vi.fn(),
+  extractClientSide: vi.fn(),
+  submitDocument: vi.fn(),
 }));
 
 vi.mock('../../context/WorldContext', () => ({
@@ -19,10 +21,27 @@ vi.mock('../../lib/campaignSeeds', async (importOriginal) => {
   return { ...actual, seedCampaignHooks };
 });
 
+// Keep the action-formatting helpers real, but stub the two functions that
+// actually touch the network — extraction + parsing — for the import path.
+vi.mock('../../lib/documentImport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/documentImport')>();
+  return { ...actual, extractClientSide, submitDocument };
+});
+
+function stageAFile(container: HTMLElement, opts: { name?: string; size?: number } = {}) {
+  const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+  const file = new File(['doc contents'], opts.name ?? 'notes.txt', { type: 'text/plain' });
+  if (opts.size != null) Object.defineProperty(file, 'size', { value: opts.size, configurable: true });
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  fireEvent.change(input);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   createCampaign.mockResolvedValue({ id: 'c1', worldId: 'w1', name: 'X', sessions: 0, party: '', lastPlayed: '', status: 'active' });
   seedCampaignHooks.mockResolvedValue(undefined);
+  extractClientSide.mockResolvedValue({ kind: 'text', payload: 'doc contents' });
+  submitDocument.mockResolvedValue({ summary: 'A parsed summary.', actions: [] });
 });
 
 describe('CampaignCreationGate', () => {
@@ -93,5 +112,81 @@ describe('CampaignCreationGate', () => {
     expect(screen.getByText('Choose a starting premise')).toBeTruthy();
     fireEvent.click(screen.getByText('‹ All options'));
     expect(screen.getByText('Start a new campaign')).toBeTruthy();
+  });
+
+  describe('import path', () => {
+    it('stages a picked file without starting the parse until "Start import" is clicked', async () => {
+      const { container } = render(<CampaignCreationGate onClose={vi.fn()} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container);
+
+      // Staged, not reading — the file is shown but nothing has been sent yet.
+      expect(await screen.findByText('notes.txt')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Start import' })).toBeTruthy();
+      expect(extractClientSide).not.toHaveBeenCalled();
+      expect(submitDocument).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+      await waitFor(() => expect(submitDocument).toHaveBeenCalledTimes(1));
+    });
+
+    it('rejects an oversized file at pick time — never stages it or parses', async () => {
+      const { container } = render(<CampaignCreationGate onClose={vi.fn()} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container, { name: 'huge.pdf', size: 5 * 1024 * 1024 });
+
+      expect(await screen.findByText(/imports are limited to 2 MB/)).toBeTruthy();
+      // Stayed on the drop screen — no "Start import", no file read.
+      expect(screen.queryByRole('button', { name: 'Start import' })).toBeNull();
+      expect(extractClientSide).not.toHaveBeenCalled();
+    });
+
+    it('"Choose a different file" from the staged screen discards it without ever parsing', async () => {
+      const { container } = render(<CampaignCreationGate onClose={vi.fn()} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container);
+      expect(await screen.findByText('notes.txt')).toBeTruthy();
+
+      fireEvent.click(screen.getByText('Choose a different file'));
+      expect(screen.getByText(/Drop a file here/)).toBeTruthy();
+      expect(submitDocument).not.toHaveBeenCalled();
+    });
+
+    it('reaches the ready screen with parsed content only after starting the import', async () => {
+      submitDocument.mockResolvedValue({ summary: 'A tale of two rivals.', actions: [] });
+      const { container } = render(<CampaignCreationGate onClose={vi.fn()} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container);
+      fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Create campaign' })).toBeTruthy());
+      expect((screen.getByDisplayValue('Notes') as HTMLInputElement).value).toBe('Notes');
+    });
+
+    it('requests title derivation and prefills the model-derived name + premise over the filename', async () => {
+      // The parse streams a title event; the gate must use it, not the filename.
+      submitDocument.mockImplementation(async (...args: unknown[]) => {
+        const onTitle = args[10] as (t: { name: string; tagline: string }) => void;
+        onTitle({ name: 'The Sundering Pact', tagline: 'Two rival houses hire the party for the same heist.' });
+        return { summary: 'This document is a set of session notes.', actions: [] };
+      });
+      const { container } = render(<CampaignCreationGate onClose={vi.fn()} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container);
+      fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Create campaign' })).toBeTruthy());
+      // deriveTitle flag is sent (10th positional arg).
+      expect(submitDocument.mock.calls[0][9]).toBe(true);
+      // Name + premise come from the derived title, not "Notes" / "This document…".
+      expect((screen.getByDisplayValue('The Sundering Pact') as HTMLInputElement).value).toBe('The Sundering Pact');
+      expect((screen.getByDisplayValue('Two rival houses hire the party for the same heist.') as HTMLTextAreaElement).value)
+        .toBe('Two rival houses hire the party for the same heist.');
+    });
   });
 });

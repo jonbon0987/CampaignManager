@@ -36,11 +36,42 @@ describe('Lore', () => {
     expect(cc().upsertLore).toHaveBeenCalledWith({ title: '', category: null, content: null, dm_only: false, world_id: null });
   });
 
-  it('toggles the import-from-canon panel label', () => {
+  it('opens the world-import drawer from the header button', () => {
+    const onImportFromWorld = vi.fn();
+    render(<Lore onImportFromWorld={onImportFromWorld} />);
+    fireEvent.click(screen.getByRole('button', { name: '⊕ Import Lore' }));
+    expect(onImportFromWorld).toHaveBeenCalled();
+  });
+
+  it('hides the import button when no import handler is provided', () => {
     render(<Lore />);
-    const importBtn = screen.getByRole('button', { name: '+ Import from canon' });
-    fireEvent.click(importBtn);
-    expect(screen.getByRole('button', { name: '× Close import' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '⊕ Import Lore' })).toBeNull();
+  });
+
+  it('defaults to the first entry when no openId is given', () => {
+    h.campaign.value = makeCampaignContext({
+      lore: [
+        makeLoreEntry({ id: 'l1', title: 'The First Flame' }),
+        makeLoreEntry({ id: 'l2', title: 'Borrowed Relic' }),
+      ],
+    });
+    render(<Lore />);
+    expect((screen.getByPlaceholderText('Entry title…') as HTMLInputElement).value).toBe('The First Flame');
+  });
+
+  it('opens the record named by openId (not the first), then clears the request', () => {
+    h.campaign.value = makeCampaignContext({
+      lore: [
+        makeLoreEntry({ id: 'l1', title: 'The First Flame' }),
+        makeLoreEntry({ id: 'l2', title: 'Borrowed Relic' }),
+      ],
+    });
+    const onOpenConsumed = vi.fn();
+    render(<Lore openId="l2" onOpenConsumed={onOpenConsumed} />);
+    // The detail pane shows l2, the requested record — not the default first entry.
+    expect((screen.getByPlaceholderText('Entry title…') as HTMLInputElement).value).toBe('Borrowed Relic');
+    // The request is consumed so it doesn't re-fire and pin the selection.
+    expect(onOpenConsumed).toHaveBeenCalled();
   });
 
   it('lists entries and marks canon-linked ones as imported', () => {

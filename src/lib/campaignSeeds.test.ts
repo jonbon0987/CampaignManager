@@ -1,17 +1,33 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // campaignSeeds imports `./db`, which imports `./supabase` — and supabase.ts
 // throws at import time without VITE_SUPABASE_* env vars. Mock the db layer so
 // these pure-function tests stay hermetic (no client, no env dependency).
-vi.mock('./db', () => ({ Hooks: { upsert: vi.fn() } }));
+vi.mock('./db', () => ({
+  Sessions: { upsert: vi.fn() },
+  PlayerCharacters: { upsert: vi.fn() },
+  NPCs: { upsert: vi.fn() },
+  Locations: { upsert: vi.fn() },
+  Factions: { upsert: vi.fn() },
+  Hooks: { upsert: vi.fn() },
+  Lore: { upsert: vi.fn() },
+  Modules: { upsert: vi.fn() },
+  MonsterStatblocks: { upsert: vi.fn() },
+}));
 
-import { templateCounts, importActionsToHooks, CAMPAIGN_TEMPLATES } from './campaignSeeds';
+import {
+  templateCounts, importActionsToHooks, summarizeSeedActions, seedCampaignEntities,
+  CAMPAIGN_TEMPLATES, type CampaignTemplate,
+} from './campaignSeeds';
+import {
+  Hooks as HooksDB, NPCs as NPCsDB, Locations as LocationsDB, Factions as FactionsDB,
+} from './db';
 import type { ImportAction } from './documentImport';
 
 describe('templateCounts', () => {
   it('reports the hook count of a template', () => {
-    expect(templateCounts({ hooks: [{ title: 'a' }, { title: 'b' }] } as any)).toEqual({ hooks: 2 });
-    expect(templateCounts({ hooks: [] } as any)).toEqual({ hooks: 0 });
+    expect(templateCounts({ hooks: [{ title: 'a' }, { title: 'b' }] } as unknown as CampaignTemplate)).toEqual({ hooks: 2 });
+    expect(templateCounts({ hooks: [] } as unknown as CampaignTemplate)).toEqual({ hooks: 0 });
   });
 
   it('matches the real templates (derived, never drifts)', () => {
@@ -52,5 +68,80 @@ describe('importActionsToHooks', () => {
 
   it('returns an empty array for no actions', () => {
     expect(importActionsToHooks([])).toEqual([]);
+  });
+});
+
+const action = (type: string, payload: Record<string, unknown>): ImportAction =>
+  ({ type, payload } as unknown as ImportAction);
+
+describe('summarizeSeedActions', () => {
+  it('groups seedable creates by kind in display order', () => {
+    const actions = [
+      action('upsertNPC', { name: 'Kutter' }),
+      action('upsertNPC', { name: 'Vess' }),
+      action('upsertLocation', { name: 'The Reach' }),
+      action('upsertHook', { title: 'The Shard' }),
+    ];
+    expect(summarizeSeedActions(actions)).toEqual([
+      { type: 'upsertNPC', label: 'NPC', count: 2 },
+      { type: 'upsertLocation', label: 'Location', count: 1 },
+      { type: 'upsertHook', label: 'Plot Hook', count: 1 },
+    ]);
+  });
+
+  it('excludes cross-referential and world-scoped kinds', () => {
+    const actions = [
+      action('upsertNPC', { name: 'Kutter' }),
+      action('upsertRelationship', { label: 'allies' }),
+      action('upsertScene', { title: 'The ambush' }),
+      action('upsertTimelineEvent', { title: 'The Sundering' }),
+    ];
+    expect(summarizeSeedActions(actions)).toEqual([
+      { type: 'upsertNPC', label: 'NPC', count: 1 },
+    ]);
+  });
+});
+
+describe('seedCampaignEntities', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('seeds every entity kind — not just hooks — against the new campaign id', async () => {
+    await seedCampaignEntities('camp-1', [
+      action('upsertNPC', { name: 'Kutter', role: 'guide' }),
+      action('upsertLocation', { name: 'The Reach' }),
+      action('upsertFaction', { name: 'The Wardens' }),
+      action('upsertHook', { title: 'The Shard' }),
+    ]);
+    expect(NPCsDB.upsert).toHaveBeenCalledWith(expect.objectContaining({ name: 'Kutter', campaign_id: 'camp-1' }));
+    expect(LocationsDB.upsert).toHaveBeenCalledWith(expect.objectContaining({ name: 'The Reach', campaign_id: 'camp-1' }));
+    expect(FactionsDB.upsert).toHaveBeenCalledWith(expect.objectContaining({ name: 'The Wardens', campaign_id: 'camp-1' }));
+    expect(HooksDB.upsert).toHaveBeenCalledWith(expect.objectContaining({ title: 'The Shard', campaign_id: 'camp-1', state: 'seed' }));
+  });
+
+  it('drops any id from the payload so imports always create, never update', async () => {
+    await seedCampaignEntities('camp-1', [
+      action('upsertNPC', { id: 'stale-id', name: 'Kutter' }),
+    ]);
+    const arg = (NPCsDB.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(arg).not.toHaveProperty('id');
+  });
+
+  it('strips stray columns via normalizeAssistantPayload', async () => {
+    await seedCampaignEntities('camp-1', [
+      action('upsertNPC', { name: 'Kutter', key_npcs: 'not an NPC column' }),
+    ]);
+    const arg = (NPCsDB.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(arg).not.toHaveProperty('key_npcs');
+  });
+
+  it('is best-effort: a failed insert is skipped, not thrown', async () => {
+    (NPCsDB.upsert as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('boom'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(seedCampaignEntities('camp-1', [
+      action('upsertNPC', { name: 'Explodes' }),
+      action('upsertLocation', { name: 'Still seeded' }),
+    ])).resolves.toBeUndefined();
+    expect(LocationsDB.upsert).toHaveBeenCalledWith(expect.objectContaining({ name: 'Still seeded' }));
+    errSpy.mockRestore();
   });
 });

@@ -57,6 +57,8 @@ interface SidebarProps {
   runMode?: boolean;
   isMobile: boolean;
   onCloseMobile: () => void;
+  /** Open a specific record from the Recent list: switch to its tab AND select it. */
+  onOpenRecent?: (tab: Tab, id: string) => void;
 }
 
 export default function Sidebar({
@@ -71,6 +73,7 @@ export default function Sidebar({
   runMode = false,
   isMobile,
   onCloseMobile,
+  onOpenRecent,
 }: SidebarProps) {
   const { selectedCampaign } = useCampaign();
   const { backToWorld, activeWorld } = useWorld();
@@ -192,7 +195,10 @@ export default function Sidebar({
               <button
                 key={i}
                 className="rv-item"
-                onClick={() => handleNavClick(r.tab)}
+                onClick={() => {
+                  onOpenRecent?.(r.tab, r.id); // switches tab AND selects the record
+                  if (isMobile) onCloseMobile();
+                }}
               >
                 <span className="rv-glyph">·</span>
                 <span className="rv-name">{r.label}</span>

@@ -6,10 +6,12 @@ import WorldCreationGate from './WorldCreationGate';
 
 // createWorld / reloadWorldEntities are referenced inside the hoisted mock
 // factory, so they must be created via vi.hoisted to exist before the mock runs.
-const { createWorld, reloadWorldEntities, signOut } = vi.hoisted(() => ({
+const { createWorld, reloadWorldEntities, signOut, extractClientSide, submitDocument } = vi.hoisted(() => ({
   createWorld: vi.fn(),
   reloadWorldEntities: vi.fn(),
   signOut: vi.fn(),
+  extractClientSide: vi.fn(),
+  submitDocument: vi.fn(),
 }));
 
 vi.mock('../../context/WorldContext', () => ({
@@ -24,11 +26,27 @@ vi.mock('../../lib/worldSeeds', async (importOriginal) => {
   return { ...actual, seedWorldEntities: vi.fn().mockResolvedValue(undefined) };
 });
 
+// Keep the action-formatting helpers real, but stub the two functions that
+// actually touch the network — extraction + parsing — for the import path.
+vi.mock('../../lib/documentImport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/documentImport')>();
+  return { ...actual, extractClientSide, submitDocument };
+});
+
+function stageAFile(container: HTMLElement) {
+  const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+  const file = new File(['doc contents'], 'setting-bible.txt', { type: 'text/plain' });
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  fireEvent.change(input);
+}
+
 const user = { email: 'dm@lair.co' } as User;
 
 beforeEach(() => {
   vi.clearAllMocks();
   createWorld.mockResolvedValue({ id: 'w1', name: 'X', tagline: '', era: '', calendar: '', year: 1, campaignIds: [] });
+  extractClientSide.mockResolvedValue({ kind: 'text', payload: 'doc contents' });
+  submitDocument.mockResolvedValue({ summary: 'A parsed summary.', actions: [] });
 });
 
 describe('WorldCreationGate', () => {
@@ -93,6 +111,47 @@ describe('WorldCreationGate', () => {
     expect(screen.getByText('Name your world')).toBeTruthy();
     fireEvent.click(screen.getByText('‹ All options'));
     expect(screen.getByText('Create your first world')).toBeTruthy();
+  });
+
+  describe('import path', () => {
+    it('stages a picked file without starting the parse until "Start import" is clicked', async () => {
+      const { container } = render(<WorldCreationGate user={user} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container);
+
+      // Staged, not reading — the file is shown but nothing has been sent yet.
+      expect(await screen.findByText('setting-bible.txt')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Start import' })).toBeTruthy();
+      expect(extractClientSide).not.toHaveBeenCalled();
+      expect(submitDocument).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+      await waitFor(() => expect(submitDocument).toHaveBeenCalledTimes(1));
+    });
+
+    it('"Choose a different file" from the staged screen discards it without ever parsing', async () => {
+      const { container } = render(<WorldCreationGate user={user} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container);
+      expect(await screen.findByText('setting-bible.txt')).toBeTruthy();
+
+      fireEvent.click(screen.getByText('Choose a different file'));
+      expect(screen.getByText(/Drop a file here/)).toBeTruthy();
+      expect(submitDocument).not.toHaveBeenCalled();
+    });
+
+    it('reaches the ready screen with a filename-derived name only after starting the import', async () => {
+      const { container } = render(<WorldCreationGate user={user} />);
+      fireEvent.click(screen.getByText('Import from a document'));
+
+      stageAFile(container);
+      fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Create world' })).toBeTruthy());
+      expect((screen.getByDisplayValue('Setting Bible') as HTMLInputElement).value).toBe('Setting Bible');
+    });
   });
 
   describe('additional-world mode (onClose provided)', () => {

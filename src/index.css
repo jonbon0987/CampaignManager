@@ -2619,9 +2619,15 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .mw-clear-focus:hover { color: var(--ink); border-color: var(--ink-3); }
 
+/* Breadcrumb (doubles as the title once you drill in) */
+.mw-crumb { background: none; border: none; padding: 0; font: inherit; color: var(--gold); cursor: pointer; }
+.mw-crumb:hover:not(:disabled) { text-decoration: underline; }
+.mw-crumb:disabled { color: var(--ink); cursor: default; }
+.mw-crumb-sep { color: var(--ink-3); font-weight: 400; }
+
 /* Body */
 .mw-body { display: grid; grid-template-columns: 1fr 280px; gap: 1px; flex: 1; min-height: 0; background: var(--rule); }
-.mw-canvas { background: var(--bg); min-height: 0; overflow: auto; padding: 24px; }
+.mw-canvas { background: var(--bg); min-height: 0; overflow: hidden; position: relative; }
 
 /* Side panel */
 .mw-side {

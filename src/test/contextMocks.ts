@@ -26,15 +26,18 @@ export function makeCampaignContext(over: Record<string, unknown> = {}) {
     sessions: [], hooks: [], modules: [], relationships: [], monsterStatblocks: [],
     // canon pools + link state (compendium tabs)
     globalLore: [], linkedLoreIds: [], globalLocations: [], linkedLocationIds: [],
+    globalNPCs: [], linkedNPCIds: [],
     // common mutations
     upsertIdea: fn(), deleteIdea: fn(), promoteIdea: fn(),
     upsertLore: fn(), deleteLore: fn(), linkLoreToCampaign: fn(), unlinkLoreFromCampaign: fn(),
     upsertLocation: fn(), deleteLocation: fn(), linkLocationToCampaign: fn(), unlinkLocationFromCampaign: fn(),
     upsertPC: fn(), deletePC: fn(),
-    upsertNPC: fn(), deleteNPC: fn(),
+    upsertNPC: fn(), deleteNPC: fn(), linkNPCToCampaign: fn(), unlinkNPCFromCampaign: fn(),
     upsertFaction: fn(), deleteFaction: fn(),
     upsertHook: fn(), deleteHook: fn(),
     upsertModule: fn(), deleteModule: fn(),
+    upsertSubmodule: fn(), deleteSubmodule: fn(), loadSubmodules: fn(),
+    upsertScene: fn(), deleteScene: fn(), loadScenes: fn(),
     ...over,
   };
 }

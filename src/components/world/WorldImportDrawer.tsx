@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
+import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 
 interface WorldImportDrawerProps {
   open: boolean;
   onClose: () => void;
   entityType: string;
-  onImport: (items: any[]) => void;
 }
+
+type Mode = 'link' | 'copy';
 
 interface PoolItem {
   id: string;
@@ -14,6 +16,14 @@ interface PoolItem {
   displayName: string;
   sub: string;
   desc?: string;
+}
+
+// Per-entity-type behavior for bringing a world/canon entity into the campaign.
+interface KindConfig {
+  pool: PoolItem[];
+  linkedIds: Set<string>;
+  canLink: boolean;                                   // linkable-globals only (npc/location/lore)
+  importItem: (id: string, mode: Mode) => Promise<void>;
 }
 
 const KIND_GLYPH: Record<string, string> = {
@@ -25,34 +35,87 @@ const TYPE_LABEL: Record<string, string> = {
   lore: 'Lore', bestiary: 'Bestiary', encounter: 'Encounters', all: 'Entities',
 };
 
-export default function WorldImportDrawer({ open, onClose, entityType, onImport }: WorldImportDrawerProps) {
-  const { npcs, factions, locations, lore, bestiary, encounters } = useWorld();
+// Drop DB-managed / scope fields so a spread of a full canon row can be re-inserted
+// as a fresh campaign-scoped record (the store re-assigns campaign_id via scope).
+function stripSystemFields<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  const rest: Record<string, unknown> = { ...row };
+  for (const k of ['id', 'campaign_id', 'world_id', 'user_id', 'created_at', 'updated_at']) delete rest[k];
+  return rest;
+}
+
+export default function WorldImportDrawer({ open, onClose, entityType }: WorldImportDrawerProps) {
+  const campaign = useCampaign();
+  const { factions: worldFactions, bestiary } = useWorld();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useState<Mode>('link');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
 
-  const pool = useMemo<PoolItem[]>(() => {
+  const config = useMemo<KindConfig>(() => {
     switch (entityType) {
-      case 'npc': return npcs.map(x => ({ id: x.id, kind: 'npc', displayName: x.name, sub: x.role, desc: x.desc }));
-      case 'faction': return factions.map(x => ({ id: x.id, kind: 'faction', displayName: x.name, sub: x.type, desc: x.desc }));
-      case 'location': return locations.map(x => ({ id: x.id, kind: 'location', displayName: x.name, sub: x.type, desc: x.desc }));
-      case 'lore': return lore.map(x => ({ id: x.id, kind: 'lore', displayName: x.title, sub: 'lore', desc: x.desc }));
-      case 'bestiary': return bestiary.map(x => ({ id: x.id, kind: 'statblock', displayName: x.name, sub: `CR ${x.cr} · ${x.type}`, desc: x.desc }));
-      case 'encounter': return encounters.map(x => ({ id: x.id, kind: 'encounter', displayName: x.name, sub: `${x.difficulty} · ${x.creatures.length} creatures`, desc: x.notes }));
-      default: return [
-        ...npcs.map(x => ({ id: x.id, kind: 'npc', displayName: x.name, sub: x.role, desc: x.desc })),
-        ...factions.map(x => ({ id: x.id, kind: 'faction', displayName: x.name, sub: x.type, desc: x.desc })),
-        ...locations.map(x => ({ id: x.id, kind: 'location', displayName: x.name, sub: x.type, desc: x.desc })),
-        ...lore.map(x => ({ id: x.id, kind: 'lore', displayName: x.title, sub: 'lore', desc: x.desc })),
-        ...bestiary.map(x => ({ id: x.id, kind: 'statblock', displayName: x.name, sub: `CR ${x.cr}`, desc: x.desc })),
-      ];
+      case 'npc': return {
+        pool: campaign.globalNPCs.map(n => ({ id: n.id, kind: 'npc', displayName: n.name, sub: n.role ?? '', desc: n.description ?? '' })),
+        linkedIds: new Set(campaign.linkedNPCIds),
+        canLink: true,
+        importItem: async (id, m) => {
+          if (m === 'link') return campaign.linkNPCToCampaign(id);
+          const n = campaign.globalNPCs.find(x => x.id === id);
+          if (n) await campaign.upsertNPC({ ...stripSystemFields(n), faction_ids: [], statblock_id: null } as Parameters<typeof campaign.upsertNPC>[0], 'campaign');
+        },
+      };
+      case 'location': return {
+        pool: campaign.globalLocations.map(l => ({ id: l.id, kind: 'location', displayName: l.name, sub: l.location_type ?? '', desc: l.description ?? '' })),
+        linkedIds: new Set(campaign.linkedLocationIds),
+        canLink: true,
+        importItem: async (id, m) => {
+          if (m === 'link') return campaign.linkLocationToCampaign(id);
+          const l = campaign.globalLocations.find(x => x.id === id);
+          if (l) await campaign.upsertLocation({ ...stripSystemFields(l), parent_id: null } as Parameters<typeof campaign.upsertLocation>[0], 'campaign');
+        },
+      };
+      case 'lore': return {
+        pool: campaign.globalLore.map(e => ({ id: e.id, kind: 'lore', displayName: e.title, sub: e.category ?? 'lore', desc: e.content ?? '' })),
+        linkedIds: new Set(campaign.linkedLoreIds),
+        canLink: true,
+        importItem: async (id, m) => {
+          if (m === 'link') return campaign.linkLoreToCampaign(id);
+          const e = campaign.globalLore.find(x => x.id === id);
+          if (e) await campaign.upsertLore({ ...stripSystemFields(e) } as Parameters<typeof campaign.upsertLore>[0], 'campaign');
+        },
+      };
+      case 'faction': return {
+        // Factions are campaign-scoped (no canon pool / join table) — copy only.
+        pool: worldFactions.map(f => ({ id: f.id, kind: 'faction', displayName: f.name, sub: f.type ?? '', desc: f.desc ?? '' })),
+        linkedIds: new Set(),
+        canLink: false,
+        importItem: async (id) => {
+          const f = worldFactions.find(x => x.id === id);
+          if (f) await campaign.upsertFaction({ name: f.name, faction_type: f.type || null, overview: f.desc || null, key_figures: null, agenda: null, dm_notes: f.dmNotes || null });
+        },
+      };
+      case 'bestiary': return {
+        // Stat blocks are campaign-scoped — copy only, from the world bestiary view.
+        pool: bestiary.map(b => ({ id: b.id, kind: 'statblock', displayName: b.name, sub: `CR ${b.cr} · ${b.type}`, desc: b.desc })),
+        linkedIds: new Set(),
+        canLink: false,
+        importItem: async (id) => {
+          const b = bestiary.find(x => x.id === id);
+          if (b) await campaign.upsertMonsterStatblock({ name: b.name, creature_type: b.type || null, challenge_rating: b.cr || null, hit_points: b.hp ?? null, armor_class: b.ac ?? null, dm_notes: b.desc || null, tags: b.tags.join(', ') || null } as Parameters<typeof campaign.upsertMonsterStatblock>[0]);
+        },
+      };
+      default: return { pool: [], linkedIds: new Set(), canLink: false, importItem: async () => {} };
     }
-  }, [entityType, npcs, factions, locations, lore, bestiary, encounters]);
+  }, [entityType, campaign, worldFactions, bestiary]);
+
+  // Copy-only kinds have no "link" — force copy and hide the toggle.
+  const effectiveMode: Mode = config.canLink ? mode : 'copy';
 
   const filtered = useMemo(() => {
-    if (!search) return pool;
+    if (!search) return config.pool;
     const q = search.toLowerCase();
-    return pool.filter(x => `${x.displayName} ${x.sub} ${x.desc || ''}`.toLowerCase().includes(q));
-  }, [pool, search]);
+    return config.pool.filter(x => `${x.displayName} ${x.sub} ${x.desc || ''}`.toLowerCase().includes(q));
+  }, [config.pool, search]);
 
   const toggleItem = (id: string) => {
     setSelected(prev => {
@@ -63,25 +126,41 @@ export default function WorldImportDrawer({ open, onClose, entityType, onImport 
     });
   };
 
-  const handleImport = () => {
-    const items = pool.filter(x => selected.has(x.id));
-    onImport(items);
-    setSelected(new Set());
-    onClose();
+  const reset = () => { setSelected(new Set()); setSearch(''); setErr(''); };
+
+  // Closing clears the staged selection (and search/mode) so reopening the
+  // drawer always starts fresh rather than showing the previous checks.
+  const handleClose = () => { reset(); setMode('link'); onClose(); };
+
+  const handleImport = async () => {
+    if (selected.size === 0 || busy) return;
+    setBusy(true); setErr('');
+    try {
+      for (const id of selected) {
+        await config.importItem(id, effectiveMode);
+      }
+      handleClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Import failed. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!open) return null;
 
+  const verb = effectiveMode === 'link' ? 'Link' : 'Copy';
+
   return (
     <>
-      <div className="wi-overlay" onClick={onClose} />
+      <div className="wi-overlay" onClick={handleClose} />
       <div className="wi-drawer">
         <div className="wi-head">
           <div>
             <div className="wi-head-scope">⊕ Import from World</div>
             <div className="wi-head-title">{TYPE_LABEL[entityType] || 'Entities'}</div>
           </div>
-          <button className="wi-close" onClick={onClose}>✕</button>
+          <button className="wi-close" onClick={handleClose}>✕</button>
         </div>
 
         <div className="wi-search">
@@ -100,6 +179,7 @@ export default function WorldImportDrawer({ open, onClose, entityType, onImport 
           ) : (
             filtered.map(item => {
               const isSelected = selected.has(item.id);
+              const isLinked = config.linkedIds.has(item.id);
               return (
                 <button
                   key={item.kind + item.id}
@@ -109,7 +189,7 @@ export default function WorldImportDrawer({ open, onClose, entityType, onImport 
                   <span className="wi-check">{isSelected ? '✓' : ''}</span>
                   <span className="wi-item-glyph" style={{ color: 'var(--gold)' }}>{KIND_GLYPH[item.kind] || '·'}</span>
                   <div className="wi-item-body">
-                    <div className="wi-item-name">{item.displayName}</div>
+                    <div className="wi-item-name">{item.displayName}{isLinked && <span className="wi-item-linked"> · linked</span>}</div>
                     <div className="wi-item-sub">{item.sub}</div>
                     {item.desc && (
                       <div className="wi-item-desc">
@@ -124,24 +204,40 @@ export default function WorldImportDrawer({ open, onClose, entityType, onImport 
           )}
         </div>
 
+        {err && <div className="wi-error">{err}</div>}
+
         <div className="wi-foot">
           <div className="wi-foot-count">{selected.size} selected</div>
-          <div className="wi-foot-actions">
-            <button className="wi-foot-mode">
-              <span className="wi-foot-mode-dot wi-mode-link" />
-              Link
-            </button>
-            <button className="wi-foot-mode">
-              <span className="wi-foot-mode-dot wi-mode-copy" />
-              Copy
-            </button>
-          </div>
+          {config.canLink && (
+            <div className="wi-foot-actions" role="radiogroup" aria-label="Import mode">
+              <button
+                className={`wi-foot-mode ${mode === 'link' ? 'is-active' : ''}`}
+                role="radio"
+                aria-checked={mode === 'link'}
+                onClick={() => setMode('link')}
+                title="Reference the canon entity — edits to it show here too"
+              >
+                <span className="wi-foot-mode-dot wi-mode-link" />
+                Link
+              </button>
+              <button
+                className={`wi-foot-mode ${mode === 'copy' ? 'is-active' : ''}`}
+                role="radio"
+                aria-checked={mode === 'copy'}
+                onClick={() => setMode('copy')}
+                title="Duplicate into this campaign — an independent, editable copy"
+              >
+                <span className="wi-foot-mode-dot wi-mode-copy" />
+                Copy
+              </button>
+            </div>
+          )}
           <button
             className="wi-import-btn"
-            disabled={selected.size === 0}
+            disabled={selected.size === 0 || busy}
             onClick={handleImport}
           >
-            Import {selected.size > 0 ? `(${selected.size})` : ''}
+            {busy ? `${verb}ing…` : `${verb} ${selected.size > 0 ? `(${selected.size})` : ''}`}
           </button>
         </div>
       </div>

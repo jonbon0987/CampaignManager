@@ -8,7 +8,7 @@ import { OriginBand, type Origin } from '../ui/OriginBand';
 import { pushRecent } from '../Sidebar';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from '../ui/OverflowMenu';
-import { AutosaveTextarea } from '../ui/MentionButton';
+import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
@@ -29,9 +29,9 @@ interface LoreItem {
   raw: LoreEntry;
 }
 
-export default function Lore() {
+export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { openId?: string | null; onOpenConsumed?: () => void; onImportFromWorld?: () => void } = {}) {
   const {
-    lore, globalLore, linkedLoreIds,
+    lore, linkedLoreIds,
     upsertLore, deleteLore, linkLoreToCampaign, unlinkLoreFromCampaign,
   } = useCampaign();
   const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
@@ -39,7 +39,14 @@ export default function Lore() {
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showImport, setShowImport] = useState(false);
+
+  // Open a record requested from outside the tab (e.g. the sidebar "Recent"
+  // list), then clear the request so it doesn't re-fire. Syncing selection to an
+  // incoming external request is the legitimate case for setState in an effect.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openId) { setSelectedId(openId); onOpenConsumed?.(); }
+  }, [openId, onOpenConsumed]);
 
   const all = useMemo<LoreItem[]>(() => {
     const linked = new Set(linkedLoreIds);
@@ -56,13 +63,6 @@ export default function Lore() {
   const local = all.filter(i => i.origin === 'local');
   const selected = all.find(x => x.id === selectedId) || all[0] || null;
 
-  const importPool = useMemo(() => {
-    const linked = new Set(linkedLoreIds);
-    return globalLore
-      .filter(l => !linked.has(l.id))
-      .sort((a, b) => a.title.localeCompare(b.title));
-  }, [globalLore, linkedLoreIds]);
-
   const handleSelect = (item: LoreItem) => {
     setSelectedId(item.id);
     pushRecent({ kind: 'lore', id: item.id, label: item.raw.title, tab: 'lore' });
@@ -71,12 +71,6 @@ export default function Lore() {
   const handleAdd = async () => {
     const result = await upsertLore({ title: '', category: null, content: null, dm_only: false, world_id: null });
     if (result) setSelectedId(result.id);
-  };
-
-  const importEntry = async (entry: LoreEntry) => {
-    await linkLoreToCampaign(entry.id);
-    setSelectedId(entry.id);
-    setShowImport(false);
   };
 
   const publish = async (entry: LoreEntry) => {
@@ -124,30 +118,10 @@ export default function Lore() {
       onSearchChange={setSearch}
       onAdd={handleAdd}
       addLabel="+ Lore"
-      onImport={() => setShowImport(v => !v)}
-      importLabel={showImport ? '× Close import' : '+ Import from canon'}
+      onImport={onImportFromWorld}
+      importLabel="⊕ Import Lore"
       list={
         <>
-          {showImport && (
-            <div className="cm-importbrowse">
-              <div className="cm-importbrowse-head">Import from canon · {importPool.length} available</div>
-              {importPool.length === 0 ? (
-                <div className="cm-importbrowse-empty">Nothing left to import — every canon entry is already on this table.</div>
-              ) : (
-                importPool.map(l => (
-                  <button key={l.id} className="cm-importbrowse-row" onClick={() => importEntry(l)}>
-                    <span className="cm-importbrowse-glyph">{GLYPH}</span>
-                    <span className="cm-importbrowse-body">
-                      <span className="cm-importbrowse-name">{l.title || 'Untitled'}</span>
-                      <span className="cm-importbrowse-sub">{l.category ? cap(l.category) : 'Lore'}</span>
-                    </span>
-                    <span className="cm-importbrowse-cta">Import ↓</span>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-
           {all.length === 0 ? (
             <div className="cm-empty is-inline">No lore yet — create one or import from canon</div>
           ) : (
@@ -269,7 +243,7 @@ function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelet
       </div>
 
       <DetailSection title="Content">
-        <AutosaveTextarea value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" rows={8} maxLength={limitFor('lore_entries', 'content')} />
+        <SlashField value={form.content ?? ''} onChange={v => set('content', v)} placeholder="Lore content…" minHeight="184px" maxLength={limitFor('lore_entries', 'content')} />
       </DetailSection>
     </DetailPanel>
   );

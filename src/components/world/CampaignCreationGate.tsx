@@ -17,10 +17,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { getAIProvider } from '../../lib/aiProvider';
-import { extractClientSide, submitDocument } from '../../lib/documentImport';
 import {
-  CAMPAIGN_TEMPLATES, templateCounts, seedCampaignHooks, importActionsToHooks,
-  type SeedHook,
+  extractClientSide, submitDocument, entityMeta, importSizeError, MAX_IMPORT_LABEL,
+  passProgressText, READING_MESSAGE, EXTRACTING_MESSAGE, type ImportAction,
+} from '../../lib/documentImport';
+import {
+  CAMPAIGN_TEMPLATES, templateCounts, seedCampaignHooks, seedCampaignEntities,
+  summarizeSeedActions, type SeedHook,
 } from '../../lib/campaignSeeds';
 import { generateCampaignDraft, type CampaignDraft } from '../../lib/generateCampaign';
 import { limitFor } from '../../lib/fieldLimits';
@@ -52,18 +55,25 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : 'Something went
 
 interface CampaignFields { party?: string; plot_summary?: string }
 
+// What to seed into the new campaign after it's created. `actions` (the import
+// path) seeds every entity kind the document produced; `hooks` (template/AI
+// paths) seeds just starter threads.
+interface CampaignSeed { hooks?: SeedHook[]; actions?: ImportAction[] }
+
 /**
- * Create the campaign, seed its starter threads, then close the overlay and
+ * Create the campaign, seed its starter content, then close the overlay and
  * open the campaign. createCampaign runs inside the caller's try so DB errors
  * surface on the still-mounted gate; the close + open happen only on success.
  */
 function useCreateCampaign(onClose: () => void) {
   const { createCampaign, openCampaign } = useWorld();
-  return useCallback(async (name: string, fields?: CampaignFields, hooks?: SeedHook[]) => {
+  return useCallback(async (name: string, fields?: CampaignFields, seed?: CampaignSeed) => {
     const campaign = await createCampaign(name, fields);
-    if (hooks && hooks.length) {
-      try { await seedCampaignHooks(campaign.id, hooks); }
-      catch (e) { console.error('CampaignCreationGate: hook seeding failed', e); }
+    try {
+      if (seed?.actions && seed.actions.length) await seedCampaignEntities(campaign.id, seed.actions);
+      else if (seed?.hooks && seed.hooks.length) await seedCampaignHooks(campaign.id, seed.hooks);
+    } catch (e) {
+      console.error('CampaignCreationGate: seeding failed', e);
     }
     onClose();
     openCampaign(campaign.id); // land the DM in the new campaign
@@ -215,7 +225,7 @@ function TemplatePanel({ onBack, onClose }: PanelProps) {
     if (!chosen || busy) return;
     setBusy(true); setErr('');
     try {
-      await createCampaign(chosen.name, { plot_summary: chosen.premise, party: chosen.party }, chosen.hooks);
+      await createCampaign(chosen.name, { plot_summary: chosen.premise, party: chosen.party }, { hooks: chosen.hooks });
     } catch (e) {
       setBusy(false);
       setErr(errMsg(e));
@@ -272,11 +282,16 @@ function premiseFromSummary(summary: string): string {
 
 function ImportPanel({ onBack, onClose }: PanelProps) {
   const createCampaign = useCreateCampaign(onClose);
-  const [stage, setStage] = useState<'drop' | 'reading' | 'ready'>('drop');
+  const [stage, setStage] = useState<'drop' | 'staged' | 'reading' | 'ready'>('drop');
   const [name, setName] = useState('');
   const [premise, setPremise] = useState('');
-  const [file, setFile] = useState<{ name: string; size: number } | null>(null);
-  const [hooks, setHooks] = useState<SeedHook[]>([]);
+  // Held from the moment a file is picked until reset() — staging (choosing a
+  // file) is decoupled from starting the parse, so this survives staged →
+  // reading → ready untouched; only startImport() and reset() ever branch on it.
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [actions, setActions] = useState<ImportAction[]>([]);
+  const [progress, setProgress] = useState(READING_MESSAGE);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -285,27 +300,56 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  const onFile = async (f: File) => {
+  // What the parsed document will create, grouped by entity kind for the DM.
+  const seedSummary = summarizeSeedActions(actions);
+  const seedTotal = seedSummary.reduce((n, s) => n + s.count, 0);
+
+  /** Pick or drop a file — just stages it for review, doesn't parse it yet. */
+  const stageFile = (f: File) => {
+    const sizeError = importSizeError(f);
+    if (sizeError) { setErr(sizeError); return; } // reject up front — stay on the drop screen
     setErr('');
-    setFile({ name: f.name, size: f.size });
+    setPendingFile(f);
+    setStage('staged');
+  };
+
+  /** DM clicked "Start import" — actually reads and parses the staged file. */
+  const startImport = async () => {
+    if (!pendingFile) return;
+    const f = pendingFile;
+    setErr('');
+    setProgress(READING_MESSAGE);
+    setWarnings([]);
     setStage('reading');
     const controller = new AbortController();
     abortRef.current = controller;
+    // Prefer the campaign name + premise the model draws from the document's own
+    // content (streamed via onTitle). Only fall back to the filename + parse
+    // summary if the model never returned one. For campaign scope the derived
+    // `tagline` field carries the premise.
+    let titleReceived = false;
     try {
       const input = await extractClientSide(f);
-      const { summary, actions } = await submitDocument(
-        input, NEW_CAMPAIGN_CONTEXT, undefined, undefined, undefined, undefined,
+      const { summary, actions: parsed } = await submitDocument(
+        input, NEW_CAMPAIGN_CONTEXT, undefined,
+        undefined,                                    // onText
+        () => setProgress(EXTRACTING_MESSAGE),        // onExtracting
+        p => setProgress(passProgressText(p)),        // onPass
         controller.signal, getAIProvider(), 'campaign',
+        true,                                          // deriveTitle
+        t => { titleReceived = true; setName(t.name); setPremise(t.tagline); }, // onTitle
+        w => setWarnings(prev => [...prev, `${w.label}: ${w.message}`]),        // onWarning
       );
-      setHooks(importActionsToHooks(actions));
-      setName(nameFromFilename(f.name));
-      setPremise(premiseFromSummary(summary));
+      setActions(parsed);
+      if (!titleReceived) {
+        setName(nameFromFilename(f.name));
+        setPremise(premiseFromSummary(summary));
+      }
       setStage('ready');
     } catch (e) {
       if ((e as Error)?.name === 'AbortError') return;
       setErr(errMsg(e));
-      setStage('drop');
-      setFile(null);
+      setStage('staged'); // keep the staged file — let the DM retry without re-picking
     }
   };
 
@@ -313,7 +357,7 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
     if (!name.trim() || busy) return;
     setBusy(true); setErr('');
     try {
-      await createCampaign(name.trim(), { plot_summary: premise.trim() || undefined }, hooks);
+      await createCampaign(name.trim(), { plot_summary: premise.trim() || undefined }, { actions });
     } catch (e) {
       setBusy(false);
       setErr(errMsg(e));
@@ -322,7 +366,8 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
 
   const reset = () => {
     abortRef.current?.abort();
-    setStage('drop'); setFile(null); setName(''); setPremise(''); setHooks([]); setErr('');
+    setStage('drop'); setPendingFile(null); setName(''); setPremise(''); setActions([]);
+    setProgress(READING_MESSAGE); setWarnings([]); setErr('');
   };
 
   return (
@@ -332,7 +377,7 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
       <p className="fwg-psub">Bring in session notes or a pitch doc. We’ll read it, pull out a premise, and stage any plot threads for review.</p>
 
       <input ref={fileRef} type="file" accept=".pdf,.docx,.md,.txt" hidden
-        onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) stageFile(f); e.target.value = ''; }} />
 
       {stage === 'drop' && (
         <>
@@ -343,25 +388,43 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
             onDragLeave={() => setDragging(false)}
             onDrop={e => {
               e.preventDefault(); setDragging(false);
-              const f = e.dataTransfer.files?.[0]; if (f) onFile(f);
+              const f = e.dataTransfer.files?.[0]; if (f) stageFile(f);
             }}
           >
             <div className="fwg-drop-glyph" aria-hidden="true">❦{'︎'}</div>
             <div className="fwg-drop-title">Drop a file here, or <span style={{ color: 'var(--gold)' }}>browse</span></div>
-            <div className="fwg-drop-sub">PDF · DOCX · MARKDOWN · TXT</div>
+            <div className="fwg-drop-sub">PDF · DOCX · MARKDOWN · TXT · MAX {MAX_IMPORT_LABEL}</div>
           </div>
           {err && <div className="fwg-error">{err}</div>}
         </>
+      )}
+
+      {stage === 'staged' && (
+        <div className="fwg-fade">
+          <div className="fwg-file-chip">
+            <span className="fwg-file-chip-glyph" aria-hidden="true">❦{'︎'}</span>
+            <span className="fwg-file-chip-name">{pendingFile?.name}</span>
+            {pendingFile && <span className="fwg-file-chip-size">{prettySize(pendingFile.size)}</span>}
+          </div>
+          <p className="fwg-hint" style={{ margin: '10px 0 0' }}>
+            Ready when you are — nothing's created yet. We'll read it, draft a premise, and stage anything it describes for your review.
+          </p>
+          {err && <div className="fwg-error">{err}</div>}
+          <div className="fwg-btn-row">
+            <button className="fwg-btn fwg-btn-primary" onClick={startImport}>Start import</button>
+            <button className="fwg-btn fwg-btn-ghost" onClick={reset}>Choose a different file</button>
+          </div>
+        </div>
       )}
 
       {stage === 'reading' && (
         <div>
           <div className="fwg-file-chip">
             <span className="fwg-file-chip-glyph" aria-hidden="true">❦{'︎'}</span>
-            <span className="fwg-file-chip-name">{file?.name}</span>
-            {file && <span className="fwg-file-chip-size">{prettySize(file.size)}</span>}
+            <span className="fwg-file-chip-name">{pendingFile?.name}</span>
+            {pendingFile && <span className="fwg-file-chip-size">{prettySize(pendingFile.size)}</span>}
           </div>
-          <div className="fwg-working"><span className="fwg-spinner" aria-hidden="true" />Reading your document…</div>
+          <div className="fwg-working" aria-live="polite"><span className="fwg-spinner" aria-hidden="true" />{progress}</div>
         </div>
       )}
 
@@ -369,12 +432,30 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
         <div className="fwg-fade">
           <div className="fwg-file-chip">
             <span className="fwg-file-chip-glyph" aria-hidden="true">❦{'︎'}</span>
-            <span className="fwg-file-chip-name">{file?.name}</span>
+            <span className="fwg-file-chip-name">{pendingFile?.name}</span>
             <span className="fwg-file-chip-read">✓ read</span>
           </div>
-          <p className="fwg-hint" style={{ margin: '0 0 16px' }}>
-            We drafted a premise{hooks.length > 0 ? `, plus ${hooks.length} plot ${hooks.length === 1 ? 'thread' : 'threads'} to seed` : ''}. Edit anything before creating.
+          <p className="fwg-hint" style={{ margin: '0 0 12px' }}>
+            We drafted a premise{seedTotal > 0 ? `, plus ${seedTotal} ${seedTotal === 1 ? 'entry' : 'entries'} to seed` : ''}. Edit anything before creating.
           </p>
+          {warnings.length > 0 && (
+            <div className="fwg-warn">
+              Couldn't fully read {warnings.length === 1 ? 'one category' : `${warnings.length} categories`} — results below may be thinner than expected:
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                {warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+          {seedSummary.length > 0 && (
+            <div className="fwg-seeds" style={{ margin: '0 0 16px' }}>
+              {seedSummary.map(s => (
+                <div className="fwg-seed" key={s.type}>
+                  <span className="fwg-seed-glyph" aria-hidden="true">{entityMeta[s.type].glyph}</span>
+                  {s.count} {s.label}{s.count === 1 ? '' : 's'}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="fwg-field">
             <label className="fwg-label">Campaign name</label>
             <input className="fwg-inp" value={name} onChange={e => setName(e.target.value)}
@@ -430,7 +511,7 @@ function AiPanel({ onBack, onClose }: PanelProps) {
     if (!result || busy) return;
     setBusy(true); setErr('');
     try {
-      await createCampaign(result.name, { plot_summary: result.premise || undefined, party: result.party || undefined }, result.hooks);
+      await createCampaign(result.name, { plot_summary: result.premise || undefined, party: result.party || undefined }, { hooks: result.hooks });
     } catch (e) {
       setBusy(false);
       setErr(errMsg(e));
