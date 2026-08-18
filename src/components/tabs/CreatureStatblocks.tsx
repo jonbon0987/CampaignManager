@@ -15,6 +15,7 @@ import {
   useSelectedContextEntities,
   type ContextRef,
 } from '../ui/EntityContextPicker';
+import { parsedToMonsterForm, mergeMissing, buildCompletionPrompt } from '../../lib/statblockCompletion';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -329,17 +330,49 @@ export default function CreatureStatblocks({ onImportFromWorld }: { onImportFrom
   const [genError, setGenError] = useState('');
   const [genLoading, setGenLoading] = useState(false);
 
+  // "Fill in missing details" — completes the open sheet, preserving filled values.
+  const [fillLoading, setFillLoading] = useState(false);
+  const [fillError, setFillError] = useState('');
+  // Bumped after a fill to remount the content/dm_notes SlashFields (they only
+  // read `value` on mount).
+  const [fillNonce, setFillNonce] = useState(0);
+
   const field = (key: keyof MonsterForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(prev => ({ ...prev, [key]: e.target.value }));
+
+  const handleFillMissing = async () => {
+    setFillError('');
+    setFillLoading(true);
+    try {
+      const prompt = buildCompletionPrompt(form);
+      const res = await fetch('/api/generate-creature', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ prompt, provider: getAIProvider() }),
+      });
+      const data = await res.json() as { text?: string; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? `Server error: ${res.status}`);
+      const jsonText = (data.text ?? '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const parsed = JSON.parse(jsonText) as Record<string, unknown>;
+      setForm(prev => mergeMissing(prev, parsedToMonsterForm(parsed)));
+      setFillNonce(n => n + 1);
+    } catch (err) {
+      setFillError(`Couldn't fill in the sheet: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setFillLoading(false);
+    }
+  };
 
   const openAdd = () => {
     setEditing(null);
     setForm(emptyMonsterForm());
+    setFillError('');
     setModalOpen(true);
   };
 
   const openEdit = (m: MonsterStatblock) => {
     setEditing(m);
+    setFillError('');
     setForm({
       name: m.name,
       creature_type: m.creature_type ?? 'monstrosity',
@@ -508,32 +541,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
       setGenModalOpen(false);
       setEditing(null);
-      setForm({
-        name: String(parsed.name ?? ''),
-        creature_type: String(parsed.creature_type ?? 'monstrosity'),
-        challenge_rating: String(parsed.challenge_rating ?? ''),
-        armor_class: parsed.armor_class != null ? String(parsed.armor_class) : '',
-        ac_descriptor: String(parsed.ac_descriptor ?? ''),
-        hit_points: parsed.hit_points != null ? String(parsed.hit_points) : '',
-        hit_dice: String(parsed.hit_dice ?? ''),
-        speed: String(parsed.speed ?? ''),
-        str: parsed.str != null ? String(parsed.str) : '',
-        dex: parsed.dex != null ? String(parsed.dex) : '',
-        con: parsed.con != null ? String(parsed.con) : '',
-        int: parsed.int != null ? String(parsed.int) : '',
-        wis: parsed.wis != null ? String(parsed.wis) : '',
-        cha: parsed.cha != null ? String(parsed.cha) : '',
-        saving_throws: String(parsed.saving_throws ?? ''),
-        skills: String(parsed.skills ?? ''),
-        damage_immunities: String(parsed.damage_immunities ?? ''),
-        damage_resistances: String(parsed.damage_resistances ?? ''),
-        condition_immunities: String(parsed.condition_immunities ?? ''),
-        senses: String(parsed.senses ?? ''),
-        languages: String(parsed.languages ?? ''),
-        content: String(parsed.content ?? ''),
-        dm_notes: String(parsed.dm_notes ?? ''),
-        tags: String(parsed.tags ?? ''),
-      });
+      setForm(parsedToMonsterForm(parsed));
       setModalOpen(true);
     } catch (err) {
       setGenError(`Generation failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -847,6 +855,26 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         onSave={handleSave}
         wide
       >
+        {/* AI: complete the empty fields from what's already entered */}
+        <div style={{ marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--rule)' }}>
+          <button
+            onClick={handleFillMissing}
+            disabled={fillLoading}
+            title="Let the DM Assistant complete the empty fields, keeping what you've entered"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium"
+            style={{
+              backgroundColor: 'var(--arcane-bg)', color: 'var(--arcane)', border: '1px solid var(--arcane-line)',
+              cursor: fillLoading ? 'default' : 'pointer', opacity: fillLoading ? 0.7 : 1,
+            }}
+          >
+            {fillLoading ? 'Filling in…' : '✦ Fill in missing details'}
+          </button>
+          <p className="text-xs mt-1.5" style={{ color: 'var(--ink-3)' }}>
+            Completes empty fields (stats, actions, senses…) to match what you've entered — your filled-in values are kept.
+          </p>
+          {fillError && <p className="text-sm mt-1.5" style={{ color: 'var(--red)' }}>{fillError}</p>}
+        </div>
+
         {/* Row 1: type / CR / name / tags */}
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Creature Type">
@@ -949,12 +977,14 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         {/* Divider */}
         <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
 
-        {/* Actions & Traits free-form */}
+        {/* Actions & Traits free-form. SlashField reads `value` only on mount, so
+            `fillNonce` in the key remounts it when "Fill in missing details" writes
+            new content (plain inputs update on their own). */}
         <FormField label="Actions & Traits">
-          <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" maxLength={limitFor('monster_statblocks', 'content')} />
+          <SlashField key={`content-${editing?.id ?? 'new'}-${fillNonce}`} value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" maxLength={limitFor('monster_statblocks', 'content')} />
         </FormField>
         <FormField label="DM Notes">
-          <SlashField value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" maxLength={limitFor('monster_statblocks', 'dm_notes')} />
+          <SlashField key={`dmnotes-${editing?.id ?? 'new'}-${fillNonce}`} value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" maxLength={limitFor('monster_statblocks', 'dm_notes')} />
         </FormField>
       </Modal>
 
