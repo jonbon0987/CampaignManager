@@ -201,7 +201,7 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
   const {
     activeWorld, campaigns, worldTab, setWorldTab, loading,
     activeCampaignId, openCampaign, deleteCampaign,
-    npcs, factions, locations, lore, bestiary, encounters, timeline,
+    npcs, factions, locations, lore, bestiary, encounters, worldRandomEncounterTables, timeline,
   } = useWorld();
   const confirm = useConfirm();
 
@@ -230,7 +230,7 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
     npcs: npcs.length + factions.length,
     locations: locations.length,
     lore: lore.length,
-    combat: bestiary.length + encounters.length,
+    combat: bestiary.length + encounters.length + worldRandomEncounterTables.length,
   };
 
   // ── Collapsed view ────────────────────────────────────────────────────────

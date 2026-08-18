@@ -1,54 +1,123 @@
-// AI-driven full-encounter generator for the campaign Encounter Builder.
+// AI-driven full-encounter generator, shared by the campaign Encounter Builder
+// and the world-level Combat view.
 //
 // Produces a complete encounter (name, scene description, difficulty,
 // environment, DM tactics) plus its combatant roster. Creatures can be drawn
 // from the DM's existing stat-sheet library, freshly invented by the AI, or a
-// mix of both. Any invented creature is saved to the library as a full stat
-// sheet (so it gets a viewable "Sheet" in the encounter) and then linked into
-// the encounter as a saved combatant.
+// mix of both. Any invented creature is saved as a full stat sheet (so it gets
+// a viewable "Sheet" in the encounter) and then linked into the encounter as a
+// saved combatant.
+//
+// Scope-specific data (which stat sheets / encounters, how to save them, and
+// how to build the context block) is injected via `deps`, so the same modal
+// serves both the campaign and world scopes.
 
 import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useWorld } from '../../context/WorldContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
-import { buildCampaignContextBlock } from '../../lib/campaignContext';
+import { buildSelectedContextBlock, buildDefaultCampaignContextBlock } from '../../lib/campaignContext';
+import {
+  EntityContextPicker,
+  useSelectedContextEntities,
+  type ContextRef,
+} from './EntityContextPicker';
 import {
   creatureToInsert,
   resolveCombatants,
   pickDifficulty,
   type ResolvableCreature,
 } from '../../lib/encounterGeneration';
-import { DIFFICULTIES } from './EncounterDetail';
-import type { Encounter } from '../../lib/database.types';
+import { DIFFICULTIES, type EncounterSaveData } from './EncounterDetail';
+import type { Encounter, MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
 
 type CreatureSource = 'library' | 'new' | 'both';
+type ContextEntities = ReturnType<typeof useSelectedContextEntities>;
 
-export function GenerateEncounterModal({
+// Everything the generator needs that differs between campaign and world scope.
+export interface EncounterGenDeps {
+  statblocks: MonsterStatblock[];
+  upsertStatblock: (insert: Omit<MonsterStatblockInsert, 'campaign_id'> & { id?: string }) => Promise<MonsterStatblock>;
+  createEncounter: (data: EncounterSaveData) => Promise<Encounter>;
+  encounterCount: number;
+  buildContext: (entities: ContextEntities) => string;
+  contextLabel: string;
+  contextHint: string;
+}
+
+// ── Scope wrappers ─────────────────────────────────────────────────────────
+
+export function GenerateEncounterModal(props: { isOpen: boolean; onClose: () => void; onCreated: (enc: Encounter) => void }) {
+  const {
+    monsterStatblocks, upsertMonsterStatblock,
+    encounters, upsertEncounter,
+    overview, sessions, hooks, locations,
+  } = useCampaign();
+
+  const deps: EncounterGenDeps = {
+    statblocks: monsterStatblocks,
+    upsertStatblock: upsertMonsterStatblock,
+    createEncounter: (data) => upsertEncounter({ ...data, world_id: null }),
+    encounterCount: encounters.length,
+    buildContext: (entities) => entities.length > 0
+      ? buildSelectedContextBlock(entities, { title: overview.title, plotSummary: overview.plotSummary })
+      : buildDefaultCampaignContextBlock({
+          overview: { title: overview.title, plotSummary: overview.plotSummary },
+          sessions, hooks, locations,
+        }),
+    contextLabel: 'Campaign Context',
+    contextHint: 'Add specific NPCs, threads, locations, factions, or lore to focus the encounter. Leave empty and it still draws on recent sessions and active threads.',
+  };
+
+  return <EncounterGenModal {...props} deps={deps} />;
+}
+
+export function GenerateWorldEncounterModal(props: { isOpen: boolean; onClose: () => void; onCreated: (enc: Encounter) => void }) {
+  const { worldStatblocks, upsertWorldStatblock, worldEncounters, upsertWorldEncounter, activeWorld } = useWorld();
+
+  const deps: EncounterGenDeps = {
+    statblocks: worldStatblocks,
+    upsertStatblock: (insert) => upsertWorldStatblock(insert),
+    createEncounter: (data) => upsertWorldEncounter(data),
+    encounterCount: worldEncounters.length,
+    buildContext: (entities) => buildSelectedContextBlock(entities, {
+      title: activeWorld?.name ?? '',
+      plotSummary: activeWorld?.tagline ?? '',
+    }),
+    contextLabel: 'World Context',
+    contextHint: 'Add specific NPCs, factions, locations, or lore so the encounter feels native to your world.',
+  };
+
+  return <EncounterGenModal {...props} deps={deps} />;
+}
+
+// ── Shared modal ───────────────────────────────────────────────────────────
+
+function EncounterGenModal({
   isOpen,
   onClose,
   onCreated,
+  deps,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (enc: Encounter) => void;
+  deps: EncounterGenDeps;
 }) {
-  const {
-    monsterStatblocks, upsertMonsterStatblock,
-    encounters, upsertEncounter,
-    overview, sessions, lore, locations,
-  } = useCampaign();
-
-  const hasLibrary = monsterStatblocks.length > 0;
+  const { statblocks, upsertStatblock, createEncounter, encounterCount, buildContext, contextLabel, contextHint } = deps;
+  const hasLibrary = statblocks.length > 0;
 
   const [partySize, setPartySize] = useState('4');
   const [partyLevel, setPartyLevel] = useState('');
   const [difficulty, setDifficulty] = useState<(typeof DIFFICULTIES)[number]>('medium');
   const [theme, setTheme] = useState('');
   const [source, setSource] = useState<CreatureSource>(hasLibrary ? 'both' : 'new');
-  const [useCampaignContext, setUseCampaignContext] = useState(false);
+  const [selectedContext, setSelectedContext] = useState<ContextRef[]>([]);
   const [additionalContext, setAdditionalContext] = useState('');
+  const contextEntities = useSelectedContextEntities(selectedContext);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState('');
@@ -62,7 +131,7 @@ export function GenerateEncounterModal({
     setDifficulty('medium');
     setTheme('');
     setSource(hasLibrary ? 'both' : 'new');
-    setUseCampaignContext(false);
+    setSelectedContext([]);
     setAdditionalContext('');
     setError('');
     setProgress('');
@@ -105,24 +174,19 @@ export function GenerateEncounterModal({
     }
 
     const libraryListing = (effectiveSource !== 'new' && hasLibrary)
-      ? `\n\nDM's creature library (reference these by exact name):\n${monsterStatblocks
+      ? `\n\nDM's creature library (reference these by exact name):\n${statblocks
           .map(m => `- "${m.name}" (${m.creature_type ?? 'creature'}, CR ${m.challenge_rating ?? '?'})`)
           .join('\n')}`
       : '';
 
-    const campaignContextBlock = useCampaignContext
-      ? buildCampaignContextBlock({
-          overview: { title: overview.title, plotSummary: overview.plotSummary },
-          sessions, lore, locations,
-        })
-      : '';
+    const contextBlock = buildContext(contextEntities);
     const additionalClause = additionalContext.trim()
       ? `\n\nAdditional DM instructions: ${additionalContext.trim()}`
       : '';
 
     const prompt = `You are designing a complete D&D 5e combat encounter for a party of ${size} player character(s) at average level ${level}. Target difficulty: ${difficulty}. Use the official D&D 5e encounter-building guidelines to choose creature challenge ratings and counts that land on that difficulty for this party.${themeClause}
 
-${sourceClause}${libraryListing}${campaignContextBlock}${additionalClause}
+${sourceClause}${libraryListing}${contextBlock}${additionalClause}
 
 Respond with a single JSON object using this EXACT structure (no markdown, no commentary — just raw JSON):
 {
@@ -189,9 +253,9 @@ Every name in "combatants" MUST exactly match either a library creature (when al
       const savedNew: ResolvableCreature[] = [];
       if (newCreatures.length > 0) {
         setProgress(`Saving ${newCreatures.length} new creature${newCreatures.length === 1 ? '' : 's'} to your library…`);
-        let order = monsterStatblocks.length;
+        let order = statblocks.length;
         for (const c of newCreatures) {
-          const saved = await upsertMonsterStatblock(creatureToInsert(c, order++));
+          const saved = await upsertStatblock(creatureToInsert(c, order++));
           savedNew.push({
             id: saved.id, name: saved.name,
             creature_type: saved.creature_type, challenge_rating: saved.challenge_rating,
@@ -200,12 +264,11 @@ Every name in "combatants" MUST exactly match either a library creature (when al
       }
 
       // ── Resolve combatants (link to saved sheets where possible) ─────────
-      const combatants = resolveCombatants(parsed.combatants, savedNew, monsterStatblocks);
-      const validDifficulty = pickDifficulty(parsed.difficulty, difficulty, DIFFICULTIES);
+      const combatants = resolveCombatants(parsed.combatants, savedNew, statblocks);
+      const validDifficulty = pickDifficulty(parsed.difficulty, difficulty, DIFFICULTIES) as EncounterSaveData['difficulty'];
 
       setProgress('Building the encounter…');
-      const enc = await upsertEncounter({
-        world_id: null,
+      const enc = await createEncounter({
         name: (parsed.name ?? '').trim() || 'Generated Encounter',
         description: parsed.description?.trim() || null,
         environment: parsed.environment?.trim() || null,
@@ -215,7 +278,7 @@ Every name in "combatants" MUST exactly match either a library creature (when al
         dm_notes: parsed.dm_notes?.trim() || null,
         status: 'ready',
         combatants: combatants.length > 0 ? JSON.stringify(combatants) : null,
-        sort_order: encounters.length,
+        sort_order: encounterCount,
       });
 
       reset();
@@ -327,26 +390,18 @@ Every name in "combatants" MUST exactly match either a library creature (when al
           />
         </FormField>
 
-        {/* Campaign context toggle */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setUseCampaignContext(v => !v)}
+        {/* Context — pick the specific entities the AI should weave in */}
+        <div>
+          <EntityContextPicker
+            selected={selectedContext}
+            onChange={setSelectedContext}
             disabled={loading}
-            className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-            style={{
-              backgroundColor: useCampaignContext ? 'var(--gold-dim)' : 'var(--paper)',
-              color: useCampaignContext ? 'var(--gold)' : 'var(--ink-2)',
-              border: `1px solid ${useCampaignContext ? 'var(--gold-line)' : 'var(--rule)'}`,
-            }}
-          >
-            {useCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
-          </button>
-        </div>
-        {useCampaignContext && (
-          <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
-            Will include the last 5 session summaries, lore entries, and locations from your campaign.
+            label={contextLabel}
+          />
+          <p className="text-xs mt-1.5" style={{ color: 'var(--ink-3)' }}>
+            {contextHint}
           </p>
-        )}
+        </div>
 
         {/* Additional context */}
         <FormField label="Additional Instructions (optional)">

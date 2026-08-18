@@ -26,6 +26,7 @@ import type {
   ModuleSheet, ModuleSheetInsert,
   MonsterStatblock, MonsterStatblockInsert,
   Encounter, EncounterInsert,
+  RandomEncounterTable, RandomEncounterTableInsert,
   ModuleDependency, ModuleDependencyInsert,
   SubmoduleDependency, SubmoduleDependencyInsert,
   TimelineEvent, TimelineEventInsert,
@@ -882,6 +883,50 @@ export const Encounters = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('encounters').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// RANDOM ENCOUNTER TABLES
+// ============================================================
+
+export const RandomEncounterTables = {
+  async getAll(campaignId: string): Promise<RandomEncounterTable[]> {
+    const { data, error } = await supabase
+      .from('random_encounter_tables')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async getByWorld(worldId: string): Promise<RandomEncounterTable[]> {
+    const { data, error } = await supabase
+      .from('random_encounter_tables')
+      .select('*')
+      .eq('world_id', worldId)
+      .is('campaign_id', null)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(table: RandomEncounterTableInsert & { id?: string }): Promise<RandomEncounterTable> {
+    validateFieldLimits('random_encounter_tables', table);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('random_encounter_tables')
+      .upsert({ ...table, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('random_encounter_tables').delete().eq('id', id);
     if (error) throw error;
   },
 };

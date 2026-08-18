@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import EncounterBuilder from './EncounterBuilder';
 import CreatureStatblocks from './CreatureStatblocks';
+import RandomEncounters from './RandomEncounters';
 
-type SubTab = 'encounters' | 'statblocks';
+type SubTab = 'encounters' | 'random' | 'statblocks';
 
-export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
+// onImportFromWorld receives the world-import entity type for the active sub-tab
+// ('bestiary' for stat sheets, 'randomEncounter' for random tables).
+export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: (type: string) => void }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('encounters');
 
   return (
@@ -22,6 +25,7 @@ export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: 
       >
         {([
           { id: 'encounters', label: 'Encounters' },
+          { id: 'random', label: 'Random Tables' },
           { id: 'statblocks', label: 'Stat Sheets' },
         ] as const).map(tab => (
           <button
@@ -49,7 +53,8 @@ export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: 
       {/* Sub-tab content */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {activeSubTab === 'encounters' && <EncounterBuilder />}
-        {activeSubTab === 'statblocks' && <CreatureStatblocks onImportFromWorld={onImportFromWorld} />}
+        {activeSubTab === 'random' && <RandomEncounters onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('randomEncounter') : undefined} />}
+        {activeSubTab === 'statblocks' && <CreatureStatblocks onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('bestiary') : undefined} />}
       </div>
     </div>
   );

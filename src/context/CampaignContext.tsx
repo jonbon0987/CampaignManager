@@ -26,6 +26,7 @@ import {
   ModuleSheets as ModuleSheetsDB,
   MonsterStatblocks as MonsterStatblocksDB,
   Encounters as EncountersDB,
+  RandomEncounterTables as RandomEncounterTablesDB,
   ModuleDeps as ModuleDepsDB,
   SubmoduleDeps as SubmoduleDepsDB,
 } from '../lib/db';
@@ -47,6 +48,7 @@ import type {
   ModuleSheet, ModuleSheetInsert,
   MonsterStatblock, MonsterStatblockInsert,
   Encounter, EncounterInsert,
+  RandomEncounterTable, RandomEncounterTableInsert,
   ModuleDependency, ModuleDependencyInsert,
   SubmoduleDependency, SubmoduleDependencyInsert,
 } from '../lib/database.types';
@@ -165,6 +167,11 @@ interface CampaignContextType {
   upsertEncounter: (e: Omit<EncounterInsert, 'campaign_id'> & { id?: string }) => Promise<Encounter>;
   deleteEncounter: (id: string) => Promise<void>;
 
+  // Random encounter tables
+  randomEncounterTables: RandomEncounterTable[];
+  upsertRandomEncounterTable: (t: Omit<RandomEncounterTableInsert, 'campaign_id'> & { id?: string }) => Promise<RandomEncounterTable>;
+  deleteRandomEncounterTable: (id: string) => Promise<void>;
+
   // Session Prep
   sessionPreps: SessionPrep[];
   upsertSessionPrep: (p: Omit<SessionPrepInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
@@ -222,6 +229,7 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   const [moduleSheets, setModuleSheets] = useState<ModuleSheet[]>([]);
   const [monsterStatblocks, setMonsterStatblocks] = useState<MonsterStatblock[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [randomEncounterTables, setRandomEncounterTables] = useState<RandomEncounterTable[]>([]);
   const [sessionPreps, setSessionPreps] = useState<SessionPrep[]>([]);
   const [moduleDeps, setModuleDeps] = useState<ModuleDependency[]>([]);
   const [submoduleDeps, setSubmoduleDeps] = useState<SubmoduleDependency[]>([]);
@@ -384,6 +392,11 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
         setEncounters(await EncountersDB.getAll(campaignId));
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
+      }
+      try {
+        setRandomEncounterTables(await RandomEncounterTablesDB.getAll(campaignId));
+      } catch {
+        // random_encounter_tables doesn't exist yet — apply migration 0029
       }
       try {
         setSessionPreps(await SessionPrepsDB.getAll(campaignId));
@@ -700,6 +713,20 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     setEncounters(prev => prev.filter(e => e.id !== id));
   }, [selectedCampaignId]);
 
+  // ---- Random encounter tables ----
+  const upsertRandomEncounterTable = useCallback(async (t: Omit<RandomEncounterTableInsert, 'campaign_id'> & { id?: string }) => {
+    if (!selectedCampaignId) return {} as RandomEncounterTable;
+    const result = await RandomEncounterTablesDB.upsert({ ...t, campaign_id: selectedCampaignId, world_id: null });
+    setRandomEncounterTables(await RandomEncounterTablesDB.getAll(selectedCampaignId));
+    return result;
+  }, [selectedCampaignId]);
+
+  const deleteRandomEncounterTable = useCallback(async (id: string) => {
+    if (!selectedCampaignId) return;
+    await RandomEncounterTablesDB.delete(id);
+    setRandomEncounterTables(prev => prev.filter(t => t.id !== id));
+  }, [selectedCampaignId]);
+
   // ---- Session Prep ----
   const upsertSessionPrep = useCallback(async (p: Omit<SessionPrepInsert, 'campaign_id'> & { id?: string }) => {
     if (!selectedCampaignId) return;
@@ -810,6 +837,9 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
       encounters,
       upsertEncounter: withToast(upsertEncounter),
       deleteEncounter: withToast(deleteEncounter, 'Encounter deleted'),
+      randomEncounterTables,
+      upsertRandomEncounterTable: withToast(upsertRandomEncounterTable),
+      deleteRandomEncounterTable: withToast(deleteRandomEncounterTable, 'Random encounter table deleted'),
       sessionPreps,
       upsertSessionPrep: withToast(upsertSessionPrep),
       deleteSessionPrep: withToast(deleteSessionPrep, 'Prep notes deleted'),

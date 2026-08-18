@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SlashField } from './ui/SlashField';
-import { limitFor } from '../lib/fieldLimits';
+import { limitFor, minFor, maxFor } from '../lib/fieldLimits';
 import { Trash2 } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { useConfirm } from '../context/ConfirmContext';
@@ -19,6 +19,7 @@ type PCFormFull = {
   player_name: string | null;
   race: string | null;
   class: string | null;
+  level: number | null;
   background: string | null;
   story_hooks: string | null;
   key_npcs: string | null;
@@ -33,6 +34,7 @@ const emptyForm = (): PCFormFull => ({
   player_name: '',
   race: '',
   class: '',
+  level: 1,
   background: '',
   story_hooks: '',
   key_npcs: '',
@@ -48,6 +50,7 @@ function pcToForm(pc: PlayerCharacter): PCFormFull {
     player_name: pc.player_name,
     race: pc.race,
     class: pc.class,
+    level: pc.level,
     background: pc.background,
     story_hooks: pc.story_hooks,
     key_npcs: pc.key_npcs,
@@ -187,24 +190,39 @@ export function PCEditModal({ isOpen, onClose, pcId }: PCEditModalProps) {
               />
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Race">
+          <div className="grid grid-cols-5 gap-4">
+            <div className="col-span-2">
+              <FormField label="Race">
+                <input
+                  type="text"
+                  value={form.race ?? ''}
+                  onChange={e => update('race', e.target.value)}
+                  placeholder="e.g., Dwarf"
+                  maxLength={limitFor('player_characters', 'race')}
+                  style={inputStyle}
+                />
+              </FormField>
+            </div>
+            <div className="col-span-2">
+              <FormField label="Class">
+                <input
+                  type="text"
+                  value={form.class ?? ''}
+                  onChange={e => update('class', e.target.value)}
+                  placeholder="e.g., Fighter"
+                  maxLength={limitFor('player_characters', 'class')}
+                  style={inputStyle}
+                />
+              </FormField>
+            </div>
+            <FormField label="Level">
               <input
-                type="text"
-                value={form.race ?? ''}
-                onChange={e => update('race', e.target.value)}
-                placeholder="e.g., Dwarf"
-                maxLength={limitFor('player_characters', 'race')}
-                style={inputStyle}
-              />
-            </FormField>
-            <FormField label="Class">
-              <input
-                type="text"
-                value={form.class ?? ''}
-                onChange={e => update('class', e.target.value)}
-                placeholder="e.g., Fighter"
-                maxLength={limitFor('player_characters', 'class')}
+                type="number"
+                min={minFor('player_characters', 'level')}
+                max={maxFor('player_characters', 'level')}
+                value={form.level ?? ''}
+                onChange={e => update('level', e.target.value === '' ? null : Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)))}
+                placeholder="1"
                 style={inputStyle}
               />
             </FormField>
