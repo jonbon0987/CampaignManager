@@ -7,6 +7,7 @@ import type {
   Session, PlayerCharacter, NPC, Location,
   Faction, Hook, LoreEntry, Module, MonsterStatblock,
 } from './database.types';
+import { KINDS, KIND_GROUP_LABEL, type RefKind } from './slashMarkdown';
 
 // Truncate a text value and append ellipsis if it exceeds maxLen.
 function truncate(value: string | null | undefined, maxLen = 500): string | null {
@@ -26,41 +27,98 @@ function textFields(entity: Record<string, unknown>, keys: string[]): string {
   return lines.length ? '\n' + lines.join('\n') : '';
 }
 
-// ── Compact context block for one-shot generation prompts ──────────────────
-// Lighter than formatCampaignContext (no ids / full entity dump). Used by the
-// creature and encounter generators so a generated stat block or fight feels
-// native to the campaign.
+// ── Selective, hand-picked context block ───────────────────────────────────
+// Powers the "modular" AI generators: instead of dumping a fixed slice of the
+// campaign, the DM picks exactly which entities matter, and each one is
+// rendered here with its kind, subtitle, meta tags, and a truncated
+// description. Pure so it can be unit-tested; callers resolve their selected
+// {kind,id} refs into SelectedEntity via the EntityRefContext detail map.
 
-export type GenContextData = {
+export interface SelectedEntity {
+  kind: RefKind;
+  id: string;
+  label: string;
+  sub: string;      // short qualifier (role, type, CR, …)
+  desc: string;     // plain-text description (already stripped of markdown)
+  meta: string[];   // extra tags (status, region, category, …)
+}
+
+export function buildSelectedContextBlock(
+  entities: SelectedEntity[],
+  overview: { title: string; plotSummary: string },
+): string {
+  if (entities.length === 0) return '';
+
+  const parts: string[] = ['\n\n== SELECTED CONTEXT =='];
+  parts.push(`Setting: ${overview.title?.trim() || 'Unnamed'}`);
+  if (overview.plotSummary?.trim()) parts.push(`Plot: ${overview.plotSummary.trim()}`);
+
+  // Group by kind, preserving the canonical KINDS order.
+  const byKind = new Map<RefKind, SelectedEntity[]>();
+  for (const e of entities) {
+    const bucket = byKind.get(e.kind) ?? [];
+    bucket.push(e);
+    byKind.set(e.kind, bucket);
+  }
+
+  for (const kind of KINDS) {
+    const bucket = byKind.get(kind);
+    if (!bucket?.length) continue;
+    parts.push(`\n${KIND_GROUP_LABEL[kind]}:`);
+    for (const e of bucket) {
+      const sub = e.sub?.trim() ? ` (${e.sub.trim()})` : '';
+      const meta = e.meta.filter(m => m?.trim()).join(', ');
+      const metaClause = meta ? ` [${meta}]` : '';
+      const desc = truncate(e.desc, 400);
+      const descClause = desc ? `: ${desc}` : '';
+      parts.push(`  ${e.label}${sub}${metaClause}${descClause}`);
+    }
+  }
+
+  parts.push('\nUse this selected campaign context to make the generated content feel native to this world — weave in the referenced NPCs, threads, locations, factions, and lore where fitting.\n');
+  return parts.join('\n');
+}
+
+// ── Baseline campaign context (no hand-picked entities) ─────────────────────
+// Fallback for the campaign encounter generator when the DM selects nothing:
+// the fight should still feel native to the ongoing story, so ground it in the
+// campaign overview, recent session recaps, active threads, and a few notable
+// locations. Pure / unit-testable.
+
+export type DefaultContextData = {
   overview: { title: string; plotSummary: string };
-  sessions: Array<{ session_number: number | null; session_date: string | null; summary: string | null }>;
-  lore: Array<{ title: string; category: string | null; content: string | null }>;
-  locations: Array<{ name: string; region: string | null; location_type: string | null; description: string | null }>;
+  sessions: Array<{ session_number: number | null; summary: string | null }>;
+  hooks: Array<{ title: string; category: string | null; description: string | null; is_active: boolean }>;
+  locations: Array<{ name: string; location_type: string | null; region: string | null }>;
 };
 
-export function buildCampaignContextBlock(data: GenContextData): string {
-  const parts: string[] = ['\n\n== CAMPAIGN CONTEXT ==', `Campaign: ${data.overview.title || 'Unnamed'}`];
-  if (data.overview.plotSummary) parts.push(`Plot: ${data.overview.plotSummary}`);
-  if (data.sessions.length > 0) {
+export function buildDefaultCampaignContextBlock(data: DefaultContextData): string {
+  const parts: string[] = ['\n\n== CAMPAIGN CONTEXT =='];
+  parts.push(`Campaign: ${data.overview.title?.trim() || 'Unnamed'}`);
+  if (data.overview.plotSummary?.trim()) parts.push(`Plot: ${data.overview.plotSummary.trim()}`);
+
+  const recentSessions = data.sessions.filter(s => s.summary?.trim()).slice(-5);
+  if (recentSessions.length) {
     parts.push('\nRecent Sessions:');
-    data.sessions.slice(-5).forEach(s => {
-      if (s.summary) parts.push(`  Session #${s.session_number ?? '?'}: ${s.summary}`);
+    recentSessions.forEach(s => parts.push(`  Session #${s.session_number ?? '?'}: ${truncate(s.summary, 300)}`));
+  }
+
+  const activeThreads = data.hooks.filter(h => h.is_active).slice(0, 8);
+  if (activeThreads.length) {
+    parts.push('\nActive Threads:');
+    activeThreads.forEach(h => {
+      const desc = truncate(h.description, 200);
+      parts.push(`  ${h.title}${h.category ? ` (${h.category})` : ''}${desc ? `: ${desc}` : ''}`);
     });
   }
-  if (data.lore.length > 0) {
-    parts.push('\nLore:');
-    data.lore.slice(0, 10).forEach(l => {
-      const snippet = l.content ? l.content.substring(0, 120) + (l.content.length > 120 ? '…' : '') : '';
-      parts.push(`  [${l.category ?? 'lore'}] ${l.title}${snippet ? ': ' + snippet : ''}`);
-    });
+
+  const locations = data.locations.slice(0, 8);
+  if (locations.length) {
+    parts.push('\nNotable Locations:');
+    locations.forEach(l => parts.push(`  ${l.name}${l.location_type ? ` (${l.location_type})` : ''}${l.region ? ` in ${l.region}` : ''}`));
   }
-  if (data.locations.length > 0) {
-    parts.push('\nLocations:');
-    data.locations.slice(0, 10).forEach(l => {
-      parts.push(`  ${l.name} (${l.location_type ?? '?'})${l.region ? ` in ${l.region}` : ''}${l.description ? ': ' + l.description.substring(0, 80) + '…' : ''}`);
-    });
-  }
-  parts.push('\nUse this campaign context to make the generated content feel native to this world — reference appropriate locations, lore, and ongoing story threads where fitting.\n');
+
+  parts.push('\nNo specific entities were selected — use this general campaign context to make the encounter feel native to the ongoing story.\n');
   return parts.join('\n');
 }
 

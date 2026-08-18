@@ -5,9 +5,19 @@ import { ListDetail, ListRow, DetailPanel, DetailSection, Pill, EmptyDetail } fr
 import { Badge } from '../ui/Badge';
 import { Modal } from '../Modal';
 import { EncounterDetail } from '../ui/EncounterDetail';
+import { RandomEncounterDetail } from '../ui/RandomEncounterDetail';
+import { GenerateWorldEncounterModal } from '../ui/GenerateEncounterModal';
+import { GenerateWorldRandomTableModal } from '../ui/GenerateRandomTableModal';
+import { parseEntries, kindMeta } from '../../lib/randomEncounter';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
+import { buildSelectedContextBlock } from '../../lib/campaignContext';
+import {
+  EntityContextPicker,
+  useSelectedContextEntities,
+  type ContextRef,
+} from '../ui/EntityContextPicker';
 import { StatBlockBody, emptyMonsterForm, CREATURE_TYPES, ABILITY_KEYS, AbilityInput } from '../tabs/CreatureStatblocks';
 import type { MonsterForm } from '../tabs/CreatureStatblocks';
 import { SlashField } from '../ui/SlashField';
@@ -679,31 +689,41 @@ export function WorldCombatView() {
   const {
     bestiary, encounters,
     worldStatblocks, worldEncounters,
+    worldRandomEncounterTables,
     selected, setSelected,
     createBestiaryEntry, createEncounter,
+    createRandomEncounterTable,
     upsertWorldStatblock,
     deleteBestiaryEntry, deleteEncounter,
     upsertWorldEncounter,
+    upsertWorldRandomEncounterTable, deleteRandomEncounterTable,
+    activeWorld,
   } = useWorld();
   const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'bestiary' | 'encounter'>('all');
+  // World Combat mirrors the campaign CombatView: a tab per view rather than
+  // filter pills over one merged list.
+  const [filter, setFilter] = useState<'encounter' | 'random' | 'bestiary'>('encounter');
   const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
 
   // ---- Generate modal state ----
-  const [genOpen, setGenOpen] = useState(false);
+  const [genOpen, setGenOpen] = useState(false);           // creature (stat sheet) generator
+  const [genEncOpen, setGenEncOpen] = useState(false);     // full-encounter generator
+  const [genTableOpen, setGenTableOpen] = useState(false); // whole random-table generator
   const [genMode, setGenMode] = useState<'cr' | 'party'>('cr');
   const [genCR, setGenCR] = useState('');
   const [genPartySize, setGenPartySize] = useState('');
   const [genPartyLevel, setGenPartyLevel] = useState('');
+  const [genContext, setGenContext] = useState<ContextRef[]>([]);
   const [genAdditionalContext, setGenAdditionalContext] = useState('');
   const [genError, setGenError] = useState('');
   const [genLoading, setGenLoading] = useState(false);
+  const genContextEntities = useSelectedContextEntities(genContext);
 
   const openGenModal = () => {
     setGenMode('cr'); setGenCR(''); setGenPartySize(''); setGenPartyLevel('');
-    setGenAdditionalContext(''); setGenError(''); setGenOpen(true);
+    setGenContext([]); setGenAdditionalContext(''); setGenError(''); setGenOpen(true);
   };
 
   const handleGenerate = async () => {
@@ -726,10 +746,14 @@ export function WorldCombatView() {
       difficultyPrompt = `a difficulty appropriate for a party of ${size} players at average level ${level}. Use D&D 5e encounter building guidelines to determine an appropriate CR for a hard or deadly solo boss fight, then build the creature at that CR. Give it legendary actions, legendary resistances if appropriate, and interesting abilities`;
     }
 
+    const worldContextBlock = buildSelectedContextBlock(genContextEntities, {
+      title: activeWorld?.name ?? '',
+      plotSummary: activeWorld?.tagline ?? '',
+    });
     const additionalContextClause = genAdditionalContext.trim()
       ? `\n\nAdditional DM instructions: ${genAdditionalContext.trim()}` : '';
 
-    const prompt = `Generate a complete D&D 5e creature stat block for ${difficultyPrompt}. Be creative with the name and flavor. Follow official D&D 5e stat block format exactly.${additionalContextClause}
+    const prompt = `Generate a complete D&D 5e creature stat block for ${difficultyPrompt}. Be creative with the name and flavor. Follow official D&D 5e stat block format exactly.${worldContextBlock}${additionalContextClause}
 
 Respond with a JSON object using this exact structure (no markdown, just raw JSON):
 {
@@ -812,27 +836,41 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     if (id) setSelected('combat', id);
   };
 
-  type CombatItem = { id: string; name: string; kind: 'statblock' | 'encounter'; cr?: string; type?: string; hp?: number; ac?: number; desc?: string; tags?: string[]; difficulty?: string; status?: string; creatures?: string[]; notes?: string; };
+  const handleAddRandomTable = async () => {
+    const id = await createRandomEncounterTable();
+    if (id) setSelected('combat', id);
+  };
+
+  type CombatItem = { id: string; name: string; kind: 'statblock' | 'encounter' | 'random'; cr?: string; type?: string; hp?: number; ac?: number; desc?: string; tags?: string[]; difficulty?: string; status?: string; creatures?: string[]; notes?: string; tableKind?: string; rows?: number; };
 
   const items = useMemo(() => {
     const all: CombatItem[] = [
       ...bestiary.map(x => ({ ...x, kind: 'statblock' as const })),
       ...encounters.map(x => ({ ...x, kind: 'encounter' as const })),
+      ...worldRandomEncounterTables.map(t => ({
+        id: t.id, name: t.name || 'Untitled table', kind: 'random' as const,
+        tableKind: t.kind, rows: parseEntries(t.entries).length,
+        desc: t.subtitle ?? t.description ?? '',
+      })),
     ];
     return all.filter(x => {
       if (filter === 'bestiary' && x.kind !== 'statblock') return false;
       if (filter === 'encounter' && x.kind !== 'encounter') return false;
+      if (filter === 'random' && x.kind !== 'random') return false;
       if (search) {
         const q = search.toLowerCase();
         if (!`${x.name} ${x.desc || x.notes || ''}`.toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [bestiary, encounters, filter, search]);
+  }, [bestiary, encounters, worldRandomEncounterTables, filter, search]);
 
   const sel = items.find(x => x.id === selected.combat) || items[0];
   const selRawEncounter = sel?.kind === 'encounter'
     ? worldEncounters.find(e => e.id === sel.id) ?? null
+    : null;
+  const selRawRandomTable = sel?.kind === 'random'
+    ? worldRandomEncounterTables.find(t => t.id === sel.id) ?? null
     : null;
 
   const handleDeleteEncounter = async () => {
@@ -849,6 +887,16 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     ? worldStatblocks.find(s => s.id === sel.id) ?? null
     : null;
 
+  const handleDeleteRandomTable = async () => {
+    if (!selRawRandomTable) return;
+    const ok = await confirm({
+      title: 'Delete random table',
+      message: `Delete "${selRawRandomTable.name}"? This cannot be undone.`,
+      danger: true,
+    });
+    if (ok) { await deleteRandomEncounterTable(selRawRandomTable.id); setSelected('combat', ''); }
+  };
+
   const detail = !sel
     ? <EmptyDetail>Select an entry.</EmptyDetail>
     : sel.kind === 'encounter' && selRawEncounter
@@ -863,6 +911,18 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           enableMentions={false}
         />
       )
+      : sel.kind === 'random' && selRawRandomTable
+        ? (
+          <RandomEncounterDetail
+            key={selRawRandomTable.id}
+            table={selRawRandomTable}
+            scope="world"
+            onDelete={handleDeleteRandomTable}
+            upsertTable={upsertWorldRandomEncounterTable}
+            statblocks={worldStatblocks}
+            onViewStatblock={setViewingStatblock}
+          />
+        )
       : selRawStatblock
         ? <WorldBestiaryDetail
             key={selRawStatblock.id}
@@ -872,24 +932,48 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           />
         : <EmptyDetail>Select an entry.</EmptyDetail>;
 
+  const combatTabs = [
+    { id: 'encounter', label: 'Encounters' },
+    { id: 'random', label: 'Random Tables' },
+    { id: 'bestiary', label: 'Stat Sheets' },
+  ] as const;
+
   return (
     <>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        {/* Sub-tab bar — mirrors the campaign CombatView */}
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: '4px',
+            padding: '10px 22px 0', borderBottom: '1px solid var(--rule)', flexShrink: 0,
+          }}
+        >
+          {combatTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              style={{
+                padding: '6px 14px', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'var(--serif)',
+                cursor: 'pointer', border: 'none', backgroundColor: 'transparent', marginBottom: '-1px',
+                borderBottom: filter === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
+                color: filter === tab.id ? 'var(--gold)' : 'var(--ink-3)', transition: 'color 0.15s',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ flex: 1, minHeight: 0 }}>
       <ListDetail
-        title="World Combat"
+        title={filter === 'encounter' ? 'Encounters' : filter === 'random' ? 'Random Tables' : 'Stat Sheets'}
         count={items.length}
         search={search}
         onSearchChange={setSearch}
-        onAdd={filter === 'encounter' ? handleAddEncounter : handleAddCreature}
+        onAdd={filter === 'encounter' ? handleAddEncounter : filter === 'random' ? handleAddRandomTable : handleAddCreature}
         addLabel="+ New"
-        onGenerate={filter !== 'encounter' ? openGenModal : undefined}
+        onGenerate={filter === 'bestiary' ? openGenModal : filter === 'encounter' ? () => setGenEncOpen(true) : filter === 'random' ? () => setGenTableOpen(true) : undefined}
         generateLabel="✦"
-        filters={
-          <>
-            <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
-            <Pill active={filter === 'bestiary'} onClick={() => setFilter('bestiary')}>Bestiary</Pill>
-            <Pill active={filter === 'encounter'} onClick={() => setFilter('encounter')}>Encounters</Pill>
-          </>
-        }
         list={
           <div>
             {items.map(x => (
@@ -897,13 +981,19 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 key={x.kind + x.id}
                 active={sel?.id === x.id}
                 onClick={() => setSelected('combat', x.id)}
-                glyph={x.kind === 'statblock' ? '✜' : '⚔'}
+                glyph={x.kind === 'statblock' ? '✜' : x.kind === 'random' ? kindMeta(x.tableKind ?? 'encounter').glyph : '⚔'}
                 title={x.name}
-                subtitle={x.kind === 'statblock' ? `CR ${x.cr} · ${x.type}` : `${x.difficulty} · ${(x.creatures || []).length} creatures`}
+                subtitle={
+                  x.kind === 'statblock' ? `CR ${x.cr} · ${x.type}`
+                    : x.kind === 'random' ? `${kindMeta(x.tableKind ?? 'encounter').label} · ${x.rows} ${x.rows === 1 ? 'entry' : 'entries'}`
+                    : `${x.difficulty} · ${(x.creatures || []).length} creatures`
+                }
                 badges={
                   x.kind === 'statblock'
                     ? (x.tags || []).slice(0, 2).map(t => <SubtleTag key={t}>{t}</SubtleTag>)
-                    : <><Tag kind={x.difficulty}>{x.difficulty}</Tag><SubtleTag>{x.status}</SubtleTag></>
+                    : x.kind === 'random'
+                      ? <SubtleTag>World</SubtleTag>
+                      : <><Tag kind={x.difficulty}>{x.difficulty}</Tag><SubtleTag>{x.status}</SubtleTag></>
                 }
               />
             ))}
@@ -911,8 +1001,24 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         }
         detail={detail}
       />
+        </div>
+      </div>
 
-      {/* ── Generate modal ── */}
+      {/* ── Generate full encounter (AI) ── */}
+      <GenerateWorldEncounterModal
+        isOpen={genEncOpen}
+        onClose={() => setGenEncOpen(false)}
+        onCreated={enc => { setGenEncOpen(false); setFilter('encounter'); setSelected('combat', enc.id); }}
+      />
+
+      {/* ── Generate whole random table (AI) ── */}
+      <GenerateWorldRandomTableModal
+        isOpen={genTableOpen}
+        onClose={() => setGenTableOpen(false)}
+        onCreated={t => { setGenTableOpen(false); setFilter('random'); setSelected('combat', t.id); }}
+      />
+
+      {/* ── Generate creature modal ── */}
       <Modal
         isOpen={genOpen}
         onClose={() => { if (!genLoading) setGenOpen(false); }}
@@ -963,6 +1069,18 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               </div>
             </>
           )}
+
+          <div>
+            <EntityContextPicker
+              selected={genContext}
+              onChange={setGenContext}
+              disabled={genLoading}
+              label="World Context"
+            />
+            <p className="text-xs mt-1.5" style={{ color: 'var(--ink-3)' }}>
+              Add specific NPCs, factions, locations, or lore so the stat block feels native to your world.
+            </p>
+          </div>
 
           <FormField label="Additional Context (optional)">
             <textarea rows={3} value={genAdditionalContext}

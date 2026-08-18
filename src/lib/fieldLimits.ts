@@ -178,6 +178,13 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     difficulty: LIMIT.TAG,
     dm_notes: LIMIT.PROSE,
   },
+  random_encounter_tables: {
+    name: LIMIT.NAME,
+    subtitle: LIMIT.TAGLINE,
+    environment: LIMIT.TAG,
+    description: LIMIT.PROSE,
+    dm_notes: LIMIT.PROSE,
+  },
   module_dependencies: {
     label: LIMIT.TAGLINE,
   },
@@ -199,6 +206,9 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
   },
   session_prep: {
     session_number: [0, 9_999],
+  },
+  player_characters: {
+    level: [1, 20],
   },
   npcs: {
     first_session: [0, 9_999],

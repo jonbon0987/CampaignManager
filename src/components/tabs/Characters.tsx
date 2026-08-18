@@ -674,6 +674,7 @@ function PCDetail({
         player_name: data.player_name,
         race: data.race,
         class: data.class,
+        level: pc.level,
         background: data.background,
         story_hooks: data.story_hooks,
         key_npcs: data.key_npcs,

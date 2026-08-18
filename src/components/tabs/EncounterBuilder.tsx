@@ -4,6 +4,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { InitiativeTracker } from '../InitiativeTracker';
 import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
+import { Button } from '../ui/Button';
 import type { Encounter, MonsterStatblock } from '../../lib/database.types';
 import {
   EncounterDetail,
@@ -106,7 +107,7 @@ export default function EncounterBuilder() {
       <div
         className="flex flex-col shrink-0"
         style={{
-          width: '220px',
+          width: '300px',
           borderRight: '1px solid var(--rule)',
           height: '100%',
           minHeight: 0,
@@ -116,51 +117,36 @@ export default function EncounterBuilder() {
           overflow: 'hidden',
         }}
       >
-        {/* Header */}
-        <div style={{ padding: '20px 16px 10px' }}>
-          <div style={{ color: 'var(--ink-3)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
-            {encounters.length} {encounters.length === 1 ? 'entry' : 'entries'}
+        {/* Header — title left, actions top-right (matches the world view) */}
+        <div style={{ padding: '20px 16px 10px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '10px' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--ink-3)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
+              {encounters.length} {encounters.length === 1 ? 'entry' : 'entries'}
+            </div>
+            <div style={{ color: 'var(--ink)', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
+              Encounters
+            </div>
           </div>
-          <div style={{ color: 'var(--ink)', fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--serif)' }}>
-            Encounters
-          </div>
-          {/* Buttons sit on their own row so they fit the narrow list column. */}
-          <div className="flex items-center gap-1" style={{ marginTop: '8px' }}>
+          <div className="flex items-center gap-1" style={{ flexShrink: 0 }}>
             <button
               onClick={() => setGenOpen(true)}
               title="Generate a full encounter with AI"
+              aria-label="Generate a full encounter with AI"
               style={{
-                flex: 1,
                 color: 'var(--arcane)',
                 fontSize: '0.75rem',
                 fontWeight: 600,
                 backgroundColor: 'var(--arcane-bg)',
                 border: '1px solid var(--arcane-line)',
                 borderRadius: 'var(--radius)',
-                padding: '3px 8px',
+                padding: '3px 10px',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}
             >
-              ✦ Generate
+              ✦
             </button>
-            <button
-              onClick={handleAdd}
-              style={{
-                flex: 1,
-                color: 'var(--gold)',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                backgroundColor: 'transparent',
-                border: '1px solid var(--rule-hover)',
-                borderRadius: 'var(--radius)',
-                padding: '3px 8px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              + New
-            </button>
+            <Button variant="secondary" size="sm" onClick={handleAdd}>+ New</Button>
           </div>
         </div>
 

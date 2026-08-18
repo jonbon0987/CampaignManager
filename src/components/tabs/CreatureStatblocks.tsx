@@ -9,7 +9,12 @@ import { getTypeStyle } from '../../lib/theme';
 import { StatBlockText } from '../ui/StatBlockText';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
-import { buildCampaignContextBlock } from '../../lib/campaignContext';
+import { buildSelectedContextBlock } from '../../lib/campaignContext';
+import {
+  EntityContextPicker,
+  useSelectedContextEntities,
+  type ContextRef,
+} from '../ui/EntityContextPicker';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -302,7 +307,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 // ================================================================
 
 export default function CreatureStatblocks({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
-  const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, sessions, lore, locations, overview } = useCampaign();
+  const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, overview } = useCampaign();
   const confirm = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -318,8 +323,9 @@ export default function CreatureStatblocks({ onImportFromWorld }: { onImportFrom
   const [genCR, setGenCR] = useState('');
   const [genPartySize, setGenPartySize] = useState('');
   const [genPartyLevel, setGenPartyLevel] = useState('');
-  const [genUseCampaignContext, setGenUseCampaignContext] = useState(false);
+  const [genContext, setGenContext] = useState<ContextRef[]>([]);
   const [genAdditionalContext, setGenAdditionalContext] = useState('');
+  const genContextEntities = useSelectedContextEntities(genContext);
   const [genError, setGenError] = useState('');
   const [genLoading, setGenLoading] = useState(false);
 
@@ -412,7 +418,7 @@ export default function CreatureStatblocks({ onImportFromWorld }: { onImportFrom
     setGenCR('');
     setGenPartySize('');
     setGenPartyLevel('');
-    setGenUseCampaignContext(false);
+    setGenContext([]);
     setGenAdditionalContext('');
     setGenError('');
     setGenModalOpen(true);
@@ -448,9 +454,10 @@ export default function CreatureStatblocks({ onImportFromWorld }: { onImportFrom
       difficultyPrompt = `a difficulty appropriate for a party of ${size} players at average level ${level}. Use the D&D 5e encounter building guidelines to determine an appropriate CR for a hard or deadly solo boss fight against this party, then build the creature at that CR. The creature should feel like a memorable BBEG — give it legendary actions, legendary resistances if appropriate, and interesting abilities`;
     }
 
-    const campaignContextBlock = genUseCampaignContext
-      ? buildCampaignContextBlock({ overview, sessions, lore, locations })
-      : '';
+    const campaignContextBlock = buildSelectedContextBlock(genContextEntities, {
+      title: overview.title,
+      plotSummary: overview.plotSummary,
+    });
     const additionalContextClause = genAdditionalContext.trim()
       ? `\n\nAdditional DM instructions: ${genAdditionalContext.trim()}`
       : '';
@@ -561,10 +568,12 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         <div className="flex-1" />
         <button
           onClick={openGenModal}
+          title="Generate a stat sheet with AI"
+          aria-label="Generate a stat sheet with AI"
           className="px-3 py-1.5 rounded text-sm font-medium transition-colors"
           style={{ backgroundColor: 'var(--arcane-bg)', color: 'var(--arcane)', border: '1px solid var(--arcane-line)' }}
         >
-          ✦ Generate
+          ✦
         </button>
         {onImportFromWorld && (
           <button
@@ -793,26 +802,17 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             </>
           )}
 
-          {/* Campaign context toggle */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setGenUseCampaignContext(v => !v)}
+          {/* Campaign context — pick the specific entities the AI should weave in */}
+          <div>
+            <EntityContextPicker
+              selected={genContext}
+              onChange={setGenContext}
               disabled={genLoading}
-              className="text-xs px-3 py-1.5 rounded font-medium transition-colors"
-              style={{
-                backgroundColor: genUseCampaignContext ? 'var(--gold-dim)' : 'var(--paper)',
-                color: genUseCampaignContext ? 'var(--gold)' : 'var(--ink-2)',
-                border: `1px solid ${genUseCampaignContext ? 'var(--gold-line)' : 'var(--rule)'}`,
-              }}
-            >
-              {genUseCampaignContext ? '✦ Campaign Context On' : '○ Include Campaign Context'}
-            </button>
-          </div>
-          {genUseCampaignContext && (
-            <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
-              Will include the last 5 session summaries, lore entries, and locations from your campaign.
+            />
+            <p className="text-xs mt-1.5" style={{ color: 'var(--ink-3)' }}>
+              Add specific NPCs, threads, locations, factions, or lore so the stat sheet feels native to your campaign.
             </p>
-          )}
+          </div>
 
           {/* Additional context */}
           <FormField label="Additional Context (optional)">

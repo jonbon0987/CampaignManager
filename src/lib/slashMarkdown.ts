@@ -25,6 +25,14 @@ export const KIND_LABEL: Record<RefKind, string> = {
   module: 'Module', session: 'Session', hook: 'Hook', statblock: 'Statblock',
 };
 
+/** Plural, user-facing group headings (Threads, Stat Sheets, …). Used by the
+ *  entity-context picker and the selected-context prompt block so both agree. */
+export const KIND_GROUP_LABEL: Record<RefKind, string> = {
+  npc: 'NPCs', pc: 'PCs', faction: 'Factions', location: 'Locations',
+  lore: 'Lore', module: 'Modules', session: 'Sessions', hook: 'Threads',
+  statblock: 'Stat Sheets',
+};
+
 /** The legacy [[…]] format used `creature` for what we now call `statblock`. */
 export function normalizeKind(kind: string): RefKind {
   if (kind === 'creature') return 'statblock';

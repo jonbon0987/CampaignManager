@@ -104,6 +104,7 @@ export interface PlayerCharacter {
   player_name: string | null;
   race: string | null;
   class: string | null;
+  level: number | null;
   background: string | null;
   story_hooks: string | null;
   key_npcs: string | null;
@@ -421,6 +422,54 @@ export interface Encounter {
 }
 
 export type EncounterInsert = Omit<Encounter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
+// One weighted row of a random table. Its weight maps to a slice of a d100 —
+// the builder derives each entry's live % and roll range from the weights.
+export interface RandomEncounterEntry {
+  id: string;               // stable local id (for React keys / reordering)
+  name: string;             // result name
+  description: string;      // what the DM reads / paraphrases
+  weight: number;           // relative weight → roll odds on d100
+  rarity: string | null;    // convenience for magic/encounter kinds; maps to weight
+  // Encounter-table entries only:
+  entryKind?: 'combat' | 'social' | 'either';   // how a rolled encounter resolves
+  creatures?: { id: string; note: string | null }[];  // linked monster_statblocks ids
+  // Treasure entries:
+  coins?: string;          // e.g. "4d6 × 100 gp"
+  valuables?: string;      // e.g. "a jewelled reliquary (500 gp)"
+  magicItem?: string;      // e.g. "a rare magic item — DM's choice"
+  // Magic Item entries (rarity reuses the shared `rarity` field):
+  itemType?: string;       // e.g. "Wondrous item", "Weapon (longsword)"
+  attunement?: boolean;    // requires attunement
+  itemText?: string;       // the item's rules text
+  // Wild Magic entries:
+  effect?: string;         // the surge effect text
+  // Custom entries:
+  cardKind?: 'fortune' | 'doom';   // present → a fortune/doom card; absent → plain read-aloud
+}
+
+// A random table's kind determines its glyph and (eventually) its roll output.
+export type RandomTableKind = 'encounter' | 'treasure' | 'magic' | 'wild' | 'custom';
+
+export interface RandomEncounterTable {
+  id: string;
+  user_id: string;
+  campaign_id: string | null;   // set for campaign-level tables
+  world_id: string | null;      // set for world-level templates
+  kind: string;                 // RandomTableKind
+  name: string;
+  subtitle: string | null;      // one-line flavor under the title
+  environment: string | null;   // region / biome the table applies to
+  die_size: number;             // weighted d100
+  description: string | null;
+  entries: string | null;       // JSON: RandomEncounterEntry[]
+  dm_notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type RandomEncounterTableInsert = Omit<RandomEncounterTable, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
 export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
 export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
@@ -542,6 +591,12 @@ export interface Database {
         Row: Encounter;
         Insert: Omit<Encounter, 'id' | 'created_at' | 'updated_at'> & { id?: string };
         Update: Partial<Omit<Encounter, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      random_encounter_tables: {
+        Row: RandomEncounterTable;
+        Insert: Omit<RandomEncounterTable, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<RandomEncounterTable, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
     };

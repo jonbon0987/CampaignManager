@@ -219,7 +219,7 @@ function AppInner({ user }: { user: User }) {
                 {activeTab === 'ideas'     && <Ideas onNavigate={setActiveTab} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} />}
-                {activeTab === 'combat'    && <CombatView onImportFromWorld={() => { setImportType('bestiary'); setImportOpen(true); }} />}
+                {activeTab === 'combat'    && <CombatView onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} />}
                 {activeTab === 'settings'  && <SettingsView />}
               </>
             )}

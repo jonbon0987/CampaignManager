@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
+import { kindMeta } from '../../lib/randomEncounter';
 
 interface WorldImportDrawerProps {
   open: boolean;
@@ -27,12 +28,13 @@ interface KindConfig {
 }
 
 const KIND_GLYPH: Record<string, string> = {
-  npc: '◇', faction: '❖', location: '✦', lore: '❦', statblock: '✜', encounter: '⚔',
+  npc: '◇', faction: '❖', location: '✦', lore: '❦', statblock: '✜', encounter: '⚔', randomtable: '🎲',
 };
 
 const TYPE_LABEL: Record<string, string> = {
   npc: 'NPCs', faction: 'Factions', location: 'Locations',
-  lore: 'Lore', bestiary: 'Bestiary', encounter: 'Encounters', all: 'Entities',
+  lore: 'Lore', bestiary: 'Bestiary', encounter: 'Encounters',
+  randomEncounter: 'Random Tables', all: 'Entities',
 };
 
 // Drop DB-managed / scope fields so a spread of a full canon row can be re-inserted
@@ -45,7 +47,7 @@ function stripSystemFields<T extends Record<string, unknown>>(row: T): Record<st
 
 export default function WorldImportDrawer({ open, onClose, entityType }: WorldImportDrawerProps) {
   const campaign = useCampaign();
-  const { factions: worldFactions, bestiary } = useWorld();
+  const { factions: worldFactions, bestiary, worldRandomEncounterTables } = useWorld();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<Mode>('link');
@@ -104,9 +106,35 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
           if (b) await campaign.upsertMonsterStatblock({ name: b.name, creature_type: b.type || null, challenge_rating: b.cr || null, hit_points: b.hp ?? null, armor_class: b.ac ?? null, dm_notes: b.desc || null, tags: b.tags.join(', ') || null } as Parameters<typeof campaign.upsertMonsterStatblock>[0]);
         },
       };
+      case 'randomEncounter': return {
+        // Random encounter tables are campaign-scoped — copy only, from the world.
+        pool: worldRandomEncounterTables.map(t => ({
+          id: t.id, kind: 'randomtable',
+          displayName: t.name || 'Untitled table',
+          sub: `${kindMeta(t.kind).label}${t.environment ? ` · ${t.environment}` : ''}`,
+          desc: t.subtitle ?? t.description ?? '',
+        })),
+        linkedIds: new Set(),
+        canLink: false,
+        importItem: async (id) => {
+          const t = worldRandomEncounterTables.find(x => x.id === id);
+          if (t) await campaign.upsertRandomEncounterTable({
+            kind: t.kind,
+            name: t.name,
+            subtitle: t.subtitle,
+            environment: t.environment,
+            die_size: t.die_size,
+            description: t.description,
+            entries: t.entries,
+            dm_notes: t.dm_notes,
+            sort_order: t.sort_order,
+            world_id: null,
+          });
+        },
+      };
       default: return { pool: [], linkedIds: new Set(), canLink: false, importItem: async () => {} };
     }
-  }, [entityType, campaign, worldFactions, bestiary]);
+  }, [entityType, campaign, worldFactions, bestiary, worldRandomEncounterTables]);
 
   // Copy-only kinds have no "link" — force copy and hide the toggle.
   const effectiveMode: Mode = config.canLink ? mode : 'copy';

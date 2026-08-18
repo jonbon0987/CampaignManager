@@ -17,14 +17,17 @@ import {
   Lore as LoreDB,
   MonsterStatblocks as MonsterStatblocksDB,
   Encounters as EncountersDB,
+  RandomEncounterTables as RandomEncounterTablesDB,
   TimelineEvents as TimelineEventsDB,
 } from '../lib/db';
 import type {
   DbWorld, Campaign, CampaignWithCount,
   NPC, Faction, Location as DBLocation, LoreEntry, MonsterStatblock, MonsterStatblockInsert, Encounter,
+  RandomEncounterTable, RandomEncounterTableInsert,
   TimelineEvent as DBTimelineEvent,
 } from '../lib/database.types';
 import type { EncounterSaveData } from '../components/ui/EncounterDetail';
+import { defaultRandomEntry } from '../lib/randomEncounter';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 // --------------- Mappers: DB → World types ---------------
@@ -216,6 +219,11 @@ interface WorldContextType {
   createEncounter: () => Promise<string | null>;
   deleteEncounter: (id: string) => Promise<void>;
   upsertWorldEncounter: (data: EncounterSaveData) => Promise<Encounter>;
+  // Random encounter tables (world-level templates)
+  worldRandomEncounterTables: RandomEncounterTable[];
+  createRandomEncounterTable: (kind?: string) => Promise<string | null>;
+  upsertWorldRandomEncounterTable: (data: Omit<RandomEncounterTableInsert, 'world_id' | 'campaign_id'> & { id?: string }) => Promise<RandomEncounterTable>;
+  deleteRandomEncounterTable: (id: string) => Promise<void>;
   timeline: WorldTimelineEvent[];
   createTimelineEvent: (data: Omit<WorldTimelineEvent, 'id' | 'worldId'>) => Promise<string | null>;
   upsertTimelineEvent: (data: Partial<WorldTimelineEvent> & { id: string }) => Promise<void>;
@@ -256,6 +264,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   // Raw DB records — source of truth; mapped types are derived below
   const [rawStatblocks, setRawStatblocks] = useState<MonsterStatblock[]>([]);
   const [rawEncounters, setRawEncounters] = useState<Encounter[]>([]);
+  const [rawRandomTables, setRawRandomTables] = useState<RandomEncounterTable[]>([]);
   const [timeline, setTimeline] = useState<WorldTimelineEvent[]>([]);
   // Bumped by reloadWorldEntities() to force a re-fetch of the active world's
   // entities — used after the first-world gate seeds a freshly-created world.
@@ -300,7 +309,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!activeWorldId) {
       setNpcs([]); setFactions([]); setLocations([]); setLore([]);
-      setRawStatblocks([]); setRawEncounters([]); setTimeline([]);
+      setRawStatblocks([]); setRawEncounters([]); setRawRandomTables([]); setTimeline([]);
       setEntitiesLoading(false);
       return;
     }
@@ -325,6 +334,14 @@ export function WorldProvider({ children }: { children: ReactNode }) {
         setRawStatblocks(dbBestiary);
         setRawEncounters(dbEncounters);
         setTimeline(dbTimeline.map(dbToWorldTimelineEvent));
+        // random_encounter_tables needs migration 0029 — fetch separately so a
+        // missing table doesn't fail the whole world-entity load.
+        try {
+          const dbRandom = await RandomEncounterTablesDB.getByWorld(activeWorldId);
+          if (!cancelled) setRawRandomTables(dbRandom);
+        } catch {
+          if (!cancelled) setRawRandomTables([]);
+        }
       } catch (e) {
         console.error('WorldContext: failed to load world entities', e);
       } finally {
@@ -751,6 +768,50 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     return dbEncounter;
   }, [activeWorldId]);
 
+  const createRandomEncounterTable = useCallback(async (kind = 'encounter'): Promise<string | null> => {
+    if (!activeWorldId) return null;
+    const dbTable = await RandomEncounterTablesDB.upsert({
+      kind,
+      name: '',
+      subtitle: null,
+      campaign_id: null,
+      world_id: activeWorldId,
+      environment: null,
+      die_size: 100,
+      description: null,
+      entries: JSON.stringify([defaultRandomEntry()]),
+      dm_notes: null,
+      sort_order: Math.floor(Date.now() / 1000),
+    });
+    setRawRandomTables(prev => [...prev, dbTable]);
+    return dbTable.id;
+  }, [activeWorldId]);
+
+  const upsertWorldRandomEncounterTable = useCallback(async (
+    data: Omit<RandomEncounterTableInsert, 'world_id' | 'campaign_id'> & { id?: string },
+  ): Promise<RandomEncounterTable> => {
+    const dbTable = await RandomEncounterTablesDB.upsert({
+      ...data,
+      campaign_id: null,
+      world_id: activeWorldId,
+    });
+    setRawRandomTables(prev => {
+      const idx = prev.findIndex(t => t.id === dbTable.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = dbTable;
+        return next;
+      }
+      return [...prev, dbTable];
+    });
+    return dbTable;
+  }, [activeWorldId]);
+
+  const deleteRandomEncounterTable = useCallback(async (id: string): Promise<void> => {
+    await RandomEncounterTablesDB.delete(id);
+    setRawRandomTables(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const createTimelineEvent = useCallback(async (data: Omit<WorldTimelineEvent, 'id' | 'worldId'>): Promise<string | null> => {
     if (!activeWorldId) return null;
     const dbEntry = await TimelineEventsDB.upsert({
@@ -845,6 +906,10 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     createEncounter,
     deleteEncounter,
     upsertWorldEncounter,
+    worldRandomEncounterTables: rawRandomTables,
+    createRandomEncounterTable,
+    upsertWorldRandomEncounterTable,
+    deleteRandomEncounterTable,
     timelineTypeConfig: TIMELINE_TYPE_CONFIG,
     eraConfig: ERA_CONFIG,
     npcById,
@@ -861,13 +926,14 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     activeCampaignId, activeCampaign, openCampaign, backToWorld,
     worldTab, handleSetWorldTab,
     npcs, factions, locations, lore, bestiary, encounters,
-    rawStatblocks, rawEncounters, timeline,
+    rawStatblocks, rawEncounters, rawRandomTables, timeline,
     createTimelineEvent, upsertTimelineEvent, deleteTimelineEvent,
     createLoreEntry, upsertWorldLore, deleteWorldLore,
     createLocation, upsertWorldLocation, deleteWorldLocation,
     createNPC, upsertWorldNPC, deleteWorldNPC,
     createFaction, upsertWorldFaction, deleteWorldFaction,
     createBestiaryEntry, upsertWorldStatblock, deleteBestiaryEntry, createEncounter, deleteEncounter, upsertWorldEncounter,
+    createRandomEncounterTable, upsertWorldRandomEncounterTable, deleteRandomEncounterTable,
     npcById, locById, loreById, facById, sbById,
     selected, setSelected,
   ]);

@@ -1,57 +1,103 @@
 import { describe, it, expect } from 'vitest';
-import { buildCampaignContextBlock, formatCampaignContext, type GenContextData } from './campaignContext';
+import { buildSelectedContextBlock, buildDefaultCampaignContextBlock, formatCampaignContext, type SelectedEntity } from './campaignContext';
 import type { Session, PlayerCharacter, NPC, Location, Faction, Hook, LoreEntry, Module } from './database.types';
 import { makeNPC, makeLocation, makeStatblock } from '../test/fixtures';
 
-const emptyGen: GenContextData = {
-  overview: { title: '', plotSummary: '' },
-  sessions: [],
-  lore: [],
-  locations: [],
-};
+const overview = { title: 'Wild Magic', plotSummary: 'Chaos reigns' };
+const npc = (over: Partial<SelectedEntity> = {}): SelectedEntity => ({
+  kind: 'npc', id: 'n1', label: 'Kutter', sub: 'smith', desc: 'A gruff blacksmith.', meta: ['active'], ...over,
+});
 
-describe('buildCampaignContextBlock', () => {
-  it('falls back to "Unnamed" and omits an empty plot line', () => {
-    const out = buildCampaignContextBlock(emptyGen);
-    expect(out).toContain('Campaign: Unnamed');
+describe('buildSelectedContextBlock', () => {
+  it('returns an empty string when nothing is selected', () => {
+    expect(buildSelectedContextBlock([], overview)).toBe('');
+  });
+
+  it('includes the setting header and drops an empty plot line', () => {
+    const out = buildSelectedContextBlock([npc()], { title: '', plotSummary: '' });
+    expect(out).toContain('== SELECTED CONTEXT ==');
+    expect(out).toContain('Setting: Unnamed');
     expect(out).not.toContain('Plot:');
   });
 
-  it('includes the title and plot when present', () => {
-    const out = buildCampaignContextBlock({ ...emptyGen, overview: { title: 'Wild Magic', plotSummary: 'Chaos reigns' } });
+  it('renders label, subtitle, meta tags, and description for an entity', () => {
+    const out = buildSelectedContextBlock([npc()], overview);
+    expect(out).toContain('Setting: Wild Magic');
+    expect(out).toContain('Plot: Chaos reigns');
+    expect(out).toContain('NPCs:');
+    expect(out).toContain('  Kutter (smith) [active]: A gruff blacksmith.');
+  });
+
+  it('groups entities under their user-facing kind headings in canonical order', () => {
+    const out = buildSelectedContextBlock([
+      { kind: 'hook', id: 'h1', label: 'The Seventh Shard', sub: 'main', desc: '', meta: ['open'] },
+      npc(),
+    ], overview);
+    expect(out).toContain('NPCs:');
+    expect(out).toContain('Threads:');       // hook → "Threads"
+    // NPCs (npc) come before Threads (hook) in the KINDS order
+    expect(out.indexOf('NPCs:')).toBeLessThan(out.indexOf('Threads:'));
+  });
+
+  it('omits the subtitle, meta, and description clauses when they are blank', () => {
+    const out = buildSelectedContextBlock(
+      [{ kind: 'location', id: 'l1', label: 'Duskward', sub: '', desc: '', meta: [] }],
+      overview,
+    );
+    expect(out).toContain('  Duskward\n');
+    expect(out).not.toContain('Duskward (');
+    expect(out).not.toContain('Duskward [');
+  });
+
+  it('truncates a long description to 400 chars with an ellipsis', () => {
+    const out = buildSelectedContextBlock([npc({ desc: 'd'.repeat(500) })], overview);
+    expect(out).toContain('d'.repeat(400) + '…');
+    expect(out).not.toContain('d'.repeat(401));
+  });
+});
+
+describe('buildDefaultCampaignContextBlock', () => {
+  const emptyDefault = { overview, sessions: [], hooks: [], locations: [] };
+
+  it('always emits a campaign header even with no other data', () => {
+    const out = buildDefaultCampaignContextBlock(emptyDefault);
+    expect(out).toContain('== CAMPAIGN CONTEXT ==');
     expect(out).toContain('Campaign: Wild Magic');
     expect(out).toContain('Plot: Chaos reigns');
+    // It signals to the model that this is the fallback, not a curated pick.
+    expect(out).toContain('No specific entities were selected');
   });
 
-  it('lists only the last 5 sessions and skips summary-less ones', () => {
+  it('lists only the last 5 sessions that have a summary', () => {
     const sessions = Array.from({ length: 7 }, (_, i) => ({
       session_number: i + 1,
-      session_date: null,
-      summary: i === 0 ? null : `Summary ${i + 1}`,
+      summary: i === 6 ? null : `Recap ${i + 1}`,
     }));
-    const out = buildCampaignContextBlock({ ...emptyGen, sessions });
+    const out = buildDefaultCampaignContextBlock({ ...emptyDefault, sessions });
     expect(out).toContain('Recent Sessions:');
-    // sessions 1 (null summary) and 2 fall outside the last-5 window / are skipped
-    expect(out).not.toContain('Session #1');
-    expect(out).not.toContain('Session #2');
-    expect(out).toContain('Session #7: Summary 7');
+    expect(out).not.toContain('Session #1');   // outside the last-5 window
+    expect(out).toContain('Session #6: Recap 6');
+    expect(out).not.toContain('Session #7');    // null summary skipped
   });
 
-  it('truncates long lore snippets to 120 chars with an ellipsis', () => {
-    const long = 'x'.repeat(200);
-    const out = buildCampaignContextBlock({
-      ...emptyGen,
-      lore: [{ title: 'Tome', category: 'history', content: long }],
+  it('includes only active threads and omits resolved ones', () => {
+    const out = buildDefaultCampaignContextBlock({
+      ...emptyDefault,
+      hooks: [
+        { title: 'The Heist', category: 'main_plot', description: 'One last job.', is_active: true },
+        { title: 'Old Debt', category: 'side_quest', description: 'Settled.', is_active: false },
+      ],
     });
-    expect(out).toContain('[history] Tome: ' + 'x'.repeat(120) + '…');
-    expect(out).not.toContain('x'.repeat(121));
+    expect(out).toContain('Active Threads:');
+    expect(out).toContain('The Heist (main_plot): One last job.');
+    expect(out).not.toContain('Old Debt');
   });
 
-  it('omits sections whose arrays are empty', () => {
-    const out = buildCampaignContextBlock(emptyGen);
+  it('omits the sessions/threads/locations sections when empty', () => {
+    const out = buildDefaultCampaignContextBlock(emptyDefault);
     expect(out).not.toContain('Recent Sessions:');
-    expect(out).not.toContain('Lore:');
-    expect(out).not.toContain('Locations:');
+    expect(out).not.toContain('Active Threads:');
+    expect(out).not.toContain('Notable Locations:');
   });
 });
 
