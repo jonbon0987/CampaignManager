@@ -878,6 +878,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     const ok = await confirm({
       title: 'Delete encounter',
       message: `Delete "${selRawEncounter.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
       danger: true,
     });
     if (ok) { await deleteEncounter(selRawEncounter.id); setSelected('combat', ''); }
@@ -892,6 +893,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     const ok = await confirm({
       title: 'Delete random table',
       message: `Delete "${selRawRandomTable.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
       danger: true,
     });
     if (ok) { await deleteRandomEncounterTable(selRawRandomTable.id); setSelected('combat', ''); }
@@ -1226,6 +1228,7 @@ function WorldBestiaryDetail({
     const ok = await confirm({
       title: 'Delete creature',
       message: `Delete "${statblock.name}" from the world bestiary? This cannot be undone.`,
+      confirmLabel: 'Delete',
       danger: true,
     });
     if (ok) { await deleteBestiaryEntry(statblock.id); onDeleted(); }
