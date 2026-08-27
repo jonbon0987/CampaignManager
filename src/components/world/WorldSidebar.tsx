@@ -220,6 +220,7 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
     const ok = await confirm({
       title: 'Delete campaign',
       message: `Delete "${name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
       danger: true,
     });
     if (ok) await deleteCampaign(id);
@@ -402,7 +403,7 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
           <div>{activeWorld?.name ?? '—'}</div>
         </div>
         <button className="cm-logout-btn" onClick={async () => {
-          const ok = await confirm({ title: 'Log out', message: 'Log out of DM Lair?' });
+          const ok = await confirm({ title: 'Log out', message: 'Log out of DM Lair?', confirmLabel: 'Log out' });
           if (ok) signOut();
         }}>
           <span className="cm-logout-glyph">⎋</span>

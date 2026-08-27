@@ -126,7 +126,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   color: 'var(--bg)',
                 }}
               >
-                {state.confirmLabel ?? 'Delete'}
+                {state.confirmLabel ?? 'Confirm'}
               </button>
             </div>
           </div>
