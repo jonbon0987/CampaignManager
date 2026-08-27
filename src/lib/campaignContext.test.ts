@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildSelectedContextBlock, buildDefaultCampaignContextBlock, formatCampaignContext, type SelectedEntity } from './campaignContext';
 import type { Session, PlayerCharacter, NPC, Location, Faction, Hook, LoreEntry, Module } from './database.types';
-import { makeNPC, makeLocation, makeStatblock } from '../test/fixtures';
+import { makeNPC, makeLocation, makeStatblock, makeModule, makeSubmodule, makeScene } from '../test/fixtures';
 
 const overview = { title: 'Wild Magic', plotSummary: 'Chaos reigns' };
 const npc = (over: Partial<SelectedEntity> = {}): SelectedEntity => ({
@@ -154,5 +154,62 @@ describe('formatCampaignContext', () => {
     expect(out).toContain('STAT SHEETS (1):');
     expect(out).toContain('Troll');
     expect(out).toContain('[id:s1]');
+  });
+
+  // The assistant proposes submodules/scenes against these ids, so the tree
+  // beneath each module is load-bearing, not decoration.
+  describe('module tree', () => {
+    const treeData = {
+      ...baseData,
+      modules: [makeModule('mod-1', 'active', { title: 'The Sunken Crown' })],
+      submodules: [
+        makeSubmodule('sub-2', { module_id: 'mod-1', title: 'The Dive', submodule_type: 'exploration', sort_order: 1 }),
+        makeSubmodule('sub-1', { module_id: 'mod-1', title: 'The Harbor Bribe', submodule_type: 'social', sort_order: 0, summary: 'Buy passage.' }),
+      ],
+      scenes: [
+        makeScene('sc-2', { submodule_id: 'sub-1', title: 'Cutting Him Out', sort_order: 1 }),
+        makeScene('sc-1', { submodule_id: 'sub-1', title: 'The Toll Office', scene_type: 'social', sort_order: 0, summary: 'Vell names his price.' }),
+      ],
+    };
+
+    it('nests submodules and scenes under their module with matchable ids', () => {
+      const out = formatCampaignContext(treeData);
+      expect(out).toContain('▸ The Harbor Bribe (social) [id:sub-1]: Buy passage.');
+      expect(out).toContain('· The Toll Office (social) [id:sc-1]: Vell names his price.');
+      expect(out).toContain('▸ The Dive (exploration) [id:sub-2]');
+    });
+
+    it('orders both levels by sort_order, not array order', () => {
+      const out = formatCampaignContext(treeData);
+      expect(out.indexOf('The Harbor Bribe')).toBeLessThan(out.indexOf('The Dive'));
+      expect(out.indexOf('The Toll Office')).toBeLessThan(out.indexOf('Cutting Him Out'));
+    });
+
+    it('falls back to "other" for an untyped submodule or scene', () => {
+      const out = formatCampaignContext({
+        ...baseData,
+        modules: [makeModule('mod-1')],
+        submodules: [makeSubmodule('s', { module_id: 'mod-1', title: 'Untyped', submodule_type: null })],
+        scenes: [makeScene('c', { submodule_id: 's', title: 'Beat', scene_type: null })],
+      });
+      expect(out).toContain('▸ Untyped (other) [id:s]');
+      expect(out).toContain('· Beat (other) [id:c]');
+    });
+
+    it('shows a module with no loaded submodules as a bare line', () => {
+      const out = formatCampaignContext({ ...baseData, modules: [makeModule('mod-1', 'active', { title: 'Empty' })] });
+      expect(out).toContain('[id:mod-1]');
+      // No tree row is emitted (the ▸ in the section header is just the legend).
+      expect(out).not.toContain('    ▸');
+    });
+
+    it('does not attach one module\'s submodules to another', () => {
+      const out = formatCampaignContext({
+        ...treeData,
+        modules: [makeModule('mod-1', 'active', { title: 'A' }), makeModule('mod-2', 'active', { title: 'B' })],
+      });
+      const bIndex = out.indexOf('[id:mod-2]');
+      expect(out.slice(bIndex, out.indexOf('\n', bIndex + 1) + 1)).not.toContain('▸');
+    });
   });
 });

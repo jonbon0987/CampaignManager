@@ -4,6 +4,7 @@ import useLocalStorage from './useLocalStorage';
 import type {
   SessionInsert, PlayerCharacterInsert, NPCInsert, LocationInsert,
   FactionInsert, HookInsert, LoreEntryInsert, ModuleInsert,
+  SubmoduleInsert, SceneInsert,
   MonsterStatblockInsert, TimelineEventInsert,
 } from '../lib/database.types';
 import {
@@ -23,6 +24,16 @@ export type { StepState, PlanStep, PlanState } from '../lib/assistantParse';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+// Submodules and scenes hang off a parent that the assistant may be proposing
+// in the same breath, so their payloads carry two extra fields the DB never
+// sees: `ref` names this record for its children, and `module_ref` /
+// `submodule_ref` point at a parent by that name. The apply path resolves them
+// to real ids (see resolveParent in assistantBackend) and strips them.
+export interface ParentRefFields {
+  /** A name this record answers to, so children in the same batch can point at it. */
+  ref?: string;
+}
+
 export type PendingAction =
   | { type: 'upsertSession';   payload: SessionInsert & { id?: string } }
   | { type: 'upsertNPC';       payload: NPCInsert & { id?: string } }
@@ -31,7 +42,9 @@ export type PendingAction =
   | { type: 'upsertFaction';   payload: FactionInsert & { id?: string } }
   | { type: 'upsertHook';      payload: HookInsert & { id?: string } }
   | { type: 'upsertLore';      payload: LoreEntryInsert & { id?: string } }
-  | { type: 'upsertModule';    payload: ModuleInsert & { id?: string } }
+  | { type: 'upsertModule';    payload: ModuleInsert & { id?: string } & ParentRefFields }
+  | { type: 'upsertSubmodule'; payload: Omit<SubmoduleInsert, 'module_id'> & { id?: string; module_id?: string; module_ref?: string } & ParentRefFields }
+  | { type: 'upsertScene';     payload: Omit<SceneInsert, 'submodule_id'> & { id?: string; submodule_id?: string; submodule_ref?: string } }
   | { type: 'upsertMonsterStatblock'; payload: MonsterStatblockInsert & { id?: string } }
   | { type: 'upsertTimelineEvent'; payload: TimelineEventInsert & { id?: string } }
   | { type: 'deleteSession';   id: string; label: string }
@@ -105,6 +118,8 @@ const CHAT_ACTION_TYPES: Record<string, ImportActionType> = {
   upsertHook: 'upsertHook',       deleteHook: 'upsertHook',
   upsertLore: 'upsertLore',       deleteLore: 'upsertLore',
   upsertModule: 'upsertModule',   deleteModule: 'upsertModule',
+  upsertSubmodule: 'upsertSubmodule',
+  upsertScene: 'upsertScene',
   upsertMonsterStatblock: 'upsertMonsterStatblock',
   deleteMonsterStatblock: 'upsertMonsterStatblock',
   upsertTimelineEvent: 'upsertTimelineEvent',

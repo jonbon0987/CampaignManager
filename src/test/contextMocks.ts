@@ -23,7 +23,9 @@ export function makeCampaignContext(over: Record<string, unknown> = {}) {
   return {
     // collections
     ideas: [], npcs: [], pcs: [], factions: [], locations: [], lore: [],
-    sessions: [], hooks: [], modules: [], relationships: [], monsterStatblocks: [],
+    sessions: [], hooks: [], modules: [], submodules: [], scenes: [],
+    relationships: [], monsterStatblocks: [],
+    overview: { title: 'Test Campaign', plotSummary: '' },
     // canon pools + link state (compendium tabs)
     globalLore: [], linkedLoreIds: [], globalLocations: [], linkedLocationIds: [],
     globalNPCs: [], linkedNPCIds: [],
@@ -37,7 +39,7 @@ export function makeCampaignContext(over: Record<string, unknown> = {}) {
     upsertHook: fn(), deleteHook: fn(),
     upsertModule: fn(), deleteModule: fn(),
     upsertSubmodule: fn(), deleteSubmodule: fn(), loadSubmodules: fn(),
-    upsertScene: fn(), deleteScene: fn(), loadScenes: fn(),
+    upsertScene: fn(), deleteScene: fn(), loadScenes: fn(), loadModuleTree: fn(),
     ...over,
   };
 }
