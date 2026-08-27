@@ -4,9 +4,11 @@
 // and commit loop are identical for both — only the prompt, the entity lookup,
 // and the write path change.
 
+import { useEffect, useRef } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { useWorld } from '../context/WorldContext';
 import { formatCampaignContext } from '../lib/campaignContext';
+import { SUBMODULE_TYPES, SCENE_TYPES } from '../lib/moduleStructure';
 import {
   lookupExistingEntity, stripInternalFields,
   type ImportAction, type ImportActionType,
@@ -48,11 +50,44 @@ export interface AssistantBackend {
 
 export function useCampaignAssistantBackend(): AssistantBackend {
   const campaign = useCampaign();
-  const { sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, overview } = campaign;
+  const {
+    sessions, pcs, npcs, locations, factions, hooks, lore, modules,
+    submodules, scenes, monsterStatblocks, overview, loadModuleTree,
+  } = campaign;
+
+  // Submodules and scenes are otherwise loaded one branch at a time by the
+  // module screens. The assistant has to see the whole tree — both to avoid
+  // proposing a section that already exists and to hang new scenes off the
+  // right submodule — so pull it in campaign-wide once the campaign is up.
+  const selectedCampaignId = campaign.selectedCampaign?.id ?? null;
+  useEffect(() => {
+    if (selectedCampaignId) void loadModuleTree();
+  }, [selectedCampaignId, loadModuleTree]);
+
+  // Names the assistant gives records it is creating right now, mapped to the
+  // ids they got once committed. This outlives a single commit on purpose: the
+  // DM can commit the submodule cards, look them over, and commit the scene
+  // cards afterwards — the scenes still find their parents.
+  const refIds = useRef(new Map<string, string>());
+
+  // Highest sort_order handed out per parent. The commit loop writes card after
+  // card without React re-rendering in between, so the sibling count read off
+  // context is stale for every write after the first — three submodules
+  // committed in one click would all claim slot N. The cursor keeps them in the
+  // order the assistant wrote them, and yields to context once it catches up.
+  const orderCursor = useRef(new Map<string, number>());
+
+  function nextOrder(parentId: string, siblingCount: number): number {
+    const cursor = orderCursor.current.get(parentId);
+    const next = cursor == null ? siblingCount : Math.max(cursor + 1, siblingCount);
+    orderCursor.current.set(parentId, next);
+    return next;
+  }
 
   function formatContext(): string {
     return formatCampaignContext({
-      sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks,
+      sessions, pcs, npcs, locations, factions, hooks, lore, modules,
+      submodules, scenes, monsterStatblocks,
       overviewTitle: overview.title,
       overviewPlot: overview.plotSummary,
     });
@@ -119,9 +154,24 @@ Upsert (to update an existing record, add an "id" field set to its id from the d
   { "type": "upsertHook", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "..." } }
   { "type": "upsertLore", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "history|artifact|creature|magic|religion", "content": "...", "dm_only": false } }
   { "type": "upsertModule", "reasoning": "...", "confidence": 0.9, "payload": { "chapter": "1", "title": "...", "synopsis": "...", "status": "planned|active|completed", "played_session": null, "encounters": "...", "rewards": "...", "dm_notes": "..." } }
+  { "type": "upsertSubmodule", "reasoning": "...", "confidence": 0.9, "payload": { "module_id": "<id of the parent module>", "ref": "a short name for this submodule, e.g. \\"vault\\"", "title": "...", "submodule_type": "${SUBMODULE_TYPES.join('|')}", "summary": "one line for the outline rail", "content": "the full write-up — several paragraphs the DM could run from cold", "dm_notes": "secrets, contingencies, what to do if the party skips it" } }
+  { "type": "upsertScene", "reasoning": "...", "confidence": 0.9, "payload": { "submodule_ref": "vault", "title": "...", "scene_type": "${SCENE_TYPES.join('|')}", "summary": "the beat in a sentence", "content": "how to run it: the sensory hook, what the party faces, the checks or tactics, the outcomes that matter", "dm_notes": "hidden info, alternate outcomes, a fallback if it stalls" } }
   { "type": "upsertMonsterStatblock", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "creature_type": "Medium humanoid", "challenge_rating": "5", "armor_class": 15, "ac_descriptor": "chain shirt", "hit_points": 65, "hit_dice": "10d8+20", "speed": "30 ft.", "str": 16, "dex": 14, "con": 14, "int": 10, "wis": 12, "cha": 8, "saving_throws": "Str +6, Con +5", "skills": "Athletics +6", "damage_immunities": null, "damage_resistances": null, "condition_immunities": null, "senses": "passive Perception 11", "languages": "Common", "content": "### Traits\\n**Brave.** Advantage on saves vs frightened.\\n\\n### Actions\\n**Multiattack.** Two longsword attacks.\\n\\n**Longsword.** +6 to hit, 1d8+3 slashing.", "dm_notes": "...", "tags": "humanoid, soldier" } }
 
-Delete: { "type": "deleteNPC", "reasoning": "...", "confidence": 0.9, "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule, deleteMonsterStatblock)
+Delete: { "type": "deleteNPC", "reasoning": "...", "confidence": 0.9, "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule, deleteMonsterStatblock). There is no delete for submodules or scenes — the DM removes those from the module screen.
+
+== BUILDING OUT A MODULE ==
+
+A module is a chapter. Its submodules are the chunks of play it divides into (a location to explore, a heist, a negotiation, a journey, a set-piece); a submodule's scenes are the individual beats the DM runs at the table. The MODULES listing above shows the tree that already exists — submodules marked ▸, their scenes marked ·, each with its id.
+
+When the DM asks you to break a module down, build out a chapter, or turn a synopsis into sections and scenes, propose the whole tree in one response: an upsertSubmodule for each section, and the upsertScene actions for its beats right after it. Aim for 3-6 submodules across the module's arc — the pull-in, the middle where it can go several ways, the resolution — and 2-4 scenes under each. Vary the types; a chapter that is eight fights in a row is a bad chapter. Write each section so the DM could run it off the page cold, and leave the players' choices open rather than scripting what they do.
+
+PARENTS. Every submodule needs a parent module and every scene needs a parent submodule:
+  - Pointing at something that already exists: use its real id from the listing above — "module_id" on a submodule, "submodule_id" on a scene.
+  - Pointing at something you are creating in the SAME response: give the parent a "ref" (a short lowercase nickname, unique within your response), and have the child carry "module_ref" or "submodule_ref" set to that same string. Emit the parent action BEFORE its children.
+  - Never invent a UUID. If you cannot find a real parent id and are not creating the parent yourself, do not emit the action.
+
+Scenes are ordered as you emit them, so write each submodule's beats in the order they are most likely to come up. To UPDATE an existing submodule or scene, set "id" to its id from the listing (you can then omit the parent field).
 
 Always use existing record IDs when updating. Only include fields you want to set. Example of updating an existing hook (note the real "id" copied from the data above):
   { "type": "upsertHook", "reasoning": "Merging tonight's developments into the existing Sunken Crown thread.", "confidence": 0.88, "payload": { "id": "1f2e3d4c-0000-0000-0000-000000000000", "description": "...merged/updated text..." } }
@@ -134,11 +184,88 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     return (lookupExistingEntity(campaign, type, id) as Record<string, unknown> | null) ?? null;
   }
 
+  /**
+   * Turn a submodule/scene payload's parent pointer into a real id. The parent
+   * is either already in the campaign (a real id) or something the assistant
+   * proposed earlier in the same batch and named with a "ref" — those ids land
+   * in refIds as their cards commit.
+   */
+  function resolveParent(
+    payload: Record<string, unknown>,
+    idField: 'module_id' | 'submodule_id',
+    refField: 'module_ref' | 'submodule_ref',
+    noun: string,
+  ): string {
+    const direct = payload[idField];
+    if (typeof direct === 'string' && direct.trim()) return direct.trim();
+
+    const ref = payload[refField];
+    if (typeof ref === 'string' && ref.trim()) {
+      const resolved = refIds.current.get(ref.trim());
+      if (resolved) return resolved;
+      throw new Error(`its ${noun} ("${ref.trim()}") hasn't been committed yet — commit that card first`);
+    }
+    throw new Error(`no ${noun} was given`);
+  }
+
+  /** Remember the id a named record got, so its children can find it. */
+  function rememberRef(payload: Record<string, unknown>, id: string | undefined) {
+    const ref = payload.ref;
+    if (id && typeof ref === 'string' && ref.trim()) refIds.current.set(ref.trim(), id);
+  }
+
+  /**
+   * Write one submodule. `raw` is the payload as the assistant wrote it (the
+   * only place the ref fields survive — normalizeAssistantPayload drops them,
+   * since they aren't columns); `clean` is the column-safe version.
+   *
+   * Ordering appends below whatever the module already has, so a committed
+   * card never lands on an existing sibling's slot.
+   */
+  async function writeSubmodule(clean: Record<string, unknown>, raw: Record<string, unknown>) {
+    const existing = typeof clean.id === 'string'
+      ? campaign.submodules.find(s => s.id === clean.id)
+      : undefined;
+    const moduleId = existing?.module_id
+      ?? resolveParent(raw, 'module_id', 'module_ref', 'parent module');
+    const saved = await campaign.upsertSubmodule({
+      submodule_type: null, summary: null, content: null, dm_notes: null,
+      linked_monster_ids: null, linked_encounter_ids: null,
+      ...clean,
+      // An update keeps its place in the rail; a new section appends below.
+      sort_order: clean.sort_order ?? existing?.sort_order
+        ?? nextOrder(moduleId, campaign.submodules.filter(s => s.module_id === moduleId).length),
+      title: (typeof clean.title === 'string' && clean.title.trim()) || existing?.title || 'Untitled Submodule',
+      module_id: moduleId,
+    } as Parameters<typeof campaign.upsertSubmodule>[0]);
+    rememberRef(raw, saved?.id ?? existing?.id);
+  }
+
+  async function writeScene(clean: Record<string, unknown>, raw: Record<string, unknown>) {
+    const existing = typeof clean.id === 'string'
+      ? campaign.scenes.find(s => s.id === clean.id)
+      : undefined;
+    const submoduleId = existing?.submodule_id
+      ?? resolveParent(raw, 'submodule_id', 'submodule_ref', 'parent submodule');
+    await campaign.upsertScene({
+      scene_type: null, summary: null, content: null, dm_notes: null,
+      linked_monster_ids: null,
+      ...clean,
+      sort_order: clean.sort_order ?? existing?.sort_order
+        ?? nextOrder(submoduleId, campaign.scenes.filter(s => s.submodule_id === submoduleId).length),
+      title: (typeof clean.title === 'string' && clean.title.trim()) || existing?.title || 'Untitled scene',
+      submodule_id: submoduleId,
+    } as Parameters<typeof campaign.upsertScene>[0]);
+  }
+
   async function applyChatAction(rawAction: PendingAction): Promise<void> {
+    const rawPayload = ('payload' in rawAction ? rawAction.payload : {}) as Record<string, unknown>;
     const action = ('payload' in rawAction
       ? { ...rawAction, payload: normalizeAssistantPayload(rawAction.type, rawAction.payload) }
       : rawAction) as PendingAction;
     switch (action.type) {
+      case 'upsertSubmodule': await writeSubmodule(action.payload as unknown as Record<string, unknown>, rawPayload); break;
+      case 'upsertScene':     await writeScene(action.payload as unknown as Record<string, unknown>, rawPayload); break;
       case 'upsertSession':   await campaign.upsertSession(action.payload); break;
       case 'upsertNPC':       await campaign.upsertNPC(action.payload); break;
       case 'upsertPC':        await campaign.upsertPC(action.payload); break;
@@ -167,6 +294,10 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       : { ...(action.payload as Record<string, unknown>) };
     const payload = normalizeAssistantPayload(action.type, merged);
     switch (action.type) {
+      // Same writers as the chat path, so an imported submodule/scene gets the
+      // same parent resolution, sort-order append, and title fallback.
+      case 'upsertSubmodule':    await writeSubmodule(payload as Record<string, unknown>, action.payload as Record<string, unknown>); break;
+      case 'upsertScene':        await writeScene(payload as Record<string, unknown>, action.payload as Record<string, unknown>); break;
       case 'upsertSession':      await campaign.upsertSession(payload as Parameters<typeof campaign.upsertSession>[0]); break;
       case 'upsertPC':           await campaign.upsertPC(payload as Parameters<typeof campaign.upsertPC>[0]); break;
       case 'upsertNPC':          await campaign.upsertNPC(payload as Parameters<typeof campaign.upsertNPC>[0]); break;
@@ -175,8 +306,6 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       case 'upsertHook':         await campaign.upsertHook(payload as Parameters<typeof campaign.upsertHook>[0]); break;
       case 'upsertLore':         await campaign.upsertLore(payload as Parameters<typeof campaign.upsertLore>[0]); break;
       case 'upsertModule':       await campaign.upsertModule(payload as Parameters<typeof campaign.upsertModule>[0]); break;
-      case 'upsertSubmodule':    await campaign.upsertSubmodule(payload as Parameters<typeof campaign.upsertSubmodule>[0]); break;
-      case 'upsertScene':        await campaign.upsertScene(payload as Parameters<typeof campaign.upsertScene>[0]); break;
       case 'upsertRelationship': await campaign.upsertRelationship(payload as Parameters<typeof campaign.upsertRelationship>[0]); break;
       case 'upsertMonsterStatblock': await campaign.upsertMonsterStatblock(payload as Parameters<typeof campaign.upsertMonsterStatblock>[0]); break;
     }
@@ -192,6 +321,7 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     composerPlaceholder: 'Ask about your campaign, or describe what to build…',
     samples: [
       { glyph: '▣', text: "Prep tonight's session" },
+      { glyph: '▸', text: 'Break a module into submodules and scenes' },
       { glyph: '↯', text: 'What loose threads should I tie up?' },
       { glyph: '◉', text: 'Recap where we left off last session' },
     ],

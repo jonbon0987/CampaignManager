@@ -12,7 +12,7 @@
 // -----------------------------------------------------------
 
 import type {
-  Module, ModuleDependency, SubmoduleDependency, Submodule,
+  Module, ModuleDependency, SubmoduleDependency, Submodule, Scene,
   Session, PlayerCharacter, NPC, Location, Faction, Hook, LoreEntry,
   MonsterStatblock,
 } from '../lib/database.types';
@@ -51,7 +51,11 @@ export function makeSubmoduleDep(
 }
 
 export function makeSubmodule(id: string, over: Partial<Submodule> = {}): Submodule {
-  return { id, title: id, ...over } as unknown as Submodule;
+  return { id, title: id, sort_order: 0, ...over } as unknown as Submodule;
+}
+
+export function makeScene(id: string, over: Partial<Scene> = {}): Scene {
+  return { id, title: id, sort_order: 0, ...over } as unknown as Scene;
 }
 
 export function makeSession(over: Partial<Session> = {}): Session {

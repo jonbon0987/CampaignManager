@@ -104,6 +104,9 @@ const hiddenFields = new Set([
   'faction_ids', 'statblock_id', 'module_id', 'submodule_id', 'sort_order',
   'from_id', 'from_kind', 'to_id', 'to_kind', 'linked_monster_ids', 'linked_encounter_ids',
   'id', 'campaign_id',
+  // Parent pointers the assistant uses to hang a submodule/scene off something
+  // it is proposing in the same batch — plumbing, resolved away on commit.
+  'ref', 'module_ref', 'submodule_ref',
 ]);
 
 export function fieldLabel(key: string): string {
