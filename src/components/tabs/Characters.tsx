@@ -214,6 +214,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       detail={
         selected ? (
           <CastDetail
+            key={selected.id}
             item={selected}
             factions={factions}
             statblocks={monsterStatblocks}
