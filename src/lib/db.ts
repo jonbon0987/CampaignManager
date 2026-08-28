@@ -748,6 +748,18 @@ export const Submodules = {
     return data;
   },
 
+  /** Every submodule across a set of modules — the Module Web needs the whole campaign at once. */
+  async getByModules(moduleIds: string[]): Promise<Submodule[]> {
+    if (moduleIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('submodules')
+      .select('*')
+      .in('module_id', moduleIds)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
   async upsert(sub: SubmoduleInsert & { id?: string }): Promise<Submodule> {
     validateFieldLimits('submodules', sub);
     const user_id = await getUserId();
@@ -776,6 +788,18 @@ export const Scenes = {
       .from('scenes')
       .select('*')
       .eq('submodule_id', submoduleId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  /** Every scene across a set of submodules — see Submodules.getByModules. */
+  async getBySubmodules(submoduleIds: string[]): Promise<Scene[]> {
+    if (submoduleIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('scenes')
+      .select('*')
+      .in('submodule_id', submoduleIds)
       .order('sort_order', { ascending: true });
     if (error) throw error;
     return data;
@@ -1016,6 +1040,18 @@ export const SubmoduleDeps = {
       .from('submodule_dependencies')
       .select('*')
       .in('dependent_id', subIds)
+      .order('created_at');
+    if (error) throw error;
+    return data;
+  },
+
+  /** Dependencies among a known set of submodules, either end. */
+  async getBySubmodules(submoduleIds: string[]): Promise<SubmoduleDependency[]> {
+    if (submoduleIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('submodule_dependencies')
+      .select('*')
+      .in('dependent_id', submoduleIds)
       .order('created_at');
     if (error) throw error;
     return data;

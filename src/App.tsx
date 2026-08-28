@@ -48,7 +48,7 @@ export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'threads' | 'idea
 const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
   cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship Web' }],
   threads:  [{ id: 'board', label: 'Board' }, { id: 'pipeline', label: 'Pipeline' }],
-  modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Dependencies' }],
+  modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Web' }],
   sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }],
 };
 
