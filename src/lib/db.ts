@@ -748,6 +748,18 @@ export const Submodules = {
     return data;
   },
 
+  /** Every submodule across a set of modules — the Module Web needs the whole campaign at once. */
+  async getByModules(moduleIds: string[]): Promise<Submodule[]> {
+    if (moduleIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('submodules')
+      .select('*')
+      .in('module_id', moduleIds)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
   // Every submodule in a campaign, in one round trip. Submodules are normally
   // loaded a module at a time; the AI assistant needs the whole tree so it can
   // match against what already exists instead of proposing duplicates.
@@ -758,15 +770,7 @@ export const Submodules = {
       .eq('campaign_id', campaignId);
     if (modsError) throw modsError;
     const moduleIds = (mods ?? []).map((m: { id: string }) => m.id);
-    if (moduleIds.length === 0) return [];
-
-    const { data, error } = await supabase
-      .from('submodules')
-      .select('*')
-      .in('module_id', moduleIds)
-      .order('sort_order', { ascending: true });
-    if (error) throw error;
-    return data;
+    return Submodules.getByModules(moduleIds);
   },
 
   async upsert(sub: SubmoduleInsert & { id?: string }): Promise<Submodule> {
@@ -802,7 +806,7 @@ export const Scenes = {
     return data;
   },
 
-  /** Every scene under the given submodules — the batch form of getBySubmodule. */
+  /** Every scene across a set of submodules — the batch form of getBySubmodule (see Submodules.getByModules). */
   async getBySubmodules(submoduleIds: string[]): Promise<Scene[]> {
     if (submoduleIds.length === 0) return [];
     const { data, error } = await supabase
@@ -1049,6 +1053,18 @@ export const SubmoduleDeps = {
       .from('submodule_dependencies')
       .select('*')
       .in('dependent_id', subIds)
+      .order('created_at');
+    if (error) throw error;
+    return data;
+  },
+
+  /** Dependencies among a known set of submodules, either end. */
+  async getBySubmodules(submoduleIds: string[]): Promise<SubmoduleDependency[]> {
+    if (submoduleIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('submodule_dependencies')
+      .select('*')
+      .in('dependent_id', submoduleIds)
       .order('created_at');
     if (error) throw error;
     return data;

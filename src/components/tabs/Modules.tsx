@@ -223,8 +223,8 @@ export default function Modules({ viewMode = 'list', setViewMode }: { viewMode?:
   const openInEditor = (id: string) => { setOpenId(id); if (viewMode === 'web') setViewMode?.('list'); };
 
   // An open module takes over the whole area as [outline rail | editor] — EXCEPT
-  // in the web view, where an open module instead drills the graph into its
-  // submodules (so "Dependencies" with a module open shows that module's web).
+  // in the web view, where an open module instead seeds ModuleWeb's initial
+  // selection/expansion (so "Web" with a module open focuses that chapter).
   if (openModule && viewMode !== 'web') {
     return (
       <ModuleDetail
