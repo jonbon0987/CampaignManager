@@ -142,14 +142,17 @@ interface CampaignContextType {
   // Submodules
   submodules: Submodule[];
   loadSubmodules: (moduleId: string) => Promise<void>;
-  upsertSubmodule: (s: SubmoduleInsert & { id?: string }) => Promise<void>;
+  upsertSubmodule: (s: SubmoduleInsert & { id?: string }) => Promise<Submodule | undefined>;
   deleteSubmodule: (id: string, moduleId: string) => Promise<void>;
 
   // Scenes
   scenes: Scene[];
   loadScenes: (submoduleId: string) => Promise<void>;
-  upsertScene: (s: SceneInsert & { id?: string }) => Promise<void>;
+  upsertScene: (s: SceneInsert & { id?: string }) => Promise<Scene | undefined>;
   deleteScene: (id: string, submoduleId: string) => Promise<void>;
+
+  /** Load every submodule + scene in the campaign (the AI assistant needs the whole tree). */
+  loadModuleTree: () => Promise<void>;
 
   // Module Sheets
   moduleSheets: ModuleSheet[];
@@ -655,34 +658,60 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   }, [selectedCampaignId]);
 
   // ---- Submodules ----
+  // The submodule/scene lists are loaded a parent at a time by the module
+  // screens, but loadModuleTree can fill them campaign-wide for the AI
+  // assistant. So every refresh below swaps out only the rows belonging to the
+  // parent it just re-read, leaving any other parent's rows in place.
   const loadSubmodules = useCallback(async (moduleId: string) => {
-    setSubmodules(await SubmodulesDB.getByModule(moduleId));
+    const fresh = await SubmodulesDB.getByModule(moduleId);
+    setSubmodules(prev => [...prev.filter(s => s.module_id !== moduleId), ...fresh]);
   }, []);
 
   const upsertSubmodule = useCallback(async (s: SubmoduleInsert & { id?: string }) => {
-    await SubmodulesDB.upsert(s);
-    setSubmodules(await SubmodulesDB.getByModule(s.module_id));
+    const saved = await SubmodulesDB.upsert(s);
+    const fresh = await SubmodulesDB.getByModule(s.module_id);
+    setSubmodules(prev => [...prev.filter(r => r.module_id !== s.module_id), ...fresh]);
+    return saved;
   }, []);
 
   const deleteSubmodule = useCallback(async (id: string, moduleId: string) => {
     await SubmodulesDB.delete(id);
-    setSubmodules(await SubmodulesDB.getByModule(moduleId));
+    const fresh = await SubmodulesDB.getByModule(moduleId);
+    setSubmodules(prev => [...prev.filter(r => r.module_id !== moduleId), ...fresh]);
+    // Cascades in the DB — drop the orphaned scenes from local state too.
+    setScenes(prev => prev.filter(sc => sc.submodule_id !== id));
   }, []);
 
   // ---- Scenes ----
   const loadScenes = useCallback(async (submoduleId: string) => {
-    setScenes(await ScenesDB.getBySubmodule(submoduleId));
+    const fresh = await ScenesDB.getBySubmodule(submoduleId);
+    setScenes(prev => [...prev.filter(s => s.submodule_id !== submoduleId), ...fresh]);
   }, []);
 
   const upsertScene = useCallback(async (s: SceneInsert & { id?: string }) => {
-    await ScenesDB.upsert(s);
-    setScenes(await ScenesDB.getBySubmodule(s.submodule_id));
+    const saved = await ScenesDB.upsert(s);
+    const fresh = await ScenesDB.getBySubmodule(s.submodule_id);
+    setScenes(prev => [...prev.filter(r => r.submodule_id !== s.submodule_id), ...fresh]);
+    return saved;
   }, []);
 
   const deleteScene = useCallback(async (id: string, submoduleId: string) => {
     await ScenesDB.delete(id);
-    setScenes(await ScenesDB.getBySubmodule(submoduleId));
+    const fresh = await ScenesDB.getBySubmodule(submoduleId);
+    setScenes(prev => [...prev.filter(r => r.submodule_id !== submoduleId), ...fresh]);
   }, []);
+
+  /**
+   * Load every submodule and scene in the campaign at once. The module screens
+   * only ever need one branch at a time, but the AI assistant has to see the
+   * whole tree to match existing records instead of duplicating them.
+   */
+  const loadModuleTree = useCallback(async () => {
+    if (!selectedCampaignId) return;
+    const subs = await SubmodulesDB.getByCampaign(selectedCampaignId);
+    setSubmodules(subs);
+    setScenes(await ScenesDB.getBySubmodules(subs.map(s => s.id)));
+  }, [selectedCampaignId]);
 
   // ---- Module Sheets ----
   const loadModuleSheets = useCallback(async (moduleId: string) => {
@@ -828,6 +857,7 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
       scenes, loadScenes,
       upsertScene: withToast(upsertScene),
       deleteScene: withToast(deleteScene, 'Scene deleted'),
+      loadModuleTree,
       moduleSheets, loadModuleSheets,
       upsertModuleSheet: withToast(upsertModuleSheet),
       deleteModuleSheet: withToast(deleteModuleSheet),

@@ -5,7 +5,7 @@
 
 import type {
   Session, PlayerCharacter, NPC, Location,
-  Faction, Hook, LoreEntry, Module, MonsterStatblock,
+  Faction, Hook, LoreEntry, Module, MonsterStatblock, Submodule, Scene,
 } from './database.types';
 import { KINDS, KIND_GROUP_LABEL, type RefKind } from './slashMarkdown';
 
@@ -122,6 +122,35 @@ export function buildDefaultCampaignContextBlock(data: DefaultContextData): stri
   return parts.join('\n');
 }
 
+// Render a module's submodules and their scenes as an indented tree beneath the
+// module line, so the assistant can see the structure that already exists —
+// and reuse those ids — before it proposes new sections. Only loaded branches
+// appear; the assistant asks for the whole tree up front (loadModuleTree).
+function moduleTree(
+  moduleId: string,
+  submodules: Submodule[],
+  scenes: Scene[],
+): string {
+  const subs = submodules
+    .filter(s => s.module_id === moduleId)
+    .sort((a, b) => a.sort_order - b.sort_order);
+  if (subs.length === 0) return '';
+
+  const lines: string[] = [];
+  for (const sub of subs) {
+    const summary = truncate(sub.summary, 200);
+    lines.push(`    ▸ ${sub.title} (${sub.submodule_type ?? 'other'}) [id:${sub.id}]${summary ? `: ${summary}` : ''}`);
+    const subScenes = scenes
+      .filter(sc => sc.submodule_id === sub.id)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    for (const sc of subScenes) {
+      const scSummary = truncate(sc.summary, 150);
+      lines.push(`      · ${sc.title} (${sc.scene_type ?? 'other'}) [id:${sc.id}]${scSummary ? `: ${scSummary}` : ''}`);
+    }
+  }
+  return '\n' + lines.join('\n');
+}
+
 export function formatCampaignContext(data: {
   sessions: Session[];
   pcs: PlayerCharacter[];
@@ -131,10 +160,14 @@ export function formatCampaignContext(data: {
   hooks: Hook[];
   lore: LoreEntry[];
   modules: Module[];
+  submodules?: Submodule[];
+  scenes?: Scene[];
   monsterStatblocks?: MonsterStatblock[];
   overviewTitle: string;
   overviewPlot: string;
 }): string {
+  const submodules = data.submodules ?? [];
+  const scenes = data.scenes ?? [];
   return `Campaign: ${data.overviewTitle || 'Unnamed Campaign'}
 Plot summary: ${data.overviewPlot || '(none)'}
 
@@ -161,8 +194,8 @@ ${data.hooks.map(h => `  [${h.is_active ? 'active' : 'resolved'}] ${h.title} (${
 LORE ENTRIES (${data.lore.length}):
 ${data.lore.map(l => `  ${l.title} (${l.category ?? '?'}) [id:${l.id}]${textFields(l as unknown as Record<string, unknown>, ['content'])}`).join('\n') || '  (none)'}
 
-MODULES (${data.modules.length}):
-${data.modules.map(m => `  Ch.${m.chapter ?? '?'}: ${m.title} [${m.status}] [id:${m.id}]${textFields(m as unknown as Record<string, unknown>, ['synopsis', 'dm_notes'])}`).join('\n') || '  (none)'}
+MODULES (${data.modules.length}) — each module's submodules (▸) and their scenes (·) are listed beneath it:
+${data.modules.map(m => `  Ch.${m.chapter ?? '?'}: ${m.title} [${m.status}] [id:${m.id}]${textFields(m as unknown as Record<string, unknown>, ['synopsis', 'dm_notes'])}${moduleTree(m.id, submodules, scenes)}`).join('\n') || '  (none)'}
 
 STAT SHEETS (${data.monsterStatblocks?.length ?? 0}):
 ${data.monsterStatblocks?.map(s => `  ${s.name} (${s.creature_type ?? '?'}, CR ${s.challenge_rating ?? '?'}) [id:${s.id}]`).join('\n') || '  (none)'}`;

@@ -13,6 +13,7 @@ import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
 import { limitFor } from '../../../lib/fieldLimits';
 import { Button } from '../../ui/Button';
+import { GenerateModuleStructureModal } from '../../ui/GenerateModuleStructureModal';
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
 import { typeInfo } from './pickers';
 
@@ -41,6 +42,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
   modRef.current = module;
 
   const [form, setForm] = useState<ModuleForm>(() => toForm(module));
+  const [buildOut, setBuildOut] = useState(false);
   const prevId = useRef(module.id);
   if (prevId.current !== module.id) { prevId.current = module.id; setForm(toForm(module)); }
 
@@ -73,6 +75,9 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
       <div className="md-editor">
         <div className="as-bar">
           <div className="as-spacer" />
+          <Button variant="secondary" size="sm" onClick={() => setBuildOut(true)}>
+            ✦ Build out
+          </Button>
           <OverflowMenu items={[{
             label: 'Delete Module', danger: true,
             onClick: async () => { if (await confirm(`Delete "${module.title}" and everything in it?`)) { await deleteModule(module.id); onDeleted(); } },
@@ -133,7 +138,18 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
         <div className="as-fl">
           <span className="as-ll">Dependency Map</span>
           {submodules.length === 0
-            ? <div className="md-pop-empty" style={{ padding: '2px 0' }}>No submodules yet.</div>
+            ? (
+              <div className="md-pop-empty" style={{ padding: '2px 0' }}>
+                No submodules yet — add them from the rail, or{' '}
+                {/* eslint-disable-next-line no-restricted-syntax -- inline text link inside a sentence, not a standalone control */}
+                <button
+                  onClick={() => setBuildOut(true)}
+                  style={{ color: 'var(--gold)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
+                >
+                  build them out from the synopsis
+                </button>.
+              </div>
+            )
             : (
               <div className="md-depmap">
                 {submodules.map((s, i) => {
@@ -172,6 +188,18 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
           <Button variant="primary" disabled={!isDirty} onClick={save}>Save changes</Button>
         </div>
       </div>
+
+      {/* Built from the live form, not the saved record, so a synopsis the DM
+          has typed but not yet saved is what the generator actually reads. */}
+      {buildOut && (
+        <GenerateModuleStructureModal
+          isOpen
+          module={{ ...module, title: form.title, chapter: form.chapter || null, synopsis: form.synopsis || null, rewards: form.rewards || null, dm_notes: form.dm_notes || null }}
+          existing={submodules}
+          onClose={() => setBuildOut(false)}
+          onCreated={onSelect}
+        />
+      )}
     </div>
   );
 

@@ -11,8 +11,11 @@ import { moduleTypeMeta as TYPE_META, type TypeInfo } from '../../../lib/theme';
 export { TYPE_META };
 export type { TypeInfo };
 
-export const SUBMODULE_TYPES = ['location', 'encounter', 'social', 'heist', 'event', 'travel', 'exploration', 'other'];
-export const SCENE_TYPES = ['encounter', 'puzzle', 'social', 'trap', 'exploration', 'event', 'other'];
+/* The submodule/scene taxonomies live in src/lib/moduleStructure.ts so the AI
+   generators and this picker offer exactly the same set — re-export to keep
+   this module's API. */
+import { SUBMODULE_TYPES, SCENE_TYPES } from '../../../lib/moduleStructure';
+export { SUBMODULE_TYPES, SCENE_TYPES };
 
 export const typeInfo = (t: string | null | undefined): TypeInfo => TYPE_META[t ?? 'other'] ?? TYPE_META.other;
 

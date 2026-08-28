@@ -760,6 +760,19 @@ export const Submodules = {
     return data;
   },
 
+  // Every submodule in a campaign, in one round trip. Submodules are normally
+  // loaded a module at a time; the AI assistant needs the whole tree so it can
+  // match against what already exists instead of proposing duplicates.
+  async getByCampaign(campaignId: string): Promise<Submodule[]> {
+    const { data: mods, error: modsError } = await supabase
+      .from('modules')
+      .select('id')
+      .eq('campaign_id', campaignId);
+    if (modsError) throw modsError;
+    const moduleIds = (mods ?? []).map((m: { id: string }) => m.id);
+    return Submodules.getByModules(moduleIds);
+  },
+
   async upsert(sub: SubmoduleInsert & { id?: string }): Promise<Submodule> {
     validateFieldLimits('submodules', sub);
     const user_id = await getUserId();
@@ -793,7 +806,7 @@ export const Scenes = {
     return data;
   },
 
-  /** Every scene across a set of submodules — see Submodules.getByModules. */
+  /** Every scene across a set of submodules — the batch form of getBySubmodule (see Submodules.getByModules). */
   async getBySubmodules(submoduleIds: string[]): Promise<Scene[]> {
     if (submoduleIds.length === 0) return [];
     const { data, error } = await supabase
