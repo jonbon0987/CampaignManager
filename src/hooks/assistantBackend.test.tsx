@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { makeCampaignContext } from '../test/contextMocks';
-import { makeSubmodule, makeScene } from '../test/fixtures';
+import { makeSubmodule, makeScene, makeNPC } from '../test/fixtures';
 import type { PendingAction } from './useAIChat';
 
 const h = vi.hoisted(() => ({
@@ -35,6 +35,8 @@ const submoduleAction = (payload: Record<string, unknown>) =>
   ({ type: 'upsertSubmodule', payload } as unknown as PendingAction);
 const sceneAction = (payload: Record<string, unknown>) =>
   ({ type: 'upsertScene', payload } as unknown as PendingAction);
+const npcAction = (payload: Record<string, unknown>) =>
+  ({ type: 'upsertNPC', payload } as unknown as PendingAction);
 
 describe('campaign assistant — submodule & scene writes', () => {
   it('writes a submodule against a module id the assistant read from context', async () => {
@@ -177,6 +179,40 @@ describe('campaign assistant — submodule & scene writes', () => {
     expect(cc().loadModuleTree).toHaveBeenCalled();
   });
 
+  it('merges an NPC update onto the existing record so untouched fields survive', async () => {
+    h.campaign.value = makeCampaignContext({
+      selectedCampaign: { id: 'camp-1', name: 'Test' },
+      npcs: [makeNPC({
+        id: 'npc-7', name: 'Gorval', role: 'Blacksmith',
+        description: 'A gruff smith who forged the party\'s blades.',
+        hooks_motivations: 'Owes a debt to the Iron Guild.',
+      })],
+      upsertNPC: vi.fn().mockResolvedValue({ id: 'npc-7' }),
+    });
+    const b = backend();
+    // The assistant sends only the one field it is changing.
+    await b.applyChatAction(npcAction({ id: 'npc-7', status: 'deceased' }));
+
+    const written = (cc().upsertNPC as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(written).toMatchObject({
+      id: 'npc-7',
+      status: 'deceased',
+      name: 'Gorval',
+      role: 'Blacksmith',
+      description: 'A gruff smith who forged the party\'s blades.',
+      hooks_motivations: 'Owes a debt to the Iron Guild.',
+    });
+  });
+
+  it('creates an NPC verbatim when there is no id to merge onto', async () => {
+    const b = backend();
+    await b.applyChatAction(npcAction({ name: 'Sable Thorne', role: 'Smuggler' }));
+
+    const written = (cc().upsertNPC as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(written).toMatchObject({ name: 'Sable Thorne', role: 'Smuggler' });
+    expect(written).not.toHaveProperty('id');
+  });
+
   it('lists both submodule and scene actions in the system prompt', () => {
     const prompt = backend().buildSystemPrompt();
     expect(prompt).toContain('"type": "upsertSubmodule"');
@@ -184,5 +220,13 @@ describe('campaign assistant — submodule & scene writes', () => {
     expect(prompt).toContain('"submodule_ref"');
     expect(prompt).toContain('Never invent a UUID');
     expect(prompt).toContain('There is no delete for submodules or scenes');
+  });
+
+  it('instructs the assistant to revise records in place rather than overwrite them', () => {
+    const prompt = backend().buildSystemPrompt();
+    expect(prompt).toContain('REVISING EXISTING RECORDS');
+    expect(prompt).toContain('REVISION of the record, not a replacement');
+    // The truncation guard keys off the trailing ellipsis marker.
+    expect(prompt).toContain('ending in "…"');
   });
 });
