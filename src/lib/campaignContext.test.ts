@@ -137,13 +137,24 @@ describe('formatCampaignContext', () => {
     expect(out).toContain(', met'); // met_by_pcs true
   });
 
-  it('truncates entity text fields longer than 500 chars', () => {
+  it('shows entity text fields in full up to the truncation limit, so the assistant can revise them in place', () => {
+    // Fields under the limit come through whole — this is what lets the assistant
+    // integrate an update into the existing text instead of overwriting a partial view.
     const out = formatCampaignContext({
       ...baseData,
-      npcs: [makeNPC({ id: 'n', name: 'X', description: 'd'.repeat(600) })],
+      npcs: [makeNPC({ id: 'n', name: 'X', description: 'd'.repeat(1500) })],
     });
-    expect(out).toContain('d'.repeat(500) + '…');
-    expect(out).not.toContain('d'.repeat(501));
+    expect(out).toContain('d'.repeat(1500));
+    expect(out).not.toContain('…'); // nothing was truncated
+  });
+
+  it('truncates entity text fields longer than the limit, marking the cut with an ellipsis', () => {
+    const out = formatCampaignContext({
+      ...baseData,
+      npcs: [makeNPC({ id: 'n', name: 'X', description: 'd'.repeat(1600) })],
+    });
+    expect(out).toContain('d'.repeat(1500) + '…');
+    expect(out).not.toContain('d'.repeat(1501));
   });
 
   it('counts stat sheets when provided', () => {

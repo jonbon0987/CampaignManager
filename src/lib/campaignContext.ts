@@ -9,8 +9,12 @@ import type {
 } from './database.types';
 import { KINDS, KIND_GROUP_LABEL, type RefKind } from './slashMarkdown';
 
-// Truncate a text value and append ellipsis if it exceeds maxLen.
-function truncate(value: string | null | undefined, maxLen = 500): string | null {
+// Truncate a text value and append ellipsis if it exceeds maxLen. The default
+// governs the entity field listing the assistant reads (via textFields); it is
+// deliberately generous so the assistant can see a field in full and revise it
+// in place rather than overwriting from a partial view. The trailing "…" is the
+// signal the prompt keys off to know a field is only partially shown.
+function truncate(value: string | null | undefined, maxLen = 1500): string | null {
   if (!value?.trim()) return null;
   const trimmed = value.trim();
   if (trimmed.length <= maxLen) return trimmed;
