@@ -91,8 +91,10 @@ function SearchPanel({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
 
 // ─── Dice panel ───────────────────────────────────────────────────────────────
 
-function DicePanel() {
-  const [log, setLog] = useState<RollEntry[]>([]);
+function DicePanel({ log, setLog }: {
+  log: RollEntry[];
+  setLog: React.Dispatch<React.SetStateAction<RollEntry[]>>;
+}) {
   const [custom, setCustom] = useState('');
 
   const roll = (sides: number, count = 1, mod = 0) => {
@@ -152,19 +154,18 @@ function DicePanel() {
 
 // ─── Initiative panel ─────────────────────────────────────────────────────────
 
-function InitiativePanel({ pcNames }: { pcNames: string[] }) {
-  const [rows, setRows] = useState<InitRow[]>(() =>
-    pcNames.map((name, i) => ({
-      id: `pc-${i}`,
-      name,
-      roll: null,
-      hp: '',
-      kind: 'pc' as const,
-    }))
-  );
-  const [active, setActive] = useState(0);
-  const [round, setRound] = useState(1);
-  const [started, setStarted] = useState(false);
+interface InitiativeState {
+  rows: InitRow[];
+  setRows: React.Dispatch<React.SetStateAction<InitRow[]>>;
+  active: number;
+  setActive: React.Dispatch<React.SetStateAction<number>>;
+  round: number;
+  setRound: React.Dispatch<React.SetStateAction<number>>;
+  started: boolean;
+  setStarted: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+function InitiativePanel({ rows, setRows, active, setActive, round, setRound, started, setStarted }: InitiativeState) {
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
 
@@ -348,6 +349,22 @@ export default function SessionBar({
 }: SessionBarProps) {
   const [tab, setTab] = useState<'init' | 'dice' | 'search'>('init');
 
+  // Persistent panel state lives here so switching tabs (or hiding the bar)
+  // doesn't unmount the panels and wipe rolls / round / the dice log.
+  const [initRows, setInitRows] = useState<InitRow[]>(() =>
+    pcNames.map((name, i) => ({
+      id: `pc-${i}`,
+      name,
+      roll: null,
+      hp: '',
+      kind: 'pc' as const,
+    }))
+  );
+  const [initActive, setInitActive] = useState(0);
+  const [initRound, setInitRound] = useState(1);
+  const [initStarted, setInitStarted] = useState(false);
+  const [diceLog, setDiceLog] = useState<RollEntry[]>([]);
+
   if (!open) return null;
 
   return (
@@ -374,8 +391,19 @@ export default function SessionBar({
 
       {/* Body */}
       <div className="sb-body">
-        {tab === 'init' && <InitiativePanel pcNames={pcNames} />}
-        {tab === 'dice' && <DicePanel />}
+        {tab === 'init' && (
+          <InitiativePanel
+            rows={initRows}
+            setRows={setInitRows}
+            active={initActive}
+            setActive={setInitActive}
+            round={initRound}
+            setRound={setInitRound}
+            started={initStarted}
+            setStarted={setInitStarted}
+          />
+        )}
+        {tab === 'dice' && <DicePanel log={diceLog} setLog={setDiceLog} />}
         {tab === 'search' && <SearchPanel onNavigate={onNavigate} />}
       </div>
     </div>
