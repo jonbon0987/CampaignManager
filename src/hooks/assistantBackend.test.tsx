@@ -24,6 +24,7 @@ beforeEach(() => {
   subSeq = 0;
   h.campaign.value = makeCampaignContext({
     selectedCampaign: { id: 'camp-1', name: 'Test' },
+    upsertModule: vi.fn().mockResolvedValue({ id: 'mod-new' }),
     upsertSubmodule: vi.fn().mockImplementation(() => Promise.resolve({ id: `sub-${++subSeq}` })),
     upsertScene: vi.fn().mockResolvedValue({ id: 'scene-1' }),
   });
@@ -37,6 +38,8 @@ const sceneAction = (payload: Record<string, unknown>) =>
   ({ type: 'upsertScene', payload } as unknown as PendingAction);
 const npcAction = (payload: Record<string, unknown>) =>
   ({ type: 'upsertNPC', payload } as unknown as PendingAction);
+const moduleAction = (payload: Record<string, unknown>) =>
+  ({ type: 'upsertModule', payload } as unknown as PendingAction);
 
 describe('campaign assistant — submodule & scene writes', () => {
   it('writes a submodule against a module id the assistant read from context', async () => {
@@ -58,6 +61,26 @@ describe('campaign assistant — submodule & scene writes', () => {
     expect(cc().upsertScene).toHaveBeenCalledWith(expect.objectContaining({
       submodule_id: 'sub-1', title: 'The Wreck', scene_type: 'exploration', sort_order: 0,
     }));
+  });
+
+  it('hangs a submodule off a module created earlier in the same batch, via its ref', async () => {
+    const b = backend();
+    await b.applyChatAction(moduleAction({ chapter: '2', ref: 'heist', title: 'The Heist' }));
+    await b.applyChatAction(submoduleAction({ module_ref: 'heist', title: 'Casing the Vault' }));
+
+    expect(cc().upsertSubmodule).toHaveBeenCalledWith(expect.objectContaining({
+      module_id: 'mod-new', title: 'Casing the Vault',
+    }));
+  });
+
+  it('resolves a ref nickname the assistant mistakenly put in the id field', async () => {
+    // `submodule_id: "dive"` names a committed ref, not a real id — resolve it
+    // rather than passing "dive" to the DB and tripping a foreign-key error.
+    const b = backend();
+    await b.applyChatAction(submoduleAction({ module_id: 'mod-1', ref: 'dive', title: 'The Dive' }));
+    await b.applyChatAction(sceneAction({ submodule_id: 'dive', title: 'The Wreck' }));
+
+    expect(cc().upsertScene).toHaveBeenCalledWith(expect.objectContaining({ submodule_id: 'sub-1' }));
   });
 
   it('prefers a real parent id over a ref when both are present', async () => {
