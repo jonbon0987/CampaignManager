@@ -205,22 +205,35 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     idField: 'module_id' | 'submodule_id',
     refField: 'module_ref' | 'submodule_ref',
     noun: string,
+    knownIds: Set<string>,
   ): string {
+    const refMap = refIds.current;
     const direct = payload[idField];
     if (typeof direct === 'string' && direct.trim()) {
       const id = direct.trim();
       // The assistant sometimes drops a ref NICKNAME into the id field instead
       // of the child's ref field (e.g. `module_id: "vault"` rather than
       // `module_ref: "vault"`). If this value names a ref we've already
-      // committed, it's that parent — resolve it to the real id rather than
-      // handing the DB a bogus id, which fails with an opaque foreign-key error
-      // ("Key (module_id)=(vault) is not present in table modules").
-      return refIds.current.get(id) ?? id;
+      // committed, it's that parent.
+      const asRef = refMap.get(id);
+      if (asRef) return asRef;
+      // A real parent: one already in the campaign, or one this batch created
+      // (its id landed in refIds as that card committed).
+      if (knownIds.has(id) || [...refMap.values()].includes(id)) return id;
+      // Otherwise the id points at no real parent — a stale or garbled id (the
+      // assistant transcribing a UUID wrong is the usual cause). Never hand it to
+      // the DB: that fails with an opaque foreign-key error ("Key (module_id)=…
+      // is not present in table modules") and, worse, cascades onto every child.
+      // Fall through to a ref field if the assistant also gave one; otherwise
+      // fail naming the bad id so the DM knows to regenerate the card.
+      if (!(typeof payload[refField] === 'string' && (payload[refField] as string).trim())) {
+        throw new Error(`its ${noun} isn't in this campaign — the assistant referenced an id that doesn't exist ("${id}"). Regenerate that card.`);
+      }
     }
 
     const ref = payload[refField];
     if (typeof ref === 'string' && ref.trim()) {
-      const resolved = refIds.current.get(ref.trim());
+      const resolved = refMap.get(ref.trim());
       if (resolved) return resolved;
       throw new Error(`its ${noun} ("${ref.trim()}") hasn't been committed yet — commit that card first`);
     }
@@ -246,7 +259,8 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       ? campaign.submodules.find(s => s.id === clean.id)
       : undefined;
     const moduleId = existing?.module_id
-      ?? resolveParent(raw, 'module_id', 'module_ref', 'parent module');
+      ?? resolveParent(raw, 'module_id', 'module_ref', 'parent module',
+        new Set(campaign.modules.map(m => m.id)));
     const saved = await campaign.upsertSubmodule({
       submodule_type: null, summary: null, content: null, dm_notes: null,
       linked_monster_ids: null, linked_encounter_ids: null,
@@ -265,7 +279,8 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       ? campaign.scenes.find(s => s.id === clean.id)
       : undefined;
     const submoduleId = existing?.submodule_id
-      ?? resolveParent(raw, 'submodule_id', 'submodule_ref', 'parent submodule');
+      ?? resolveParent(raw, 'submodule_id', 'submodule_ref', 'parent submodule',
+        new Set(campaign.submodules.map(s => s.id)));
     await campaign.upsertScene({
       scene_type: null, summary: null, content: null, dm_notes: null,
       linked_monster_ids: null,
