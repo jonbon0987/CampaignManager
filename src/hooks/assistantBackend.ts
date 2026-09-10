@@ -207,7 +207,16 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     noun: string,
   ): string {
     const direct = payload[idField];
-    if (typeof direct === 'string' && direct.trim()) return direct.trim();
+    if (typeof direct === 'string' && direct.trim()) {
+      const id = direct.trim();
+      // The assistant sometimes drops a ref NICKNAME into the id field instead
+      // of the child's ref field (e.g. `module_id: "vault"` rather than
+      // `module_ref: "vault"`). If this value names a ref we've already
+      // committed, it's that parent — resolve it to the real id rather than
+      // handing the DB a bogus id, which fails with an opaque foreign-key error
+      // ("Key (module_id)=(vault) is not present in table modules").
+      return refIds.current.get(id) ?? id;
+    }
 
     const ref = payload[refField];
     if (typeof ref === 'string' && ref.trim()) {
@@ -302,7 +311,16 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       case 'upsertFaction':   await campaign.upsertFaction(action.payload); break;
       case 'upsertHook':      await campaign.upsertHook(action.payload); break;
       case 'upsertLore':      await campaign.upsertLore(action.payload); break;
-      case 'upsertModule':    await campaign.upsertModule(action.payload); break;
+      case 'upsertModule': {
+        // Remember the module's ref (if any) against the id it just got, so a
+        // submodule created in the SAME batch can resolve its module_ref. Without
+        // this, building out a brand-new chapter (module + submodules + scenes at
+        // once) fails: every submodule reports its parent module "hasn't been
+        // committed yet", and its scenes then cascade-fail too.
+        const savedModule = await campaign.upsertModule(action.payload);
+        rememberRef(rawPayload, savedModule?.id);
+        break;
+      }
       case 'upsertMonsterStatblock': await campaign.upsertMonsterStatblock(action.payload); break;
       case 'deleteSession':   await campaign.deleteSession(action.id); break;
       case 'deleteNPC':       await campaign.deleteNPC(action.id); break;
