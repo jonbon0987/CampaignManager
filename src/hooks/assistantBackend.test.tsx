@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { makeCampaignContext } from '../test/contextMocks';
-import { makeSubmodule, makeScene, makeNPC } from '../test/fixtures';
+import { makeModule, makeSubmodule, makeScene, makeNPC } from '../test/fixtures';
 import type { PendingAction } from './useAIChat';
 
 const h = vi.hoisted(() => ({
@@ -24,6 +24,11 @@ beforeEach(() => {
   subSeq = 0;
   h.campaign.value = makeCampaignContext({
     selectedCampaign: { id: 'camp-1', name: 'Test' },
+    // The parents these tests point at have to actually exist — resolveParent
+    // now rejects a module_id/submodule_id that names no real parent rather than
+    // passing a garbled id to the DB.
+    modules: [makeModule('mod-1')],
+    submodules: [makeSubmodule('existing-sub'), makeSubmodule('sub-x')],
     upsertModule: vi.fn().mockResolvedValue({ id: 'mod-new' }),
     upsertSubmodule: vi.fn().mockImplementation(() => Promise.resolve({ id: `sub-${++subSeq}` })),
     upsertScene: vi.fn().mockResolvedValue({ id: 'scene-1' }),
@@ -91,6 +96,16 @@ describe('campaign assistant — submodule & scene writes', () => {
     expect(cc().upsertScene).toHaveBeenCalledWith(expect.objectContaining({ submodule_id: 'existing-sub' }));
   });
 
+  it('fails legibly when the module_id names no real module, instead of hitting the DB', async () => {
+    // The assistant transcribed the module's UUID wrong (or hallucinated it), so
+    // it matches no module and no committed ref. Reject it here rather than let
+    // the write trip a foreign-key error against "modules".
+    const b = backend();
+    await expect(b.applyChatAction(submoduleAction({ module_id: 'not-a-real-module', title: 'Orphan section' })))
+      .rejects.toThrow(/isn't in this campaign.*"not-a-real-module".*[Rr]egenerate/);
+    expect(cc().upsertSubmodule).not.toHaveBeenCalled();
+  });
+
   it('fails with a message naming the uncommitted parent', async () => {
     const b = backend();
     await expect(b.applyChatAction(sceneAction({ submodule_ref: 'nobody', title: 'Orphan' })))
@@ -109,7 +124,12 @@ describe('campaign assistant — submodule & scene writes', () => {
   it('appends below the parent\'s existing children rather than overwriting slot 0', async () => {
     h.campaign.value = makeCampaignContext({
       selectedCampaign: { id: 'camp-1', name: 'Test' },
-      submodules: [makeSubmodule('a', { module_id: 'mod-1' }), makeSubmodule('b', { module_id: 'mod-1' })],
+      modules: [makeModule('mod-1')],
+      submodules: [
+        makeSubmodule('a', { module_id: 'mod-1' }),
+        makeSubmodule('b', { module_id: 'mod-1' }),
+        makeSubmodule('sub-x'),
+      ],
       scenes: [makeScene('s1', { submodule_id: 'sub-x' })],
       upsertSubmodule: vi.fn().mockResolvedValue({ id: 'new' }),
       upsertScene: vi.fn().mockResolvedValue({ id: 'new' }),
