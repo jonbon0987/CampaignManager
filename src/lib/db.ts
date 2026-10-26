@@ -40,6 +40,16 @@ async function getUserId(): Promise<string> {
   return data.user.id;
 }
 
+// Sessions and session preps are unique per (campaign_id, session_number).
+// Postgres reports a clash as a raw 23505 "duplicate key value violates unique
+// constraint" — translate it into something a DM can act on.
+function sessionNumberError(error: { code?: string }, sessionNumber: number | undefined, what: string) {
+  if (error.code === '23505' && sessionNumber != null) {
+    return new Error(`${what} ${sessionNumber} already exists in this campaign. Pick a different number.`);
+  }
+  return error;
+}
+
 // ============================================================
 // WORLDS
 // ============================================================
@@ -229,15 +239,21 @@ export const Sessions = {
     return data;
   },
 
-  async upsert(session: SessionInsert): Promise<Session> {
+  async upsert(session: SessionInsert & { id?: string }): Promise<Session> {
     validateFieldLimits('sessions', session);
     const user_id = await getUserId();
-    const { data, error } = await supabase
-      .from('sessions')
-      .upsert({ ...session, user_id }, { onConflict: 'campaign_id,session_number' })
-      .select()
-      .single();
-    if (error) throw error;
+    // An edit (id present) must target its row by id. Upserting on the
+    // (campaign_id, session_number) key with an id attached fails whenever the
+    // number changes: a free number inserts a second row carrying the same
+    // primary key, and a taken one rewrites the other row's id — both are
+    // duplicate-key errors. Id-less saves (assistant, post-session capture)
+    // keep the create-or-merge-by-number behaviour.
+    const { id, ...fields } = session;
+    const query = id
+      ? supabase.from('sessions').update({ ...fields, user_id }).eq('id', id)
+      : supabase.from('sessions').upsert({ ...fields, user_id }, { onConflict: 'campaign_id,session_number' });
+    const { data, error } = await query.select().single();
+    if (error) throw sessionNumberError(error, session.session_number, 'Session');
     return data;
   },
 
@@ -262,15 +278,21 @@ export const SessionPreps = {
     return data;
   },
 
-  async upsert(prep: SessionPrepInsert): Promise<SessionPrep> {
+  async upsert(prep: SessionPrepInsert & { id?: string }): Promise<SessionPrep> {
     validateFieldLimits('session_prep', prep);
     const user_id = await getUserId();
-    const { data, error } = await supabase
-      .from('session_prep')
-      .upsert({ ...prep, user_id }, { onConflict: 'campaign_id,session_number' })
-      .select()
-      .single();
-    if (error) throw error;
+    // An edit (id present) must target its row by id. Upserting on the
+    // (campaign_id, session_number) key with an id attached fails whenever the
+    // number changes: a free number inserts a second row carrying the same
+    // primary key, and a taken one rewrites the other row's id — both are
+    // duplicate-key errors. Id-less saves (assistant, post-session capture)
+    // keep the create-or-merge-by-number behaviour.
+    const { id, ...fields } = prep;
+    const query = id
+      ? supabase.from('session_prep').update({ ...fields, user_id }).eq('id', id)
+      : supabase.from('session_prep').upsert({ ...fields, user_id }, { onConflict: 'campaign_id,session_number' });
+    const { data, error } = await query.select().single();
+    if (error) throw sessionNumberError(error, prep.session_number, 'Prep for session');
     return data;
   },
 

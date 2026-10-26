@@ -8,7 +8,7 @@ vi.mock('./supabase', () => {
   const state = { result: { data: null as unknown, error: null as unknown } };
   const q: Record<string, ReturnType<typeof vi.fn>> = {};
   const chain = () => q;
-  for (const m of ['select', 'upsert', 'insert', 'delete', 'eq', 'is', 'order']) q[m] = vi.fn(chain);
+  for (const m of ['select', 'upsert', 'insert', 'update', 'delete', 'eq', 'is', 'order']) q[m] = vi.fn(chain);
   q.single = vi.fn(() => Promise.resolve(state.result));
   q.maybeSingle = vi.fn(() => Promise.resolve(state.result));
   const supabase = {
@@ -25,7 +25,7 @@ vi.mock('./supabase', () => {
 });
 
 import { supabase } from './supabase';
-import { Worlds, NPCs } from './db';
+import { Worlds, NPCs, Sessions, SessionPreps } from './db';
 
 // Test-only handles exposed by the mock above.
 const sb = supabase as unknown as {
@@ -96,5 +96,37 @@ describe('Worlds.delete', () => {
   it('throws when the delete errors', async () => {
     sb.__set({ data: null, error: new Error('nope') });
     await expect(Worlds.delete('w1')).rejects.toThrow('nope');
+  });
+});
+
+// Regression: renumbering a session used to upsert on (campaign_id,
+// session_number) with the row's id attached, which hit a duplicate-key error
+// whether or not the new number was free.
+describe.each([
+  ['Sessions', Sessions, 'sessions', 'Session 7 already exists'],
+  ['SessionPreps', SessionPreps, 'session_prep', 'Prep for session 7 already exists'],
+] as const)('%s.upsert', (_name, Table, table, clashMessage) => {
+  it('updates by id when editing, so the session number can change', async () => {
+    sb.__set({ data: { id: 's1', session_number: 7 }, error: null });
+    await Table.upsert({ id: 's1', campaign_id: 'c1', session_number: 7 } as never);
+    expect(sb.from).toHaveBeenCalledWith(table);
+    expect(sb.__q.update).toHaveBeenCalledWith({ campaign_id: 'c1', session_number: 7, user_id: 'u1' });
+    expect(sb.__q.eq).toHaveBeenCalledWith('id', 's1');
+    expect(sb.__q.upsert).not.toHaveBeenCalled();
+  });
+
+  it('creates or merges by session number when there is no id', async () => {
+    sb.__set({ data: { id: 's2' }, error: null });
+    await Table.upsert({ campaign_id: 'c1', session_number: 4 } as never);
+    expect(sb.__q.upsert).toHaveBeenCalledWith(
+      { campaign_id: 'c1', session_number: 4, user_id: 'u1' },
+      { onConflict: 'campaign_id,session_number' },
+    );
+    expect(sb.__q.update).not.toHaveBeenCalled();
+  });
+
+  it('explains a genuine number clash instead of a raw duplicate-key error', async () => {
+    sb.__set({ data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } });
+    await expect(Table.upsert({ id: 's1', campaign_id: 'c1', session_number: 7 } as never)).rejects.toThrow(clashMessage);
   });
 });
