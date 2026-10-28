@@ -86,10 +86,15 @@ interface CardView {
   entry: string | null;
 }
 
-function describe(a: ChronicleAction, lookup: Lookup): CardView {
+/**
+ * How a card reads. An applied change is described against the row as it was
+ * before the write (from the applied log); otherwise the campaign already
+ * holds the new values and there'd be nothing to compare.
+ */
+function describe(a: ChronicleAction, lookup: Lookup, before?: Record<string, unknown> | null): CardView {
   if (a.kind === 'session') {
     const session = lookup.session(a.session_id);
-    const current = (session?.[a.field] as string | null | undefined)?.trim();
+    const current = ((before ?? session)?.[a.field] as string | null | undefined)?.trim();
     const label = SESSION_FIELD[a.field] ?? a.field;
     return {
       name: `Session ${session?.session_number ?? '?'} — ${label}`,
@@ -98,7 +103,8 @@ function describe(a: ChronicleAction, lookup: Lookup): CardView {
       changes: [], body: { label, text: a.value }, tags: [], entry: null,
     };
   }
-  const existing = lookup.get(a.entity_type, a.matched_id);
+  const found = lookup.get(a.entity_type, a.matched_id);
+  const existing = found && before ? { ...found, row: before } : found;
   const main = MAIN_TEXT[a.entity_type];
   if (!a.matched_id) {
     const tags = ['role', 'location_type', 'faction_type', 'category', 'state', 'disposition']
@@ -394,6 +400,8 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
     edited: all.filter(p => p.edits).length,
   };
   const live = applied.filter(r => !r.undone_at);
+  const beforeOf = (proposalId: string) =>
+    live.find(r => r.proposal_id === proposalId && r.entity_table !== 'entity_session_entries')?.before as Record<string, unknown> | null | undefined;
   const nameOf = (p: ChronicleProposal) => describe(effectiveAction(p), lookup).name;
 
   const apply = async () => {
@@ -512,7 +520,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                 </div>
                 {g.items.map(p => {
                   const isEditing = editing?.id === p.id;
-                  const view = describe(isEditing ? editing.draft : effectiveAction(p), lookup);
+                  const view = describe(isEditing ? editing.draft : effectiveAction(p), lookup, p.status === 'applied' ? beforeOf(p.id) : undefined);
                   const isSel = selected === p.id;
                   const border = isEditing ? 'var(--gold-line)' : p.status === 'accepted' ? 'var(--success-line)' : p.status === 'applied' ? 'var(--rule-soft)' : 'var(--rule)';
                   return (

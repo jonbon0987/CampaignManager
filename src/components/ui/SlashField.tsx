@@ -161,6 +161,19 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A value that didn't come from this editor was changed elsewhere (a
+  // recording's write-back, the assistant): show it, unless the DM is typing here.
+  useEffect(() => {
+    const ed = edRef.current;
+    const next = value || '';
+    if (!mounted.current || !ed || next === lastEmit.current) return;
+    if (ed.contains(document.activeElement)) return;
+    ed.innerHTML = parseToHTML(next) || '<p><br></p>';
+    lastEmit.current = next;
+    setCharCount(next.length);
+    updateEmpty();
+  }, [value]);
+
   const updateEmpty = () => {
     const ed = edRef.current; if (!ed) return;
     const empty = ed.textContent?.trim() === '' && !ed.querySelector('.rre-pill,hr,.se-hr-orn,li');
