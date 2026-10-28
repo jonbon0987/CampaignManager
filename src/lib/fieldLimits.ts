@@ -80,6 +80,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     hooks_motivations: LIMIT.PROSE,
     dm_notes: LIMIT.PROSE,
     location: LIMIT.NAME,
+    disposition: LIMIT.NAME,
   },
   locations: {
     name: LIMIT.NAME,
@@ -190,6 +191,43 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
   },
   submodule_dependencies: {
     label: LIMIT.TAGLINE,
+  },
+  // Session recording & transcription (migration 0032).
+  session_recordings: {
+    status_detail: LIMIT.STATLINE,
+  },
+  recording_tracks: {
+    label: LIMIT.NAME,
+    discord_user_id: LIMIT.TAG,
+    storage_path: LIMIT.STATLINE,
+    mime_type: LIMIT.TAG,
+    transcription_job_id: LIMIT.NAME,
+  },
+  recording_chunks: {
+    storage_path: LIMIT.STATLINE,
+  },
+  transcript_segments: {
+    speaker_label: LIMIT.NAME,
+    text: LIMIT.PROSE,
+  },
+  recording_moments: {
+    label: LIMIT.TAGLINE,
+  },
+  speaker_links: {
+    discord_user_id: LIMIT.TAG,
+    discord_username: LIMIT.NAME,
+  },
+  chronicle_proposals: {
+    group_key: LIMIT.TAG,
+    source_quote: LIMIT.PROSE,
+    source_speaker: LIMIT.NAME,
+  },
+  chronicle_applied: {
+    entity_table: LIMIT.TAG,
+  },
+  entity_session_entries: {
+    text: LIMIT.PROSE,
+    source_quote: LIMIT.PROSE,
   },
 };
 

@@ -30,6 +30,16 @@ import type {
   ModuleDependency, ModuleDependencyInsert,
   SubmoduleDependency, SubmoduleDependencyInsert,
   TimelineEvent, TimelineEventInsert,
+  SessionRecording, SessionRecordingInsert,
+  RecordingTrack, RecordingTrackInsert,
+  RecordingChunk, RecordingChunkInsert,
+  TranscriptSegment, TranscriptSegmentInsert,
+  RecordingMoment, RecordingMomentInsert,
+  SpeakerLink, SpeakerLinkInsert,
+  PlayerConsent, PlayerConsentInsert,
+  ChronicleProposal, ChronicleProposalInsert,
+  ChronicleApplied, ChronicleAppliedInsert,
+  EntitySessionEntry, EntitySessionEntryInsert, SessionEntryEntityType,
 } from './database.types';
 
 // --------------- Helper ---------------
@@ -1106,6 +1116,415 @@ export const SubmoduleDeps = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('submodule_dependencies').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// ============================================================
+// SESSION RECORDINGS
+// ============================================================
+// Recording a session, transcribing it, and the DM's review of what it proposes
+// (migration 0032). Audio lives in the private `session-audio` bucket — see
+// SessionAudio below.
+
+export const SessionRecordings = {
+  async getBySession(sessionId: string): Promise<SessionRecording[]> {
+    const { data, error } = await supabase
+      .from('session_recordings')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('started_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async get(id: string): Promise<SessionRecording | null> {
+    const { data, error } = await supabase
+      .from('session_recordings')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(recording: SessionRecordingInsert & { id?: string }): Promise<SessionRecording> {
+    validateFieldLimits('session_recordings', recording);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('session_recordings')
+      .upsert({ ...recording, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: string, patch: Partial<SessionRecordingInsert>): Promise<SessionRecording> {
+    validateFieldLimits('session_recordings', patch);
+    const { data, error } = await supabase
+      .from('session_recordings')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('session_recordings').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+export const RecordingTracks = {
+  async getByRecording(recordingId: string): Promise<RecordingTrack[]> {
+    const { data, error } = await supabase
+      .from('recording_tracks')
+      .select('*')
+      .eq('recording_id', recordingId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(track: RecordingTrackInsert & { id?: string }): Promise<RecordingTrack> {
+    validateFieldLimits('recording_tracks', track);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('recording_tracks')
+      .upsert({ ...track, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: string, patch: Partial<RecordingTrackInsert>): Promise<RecordingTrack> {
+    validateFieldLimits('recording_tracks', patch);
+    const { data, error } = await supabase
+      .from('recording_tracks')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+};
+
+export const RecordingChunks = {
+  async getByTrack(trackId: string): Promise<RecordingChunk[]> {
+    const { data, error } = await supabase
+      .from('recording_chunks')
+      .select('*')
+      .eq('track_id', trackId)
+      .order('seq', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  // Keyed on (track_id, seq) so a chunk re-sent after a dropped connection
+  // replaces its earlier row instead of failing as a duplicate.
+  async save(chunk: RecordingChunkInsert): Promise<RecordingChunk> {
+    validateFieldLimits('recording_chunks', chunk);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('recording_chunks')
+      .upsert({ ...chunk, user_id }, { onConflict: 'track_id,seq' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+};
+
+export const TranscriptSegments = {
+  async getByRecording(recordingId: string): Promise<TranscriptSegment[]> {
+    const { data, error } = await supabase
+      .from('transcript_segments')
+      .select('*')
+      .eq('recording_id', recordingId)
+      .order('start_ms', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async insertMany(segments: TranscriptSegmentInsert[]): Promise<TranscriptSegment[]> {
+    if (segments.length === 0) return [];
+    for (const s of segments) validateFieldLimits('transcript_segments', s);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('transcript_segments')
+      .insert(segments.map(s => ({ ...s, user_id })))
+      .select();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: string, patch: Partial<TranscriptSegmentInsert>): Promise<TranscriptSegment> {
+    validateFieldLimits('transcript_segments', patch);
+    const { data, error } = await supabase
+      .from('transcript_segments')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Clears a track's lines before it is transcribed again.
+  async deleteByTrack(trackId: string): Promise<void> {
+    const { error } = await supabase.from('transcript_segments').delete().eq('track_id', trackId);
+    if (error) throw error;
+  },
+};
+
+export const RecordingMoments = {
+  async getByRecording(recordingId: string): Promise<RecordingMoment[]> {
+    const { data, error } = await supabase
+      .from('recording_moments')
+      .select('*')
+      .eq('recording_id', recordingId)
+      .order('at_ms', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(moment: RecordingMomentInsert & { id?: string }): Promise<RecordingMoment> {
+    validateFieldLimits('recording_moments', moment);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('recording_moments')
+      .upsert({ ...moment, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('recording_moments').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// Discord account → PC, remembered per campaign.
+export const SpeakerLinks = {
+  async getAll(campaignId: string): Promise<SpeakerLink[]> {
+    const { data, error } = await supabase
+      .from('speaker_links')
+      .select('*')
+      .eq('campaign_id', campaignId);
+    if (error) throw error;
+    return data;
+  },
+
+  async save(link: SpeakerLinkInsert): Promise<SpeakerLink> {
+    validateFieldLimits('speaker_links', link);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('speaker_links')
+      .upsert({ ...link, user_id }, { onConflict: 'campaign_id,discord_user_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('speaker_links').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+export const PlayerConsents = {
+  async getAll(campaignId: string): Promise<PlayerConsent[]> {
+    const { data, error } = await supabase
+      .from('player_consents')
+      .select('*')
+      .eq('campaign_id', campaignId);
+    if (error) throw error;
+    return data;
+  },
+
+  // One row per (campaign, PC): consenting again after a withdrawal clears
+  // revoked_at and restamps consented_at.
+  async grant(consent: PlayerConsentInsert): Promise<PlayerConsent> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('player_consents')
+      .upsert(
+        { consented_at: new Date().toISOString(), revoked_at: null, ...consent, user_id },
+        { onConflict: 'campaign_id,pc_id' },
+      )
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async revoke(id: string): Promise<PlayerConsent> {
+    const { data, error } = await supabase
+      .from('player_consents')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+};
+
+export const ChronicleProposals = {
+  async getByRecording(recordingId: string): Promise<ChronicleProposal[]> {
+    const { data, error } = await supabase
+      .from('chronicle_proposals')
+      .select('*')
+      .eq('recording_id', recordingId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async insertMany(proposals: ChronicleProposalInsert[]): Promise<ChronicleProposal[]> {
+    if (proposals.length === 0) return [];
+    for (const p of proposals) validateFieldLimits('chronicle_proposals', p);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('chronicle_proposals')
+      .insert(proposals.map(p => ({ ...p, user_id })))
+      .select();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: string, patch: Partial<ChronicleProposalInsert>): Promise<ChronicleProposal> {
+    validateFieldLimits('chronicle_proposals', patch);
+    const { data, error } = await supabase
+      .from('chronicle_proposals')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+};
+
+// Before-snapshots of changes applied from a review, so the write-back can be undone.
+export const ChronicleAppliedLog = {
+  async getByRecording(recordingId: string): Promise<ChronicleApplied[]> {
+    const { data, error } = await supabase
+      .from('chronicle_applied')
+      .select('*')
+      .eq('recording_id', recordingId)
+      .order('applied_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async record(entry: ChronicleAppliedInsert): Promise<ChronicleApplied> {
+    validateFieldLimits('chronicle_applied', entry);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('chronicle_applied')
+      .insert({ ...entry, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async markUndone(id: string): Promise<ChronicleApplied> {
+    const { data, error } = await supabase
+      .from('chronicle_applied')
+      .update({ undone_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+};
+
+// An entity's "Session History" lines.
+export const EntitySessionEntries = {
+  async getForEntity(entityType: SessionEntryEntityType, entityId: string): Promise<EntitySessionEntry[]> {
+    const { data, error } = await supabase
+      .from('entity_session_entries')
+      .select('*')
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async getBySession(sessionId: string): Promise<EntitySessionEntry[]> {
+    const { data, error } = await supabase
+      .from('entity_session_entries')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(entry: EntitySessionEntryInsert & { id?: string }): Promise<EntitySessionEntry> {
+    validateFieldLimits('entity_session_entries', entry);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('entity_session_entries')
+      .upsert({ ...entry, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('entity_session_entries').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// --------------- Session audio (storage) ---------------
+// The bucket's policies only allow a user to touch objects under their own
+// `<user_id>/` folder, so every path must start with it — build paths with
+// sessionAudioPath rather than by hand.
+
+export const SESSION_AUDIO_BUCKET = 'session-audio';
+
+export function sessionAudioPath(userId: string, recordingId: string, trackId: string, file: string): string {
+  if (!userId || !recordingId || !trackId) throw new Error('sessionAudioPath: userId, recordingId and trackId are required');
+  if (!file || file.includes('/') || file.includes('..')) throw new Error(`sessionAudioPath: invalid file name "${file}"`);
+  return `${userId}/${recordingId}/${trackId}/${file}`;
+}
+
+export const SessionAudio = {
+  // Upserts so a chunk retried after a failed upload overwrites the partial one.
+  async upload(path: string, audio: Blob, contentType: string): Promise<void> {
+    const { error } = await supabase.storage
+      .from(SESSION_AUDIO_BUCKET)
+      .upload(path, audio, { contentType, upsert: true });
+    if (error) throw error;
+  },
+
+  // A short-lived link, e.g. for playback or for a speech-to-text service to fetch.
+  async signedUrl(path: string, expiresInSeconds = 3600): Promise<string> {
+    const { data, error } = await supabase.storage
+      .from(SESSION_AUDIO_BUCKET)
+      .createSignedUrl(path, expiresInSeconds);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async remove(paths: string[]): Promise<void> {
+    if (paths.length === 0) return;
+    const { error } = await supabase.storage.from(SESSION_AUDIO_BUCKET).remove(paths);
     if (error) throw error;
   },
 };
