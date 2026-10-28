@@ -39,6 +39,8 @@ import WorldTimeline from './components/world/WorldTimeline';
 import WorldImportDrawer from './components/world/WorldImportDrawer';
 import WorldCreationGate from './components/world/WorldCreationGate';
 import CanvasLoading from './components/ui/CanvasLoading';
+import { RecordingProvider } from './context/RecordingContext';
+import { RecordingIndicator } from './components/session/RecorderPanel';
 
 // cast = PCs + NPCs + Factions; Lore & Locations are separate compendium tabs;
 // Threads & Ideas are separate play tabs; combat = Stat Sheets + Encounters
@@ -164,6 +166,7 @@ function AppInner({ user }: { user: User }) {
   return (
     <NavigationProvider setActiveTab={setActiveTab}>
       <CampaignEntityRefProvider>
+      <RecordingProvider userId={user.id}>
       <div className={shellClass}>
         <Sidebar
           activeTab={activeTab}
@@ -199,6 +202,7 @@ function AppInner({ user }: { user: User }) {
             viewMode={activeViewMode}
             setViewMode={setViewMode}
             viewOptions={TAB_VIEW_OPTIONS[activeTab]}
+            status={<RecordingIndicator onOpen={() => setActiveTab('sessions')} />}
           />
 
           <div className="cm-canvas">
@@ -261,6 +265,7 @@ function AppInner({ user }: { user: User }) {
           entityType={importType}
         />
       </div>
+      </RecordingProvider>
       </CampaignEntityRefProvider>
     </NavigationProvider>
   );

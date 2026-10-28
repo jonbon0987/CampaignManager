@@ -240,6 +240,14 @@ describe('SessionAudio', () => {
     expect(sb.storage.__bucket.upload).toHaveBeenCalledWith('u1/r1/t1/0001.webm', blob, { contentType: 'audio/webm', upsert: true });
   });
 
+  it('re-types a mislabelled file so the bucket sees an audio type', async () => {
+    const file = new Blob(['x'], { type: 'video/webm' });
+    await SessionAudio.upload('u1/r1/t1/full.webm', file, 'audio/webm');
+    const sent = sb.storage.__bucket.upload.mock.calls[0][1] as Blob;
+    expect(sent.type).toBe('audio/webm');
+    expect(await sent.text()).toBe('x');
+  });
+
   it('returns a signed url', async () => {
     expect(await SessionAudio.signedUrl('u1/r1/t1/full.webm')).toBe('https://signed');
   });

@@ -9,6 +9,7 @@ import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
+import { RecorderPanel } from '../session/RecorderPanel';
 import type { Session } from '../../lib/database.types';
 
 type SessionForm = {
@@ -162,6 +163,8 @@ function SessionDetail({
             />
           </div>
         </div>
+
+        <RecorderPanel session={session} />
 
         {/* Recap / Summary */}
         <div className="cm-section">

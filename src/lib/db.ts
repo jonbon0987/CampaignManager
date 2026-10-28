@@ -1138,6 +1138,19 @@ export const SessionRecordings = {
     return data;
   },
 
+  // Recordings still recording or uploading — after a reload or crash these
+  // have no live recorder and are offered for resume or saving.
+  async getOpen(campaignId: string): Promise<SessionRecording[]> {
+    const { data, error } = await supabase
+      .from('session_recordings')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .in('status', ['recording', 'uploading'])
+      .order('started_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
   async get(id: string): Promise<SessionRecording | null> {
     const { data, error } = await supabase
       .from('session_recordings')
@@ -1507,9 +1520,12 @@ export function sessionAudioPath(userId: string, recordingId: string, trackId: s
 export const SessionAudio = {
   // Upserts so a chunk retried after a failed upload overwrites the partial one.
   async upload(path: string, audio: Blob, contentType: string): Promise<void> {
+    // Storage takes a Blob's own type over `contentType`, and browsers often
+    // label audio files oddly (a .webm as video/webm), which the bucket rejects.
+    const body = audio.type === contentType ? audio : new Blob([audio], { type: contentType });
     const { error } = await supabase.storage
       .from(SESSION_AUDIO_BUCKET)
-      .upload(path, audio, { contentType, upsert: true });
+      .upload(path, body, { contentType, upsert: true });
     if (error) throw error;
   },
 

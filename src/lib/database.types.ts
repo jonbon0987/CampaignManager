@@ -485,6 +485,7 @@ export interface RecordingSettings {
   asidesToDmNotes?: boolean;    // the DM's asides go to dm_notes only
   keepAudioDays?: number | null; // null = keep forever, 0 = delete after review
   postRecapToDiscord?: boolean;
+  tablePcIds?: string[];        // PCs whose players were at the table (not on Discord)
 }
 
 export interface SessionRecording {
