@@ -47,6 +47,25 @@ export function audioToSessionMs(audioMs: number, chunks: ChunkTiming[], trackOf
   return Math.round(trackOffsetMs + audioMs);
 }
 
+/**
+ * The reverse of audioToSessionMs: where in a track's audio file a moment on
+ * the session clock is. A moment that fell in a pause maps to where the audio
+ * resumes.
+ */
+export function sessionToAudioMs(sessionMs: number, chunks: ChunkTiming[], trackOffsetMs: number): number {
+  const sorted = [...chunks].sort((a, b) => a.seq - b.seq);
+  if (sorted.length === 0) return Math.max(0, Math.round(sessionMs - trackOffsetMs));
+  let audioBefore = 0;
+  for (const c of sorted) {
+    const start = trackOffsetMs + c.start_ms;
+    const dur = c.duration_ms ?? 0;
+    if (sessionMs < start) return audioBefore;
+    if (sessionMs < start + dur) return Math.round(audioBefore + (sessionMs - start));
+    audioBefore += dur;
+  }
+  return audioBefore;
+}
+
 /** One speaker turn, as AssemblyAI returns it (times in ms of track audio). */
 export interface Utterance {
   speaker: string;

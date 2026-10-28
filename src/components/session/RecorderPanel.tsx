@@ -7,7 +7,7 @@
 // -----------------------------------------------------------
 
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText, ScrollText } from 'lucide-react';
+import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText, ScrollText, ListChecks } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
@@ -18,6 +18,7 @@ import { listMicrophones } from '../../lib/recording/audio';
 import { transcription, type TranscriptionState } from '../../lib/recording/transcriptionApi';
 import { TranscriptModal } from './TranscriptModal';
 import { ChronicleModal } from './ChronicleModal';
+import { ChronicleReview } from './ChronicleReview';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -310,6 +311,7 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const [starting, setStarting] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showChronicle, setShowChronicle] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const status = STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' as const };
 
   useEffect(() => { setRecording(initial); }, [initial]);
@@ -376,6 +378,11 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
         </span>
         {recording.duration_ms ? <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{formatDuration(recording.duration_ms)}</span> : null}
         <span style={{ flex: 1 }} />
+        {(recording.status === 'review' || recording.status === 'applied') && (
+          <Button size="xs" variant={recording.status === 'review' ? 'primary' : 'secondary'} onClick={() => setShowReview(true)}>
+            <ListChecks size={11} /> {recording.status === 'review' ? 'Review changes' : 'Review'}
+          </Button>
+        )}
         {transcribed && recording.status !== 'applied' && (
           <Button size="xs" variant={recording.status === 'review' ? 'secondary' : 'primary'} onClick={() => setShowChronicle(true)}>
             <ScrollText size={11} /> {recording.status === 'review' ? 'Rewrite chronicle' : 'Write the chronicle'}
@@ -399,6 +406,13 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
         <span className="text-xs" style={{ color: recording.status === 'failed' ? 'var(--red)' : 'var(--ink-3)' }}>{recording.status_detail}</span>
       )}
       {showTranscript && <TranscriptModal recording={recording} onClose={() => setShowTranscript(false)} />}
+      {showReview && (
+        <ChronicleReview
+          recording={recording}
+          onClose={() => setShowReview(false)}
+          onChanged={r => setRecording(prev => ({ ...prev, ...r }))}
+        />
+      )}
       {showChronicle && (
         <ChronicleModal
           recording={recording}
