@@ -90,15 +90,15 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [deviceId, setDeviceId] = useState('');
   const [atTable, setAtTable] = useState<Set<string>>(() => new Set(activePcs.map(p => p.id)));
-  const [consents, setConsents] = useState<PlayerConsent[]>([]);
+  const [consents, setConsents] = useState<PlayerConsent[] | null>(null); // null while loading
 
   useEffect(() => {
     void listMicrophones().then(setMics).catch(() => setMics([]));
     if (selectedCampaignId) void PlayerConsents.getAll(selectedCampaignId).then(setConsents).catch(() => setConsents([]));
   }, [selectedCampaignId]);
 
-  const consentFor = (pcId: string) => consents.find(c => c.pc_id === pcId && !c.revoked_at);
-  const missingConsent = activePcs.filter(p => atTable.has(p.id) && !consentFor(p.id));
+  const consentFor = (pcId: string) => consents?.find(c => c.pc_id === pcId && !c.revoked_at);
+  const missingConsent = consents ? activePcs.filter(p => atTable.has(p.id) && !consentFor(p.id)) : [];
 
   const toggleConsent = async (pcId: string) => {
     if (!selectedCampaignId) return;
@@ -107,7 +107,7 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
       const saved = current
         ? await PlayerConsents.revoke(current.id)
         : await PlayerConsents.grant({ campaign_id: selectedCampaignId, pc_id: pcId, method: 'in_person' });
-      setConsents(prev => [...prev.filter(c => c.pc_id !== pcId), saved]);
+      setConsents(prev => [...(prev ?? []).filter(c => c.pc_id !== pcId), saved]);
     } catch (e) {
       toast(errorMessage(e), 'error');
     }
@@ -137,7 +137,7 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={begin} disabled={busy || missingConsent.length > 0}>
+          <Button variant="primary" onClick={begin} disabled={busy || consents === null || missingConsent.length > 0}>
             <Mic size={14} /> {busy ? 'Starting…' : 'Start recording'}
           </Button>
         </>
@@ -171,7 +171,7 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
                       {pc.player_name && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{pc.player_name}</span>}
                     </label>
                     <label className="flex items-center gap-2 text-xs" style={{ color: consent ? 'var(--success)' : 'var(--ink-2)' }}>
-                      <input type="checkbox" checked={!!consent} onChange={() => void toggleConsent(pc.id)} />
+                      <input type="checkbox" checked={!!consent} disabled={consents === null} onChange={() => void toggleConsent(pc.id)} />
                       {consent ? `Agreed to recording · ${new Date(consent.consented_at).toLocaleDateString()}` : 'Agreed to recording'}
                     </label>
                   </li>
@@ -180,7 +180,9 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
             </ul>
           )}
           <p className="text-xs" style={{ color: missingConsent.length ? 'var(--warn)' : 'var(--ink-3)', margin: '10px 0 0' }}>
-            {missingConsent.length
+            {consents === null && activePcs.length > 0
+              ? 'Checking who has agreed to recording…'
+              : missingConsent.length
               ? `Ask ${missingConsent.map(p => p.player_name || p.character_name).join(', ')} before recording, or untick them if they aren’t here.`
               : 'Consent is remembered for this campaign. Untick anyone who isn’t at the table tonight.'}
           </p>
