@@ -7,7 +7,7 @@
 // -----------------------------------------------------------
 
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText } from 'lucide-react';
+import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText, ScrollText } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
@@ -17,6 +17,7 @@ import type { PlayerConsent, RecordingMoment, Session, SessionRecording } from '
 import { listMicrophones } from '../../lib/recording/audio';
 import { transcription, type TranscriptionState } from '../../lib/recording/transcriptionApi';
 import { TranscriptModal } from './TranscriptModal';
+import { ChronicleModal } from './ChronicleModal';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -308,6 +309,7 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const [tracks, setTracks] = useState<TranscriptionState['tracks'] | null>(null);
   const [starting, setStarting] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showChronicle, setShowChronicle] = useState(false);
   const status = STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' as const };
 
   useEffect(() => { setRecording(initial); }, [initial]);
@@ -374,7 +376,12 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
         </span>
         {recording.duration_ms ? <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{formatDuration(recording.duration_ms)}</span> : null}
         <span style={{ flex: 1 }} />
-        {transcribed && <Button size="xs" variant="primary" onClick={() => setShowTranscript(true)}><FileText size={11} /> Transcript</Button>}
+        {transcribed && recording.status !== 'applied' && (
+          <Button size="xs" variant={recording.status === 'review' ? 'secondary' : 'primary'} onClick={() => setShowChronicle(true)}>
+            <ScrollText size={11} /> {recording.status === 'review' ? 'Rewrite chronicle' : 'Write the chronicle'}
+          </Button>
+        )}
+        {transcribed && <Button size="xs" onClick={() => setShowTranscript(true)}><FileText size={11} /> Transcript</Button>}
         {canTranscribe && !transcribing && (
           <Button size="xs" variant="primary" onClick={() => void transcribe()} disabled={starting}>
             {starting ? 'Starting…' : tracks?.some(t => t.transcription_status === 'failed') ? 'Try transcribing again' : 'Transcribe'}
@@ -392,6 +399,15 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
         <span className="text-xs" style={{ color: recording.status === 'failed' ? 'var(--red)' : 'var(--ink-3)' }}>{recording.status_detail}</span>
       )}
       {showTranscript && <TranscriptModal recording={recording} onClose={() => setShowTranscript(false)} />}
+      {showChronicle && (
+        <ChronicleModal
+          recording={recording}
+          rewrite={recording.status === 'review'}
+          onClose={() => setShowChronicle(false)}
+          onOpenTranscript={() => { setShowChronicle(false); setShowTranscript(true); }}
+          onWritten={r => setRecording(prev => ({ ...prev, status: r.status, status_detail: r.status_detail }))}
+        />
+      )}
       {audio?.map(a => (
         <div key={a.url} className="flex items-center gap-2 flex-wrap">
           <span className="text-xs" style={{ color: 'var(--ink-2)', minWidth: 120 }}>{a.label}</span>

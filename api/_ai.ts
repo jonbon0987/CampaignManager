@@ -299,6 +299,8 @@ export interface StructuredExtractOpts {
   /** JSON schema for the expected output (used as tool schema for Claude, or JSON prompt for Gemini) */
   schema: Record<string, unknown>;
   schemaDescription: string;
+  /** Output cap; defaults to 8192. Raise it for long inputs that yield many items. */
+  maxOutputTokens?: number;
 }
 
 // Recover as many complete objects as possible from the `actions` array of a
@@ -341,6 +343,7 @@ function salvageActionsArray(text: string): unknown[] | null {
 /** Extract structured JSON using tool use (Claude) or JSON-prompted generation (Gemini). */
 export async function structuredExtract(opts: StructuredExtractOpts): Promise<unknown> {
   const { provider, system, userContent, schema, schemaDescription } = opts;
+  const maxOutputTokens = opts.maxOutputTokens ?? 8192;
 
   if (provider === 'gemini') {
     const client = getGeminiClient();
@@ -355,7 +358,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
         // too-small default silently truncates the actions array (a handful of
         // entities instead of everything the document actually has) rather than
         // erroring. 8192 matches the cap Claude's branch below uses for parity.
-        maxOutputTokens: 8192,
+        maxOutputTokens,
       },
     });
 
@@ -415,7 +418,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
       const client = getAnthropicClient();
       const stream = client.messages.stream({
         model: 'claude-sonnet-5',
-        max_tokens: 8192,
+        max_tokens: maxOutputTokens,
         system,
         tools: [
           {
