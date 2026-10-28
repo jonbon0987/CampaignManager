@@ -1288,6 +1288,16 @@ export const TranscriptSegments = {
     return data;
   },
 
+  // Says who a diarized voice ("Speaker B" on one track) is, for all its lines.
+  async assignSpeaker(trackId: string, speakerLabel: string, who: { pc_id: string | null; is_dm: boolean }): Promise<void> {
+    const { error } = await supabase
+      .from('transcript_segments')
+      .update(who)
+      .eq('track_id', trackId)
+      .eq('speaker_label', speakerLabel);
+    if (error) throw error;
+  },
+
   // Clears a track's lines before it is transcribed again.
   async deleteByTrack(trackId: string): Promise<void> {
     const { error } = await supabase.from('transcript_segments').delete().eq('track_id', trackId);

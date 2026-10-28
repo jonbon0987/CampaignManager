@@ -20,13 +20,28 @@ import { ChunkedRecorder, type RecorderLike } from '../lib/recording/chunker';
 import { createChunkStore, chunkKey } from '../lib/recording/chunkStore';
 import { ChunkUploader, type UploaderStatus } from '../lib/recording/uploader';
 import { writeWebmDuration } from '../lib/recording/webmDuration';
+import { transcription } from '../lib/recording/transcriptionApi';
 import {
   AUDIO_BITS_PER_SECOND, baseMimeType, createLevelMeter, extensionFor, holdWakeLock, openMicrophone,
   pickRecordingMimeType, uploadMimeType,
 } from '../lib/recording/audio';
 import { useCampaign } from './CampaignContext';
 
-export const SAVED_DETAIL = 'Audio saved. Transcription isn’t set up yet.';
+const SAVED_DETAIL = 'Audio saved.';
+
+/**
+ * Hands a saved recording to transcription. If that can't start (no key, no
+ * connection) the audio is still safe, and the reason is shown on the
+ * recording with a button to try again.
+ */
+async function startTranscription(recordingId: string): Promise<void> {
+  try {
+    await transcription(recordingId, 'start');
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e);
+    await SessionRecordings.update(recordingId, { status_detail: `Audio saved. Transcription didn’t start: ${why}`.slice(0, 500) }).catch(() => {});
+  }
+}
 
 interface Live {
   recording: SessionRecording;
@@ -284,6 +299,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
         status_detail: SAVED_DETAIL,
         duration_ms: Date.parse(rec.ended_at ?? new Date().toISOString()) - Date.parse(rec.started_at),
       });
+      await startTranscription(recordingId);
     } finally {
       setBusy(false);
       bump();
@@ -331,6 +347,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
       await SessionAudio.upload(path, file, mime);
       await RecordingTracks.update(track.id, { storage_path: path });
       await SessionRecordings.update(recording.id, { status: 'processing', status_detail: SAVED_DETAIL });
+      await startTranscription(recording.id);
     } catch (e) {
       if (recording) await SessionRecordings.delete(recording.id).catch(() => {});
       throw e;

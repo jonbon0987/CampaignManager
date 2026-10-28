@@ -23,3 +23,15 @@ export async function requireAuth(req: VercelRequest, res: VercelResponse): Prom
   }
   return data.user.id;
 }
+
+/**
+ * A Supabase client that acts as the signing-in user, so every read and write
+ * goes through the same row-level security as the app. Call after requireAuth.
+ */
+export function userSupabase(req: VercelRequest) {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? '';
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}

@@ -7,7 +7,7 @@
 // -----------------------------------------------------------
 
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Pause, Play, Square, Upload, Bookmark, X } from 'lucide-react';
+import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
@@ -15,6 +15,8 @@ import { useRecording } from '../../context/RecordingContext';
 import { PlayerConsents, RecordingTracks, SessionAudio, SessionRecordings } from '../../lib/db';
 import type { PlayerConsent, RecordingMoment, Session, SessionRecording } from '../../lib/database.types';
 import { listMicrophones } from '../../lib/recording/audio';
+import { transcription, type TranscriptionState } from '../../lib/recording/transcriptionApi';
+import { TranscriptModal } from './TranscriptModal';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -288,16 +290,69 @@ function LiveRecorder() {
 
 const STATUS_LABEL: Record<string, { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' }> = {
   processing: { label: 'Saved', color: 'muted' },
+  uploading: { label: 'Saving', color: 'muted' },
   review: { label: 'Ready to review', color: 'gold' },
   applied: { label: 'Applied', color: 'green' },
   failed: { label: 'Failed', color: 'red' },
   cancelled: { label: 'Cancelled', color: 'muted' },
 };
 
-function SavedRecordingRow({ recording, onDiscard }: { recording: SessionRecording; onDiscard: () => void }) {
+const POLL_MS = 8_000;
+
+function SavedRecordingRow({ recording: initial, onDiscard }: { recording: SessionRecording; onDiscard: () => void }) {
   const toast = useToast();
   const [audio, setAudio] = useState<{ label: string; url: string }[] | null>(null);
+  const [recording, setRecording] = useState(initial);
+  const [tracks, setTracks] = useState<TranscriptionState['tracks'] | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   const status = STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' as const };
+
+  useEffect(() => { setRecording(initial); }, [initial]);
+
+  useEffect(() => {
+    let cancelled = false;
+    RecordingTracks.getByRecording(initial.id)
+      .then(rows => { if (!cancelled) setTracks(rows.filter(t => t.storage_path)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [initial.id]);
+
+  const transcribing = !!tracks?.some(t => t.transcription_status === 'submitted');
+  const canTranscribe = !!tracks?.some(t => t.transcription_status === 'pending' || t.transcription_status === 'failed');
+  const transcribed = !!tracks?.length && tracks.every(t => t.transcription_status === 'done');
+
+  // While AssemblyAI works, ask the server to check in every few seconds.
+  useEffect(() => {
+    if (!transcribing) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const state = await transcription(initial.id, 'poll');
+        if (cancelled) return;
+        setTracks(state.tracks);
+        setRecording(r => ({ ...r, ...state.recording }));
+      } catch (e) {
+        if (!cancelled) setRecording(r => ({ ...r, status_detail: e instanceof Error ? e.message : String(e) }));
+      }
+    };
+    const t = setInterval(() => void tick(), POLL_MS);
+    void tick();
+    return () => { cancelled = true; clearInterval(t); };
+  }, [transcribing, initial.id]);
+
+  const transcribe = async () => {
+    setStarting(true);
+    try {
+      const state = await transcription(recording.id, 'start');
+      setTracks(state.tracks);
+      setRecording(r => ({ ...r, ...state.recording }));
+    } catch (e) {
+      toast(errorMessage(e), 'error');
+    } finally {
+      setStarting(false);
+    }
+  };
 
   const listen = async () => {
     try {
@@ -317,10 +372,24 @@ function SavedRecordingRow({ recording, onDiscard }: { recording: SessionRecordi
         </span>
         {recording.duration_ms ? <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{formatDuration(recording.duration_ms)}</span> : null}
         <span style={{ flex: 1 }} />
+        {transcribed && <Button size="xs" variant="primary" onClick={() => setShowTranscript(true)}><FileText size={11} /> Transcript</Button>}
+        {canTranscribe && !transcribing && (
+          <Button size="xs" variant="primary" onClick={() => void transcribe()} disabled={starting}>
+            {starting ? 'Starting…' : tracks?.some(t => t.transcription_status === 'failed') ? 'Try transcribing again' : 'Transcribe'}
+          </Button>
+        )}
         {!audio && <Button size="xs" onClick={() => void listen()}><Play size={11} /> Listen</Button>}
         <Button size="xs" variant="danger" onClick={onDiscard}>Delete</Button>
       </div>
-      {recording.status_detail && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{recording.status_detail}</span>}
+      {transcribing ? (
+        <span className="text-xs flex items-center gap-2" style={{ color: 'var(--ink-2)' }}>
+          <span aria-hidden="true" style={{ color: 'var(--gold)' }}>◐</span>
+          Transcribing… this takes a few minutes per hour of audio. You can leave this page.
+        </span>
+      ) : recording.status_detail && (
+        <span className="text-xs" style={{ color: recording.status === 'failed' ? 'var(--red)' : 'var(--ink-3)' }}>{recording.status_detail}</span>
+      )}
+      {showTranscript && <TranscriptModal recording={recording} onClose={() => setShowTranscript(false)} />}
       {audio?.map(a => (
         <div key={a.url} className="flex items-center gap-2 flex-wrap">
           <span className="text-xs" style={{ color: 'var(--ink-2)', minWidth: 120 }}>{a.label}</span>
