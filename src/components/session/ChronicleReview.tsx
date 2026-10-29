@@ -6,19 +6,19 @@
 // Nothing in the campaign changes until Apply.
 // -----------------------------------------------------------
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, Pencil, Play, Undo2 } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
 import {
-  ChronicleAppliedLog, ChronicleProposals, RecordingChunks, RecordingTracks, SessionAudio, SessionRecordings, TranscriptSegments,
+  ChronicleAppliedLog, ChronicleProposals, RecordingTracks, SessionRecordings, TranscriptSegments,
 } from '../../lib/db';
 import type { ChronicleApplied, ChronicleProposal, RecordingTrack, SessionRecording, TranscriptSegment } from '../../lib/database.types';
 import type { ChronicleAction, ChronicleGroup, EntityKind, SessionField } from '../../lib/recording/chronicle';
 import { applyProposals, effectiveAction, MAIN_TEXT, retarget, undoApplied, type ProposalEdits } from '../../lib/recording/applyChronicle';
-import { sessionToAudioMs, type ChunkTiming } from '../../lib/recording/transcript';
 import { useChronicleWriter } from '../../hooks/useChronicleWriter';
+import { useRecordingPlayer } from '../../hooks/useRecordingPlayer';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { TranscriptModal } from './TranscriptModal';
@@ -26,13 +26,13 @@ import { TranscriptModal } from './TranscriptModal';
 // --------------- Labels ---------------
 
 const GROUPS: { key: ChronicleGroup; label: string; glyph: string; color: string }[] = [
-  { key: 'session', label: 'Session record', glyph: '❧', color: 'var(--link-session)' },
+  { key: 'session', label: 'Session record', glyph: '❧', color: 'var(--gold)' },
   { key: 'pcs', label: 'Player characters', glyph: '❖', color: 'var(--ink)' },
-  { key: 'npcs', label: 'Non-Player Characters', glyph: '❦', color: 'var(--link-npc)' },
-  { key: 'locations', label: 'Locations', glyph: '✦', color: 'var(--link-location)' },
+  { key: 'npcs', label: 'Non-Player Characters', glyph: '❦', color: 'var(--gold)' },
+  { key: 'locations', label: 'Locations', glyph: '✦', color: 'var(--gold)' },
   { key: 'lore', label: 'Lore', glyph: '✦', color: 'var(--gold)' },
-  { key: 'factions', label: 'Factions', glyph: '◈', color: 'var(--link-faction)' },
-  { key: 'threads', label: 'Threads', glyph: '✧', color: 'var(--link-hook)' },
+  { key: 'factions', label: 'Factions', glyph: '◈', color: 'var(--gold)' },
+  { key: 'threads', label: 'Threads', glyph: '✧', color: 'var(--gold)' },
   { key: 'loot', label: 'Loot & rewards', glyph: '⚔', color: 'var(--ink)' },
 ];
 
@@ -248,10 +248,7 @@ function SourcePanel({ proposal, segments, tracks, onOpenTranscript }: {
   onOpenTranscript: () => void;
 }) {
   const toast = useToast();
-  const audio = useRef<HTMLAudioElement>(null);
-  const urls = useRef(new Map<string, string>());
-  const chunks = useRef(new Map<string, ChunkTiming[]>());
-  const [loading, setLoading] = useState(false);
+  const { audio, loading, playTrack } = useRecordingPlayer();
   const pcs = useCampaign().pcs;
 
   const at = proposal?.source_ms ?? null;
@@ -267,25 +264,8 @@ function SourcePanel({ proposal, segments, tracks, onOpenTranscript }: {
   const play = async () => {
     if (at == null || nearest < 0 || !audio.current) return;
     const track = tracks.find(t => t.id === segments[nearest].track_id);
-    if (!track?.storage_path) return;
-    setLoading(true);
-    try {
-      if (!urls.current.has(track.id)) urls.current.set(track.id, await SessionAudio.signedUrl(track.storage_path));
-      if (!chunks.current.has(track.id)) chunks.current.set(track.id, track.source === 'upload' ? [] : await RecordingChunks.getByTrack(track.id));
-      const el = audio.current;
-      const src = urls.current.get(track.id)!;
-      const seconds = sessionToAudioMs(Math.max(0, at - 1_000), chunks.current.get(track.id)!, track.offset_ms) / 1000;
-      if (el.src !== src) {
-        el.src = src;
-        await new Promise<void>(r => { el.onloadedmetadata = () => r(); setTimeout(r, 5000); });
-      }
-      el.currentTime = seconds;
-      await el.play();
-    } catch (e) {
-      toast(errorMessage(e), 'error');
-    } finally {
-      setLoading(false);
-    }
+    if (!track) return;
+    await playTrack(track, at).catch(e => toast(errorMessage(e), 'error'));
   };
 
   return (
@@ -361,9 +341,10 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
 
   // Escape closes the screen unless a card is being edited.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !editing && !showTranscript) onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capture phase, so a modal this was opened from doesn't close with it.
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !editing && !showTranscript) { e.stopPropagation(); onClose(); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [editing, showTranscript, onClose]);
 
   const setStatus = async (ids: string[], status: 'pending' | 'accepted' | 'skipped') => {
@@ -460,7 +441,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
         <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Session Notes</Button>
           <div className="cm-section-title" style={{ color: 'var(--gold)' }}>Session {session?.session_number ?? ''} · Review</div>
-          <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 28, lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
+          <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 28, lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
           <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--ink-2)' }}>
             {all.length} proposed changes. Edit, accept or skip each one — nothing reaches the campaign until you apply.
           </p>
@@ -496,7 +477,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                 size="sm"
                 aria-pressed={filter === f.key}
                 onClick={() => setFilter(f.key)}
-                style={{ justifyContent: 'flex-start', gap: 10, background: filter === f.key ? 'var(--paper-2)' : undefined, boxShadow: filter === f.key ? 'var(--active-bar)' : undefined, color: filter === f.key ? 'var(--ink)' : undefined }}
+                style={{ justifyContent: 'flex-start', gap: 10, background: filter === f.key ? 'var(--paper-2)' : undefined, boxShadow: filter === f.key ? 'inset 2px 0 0 var(--gold)' : undefined, color: filter === f.key ? 'var(--ink)' : undefined }}
               >
                 <span aria-hidden="true" style={{ width: 16, color: 'var(--gold)' }}>{f.glyph}</span>
                 <span style={{ flex: 1, textAlign: 'left' }}>{f.label}</span>
@@ -527,11 +508,11 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                     <article
                       key={p.id}
                       onClick={() => setSelected(p.id)}
-                      style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-lg)', background: isSel ? 'var(--paper-2)' : 'var(--paper)', border: `1px solid ${border}`, boxShadow: isSel ? 'var(--active-bar)' : undefined, opacity: p.status === 'skipped' && !isEditing ? 0.55 : 1 }}
+                      style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-lg)', background: isSel ? 'var(--paper-2)' : 'var(--paper)', border: `1px solid ${border}`, boxShadow: isSel ? 'inset 2px 0 0 var(--gold)' : undefined, opacity: p.status === 'skipped' && !isEditing ? 0.55 : 1 }}
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <span aria-hidden="true" style={{ color: g.color }}>{g.glyph}</span>
-                        <span style={{ fontWeight: 500, fontSize: 16, color: g.color }}>{view.name}</span>
+                        <span style={{ fontWeight: 500, fontSize: 16, color: 'var(--ink)' }}>{view.name}</span>
                         <Badge color={view.badge.color}>{view.badge.label}</Badge>
                         {p.edits && <Badge color="muted">✎ Edited</Badge>}
                         {view.tags.map(t => <span key={t} className="cm-tag">{t}</span>)}

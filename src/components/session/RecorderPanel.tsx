@@ -7,7 +7,7 @@
 // -----------------------------------------------------------
 
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText, ScrollText, ListChecks } from 'lucide-react';
+import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText, ScrollText, ListChecks, BookOpen } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
@@ -16,9 +16,11 @@ import { PlayerConsents, RecordingTracks, SessionAudio, SessionRecordings } from
 import type { PlayerConsent, RecordingMoment, Session, SessionRecording } from '../../lib/database.types';
 import { listMicrophones } from '../../lib/recording/audio';
 import { transcription, type TranscriptionState } from '../../lib/recording/transcriptionApi';
+import { durationLabel } from '../../lib/recording/chronicle';
 import { TranscriptModal } from './TranscriptModal';
 import { ChronicleModal } from './ChronicleModal';
 import { ChronicleReview } from './ChronicleReview';
+import { ChronicleView } from './ChronicleView';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -32,11 +34,7 @@ function formatClock(ms: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
 }
 
-function formatDuration(ms: number | null): string {
-  if (!ms) return '';
-  const mins = Math.round(ms / 60_000);
-  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
-}
+const formatDuration = durationLabel;
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -245,7 +243,7 @@ function LiveRecorder() {
         <div className="flex items-center gap-3">
           <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: paused ? 'var(--ink-3)' : 'var(--red)', boxShadow: paused ? 'none' : '0 0 0 4px var(--red-dim)' }} />
           <Badge color={paused ? 'muted' : 'red'}>{paused ? 'Paused' : 'Recording'}</Badge>
-          <Elapsed startedAt={recording.started_at} style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--ink)', letterSpacing: '0.04em' }} />
+          <Elapsed startedAt={recording.started_at} style={{ fontFamily: 'var(--mono)', fontSize: 22, color: 'var(--ink)', letterSpacing: '0.04em' }} />
         </div>
         <LevelMeter getLevel={getLevel} />
         <div className="flex items-center gap-2 flex-wrap">
@@ -312,6 +310,7 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const [showTranscript, setShowTranscript] = useState(false);
   const [showChronicle, setShowChronicle] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showView, setShowView] = useState(false);
   const status = STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' as const };
 
   useEffect(() => { setRecording(initial); }, [initial]);
@@ -378,6 +377,9 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
         </span>
         {recording.duration_ms ? <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{formatDuration(recording.duration_ms)}</span> : null}
         <span style={{ flex: 1 }} />
+        {recording.status === 'applied' && (
+          <Button size="xs" variant="primary" onClick={() => setShowView(true)}><BookOpen size={11} /> Chronicle</Button>
+        )}
         {(recording.status === 'review' || recording.status === 'applied') && (
           <Button size="xs" variant={recording.status === 'review' ? 'primary' : 'secondary'} onClick={() => setShowReview(true)}>
             <ListChecks size={11} /> {recording.status === 'review' ? 'Review changes' : 'Review'}
@@ -410,6 +412,13 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
         <ChronicleReview
           recording={recording}
           onClose={() => setShowReview(false)}
+          onChanged={r => setRecording(prev => ({ ...prev, ...r }))}
+        />
+      )}
+      {showView && (
+        <ChronicleView
+          recording={recording}
+          onClose={() => setShowView(false)}
           onChanged={r => setRecording(prev => ({ ...prev, ...r }))}
         />
       )}
@@ -532,7 +541,7 @@ export function RecordingIndicator({ onOpen }: { onOpen: () => void }) {
       size="xs"
       onClick={onOpen}
       aria-label={live.paused ? 'Recording paused — open Session Notes' : 'Recording — open Session Notes'}
-      style={{ borderRadius: 999, borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}
+      style={{ borderRadius: 999, borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)', fontFamily: 'var(--mono)', letterSpacing: '0.06em' }}
     >
       <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: live.paused ? 'var(--ink-3)' : 'var(--red)' }} />
       {live.paused ? 'PAUSED' : 'REC'} <Elapsed startedAt={live.recording.started_at} />

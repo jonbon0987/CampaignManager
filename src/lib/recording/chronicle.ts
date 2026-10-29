@@ -66,6 +66,13 @@ export function clockLabel(ms: number): string {
   return `${Math.floor(s / 3600)}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
 
+/** "2h 58m", "41m". */
+export function durationLabel(ms: number | null): string {
+  if (!ms) return '';
+  const mins = Math.round(ms / 60_000);
+  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+}
+
 /** "[12] 0:04:31 Kutter (Sam): I ask him straight…" — the line number is what items cite. */
 export function formatTranscript(lines: TranscriptLine[]): string {
   return lines.map((l, i) => `[${i + 1}] ${clockLabel(l.start_ms)} ${l.speaker}: ${l.text}`).join('\n');

@@ -168,3 +168,18 @@ export function buildKeyterms(names: (string | null | undefined)[]): string[] {
   }
   return out;
 }
+
+// --------------- Playback ---------------
+
+/**
+ * The track to play for a moment on the session clock: the room's track (or an
+ * upload) over a single Discord voice, and of those the latest to have started
+ * by then, since resuming after a crash starts a new track.
+ */
+export function trackAt<T extends { source: TrackSource; offset_ms: number; storage_path: string | null }>(tracks: T[], sessionMs: number): T | null {
+  const playable = tracks.filter(t => t.storage_path);
+  const room = playable.filter(t => t.source !== 'discord');
+  const pool = room.length ? room : playable;
+  const started = pool.filter(t => t.offset_ms <= sessionMs).sort((a, b) => b.offset_ms - a.offset_ms);
+  return started[0] ?? pool.sort((a, b) => a.offset_ms - b.offset_ms)[0] ?? null;
+}

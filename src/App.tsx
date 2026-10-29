@@ -164,7 +164,7 @@ function AppInner({ user }: { user: User }) {
   ].filter(Boolean).join(' ');
 
   return (
-    <NavigationProvider setActiveTab={setActiveTab}>
+    <NavigationProvider setActiveTab={setActiveTab} openRecord={openRecord}>
       <CampaignEntityRefProvider>
       <RecordingProvider userId={user.id}>
       <div className={shellClass}>

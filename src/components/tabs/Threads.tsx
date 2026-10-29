@@ -15,6 +15,7 @@ import { MarkdownContent } from '../ui/MarkdownContent';
 import { PromoteThreadModal } from './PromoteThreadModal';
 import { hookCategoryStyles, threadStateMeta, THREAD_STATES, getThreadState } from '../../lib/theme';
 import type { Hook } from '../../lib/database.types';
+import { SessionHistory } from '../session/SessionHistory';
 
 const KINDS = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
 
@@ -240,6 +241,11 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
         <FormField label="Summary / Notes">
           <SlashField value={form.description ?? ''} onChange={v => setForm(p => ({ ...p, description: v }))} placeholder="What is this thread about? Who and where does it touch?" minHeight="180px" maxLength={limitFor('hooks', 'description')} />
         </FormField>
+        {editingId && (
+          <FormField label="Session History">
+            <SessionHistory entityType="hook" entityId={editingId} />
+          </FormField>
+        )}
       </Modal>
 
       {promoting && <PromoteThreadModal thread={promoting} onClose={() => setPromoting(null)} />}

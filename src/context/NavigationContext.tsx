@@ -9,11 +9,11 @@ const ENTITY_TAB_MAP: Record<EntityType, Tab> = {
   npc: 'cast',
   pc: 'cast',
   faction: 'cast',
-  location: 'world',
-  lore: 'world',
+  location: 'locations',
+  lore: 'lore',
   module: 'modules',
   session: 'sessions',
-  hook: 'sessions',
+  hook: 'threads',
 };
 
 interface NavigationContextValue {
@@ -30,9 +30,11 @@ const NavigationContext = createContext<NavigationContextValue | null>(null);
 interface NavigationProviderProps {
   children: ReactNode;
   setActiveTab: (tab: Tab) => void;
+  /** Switches to a tab and selects a record there (for tabs that take an open target). */
+  openRecord?: (tab: Tab, id: string) => void;
 }
 
-export function NavigationProvider({ children, setActiveTab }: NavigationProviderProps) {
+export function NavigationProvider({ children, setActiveTab, openRecord }: NavigationProviderProps) {
   const [highlightedEntityId, setHighlightedEntityId] = useState<string | null>(null);
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -46,7 +48,8 @@ export function NavigationProvider({ children, setActiveTab }: NavigationProvide
     if (timer) clearTimeout(timer);
 
     const tab = ENTITY_TAB_MAP[entityType];
-    setActiveTab(tab);
+    if (openRecord) openRecord(tab, id);
+    else setActiveTab(tab);
     setHighlightedEntityId(id);
 
     // Scroll to the element after the tab renders
@@ -64,7 +67,7 @@ export function NavigationProvider({ children, setActiveTab }: NavigationProvide
       setHighlightedEntityId(null);
     }, 3000);
     setTimer(t);
-  }, [setActiveTab, timer]);
+  }, [setActiveTab, openRecord, timer]);
 
   return (
     <NavigationContext.Provider value={{ navigateToEntity, highlightedEntityId, clearHighlight }}>
