@@ -6,7 +6,6 @@
 // -----------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
-import { Play } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useToast } from '../../context/ToastContext';
 import { EntitySessionEntries, SessionRecordings } from '../../lib/db';
@@ -22,9 +21,9 @@ const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e)
 export function SessionHistory({ entityType, entityId }: { entityType: SessionEntryEntityType; entityId: string }) {
   const { sessions, selectedCampaignId } = useCampaign();
   const toast = useToast();
-  const { audio, playRecording } = useRecordingPlayer();
+  const { audio, playing, pause, playRecording } = useRecordingPlayer();
   const [entries, setEntries] = useState<EntitySessionEntry[] | null>(null);
-  const [heard, setHeard] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
   const [chronicle, setChronicle] = useState<SessionRecording | null>(null);
 
   const load = useCallback(() => EntitySessionEntries.getForEntity(entityType, entityId)
@@ -42,7 +41,8 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
 
   const play = (e: EntitySessionEntry) => {
     if (!e.recording_id || e.source_ms == null) return;
-    setHeard(true);
+    if (playing && heard === e.id) { pause(); return; }
+    setHeard(e.id);
     void playRecording(e.recording_id, e.source_ms).catch(err => toast(errorMessage(err), 'error'));
   };
 
@@ -65,34 +65,45 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
           Nothing yet. When you record a session and apply its chronicle, what happened here is added session by session.
         </p>
       )}
-      {rows.map(({ e, session }) => (
-        <article key={e.id} style={{ background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span aria-hidden="true" style={{ color: 'var(--gold)' }}>❧</span>
-            <span style={{ fontWeight: 500, color: 'var(--ink)' }}>Session {session!.session_number}</span>
-            {session!.session_date && (
-              <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
-                {new Date(`${session!.session_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+      {rows.map(({ e, session }, i) => {
+        // The newest entry from a recording stands out, as the latest word on this entry.
+        const latest = i === 0 && !!e.recording_id;
+        return (
+          <article key={e.id} style={{ background: latest ? 'var(--paper-2)' : 'var(--paper)', border: `1px solid ${latest ? 'var(--gold-line)' : 'var(--rule)'}`, boxShadow: latest ? 'inset 2px 0 0 var(--gold)' : undefined, borderRadius: 'var(--radius-lg)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: latest ? 10 : 8 }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="cm-chip" style={{ color: 'var(--link-session)', background: 'var(--link-session-bg)', borderColor: 'var(--link-session-line)', cursor: 'default' }}>
+                <span aria-hidden="true">❧</span><span>Session {session!.session_number}</span>
               </span>
-            )}
-            {e.recording_id && <Badge color="gold">From recording</Badge>}
-            <span style={{ flex: 1 }} />
-            {e.recording_id && <Button variant="link" onClick={() => void openChronicle(e.recording_id!)}>See chronicle</Button>}
-          </div>
-          <p className="text-sm" style={{ margin: 0, color: 'var(--ink)' }}>{e.text}</p>
-          {e.source_quote && (
-            <div className="flex items-start gap-2" style={{ paddingTop: 6, borderTop: '1px solid var(--rule-soft)' }}>
-              {e.recording_id && e.source_ms != null && (
-                <Button variant="ghost" size="xs" onClick={() => play(e)} title="Play from here" style={{ padding: '0 4px', flexShrink: 0 }}>
-                  <Play size={10} /> <span className="cm-kbd" style={{ color: 'var(--ink-3)' }}>{clockLabel(e.source_ms)}</span>
-                </Button>
+              {session!.session_date && (
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+                  {new Date(`${session!.session_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               )}
-              <span className="text-sm" style={{ fontStyle: 'italic', color: 'var(--ink-2)' }}>“{e.source_quote}”</span>
+              {e.recording_id && <Badge color="gold">From recording</Badge>}
+              <span style={{ flex: 1 }} />
+              {e.recording_id && <Button variant="link" onClick={() => void openChronicle(e.recording_id!)}>See chronicle</Button>}
             </div>
-          )}
-        </article>
-      ))}
-      <audio ref={audio} controls preload="none" style={{ width: '100%', height: 32, display: heard ? 'block' : 'none' }} />
+            <p style={{ margin: 0, color: latest ? 'var(--ink)' : 'var(--ink-2)' }}>{e.text}</p>
+            {e.source_quote && (
+              <div className="ra" style={{ borderColor: 'var(--gold-line)' }}>
+                <div className="ra-label" style={{ borderColor: 'var(--gold-line)' }}>
+                  <span>Said at the table</span>
+                  <span style={{ flex: 1 }} />
+                  {e.recording_id && e.source_ms != null && (
+                    <Button variant="ghost" size="xs" onClick={() => play(e)} title={playing && heard === e.id ? 'Pause' : 'Play from here'} style={{ padding: '0 4px', color: 'var(--gold)' }}>
+                      <span className="cm-kbd" style={{ color: 'var(--gold)' }}>{playing && heard === e.id ? '❚❚' : '▶'} {clockLabel(e.source_ms)}</span>
+                    </Button>
+                  )}
+                </div>
+                <div className="ra-body" style={{ padding: '12px 16px', minHeight: 0, cursor: 'default' }}>
+                  <p className="ra-text" style={{ fontSize: 16 }}>“{e.source_quote}”</p>
+                </div>
+              </div>
+            )}
+          </article>
+        );
+      })}
+      <audio ref={audio} preload="none" hidden />
       {chronicle && <ChronicleView recording={chronicle} onClose={() => { setChronicle(null); void load(); }} />}
     </div>
   );

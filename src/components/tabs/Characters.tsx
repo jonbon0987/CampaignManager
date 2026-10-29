@@ -19,6 +19,7 @@ import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
 import { SessionHistory } from '../session/SessionHistory';
+import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 
 // ── Voice data stored in localStorage keyed by NPC id ────────────────────────
@@ -416,6 +417,8 @@ function NPCDetail({
         ]} />
       </div>
 
+      <SessionUpdateBand entityType="npc" entityId={npc.id} />
+
       {/* Eyebrow */}
       <div className="cm-eyebrow">Non-Player Character</div>
 
@@ -731,6 +734,8 @@ function PCDetail({
         ]} />
       </div>
 
+      <SessionUpdateBand entityType="pc" entityId={pc.id} />
+
       {/* Eyebrow */}
       <div className="cm-eyebrow">Player Character</div>
 
@@ -947,6 +952,8 @@ function FactionDetail({
           { label: 'Delete Faction', danger: true, onClick: handleDelete },
         ]} />
       </div>
+
+      <SessionUpdateBand entityType="faction" entityId={faction.id} />
 
       {/* Eyebrow */}
       <div className="cm-eyebrow">Faction</div>

@@ -86,6 +86,37 @@ export function buildChronicle(proposals: (ProposalLike & { status: string })[],
 
 // --------------- Talk time ---------------
 
+// --------------- Describing a change ---------------
+
+const FIELD_LABEL: Record<WrittenItem['changes'][number]['field'], string> = { disposition: 'Attitude', status: 'Status', state: 'State' };
+const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
+
+/** "Wary → Fearful ally", or just "Friendly" for a value that's new. */
+export function changeText(c: WrittenItem['changes'][number]): string {
+  return c.from ? `${cap(c.from)} → ${cap(c.to)}` : cap(c.to);
+}
+
+/** What a write did to its entity: "Created new", "Attitude · Session history"… */
+export function whatChanged(item: WrittenItem): string {
+  if (item.created) return 'Created new';
+  const parts = item.changes.map(c => (item.kind === 'hook' && c.field === 'state' ? changeText(c) : FIELD_LABEL[c.field]));
+  if (item.added) parts.push(item.kind === 'faction' ? 'Overview' : 'Description');
+  if (item.entry) parts.push('Session history');
+  return parts.join(' · ') || 'Noted';
+}
+
+/** How many things a write changed on its entity (fields, added text, history line). */
+export function changeCount(item: WrittenItem): number {
+  return item.changes.length + (item.added ? 1 : 0) + (item.entry ? 1 : 0);
+}
+
+/** "- one\n- two" as ["one", "two"]; null when the text is more than a plain list. */
+export function plainList(text: string | null | undefined): string[] | null {
+  const lines = (text ?? '').split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length || !lines.every(l => /^[-*•]\s+/.test(l))) return null;
+  return lines.map(l => l.replace(/^[-*•]\s+/, ''));
+}
+
 export interface SpokenLine {
   pc_id: string | null;
   is_dm: boolean;

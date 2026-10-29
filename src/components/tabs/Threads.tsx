@@ -16,6 +16,7 @@ import { PromoteThreadModal } from './PromoteThreadModal';
 import { hookCategoryStyles, threadStateMeta, THREAD_STATES, getThreadState } from '../../lib/theme';
 import type { Hook } from '../../lib/database.types';
 import { SessionHistory } from '../session/SessionHistory';
+import { SessionUpdateBand } from '../session/SessionUpdateBand';
 
 const KINDS = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
 
@@ -192,6 +193,7 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
       )}
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Thread' : 'New Thread'} onSave={save}>
+        {editingId && <SessionUpdateBand entityType="hook" entityId={editingId} />}
         <FormField label="Title">
           <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Seventh Shard" maxLength={limitFor('hooks', 'title')} style={inputStyle} />
         </FormField>

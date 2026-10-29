@@ -7,15 +7,19 @@
 // -----------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileText, ListChecks, Play, Send } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { useEntityRefs } from '../../context/EntityRefContext';
 import { useToast } from '../../context/ToastContext';
-import { ChronicleAppliedLog, ChronicleProposals, RecordingMoments, RecordingTracks, TranscriptSegments } from '../../lib/db';
+import { ChronicleAppliedLog, ChronicleProposals, RecordingMoments, RecordingTracks, SessionRecordings, TranscriptSegments } from '../../lib/db';
 import type { ChronicleApplied, ChronicleProposal, RecordingMoment, RecordingTrack, SessionRecording, TranscriptSegment } from '../../lib/database.types';
 import type { EntityKind, SessionField } from '../../lib/recording/chronicle';
 import { clockLabel, durationLabel } from '../../lib/recording/chronicle';
-import { buildChronicle, talkShare, type WrittenItem } from '../../lib/recording/chronicleView';
+import { buildChronicle, changeCount, plainList, talkShare, whatChanged, type WrittenItem } from '../../lib/recording/chronicleView';
+import { undoApplied } from '../../lib/recording/applyChronicle';
+import { entityKindColor, threadStateMeta } from '../../lib/theme';
+import { useChronicleWriter } from '../../hooks/useChronicleWriter';
 import { useRecordingPlayer } from '../../hooks/useRecordingPlayer';
 import { SfProse } from '../ui/SlashField';
 import { Button } from '../ui/Button';
@@ -23,41 +27,44 @@ import { Badge } from '../ui/Badge';
 import { TranscriptModal } from './TranscriptModal';
 import { ChronicleReview } from './ChronicleReview';
 import { PostRecapModal } from './PostRecapModal';
+import { PlayerBar } from './PlayerBar';
 
 const GLYPH: Record<EntityKind | 'session', string> = { session: '❧', pc: '❖', npc: '❦', location: '✦', faction: '◈', lore: '✦', hook: '✧' };
 const SESSION_FIELD: Record<SessionField, string> = {
   summary: 'Recap', combats: 'Combat summary', loot_rewards: 'Loot & rewards', hooks_notes: 'Left open for next time', dm_notes: 'DM notes',
 };
-const FIELD_LABEL: Record<WrittenItem['changes'][number]['field'], string> = { disposition: 'Attitude', status: 'Status', state: 'State' };
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-/** "Wary → Fearful ally", or just "Friendly" for a new entry. */
-const changeText = (c: WrittenItem['changes'][number]) => (c.from ? `${cap(c.from)} → ${cap(c.to)}` : cap(c.to));
-
-/** What a write did, for the "Written to the campaign" list. */
-function whatChanged(item: WrittenItem): string {
-  if (item.created) return 'Created new';
-  const parts = item.changes.map(c => (item.kind === 'hook' && c.field === 'state' ? changeText(c) : FIELD_LABEL[c.field]));
-  if (item.added) parts.push(item.kind === 'faction' ? 'Overview' : 'Description');
-  if (item.entry) parts.push('Session history');
-  return parts.join(' · ') || 'Noted';
-}
-
-function Section({ glyph, title, aside, children }: { glyph: string; title: string; aside?: React.ReactNode; children: React.ReactNode }) {
+/** A section of the chronicle: its heading in the display face, and anything beside it. */
+function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <div className="cm-section-head">
-        <span aria-hidden="true" style={{ color: 'var(--gold)' }}>{glyph}</span>
-        <span className="cm-section-title">{title}</span>
-        <div className="cm-section-rule" />
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="cm-sechead-title">{title}</h2>
+        <span style={{ flex: 1 }} />
         {aside}
       </div>
       {children}
     </section>
   );
 }
+
+/** A side-column card, its label inside it. */
+function SideCard({ title, children, flush }: { title: string; children: React.ReactNode; flush?: boolean }) {
+  return (
+    <section style={{ ...card, padding: flush ? '14px 8px 8px' : '14px 16px', display: 'flex', flexDirection: 'column', gap: flush ? 4 : 10 }}>
+      <div className="cm-section-head" style={flush ? { padding: '0 8px 6px' } : undefined}><span className="cm-section-title">{title}</span><div className="cm-section-rule" /></div>
+      {children}
+    </section>
+  );
+}
+
+/** A thread state as its badge. */
+const StateBadge = ({ state }: { state: string }) => (
+  <span className={`cm-state-badge cm-state--${threadStateMeta[state] ? state : 'active'}`}>{threadStateMeta[state]?.label ?? cap(state)}</span>
+);
 
 const card: React.CSSProperties = { background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)' };
 
@@ -69,7 +76,10 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
   const { sessions, pcs, npcs, locations, factions, lore, hooks } = useCampaign();
   const { openRef } = useEntityRefs();
   const toast = useToast();
-  const { audio, playRecording } = useRecordingPlayer();
+  const confirm = useConfirm();
+  const { audio, playing, positionMs, loading, pause, playRecording } = useRecordingPlayer();
+  const writerCtx = useMemo(() => ({ recordingId: initial.id, sessionId: initial.session_id }), [initial.id, initial.session_id]);
+  const writer = useChronicleWriter(writerCtx);
 
   const [recording, setRecording] = useState(initial);
   const [proposals, setProposals] = useState<ChronicleProposal[] | null>(null);
@@ -80,6 +90,7 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
   const [showTranscript, setShowTranscript] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showPost, setShowPost] = useState(false);
+  const [undoing, setUndoing] = useState(false);
 
   const load = useCallback(() => Promise.all([
     ChronicleProposals.getByRecording(initial.id),
@@ -139,6 +150,25 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
   const play = (ms: number) => void playRecording(recording.id, ms).catch(e => toast(errorMessage(e), 'error'));
   const open = (kind: EntityKind, id: string | null) => { if (id) { onClose(); openRef(kind, id); } };
 
+  const undo = async () => {
+    if (!writer) return;
+    if (!(await confirm({ title: 'Undo this write-back?', message: 'Entries it created are deleted and entries it changed go back to how they were — including any edits you made to them since.', confirmLabel: 'Undo write-back', danger: true }))) return;
+    setUndoing(true);
+    try {
+      const res = await undoApplied(log.filter(r => !r.undone_at), writer);
+      const detail = res.failed.length ? `Undo finished with ${res.failed.length} problem${res.failed.length === 1 ? '' : 's'}.` : 'Write-back undone. The changes are back to review.';
+      await SessionRecordings.update(recording.id, { status: 'review', status_detail: detail });
+      setRecording(prev => ({ ...prev, status: 'review', status_detail: detail }));
+      onChanged?.({ status: 'review', status_detail: detail });
+      toast(detail, res.failed.length ? 'error' : 'success');
+      await load();
+    } catch (e) {
+      toast(errorMessage(e), 'error');
+    } finally {
+      setUndoing(false);
+    }
+  };
+
   const names = (ids: string[]) => {
     const list = ids.map(id => pcs.find(p => p.id === id)?.character_name).filter(Boolean) as string[];
     return list.length <= 1 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
@@ -151,115 +181,171 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
     ? new Date(`${session.session_date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
     : new Date(recording.started_at).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const nameLink = (item: WrittenItem) => (
-    currentName(item)
-      ? <Button variant="link" onClick={() => open(item.kind, item.entityId)} style={{ fontSize: 15, color: 'var(--ink)', textAlign: 'left', justifyContent: 'flex-start', alignSelf: 'flex-start' }}>{nameOf(item)}</Button>
-      : <span style={{ fontSize: 15, color: 'var(--ink-3)' }} title="No longer in this campaign">{item.name}</span>
-  );
+  /** An entity's name in its kind's color, opening it; greyed if it's since been deleted. */
+  const nameLink = (item: WrittenItem, opts: { glyph?: boolean; size?: number; color?: string } = {}) => {
+    const color = opts.color ?? entityKindColor[item.kind];
+    const text = `${opts.glyph ? `${GLYPH[item.kind]} ` : ''}${nameOf(item)}`;
+    return currentName(item)
+      ? <Button variant="link" onClick={() => open(item.kind, item.entityId)} style={{ fontSize: opts.size ?? 15, fontWeight: 500, color, textDecoration: 'none', textAlign: 'left', justifyContent: 'flex-start', alignSelf: 'flex-start' }}>{text}</Button>
+      : <span style={{ fontSize: opts.size ?? 15, color: 'var(--ink-3)' }} title="No longer in this campaign">{text}</span>;
+  };
   const time = (ms: number | null) => (ms == null ? null : (
     <Button variant="ghost" size="xs" onClick={() => play(ms)} title="Play from here" style={{ padding: '0 4px' }}>
-      <span className="cm-kbd" style={{ color: 'var(--ink-3)' }}>{clockLabel(ms)}</span>
+      <span className="cm-kbd" style={{ color: 'var(--ink-3)' }}>▶ {clockLabel(ms)}</span>
     </Button>
   ));
-  const rows = (items: WrittenItem[], kind: EntityKind) => (
-    <div style={{ ...card, padding: '2px 14px' }}>
-      {items.map((item, i) => (
-        <div key={item.proposalId} style={{ display: 'grid', gridTemplateColumns: '18px minmax(0, 1fr) auto', gap: 10, padding: '10px 0', borderTop: i ? '1px solid var(--rule-soft)' : undefined, alignItems: 'start' }}>
-          <span aria-hidden="true" style={{ color: 'var(--gold)', paddingTop: 2 }}>{GLYPH[kind]}</span>
-          <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
-            <div className="flex flex-wrap items-center gap-2">{nameLink(item)}{item.created && <Badge color="orange">New</Badge>}</div>
-            {(item.entry ?? item.added) && <p className="text-sm" style={{ margin: 0, color: 'var(--ink-2)' }}>{item.entry ?? item.added}</p>}
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            {item.changes.map(c => <span key={c.field} className="cm-tag" style={{ whiteSpace: 'nowrap' }}>{changeText(c)}</span>)}
-            {time(item.sourceMs)}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  const text = (item: WrittenItem) => item.entry ?? item.added;
 
   const k = model.byKind;
-  const written: { key: string; glyph: string; name: string; what: string; item?: WrittenItem }[] = [
-    ...model.sessionFields.map(f => ({ key: f, glyph: GLYPH.session, name: SESSION_FIELD[f], what: 'Session record' })),
-    ...(['pc', 'npc', 'location', 'faction', 'lore', 'hook'] as EntityKind[]).flatMap(kind => k[kind].map(item => ({ key: item.proposalId, glyph: GLYPH[kind], name: nameOf(item), what: whatChanged(item), item }))),
+  const written: { key: string; kind: EntityKind | 'session'; name: string; what: string; meta: string; item?: WrittenItem }[] = [
+    ...model.sessionFields.map(f => ({ key: f, kind: 'session' as const, name: SESSION_FIELD[f], what: 'Session record', meta: '1' })),
+    ...(['npc', 'pc', 'location', 'lore', 'faction', 'hook'] as EntityKind[]).flatMap(kind => k[kind].map(item => ({
+      key: item.proposalId, kind, name: nameOf(item), what: whatChanged(item), meta: item.created ? 'new' : String(changeCount(item)), item,
+    }))),
   ];
+  // Lore revealed: lore entries (world canon or this table's) and what the party learned of factions.
+  const knowledge = [...k.lore, ...k.faction];
+  const isCanon = (item: WrittenItem) => item.kind === 'lore' && lore.find(r => r.id === item.entityId)?.campaign_id === null;
+  const leftOpen = plainList(session?.hooks_notes);
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Session chronicle" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'var(--bg)', color: 'var(--ink)', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ flex: '0 0 auto', borderBottom: '1px solid var(--rule)', padding: '14px clamp(16px, 4vw, 28px)', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '12px 24px' }}>
-        <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Back</Button>
-          <div className="cm-section-title" style={{ color: 'var(--gold)' }}>Session {session?.session_number ?? ''} · Chronicle</div>
-          <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 28, lineHeight: 1.15, fontWeight: 500 }}>{dateLabel}</h1>
-          <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--ink-2)' }}>
-            {[durationLabel(recording.duration_ms), who].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {session && <Button size="sm" onClick={() => setShowPost(true)}><Send size={12} /> Post to Discord</Button>}
-          <Button size="sm" onClick={() => setShowTranscript(true)}><FileText size={12} /> Transcript</Button>
-          <Button size="sm" onClick={() => setShowReview(true)}><ListChecks size={12} /> Review or undo</Button>
-        </div>
-      </header>
+    <div role="dialog" aria-modal="true" aria-label="Session chronicle" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'var(--bg)', color: 'var(--ink)', overflowY: 'auto' }}>
+      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '28px clamp(16px, 4vw, 40px) 56px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 16 }}>
+          <div style={{ flex: '1 1 420px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Back</Button>
+            <div className="cm-section-title" style={{ color: 'var(--gold)' }}>Session {session?.session_number ?? ''} · Chronicle</div>
+            <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 40, lineHeight: 1.05, fontWeight: 500 }}>{dateLabel}</h1>
+            <p style={{ margin: 0, fontSize: 17, fontStyle: 'italic', color: 'var(--ink-2)' }}>
+              {[durationLabel(recording.duration_ms), who].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {session && <Button size="sm" onClick={() => setShowPost(true)}><span aria-hidden="true">◈</span> Post player recap to Discord</Button>}
+            <Button size="sm" onClick={() => setShowTranscript(true)}>Transcript</Button>
+            <Button size="sm" onClick={() => setShowReview(true)}>Review</Button>
+          </div>
+        </header>
 
-      <div style={{ flex: '1 1 auto', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, padding: '22px clamp(16px, 4vw, 28px) 48px', alignItems: 'flex-start' }}>
-          <main style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 28 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, alignItems: 'flex-start' }}>
+          <main style={{ flex: '999 1 600px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 32 }}>
             {proposals === null && <p style={{ color: 'var(--ink-3)' }}>Loading the chronicle…</p>}
             {proposals !== null && model.written === 0 && (
               <p style={{ color: 'var(--ink-3)' }}>Nothing from this recording is in the campaign. Review its changes and apply them first.</p>
             )}
 
-            {session?.summary && <Section glyph="❧" title="Summary"><SfProse text={session.summary} /></Section>}
+            {session?.summary && <Section title="Summary"><div style={{ fontSize: 17, lineHeight: 1.6 }}><SfProse text={session.summary} /></div></Section>}
 
             {party.length > 0 && (
-              <Section glyph="❖" title="The Party" aside={<span className="text-xs" style={{ color: 'var(--ink-3)' }}>Share of the players’ talk time</span>}>
-                <div className="flex flex-wrap gap-3">
+              <Section title="The Party" aside={<span className="text-xs" style={{ color: 'var(--ink-3)' }}>Share of the players’ talk time</span>}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
                   {party.map(pc => {
                     const s = share.get(pc.id);
+                    const isQuiet = quiet.has(pc.id);
                     const did = k.pc.filter(i => i.entityId === pc.id && i.entry);
                     return (
-                      <div key={pc.id} style={{ ...card, flex: '1 1 260px', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <article key={pc.id} style={{ ...card, borderColor: isQuiet ? 'var(--orange-line)' : 'var(--rule)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div className="flex flex-wrap items-baseline gap-2">
-                          <Button variant="link" onClick={() => open('pc', pc.id)} style={{ fontSize: 17, color: 'var(--ink)', justifyContent: 'flex-start' }}>{pc.character_name}</Button>
-                          {onDiscord.has(pc.id) && <Badge color="blue">Discord</Badge>}
-                          {quiet.has(pc.id) && <Badge color="yellow">Quiet night</Badge>}
+                          <Button variant="link" onClick={() => open('pc', pc.id)} style={{ fontSize: 17, fontWeight: 500, color: 'var(--ink)', textDecoration: 'none', justifyContent: 'flex-start' }}>{pc.character_name}</Button>
+                          <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{[[pc.race, pc.class].filter(Boolean).join(' '), pc.player_name].filter(Boolean).join(' · ')}</span>
+                          {onDiscord.has(pc.id) && <span className="cm-tag" style={{ color: 'var(--link-faction)', borderColor: 'var(--link-faction-line)' }}>◈ Discord</span>}
+                          {isQuiet && <Badge color="orange">Quiet night</Badge>}
                         </div>
-                        <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{[[pc.race, pc.class].filter(Boolean).join(' '), pc.player_name].filter(Boolean).join(' · ')}</span>
                         {did.length > 0
-                          ? <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>{did.map(i => <li key={i.proposalId} className="text-sm">{i.entry}</li>)}</ul>
+                          ? <ul style={{ margin: 0, paddingLeft: 18, listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 4 }}>{did.map(i => <li key={i.proposalId}>{i.entry}</li>)}</ul>
                           : <span className="text-sm" style={{ color: 'var(--ink-3)' }}>Nothing written down for this character.</span>}
                         {s != null && (
                           <div className="flex items-center gap-2" style={{ marginTop: 'auto' }}>
-                            <div style={{ flex: 1, height: 4, background: 'var(--paper-3)', borderRadius: 999 }}>
-                              <div style={{ width: `${Math.round(s * 100)}%`, height: '100%', background: quiet.has(pc.id) ? 'var(--warn)' : 'var(--gold)', borderRadius: 999 }} />
+                            <div aria-hidden="true" style={{ flex: 1, height: 4, background: 'var(--paper-3)', borderRadius: 999 }}>
+                              <div style={{ width: `${Math.round(s * 100)}%`, height: '100%', background: isQuiet ? 'var(--orange)' : 'var(--gold)', borderRadius: 999 }} />
                             </div>
                             <span className="cm-kbd" style={{ color: 'var(--ink-2)' }}>{Math.round(s * 100)}%</span>
                           </div>
                         )}
-                      </div>
+                      </article>
                     );
                   })}
                 </div>
               </Section>
             )}
 
-            {k.npc.length > 0 && <Section glyph="❦" title="Encounters with NPCs">{rows(k.npc, 'npc')}</Section>}
-            {k.location.length > 0 && <Section glyph="✦" title="Places visited">{rows(k.location, 'location')}</Section>}
-            {k.lore.length > 0 && <Section glyph="✦" title="Lore revealed">{rows(k.lore, 'lore')}</Section>}
-            {k.faction.length > 0 && <Section glyph="◈" title="Factions">{rows(k.faction, 'faction')}</Section>}
+            {k.npc.length > 0 && (
+              <Section title="Encounters with NPCs">
+                <div style={card}>
+                  {k.npc.map((item, i) => (
+                    <div key={item.proposalId} style={{ display: 'grid', gridTemplateColumns: 'minmax(160px, 220px) minmax(0, 1fr) auto', gap: '6px 16px', padding: '14px 16px', borderTop: i ? '1px solid var(--rule-soft)' : undefined, alignItems: 'start' }}>
+                      <div className="flex flex-wrap items-center gap-2">{nameLink(item, { glyph: true })}{item.created && <Badge color="orange">New</Badge>}</div>
+                      <span>{text(item)}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        {item.changes.map(c => (
+                          <span key={c.field} className="text-xs" style={{ whiteSpace: 'nowrap', color: 'var(--ink-3)' }}>
+                            {c.from ? <>{cap(c.from)} → </> : null}<span style={{ color: 'var(--success)' }}>{cap(c.to)}</span>
+                          </span>
+                        ))}
+                        {time(item.sourceMs)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            {(knowledge.length > 0 || k.location.length > 0) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, alignItems: 'start' }}>
+                {knowledge.length > 0 && (
+                  <Section title="Lore Revealed">
+                    {knowledge.map(item => {
+                      const canon = isCanon(item);
+                      return (
+                        <div key={item.proposalId} className={`cm-originband ${canon ? 'is-canon' : 'is-local'}`} style={{ margin: 0 }}>
+                          <span className="cm-originband-glyph" aria-hidden="true">{GLYPH[item.kind]}</span>
+                          <div className="cm-originband-body">
+                            <div className="cm-originband-kicker">{nameOf(item)} · {canon ? 'world canon' : 'this table'}{item.created ? ' · new' : ''}</div>
+                            <div className="cm-originband-text">{text(item)}</div>
+                            {currentName(item) && (
+                              <div className="cm-originband-actions"><Button variant="link" onClick={() => open(item.kind, item.entityId)}>Open {item.kind === 'faction' ? 'faction' : 'entry'} ↗</Button></div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </Section>
+                )}
+                {k.location.length > 0 && (
+                  <Section title="Places Visited">
+                    <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+                      {k.location.map((item, i) => (
+                        <li key={item.proposalId} style={{ display: 'grid', gridTemplateColumns: '20px minmax(0, 1fr) auto', gap: 10, padding: '8px 0', borderTop: i ? '1px solid var(--rule-soft)' : undefined, alignItems: 'start' }}>
+                          <span aria-hidden="true" style={{ color: 'var(--link-location)', paddingTop: 2 }}>✦</span>
+                          <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
+                            <div className="flex flex-wrap items-center gap-2">{nameLink(item, { color: 'var(--ink)' })}{item.created && <Badge color="orange">New</Badge>}</div>
+                            {text(item) && <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
+                          </div>
+                          {time(item.sourceMs)}
+                        </li>
+                      ))}
+                    </ol>
+                  </Section>
+                )}
+              </div>
+            )}
 
             {k.hook.length > 0 && (
-              <Section glyph="✧" title="Threads moved">
+              <Section title="Threads Moved">
                 <div className="flex flex-wrap gap-3">
                   {k.hook.map(item => {
-                    const state = item.changes.find(c => c.field === 'state');
+                    const change = item.changes.find(c => c.field === 'state');
+                    const now = change?.to ?? hooks.find(h => h.id === item.entityId)?.state ?? 'active';
                     return (
-                      <div key={item.proposalId} style={{ ...card, borderTop: '2px solid var(--gold-line)', flex: '1 1 280px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <span className="cm-kbd" style={{ color: 'var(--gold)', alignSelf: 'flex-start' }}>{item.created ? `New · ${cap(state?.to ?? 'seed')}` : state ? changeText(state) : 'Advanced'}</span>
-                        {nameLink(item)}
-                        {(item.entry ?? item.added) && <p className="text-sm" style={{ margin: 0, color: 'var(--ink-2)' }}>{item.entry ?? item.added}</p>}
+                      <div key={item.proposalId} style={{ ...card, borderTop: `2px solid ${threadStateMeta[now]?.line ?? 'var(--rule)'}`, flex: '1 1 300px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {item.created && <Badge color="orange">New</Badge>}
+                          {change?.from && !item.created && <><StateBadge state={change.from} /><span aria-hidden="true" style={{ color: 'var(--ink-3)' }}>→</span></>}
+                          <StateBadge state={now} />
+                          {!change && !item.created && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>advanced</span>}
+                        </div>
+                        {nameLink(item, { color: 'var(--ink)', size: 16 })}
+                        {text(item) && <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
                       </div>
                     );
                   })}
@@ -268,66 +354,74 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
             )}
 
             {(session?.combats || session?.loot_rewards) && (
-              <Section glyph="⚔" title="Combats & loot">
+              <Section title="Combats & Loot">
                 <div className="flex flex-wrap gap-3">
-                  {session.combats && <div style={{ ...card, flex: '1 1 280px', padding: 14 }}><div className="as-ll" style={{ marginBottom: 6 }}>Combats</div><SfProse text={session.combats} /></div>}
-                  {session.loot_rewards && <div style={{ ...card, flex: '1 1 280px', padding: 14 }}><div className="as-ll" style={{ marginBottom: 6 }}>Loot &amp; rewards</div><SfProse text={session.loot_rewards} /></div>}
+                  {session.combats && <div style={{ ...card, flex: '1 1 280px', padding: 14 }}><div className="cm-section-title" style={{ marginBottom: 6 }}>Combats</div><SfProse text={session.combats} /></div>}
+                  {session.loot_rewards && <div style={{ ...card, flex: '1 1 280px', padding: 14 }}><div className="cm-section-title" style={{ marginBottom: 6 }}>Loot &amp; rewards</div><SfProse text={session.loot_rewards} /></div>}
                 </div>
               </Section>
             )}
 
-            {session?.hooks_notes && <Section glyph="✧" title="Left open for next time"><SfProse text={session.hooks_notes} /></Section>}
-            {session?.dm_notes && <Section glyph="✎" title="DM notes" aside={<Badge color="muted">DM only</Badge>}><SfProse text={session.dm_notes} /></Section>}
+            {session?.hooks_notes && (
+              <Section title="Left Open for Next Time">
+                {leftOpen
+                  ? (
+                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {leftOpen.map((line, i) => <li key={i} className="flex gap-2 items-baseline"><span aria-hidden="true" style={{ color: 'var(--gold)' }}>✧</span><span>{line}</span></li>)}
+                    </ul>
+                  )
+                  : <SfProse text={session.hooks_notes} />}
+              </Section>
+            )}
+            {session?.dm_notes && <Section title="DM Notes" aside={<Badge color="muted">DM only</Badge>}><SfProse text={session.dm_notes} /></Section>}
           </main>
 
-          <aside style={{ flex: '1 1 280px', minWidth: 0, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section glyph="◉" title="Recording">
-              <div style={{ ...card, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={() => play(0)}><Play size={12} /> Play</Button>
-                  <span className="cm-kbd" style={{ color: 'var(--ink-2)' }}>{recording.duration_ms ? clockLabel(recording.duration_ms) : ''}</span>
-                </div>
-                <audio ref={audio} controls preload="none" style={{ width: '100%', height: 32 }} />
-                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
-                  {[
-                    recording.audio_expires_at ? `Audio kept until ${new Date(recording.audio_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Audio kept',
-                    segments.length ? `${segments.length.toLocaleString()} transcript lines` : '',
-                  ].filter(Boolean).join(' · ')}
-                </span>
-              </div>
-            </Section>
+          <aside aria-label="Written to the campaign" style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SideCard title="Recording">
+              <PlayerBar audio={audio} playing={playing} positionMs={positionMs} loading={loading} onPause={pause} atMs={null} totalMs={recording.duration_ms} onPlay={() => play(positionMs ?? 0)} />
+              <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+                {[
+                  recording.audio_expires_at ? `Audio kept until ${new Date(recording.audio_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Audio kept',
+                  segments.length ? `${segments.length.toLocaleString()} transcript lines` : '',
+                ].filter(Boolean).join(' · ')}
+              </span>
+            </SideCard>
 
             {written.length > 0 && (
-              <Section glyph="❧" title={`Written to the campaign · ${written.length}`}>
-                <div style={{ ...card, padding: '4px 14px' }}>
-                  {written.map((w, i) => (
-                    <div key={w.key} style={{ display: 'grid', gridTemplateColumns: '18px minmax(0, 1fr)', gap: 8, padding: '7px 0', borderTop: i ? '1px solid var(--rule-soft)' : undefined }}>
-                      <span aria-hidden="true" style={{ color: 'var(--gold)' }}>{w.glyph}</span>
-                      <div className="flex flex-col" style={{ minWidth: 0 }}>
-                        {w.item ? nameLink(w.item) : <span style={{ fontSize: 15 }}>{w.name}</span>}
-                        <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{w.what}</span>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex flex-wrap items-center gap-2" style={{ padding: '10px 0', borderTop: '1px solid var(--rule-soft)' }}>
-                    <span className="text-xs" style={{ color: 'var(--ink-3)', flex: 1 }}>{model.edited} edited by you · {model.skipped} skipped</span>
-                    <Button variant="link" onClick={() => setShowReview(true)}>Review or undo</Button>
-                  </div>
+              <SideCard title={`Written to the campaign · ${written.length}`} flush>
+                {written.map(w => {
+                  const body = (
+                    <>
+                      <span className="cm-row-glyph" style={{ color: entityKindColor[w.kind] }}>{GLYPH[w.kind]}</span>
+                      <span className="cm-row-body"><span className="cm-row-title">{w.name}</span><span className="cm-row-sub">{w.what}</span></span>
+                      <span className="cm-row-meta">{w.meta}</span>
+                    </>
+                  );
+                  return w.item && currentName(w.item)
+                    // eslint-disable-next-line no-restricted-syntax -- a list row (.cm-row), not a button style
+                    ? <button key={w.key} type="button" className="cm-row" onClick={() => open(w.item!.kind, w.item!.entityId)}>{body}</button>
+                    : <div key={w.key} className="cm-row" style={{ cursor: 'default' }}>{body}</div>;
+                })}
+                <div className="flex flex-wrap items-center gap-2" style={{ padding: 8, borderTop: '1px solid var(--rule-soft)' }}>
+                  <span className="text-xs" style={{ color: 'var(--ink-3)', flex: 1 }}>{model.edited} edited by you · {model.skipped} skipped</span>
+                  <Button size="xs" variant="danger" onClick={() => void undo()} disabled={undoing || !writer}>{undoing ? 'Undoing…' : 'Undo this write-back'}</Button>
                 </div>
-              </Section>
+              </SideCard>
             )}
 
             {moments.length > 0 && (
-              <Section glyph="✦" title="Key moments">
-                <div style={{ ...card, padding: '4px 10px' }}>
-                  {moments.map((m, i) => (
-                    <div key={m.id} className="flex items-center gap-2" style={{ padding: '6px 0', borderTop: i ? '1px solid var(--rule-soft)' : undefined }}>
-                      {time(m.at_ms)}
-                      <span className="text-sm" style={{ color: m.label ? 'var(--ink)' : 'var(--ink-3)' }}>{m.label || 'Marked moment'}</span>
+              <SideCard title="Key moments">
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '6px 10px', alignItems: 'baseline' }}>
+                  {moments.map(m => (
+                    <div key={m.id} style={{ display: 'contents' }}>
+                      <Button variant="ghost" size="xs" onClick={() => play(m.at_ms)} title="Play from here" style={{ padding: '0 4px', justifySelf: 'start' }}>
+                        <span className="cm-kbd" style={{ color: 'var(--gold)' }}>{clockLabel(m.at_ms)}</span>
+                      </Button>
+                      <span style={{ fontSize: 13, color: m.label ? 'var(--ink)' : 'var(--ink-3)' }}>{m.label || 'Marked moment'}</span>
                     </div>
                   ))}
                 </div>
-              </Section>
+              </SideCard>
             )}
           </aside>
         </div>

@@ -12,6 +12,7 @@ import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { Location } from '../../lib/database.types';
 import { SessionHistory } from '../session/SessionHistory';
+import { SessionUpdateBand } from '../session/SessionUpdateBand';
 
 const LOCATION_TYPES = ['continent', 'city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
 
@@ -299,6 +300,7 @@ function LocationDetail({ location, origin, allLocations, onOpenInCanon, onPubli
   return (
     <DetailPanel eyebrow="Location" title="">
       <OriginBand origin={origin} noun="place" onOpenInCanon={onOpenInCanon} onPublish={onPublish} onDetach={onDetach} />
+      <SessionUpdateBand entityType="location" entityId={location.id} />
 
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />

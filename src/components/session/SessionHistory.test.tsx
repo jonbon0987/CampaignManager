@@ -19,7 +19,7 @@ vi.mock('../../lib/db', () => ({
   SessionRecordings: { get: h.getRecording },
 }));
 vi.mock('../../hooks/useRecordingPlayer', () => ({
-  useRecordingPlayer: () => ({ audio: { current: null }, loading: false, playRecording: h.playRecording }),
+  useRecordingPlayer: () => ({ audio: { current: null }, loading: false, playing: false, pause: vi.fn(), playRecording: h.playRecording }),
 }));
 vi.mock('./ChronicleView', () => ({
   ChronicleView: ({ recording }: { recording: { id: string } }) => <div role="dialog">Chronicle of {recording.id}</div>,

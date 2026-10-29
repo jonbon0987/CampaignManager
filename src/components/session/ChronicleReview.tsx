@@ -7,7 +7,7 @@
 // -----------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Check, Pencil, Play, Undo2 } from 'lucide-react';
+import { ArrowLeft, Check, Pencil, Undo2 } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
@@ -21,19 +21,22 @@ import { useChronicleWriter } from '../../hooks/useChronicleWriter';
 import { useRecordingPlayer } from '../../hooks/useRecordingPlayer';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { entityKindColor } from '../../lib/theme';
 import { TranscriptModal } from './TranscriptModal';
+import { PlayerBar } from './PlayerBar';
 
 // --------------- Labels ---------------
 
+// Each card is named in its kind's color, as entity links are.
 const GROUPS: { key: ChronicleGroup; label: string; glyph: string; color: string }[] = [
-  { key: 'session', label: 'Session record', glyph: '❧', color: 'var(--gold)' },
-  { key: 'pcs', label: 'Player characters', glyph: '❖', color: 'var(--ink)' },
-  { key: 'npcs', label: 'Non-Player Characters', glyph: '❦', color: 'var(--gold)' },
-  { key: 'locations', label: 'Locations', glyph: '✦', color: 'var(--gold)' },
-  { key: 'lore', label: 'Lore', glyph: '✦', color: 'var(--gold)' },
-  { key: 'factions', label: 'Factions', glyph: '◈', color: 'var(--gold)' },
-  { key: 'threads', label: 'Threads', glyph: '✧', color: 'var(--gold)' },
-  { key: 'loot', label: 'Loot & rewards', glyph: '⚔', color: 'var(--ink)' },
+  { key: 'session', label: 'Session record', glyph: '❧', color: entityKindColor.session },
+  { key: 'pcs', label: 'Player characters', glyph: '❖', color: entityKindColor.pc },
+  { key: 'npcs', label: 'Non-Player Characters', glyph: '❦', color: entityKindColor.npc },
+  { key: 'locations', label: 'Locations', glyph: '✦', color: entityKindColor.location },
+  { key: 'lore', label: 'Lore', glyph: '✦', color: entityKindColor.lore },
+  { key: 'factions', label: 'Factions', glyph: '◈', color: entityKindColor.faction },
+  { key: 'threads', label: 'Threads & hooks', glyph: '✧', color: entityKindColor.hook },
+  { key: 'loot', label: 'Loot & rewards', glyph: '⚔', color: entityKindColor.pc },
 ];
 
 const SESSION_FIELD: Record<SessionField, string> = {
@@ -241,14 +244,13 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
 
 // --------------- Source panel ---------------
 
-function SourcePanel({ proposal, segments, tracks, onOpenTranscript }: {
+function SourcePanel({ proposal, segments, player, onOpenTranscript }: {
   proposal: ChronicleProposal | null;
   segments: TranscriptSegment[];
-  tracks: RecordingTrack[];
+  /** The player row, playing this proposal's moment. */
+  player: React.ReactNode;
   onOpenTranscript: () => void;
 }) {
-  const toast = useToast();
-  const { audio, loading, playTrack } = useRecordingPlayer();
   const pcs = useCampaign().pcs;
 
   const at = proposal?.source_ms ?? null;
@@ -261,21 +263,11 @@ function SourcePanel({ proposal, segments, tracks, onOpenTranscript }: {
   const context = nearest >= 0 ? segments.slice(Math.max(0, nearest - 2), nearest + 3) : [];
   const who = (s: TranscriptSegment) => (s.is_dm ? 'DM' : s.pc_id ? pcs.find(p => p.id === s.pc_id)?.character_name ?? 'Player' : s.speaker_label ?? 'Unknown');
 
-  const play = async () => {
-    if (at == null || nearest < 0 || !audio.current) return;
-    const track = tracks.find(t => t.id === segments[nearest].track_id);
-    if (!track) return;
-    await playTrack(track, at).catch(e => toast(errorMessage(e), 'error'));
-  };
-
   return (
     <aside aria-label="Source" style={{ flex: '1 1 280px', minWidth: 0, maxWidth: 380, position: 'sticky', top: 16, background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--rule)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="cm-section-head"><span className="cm-section-title">{at != null ? `Heard at ${clock(at)}` : 'Source'}</span><div className="cm-section-rule" /></div>
-        {at != null && nearest >= 0 && (
-          <Button size="sm" onClick={() => void play()} disabled={loading}><Play size={12} /> {loading ? 'Loading…' : 'Play from here'}</Button>
-        )}
-        <audio ref={audio} controls preload="none" style={{ width: '100%', height: 32 }} />
+        {player}
       </div>
       {proposal == null ? (
         <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 14 }}>Pick a change to see where it came from.</p>
@@ -294,7 +286,8 @@ function SourcePanel({ proposal, segments, tracks, onOpenTranscript }: {
           })}
         </ol>
       )}
-      <div style={{ padding: '10px 14px', borderTop: '1px solid var(--rule)' }}>
+      <div className="flex flex-wrap gap-2" style={{ padding: '10px 14px', borderTop: '1px solid var(--rule)' }}>
+        <Button size="xs" onClick={onOpenTranscript} title="Say who a voice is, in the transcript">Fix speaker</Button>
         <Button size="xs" onClick={onOpenTranscript}>Open full transcript</Button>
       </div>
     </aside>
@@ -325,6 +318,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failures, setFailures] = useState<{ name: string; message: string }[]>([]);
   const [showTranscript, setShowTranscript] = useState(false);
+  const { audio, playing, positionMs, loading, pause, playTrack, playRecording } = useRecordingPlayer();
 
   const load = useCallback(async () => {
     const [p, log] = await Promise.all([ChronicleProposals.getByRecording(recording.id), ChronicleAppliedLog.getByRecording(recording.id)]);
@@ -429,6 +423,19 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
     }
   };
 
+  // A card's moment plays on the track its line was heard on (a Discord
+  // player's own track, say), else whichever track covers that time.
+  const playFrom = (p: ChronicleProposal) => {
+    const ms = p.source_ms;
+    if (ms == null) return;
+    setSelected(p.id);
+    let nearest: TranscriptSegment | null = null;
+    for (const s of segments) if (!nearest || Math.abs(s.start_ms - ms) < Math.abs(nearest.start_ms - ms)) nearest = s;
+    const track = nearest ? tracks.find(t => t.id === nearest.track_id) : undefined;
+    const go = track ? playTrack(track, ms) : playRecording(recording.id, ms);
+    go.catch(e => toast(errorMessage(e), 'error'));
+  };
+
   const visibleGroups = GROUPS.filter(g => filter === 'all' || filter === g.key)
     .map(g => ({ ...g, items: all.filter(p => p.group_key === g.key) }))
     .filter(g => g.items.length);
@@ -441,7 +448,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
         <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Session Notes</Button>
           <div className="cm-section-title" style={{ color: 'var(--gold)' }}>Session {session?.session_number ?? ''} · Review</div>
-          <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 28, lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
+          <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 30, lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
           <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--ink-2)' }}>
             {all.length} proposed changes. Edit, accept or skip each one — nothing reaches the campaign until you apply.
           </p>
@@ -450,9 +457,9 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
           <span className="cm-kbd" style={{ color: 'var(--ink-2)' }}>
             <span style={{ color: 'var(--success)' }}>{counts.accepted} accepted</span> · {counts.edited} edited · {counts.skipped} skipped · <span style={{ color: 'var(--gold)' }}>{counts.pending} to review</span>{counts.applied ? ` · ${counts.applied} applied` : ''}
           </span>
-          {live.length > 0 && <Button size="sm" variant="danger" onClick={() => void undo()} disabled={!!busy}><Undo2 size={12} /> {busy === 'undo' ? `Undoing${progress ? ` ${progress.done + 1} of ${progress.total}` : ''}…` : 'Undo write-back'}</Button>}
-          <Button size="sm" onClick={() => void setStatus(all.filter(p => p.status === 'pending').map(p => p.id), 'accepted')} disabled={!counts.pending || !!busy}>Accept the rest</Button>
-          <Button size="sm" variant="primary" onClick={() => void apply()} disabled={!counts.accepted || !!busy || !writer}>
+          {live.length > 0 && <Button variant="danger" onClick={() => void undo()} disabled={!!busy}><Undo2 size={12} /> {busy === 'undo' ? `Undoing${progress ? ` ${progress.done + 1} of ${progress.total}` : ''}…` : 'Undo write-back'}</Button>}
+          <Button onClick={() => void setStatus(all.filter(p => p.status === 'pending').map(p => p.id), 'accepted')} disabled={!counts.pending || !!busy}>Accept the rest</Button>
+          <Button variant="primary" onClick={() => void apply()} disabled={!counts.accepted || !!busy || !writer}>
             {busy === 'apply' ? `Applying${progress ? ` ${progress.done + 1} of ${progress.total}` : ''}…` : `Apply ${counts.accepted} change${counts.accepted === 1 ? '' : 's'}`}
           </Button>
         </div>
@@ -511,8 +518,8 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                       style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-lg)', background: isSel ? 'var(--paper-2)' : 'var(--paper)', border: `1px solid ${border}`, boxShadow: isSel ? 'inset 2px 0 0 var(--gold)' : undefined, opacity: p.status === 'skipped' && !isEditing ? 0.55 : 1 }}
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span aria-hidden="true" style={{ color: g.color }}>{g.glyph}</span>
-                        <span style={{ fontWeight: 500, fontSize: 16, color: 'var(--ink)' }}>{view.name}</span>
+                        <span aria-hidden="true" style={{ fontSize: 16, color: g.color }}>{g.glyph}</span>
+                        <span style={{ fontWeight: 500, fontSize: 16, color: g.color }}>{view.name}</span>
                         <Badge color={view.badge.color}>{view.badge.label}</Badge>
                         {p.edits && <Badge color="muted">✎ Edited</Badge>}
                         {view.tags.map(t => <span key={t} className="cm-tag">{t}</span>)}
@@ -566,8 +573,17 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                       )}
 
                       {p.source_quote && (
-                        <div className="flex gap-2 items-baseline" style={{ borderTop: '1px solid var(--rule-soft)', paddingTop: 8 }}>
-                          <span className="cm-kbd" style={{ color: 'var(--gold)' }}>{p.source_ms != null ? clock(p.source_ms) : ''}</span>
+                        <div className="flex gap-2 items-baseline" style={{ borderTop: '1px solid var(--rule-soft)', paddingTop: 10 }}>
+                          {p.source_ms != null && (
+                            <Button
+                              size="xs"
+                              aria-label={`Play source at ${clock(p.source_ms)}`}
+                              onClick={e => { e.stopPropagation(); playFrom(p); }}
+                              style={{ flex: '0 0 auto', background: 'var(--paper-3)', color: 'var(--gold)', fontFamily: 'var(--mono)' }}
+                            >
+                              ▶ {clock(p.source_ms)}
+                            </Button>
+                          )}
                           <span className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
                             “{p.source_quote}” <span style={{ fontStyle: 'normal', color: 'var(--ink-3)' }}>— {p.source_speaker}</span>
                           </span>
@@ -581,7 +597,20 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
           })}
         </main>
 
-        <SourcePanel proposal={selectedProposal} segments={segments} tracks={tracks} onOpenTranscript={() => setShowTranscript(true)} />
+        <SourcePanel
+          proposal={selectedProposal}
+          segments={segments}
+          onOpenTranscript={() => setShowTranscript(true)}
+          player={(
+            <PlayerBar
+              audio={audio} playing={playing} positionMs={positionMs} loading={loading} onPause={pause}
+              atMs={selectedProposal?.source_ms ?? null}
+              totalMs={recording.duration_ms}
+              onPlay={() => { if (selectedProposal) playFrom(selectedProposal); }}
+              label="Play from here"
+            />
+          )}
+        />
       </div>
       </div>
 

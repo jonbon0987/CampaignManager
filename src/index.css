@@ -67,6 +67,22 @@
   --diff-easy:   #7fc090;
   --diff-hard:   #e0a060;
   --diff-deadly: #e06868;
+  /* Entity-kind colors: links, chips and names of NPCs, places, factions… */
+  --link-npc:           var(--info);
+  --link-npc-bg:        var(--info-bg);
+  --link-npc-line:      var(--info-line);
+  --link-location:      #60c080;
+  --link-location-bg:   #1a3a2a;
+  --link-location-line: #2a6a4a;
+  --link-session:       var(--gold);
+  --link-session-bg:    var(--warn-bg);
+  --link-session-line:  #5a5a2a;
+  --link-faction:       #b070b0;
+  --link-faction-bg:    #2a1a2a;
+  --link-faction-line:  var(--arcane-line);
+  --link-hook:          #e0a060;
+  --link-hook-bg:       #3a2a1a;
+  --link-hook-line:     #7a5a2a;
   --serif:     "EB Garamond", Georgia, Cambria, serif;
   --display:   "EB Garamond", Georgia, Cambria, serif;
   --mono:      "JetBrains Mono", ui-monospace, monospace;
@@ -841,6 +857,14 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   padding: 2px 8px;
   border-radius: 999px;
 }
+/* A thread state as a badge (seed → active …). */
+.cm-state--seed     { color: var(--sky);   background: rgba(127,168,208,0.12); border: 1px solid var(--info-line); }
+.cm-state--active   { color: var(--moss);  background: var(--moss-dim); border: 1px solid var(--success-line); }
+.cm-state--cold     { color: var(--ink-3); background: var(--paper-3);  border: 1px solid var(--rule); }
+.cm-state--resolved { color: var(--gold);  background: var(--gold-dim); border: 1px solid var(--gold-line); }
+
+/* A section heading inside a page (the SectionHeader title, without its layout). */
+.cm-sechead-title { margin: 0; font-family: var(--display); font-size: 20px; line-height: 28px; font-weight: 700; color: var(--gold); }
 .cm-threadcard {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildChronicle, talkShare } from './chronicleView';
+import { buildChronicle, changeCount, changeText, plainList, talkShare, whatChanged, type WrittenItem } from './chronicleView';
 import { trackAt } from './transcript';
 import type { AppliedLike, ProposalLike } from './applyChronicle';
 
@@ -73,5 +73,26 @@ describe('trackAt', () => {
     expect(trackAt(tracks, 95_000)?.id).toBe('table2');
     expect(trackAt([t('discord', 'discord', 5_000)], 0)?.id).toBe('discord');
     expect(trackAt([], 0)).toBeNull();
+  });
+});
+
+describe('describing a change', () => {
+  const item = (over: Partial<WrittenItem>): WrittenItem => ({
+    proposalId: 'p', kind: 'npc', entityId: 'n', name: 'Oren', created: false, entry: null, added: null, changes: [], sourceMs: null, quote: null, ...over,
+  });
+
+  it('says what a write changed, and how many things', () => {
+    const oren = item({ entry: 'Met.', added: 'Scarred.', changes: [{ field: 'disposition', from: 'wary', to: 'fearful ally' }] });
+    expect(whatChanged(oren)).toBe('Attitude · Description · Session history');
+    expect(changeCount(oren)).toBe(3);
+    expect(changeText(oren.changes[0])).toBe('Wary → Fearful ally');
+    expect(whatChanged(item({ created: true }))).toBe('Created new');
+    expect(whatChanged(item({ kind: 'hook', changes: [{ field: 'state', from: 'seed', to: 'active' }] }))).toBe('Seed → Active');
+  });
+
+  it('reads a plain markdown list, and nothing richer', () => {
+    expect(plainList('- The warded stair\n* Roe’s favor\n')).toEqual(['The warded stair', 'Roe’s favor']);
+    expect(plainList('The party stopped.\n- One')).toBeNull();
+    expect(plainList('')).toBeNull();
   });
 });

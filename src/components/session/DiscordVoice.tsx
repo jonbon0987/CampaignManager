@@ -102,7 +102,7 @@ export function DiscordMembers({ members, consents, onLinksChange }: {
 
 const STATE_BADGE: Record<string, { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' }> = {
   connecting: { label: 'Joining', color: 'muted' },
-  recording: { label: 'On Discord', color: 'blue' },
+  recording: { label: 'Connected', color: 'green' },
   finishing: { label: 'Saving', color: 'muted' },
   done: { label: 'Saved', color: 'green' },
   failed: { label: 'Discord failed', color: 'red' },

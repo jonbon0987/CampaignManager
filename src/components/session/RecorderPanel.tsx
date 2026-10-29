@@ -84,6 +84,35 @@ function LevelMeter({ getLevel }: { getLevel: () => number }) {
   );
 }
 
+const WAVE_BARS = 64;
+
+/** The last few seconds of sound as bars, newest on the right. */
+function Waveform({ getLevel, paused }: { getLevel: () => number; paused: boolean }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (paused) return;
+    const levels: number[] = Array(WAVE_BARS).fill(0);
+    const t = setInterval(() => {
+      levels.shift();
+      levels.push(getLevel());
+      const bars = box.current?.children;
+      if (!bars) return;
+      for (let i = 0; i < bars.length; i++) {
+        const el = bars[i] as HTMLElement;
+        el.style.height = `${Math.max(4, Math.round(levels[i] * 42))}px`;
+      }
+    }, 120);
+    return () => clearInterval(t);
+  }, [getLevel, paused]);
+  return (
+    <div ref={box} aria-hidden="true" style={{ flex: '1 1 280px', minWidth: 200, height: 44, display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+      {Array.from({ length: WAVE_BARS }, (_, i) => (
+        <span key={i} style={{ flex: '0 0 4px', height: 4, borderRadius: 2, background: paused ? 'var(--ink-4)' : 'var(--gold)', transition: 'height 100ms linear' }} />
+      ))}
+    </div>
+  );
+}
+
 // --------------- Start dialog ---------------
 
 function StartRecordingModal({ session, onClose }: { session: Session; onClose: () => void }) {
@@ -271,13 +300,22 @@ function LiveRecorder() {
   const { live, busy, upload, getLevel, pause, resume, markMoment, renameMoment, deleteMoment, end, retryUploads } = useRecording();
   const confirm = useConfirm();
   const toast = useToast();
+  const { pcs } = useCampaign();
   const discord = useDiscordCapture(live?.recording ?? null);
   const bot = useDiscordBot(!!live?.recording.discord_state);
   const [consents, setConsents] = useState<PlayerConsent[] | null>(null);
+  const [mic, setMic] = useState<string | null>(null);
   const campaignId = live?.recording.campaign_id;
+  const trackId = live?.trackId;
+  const recordingId = live?.recording.id;
   useEffect(() => {
     if (campaignId) PlayerConsents.getAll(campaignId).then(setConsents).catch(() => setConsents([]));
   }, [campaignId]);
+  // The table microphone's name, as the track was saved with it.
+  useEffect(() => {
+    if (!recordingId || !trackId) return;
+    RecordingTracks.getByRecording(recordingId).then(ts => setMic(ts.find(t => t.id === trackId)?.label ?? null)).catch(() => {});
+  }, [recordingId, trackId]);
   if (!live) return null;
   const { recording, paused, moments } = live;
   const target = recording.settings.discord;
@@ -293,51 +331,84 @@ function LiveRecorder() {
     }
   };
 
+  const atTable = (recording.settings.tablePcIds ?? []).map(id => pcs.find(p => p.id === id)?.character_name).filter(Boolean) as string[];
+  const sourceCard: React.CSSProperties = { background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 };
+
   return (
-    <section aria-label="Recorder" style={{ background: 'var(--paper-2)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="flex items-center gap-4 flex-wrap">
+    <section aria-label="Recorder" style={{ background: 'var(--paper-2)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="flex items-center flex-wrap" style={{ gap: 18 }}>
         <div className="flex items-center gap-3">
-          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: paused ? 'var(--ink-3)' : 'var(--red)', boxShadow: paused ? 'none' : '0 0 0 4px var(--red-dim)' }} />
+          <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: '50%', background: paused ? 'var(--ink-3)' : 'var(--red)', boxShadow: paused ? 'none' : '0 0 0 4px var(--red-dim)' }} />
           <Badge color={paused ? 'muted' : 'red'}>{paused ? 'Paused' : 'Recording'}</Badge>
-          <Elapsed startedAt={recording.started_at} style={{ fontFamily: 'var(--mono)', fontSize: 22, color: 'var(--ink)', letterSpacing: '0.04em' }} />
+          <Elapsed startedAt={recording.started_at} style={{ fontFamily: 'var(--mono)', fontSize: 26, fontWeight: 500, color: 'var(--ink)', letterSpacing: '0.04em' }} />
         </div>
-        <LevelMeter getLevel={getLevel} />
+        <Waveform getLevel={getLevel} paused={paused} />
         <div className="flex items-center gap-2 flex-wrap">
-          <Button size="sm" onClick={() => void markMoment().catch(e => toast(errorMessage(e), 'error'))} disabled={paused}>
+          <Button onClick={() => void markMoment().catch(e => toast(errorMessage(e), 'error'))} disabled={paused}>
             <Bookmark size={13} /> Mark moment <span className="cm-kbd">M</span>
           </Button>
           {paused
-            ? <Button size="sm" onClick={resume}><Play size={13} /> Resume</Button>
-            : <Button size="sm" onClick={pause}><Pause size={13} /> Pause</Button>}
-          <Button size="sm" variant="primary" onClick={() => void stop()} disabled={busy}>
+            ? <Button onClick={resume}><Play size={13} /> Resume</Button>
+            : <Button onClick={pause}><Pause size={13} /> Pause</Button>}
+          <Button variant="primary" onClick={() => void stop()} disabled={busy}>
             <Square size={12} /> {busy ? 'Saving…' : 'End & save'}
           </Button>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap text-xs" style={{ color: 'var(--ink-3)', borderTop: '1px solid var(--rule-soft)', paddingTop: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, borderTop: '1px solid var(--rule-soft)', paddingTop: 14 }}>
+        <div style={sourceCard}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span aria-hidden="true" style={{ color: 'var(--gold)' }}>✦</span>
+            <span style={{ fontWeight: 500 }}>At the table</span>
+            <Badge color={paused ? 'muted' : 'green'}>{paused ? 'Paused' : 'Live'}</Badge>
+            <span style={{ flex: 1 }} />
+            {mic && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{mic}</span>}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs" style={{ color: 'var(--ink-2)', width: 110 }}>Room level</span>
+            <LevelMeter getLevel={getLevel} />
+          </div>
+          <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+            {atTable.length ? `You${atTable.length > 1 ? ', ' : ' and '}${atTable.length > 1 ? `${atTable.slice(0, -1).join(', ')} and ${atTable[atTable.length - 1]}` : atTable[0]} · consent recorded` : 'You'}
+          </span>
+        </div>
+
+        {target && (
+          <div style={sourceCard}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span aria-hidden="true" style={{ color: 'var(--link-faction)' }}>◈</span>
+              <span style={{ fontWeight: 500 }}>On Discord</span>
+              <DiscordStateLine state={discord?.discord_state} detail={null} botOnline={bot.online} />
+              <span style={{ flex: 1 }} />
+              <span className="text-xs" style={{ color: 'var(--ink-3)' }}>#{target.channelName}{bot.presence?.bot_tag ? ` · ${bot.presence.bot_tag.replace(/#\d+$/, '')}` : ''}</span>
+            </div>
+            {discord?.discord_detail && (
+              <span className="text-xs" style={{ color: discord.discord_state === 'failed' ? 'var(--warn)' : 'var(--ink-2)' }}>
+                {discord.discord_state === 'failed' && <span aria-hidden="true">△ </span>}{discord.discord_detail}
+              </span>
+            )}
+            <details>
+              <summary className="text-xs" style={{ cursor: 'pointer', color: 'var(--gold)' }}>Who’s who on Discord</summary>
+              <div style={{ marginTop: 8 }}>
+                {channel
+                  ? <DiscordMembers members={channel.members} consents={consents} />
+                  : <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>The bot can’t see this channel right now.</p>}
+              </div>
+            </details>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center flex-wrap text-xs" style={{ gap: '8px 20px', color: 'var(--ink-3)' }}>
         <span>Saved every minute{upload.pending > 0 ? ` · ${upload.pending} waiting to upload` : ' · all uploaded'}</span>
+        {target && <span style={{ color: 'var(--ink-2)' }}><span aria-hidden="true" style={{ color: 'var(--gold)' }}>✧</span> Wear headphones so the table mic doesn’t hear Discord twice</span>}
         {upload.error && (
           <span style={{ color: 'var(--warn)' }}>
             Upload paused: {upload.error} <Button variant="link" onClick={retryUploads}>Retry now</Button>
           </span>
         )}
-        <span style={{ marginLeft: 'auto' }}>{(recording.settings.tablePcIds?.length ?? 0)} at the table · consent recorded</span>
       </div>
-
-      {target && (
-        <details style={{ borderTop: '1px solid var(--rule-soft)', paddingTop: 10 }}>
-          <summary className="flex items-center gap-2" style={{ cursor: 'pointer', listStyle: 'none' }}>
-            <span className="cm-section-title" style={{ marginRight: 4 }}>Discord · #{target.channelName}</span>
-            <DiscordStateLine state={discord?.discord_state} detail={discord?.discord_detail} botOnline={bot.online} />
-          </summary>
-          <div style={{ marginTop: 10 }}>
-            {channel
-              ? <DiscordMembers members={channel.members} consents={consents} />
-              : <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>The bot can’t see this channel right now.</p>}
-          </div>
-        </details>
-      )}
 
       {moments.length > 0 && (
         <div>

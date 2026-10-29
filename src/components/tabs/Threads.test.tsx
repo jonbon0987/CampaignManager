@@ -28,6 +28,7 @@ vi.mock('../ui/SlashField', () => ({
   ),
 }));
 vi.mock('../session/SessionHistory', () => ({ SessionHistory: () => null }));
+vi.mock('../session/SessionUpdateBand', () => ({ SessionUpdateBand: () => null }));
 
 import Threads from './Threads';
 

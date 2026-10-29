@@ -3,6 +3,7 @@
 // Plays a recording from a moment on the session clock. A recorded track
 // skips paused time, so the moment is mapped onto the track's audio through its
 // chunk timings first. Signed URLs and chunk timings are fetched once per track.
+// It also reports where on the session clock playback is, for a progress bar.
 // -----------------------------------------------------------
 
 import { useCallback, useRef, useState } from 'react';
@@ -19,6 +20,11 @@ export function useRecordingPlayer() {
   const chunks = useRef(new Map<string, ChunkTiming[]>());
   const tracks = useRef(new Map<string, RecordingTrack[]>());
   const [loading, setLoading] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [positionMs, setPositionMs] = useState<number | null>(null);
+  // Where playback started, on the session clock and in the audio, so the
+  // position can be followed from the audio's own clock.
+  const anchor = useRef<{ sessionMs: number; audioSec: number } | null>(null);
 
   /** Plays `track` from `sessionMs`. */
   const playTrack = useCallback(async (track: RecordingTrack, sessionMs: number) => {
@@ -33,7 +39,13 @@ export function useRecordingPlayer() {
         el.src = src;
         await new Promise<void>(r => { el.onloadedmetadata = () => r(); setTimeout(r, 5000); });
       }
-      el.currentTime = sessionToAudioMs(Math.max(0, sessionMs - LEAD_IN_MS), chunks.current.get(track.id)!, track.offset_ms) / 1000;
+      const from = Math.max(0, sessionMs - LEAD_IN_MS);
+      el.currentTime = sessionToAudioMs(from, chunks.current.get(track.id)!, track.offset_ms) / 1000;
+      anchor.current = { sessionMs: from, audioSec: el.currentTime };
+      setPositionMs(from);
+      el.ontimeupdate = () => { const a = anchor.current; if (a) setPositionMs(a.sessionMs + Math.max(0, el.currentTime - a.audioSec) * 1000); };
+      el.onplay = () => setPlaying(true);
+      el.onpause = () => setPlaying(false);
       await el.play();
     } finally {
       setLoading(false);
@@ -48,5 +60,7 @@ export function useRecordingPlayer() {
     await playTrack(track, sessionMs);
   }, [playTrack]);
 
-  return { audio, loading, playTrack, playRecording };
+  const pause = useCallback(() => audio.current?.pause(), []);
+
+  return { audio, loading, playing, positionMs, pause, playTrack, playRecording };
 }
