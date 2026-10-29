@@ -695,14 +695,14 @@ export function RecorderPanel({ session }: { session: Session }) {
 }
 
 /** A small "● REC" pill for the top bar while a recording runs anywhere in the app. */
-export function RecordingIndicator({ onOpen }: { onOpen: () => void }) {
+export function RecordingIndicator({ onOpen }: { onOpen: (sessionId: string) => void }) {
   const { live } = useRecording();
   if (!live) return null;
   return (
     <Button
       size="xs"
-      onClick={onOpen}
-      aria-label={live.paused ? 'Recording paused — open Session Notes' : 'Recording — open Session Notes'}
+      onClick={() => onOpen(live.recording.session_id)}
+      aria-label={live.paused ? 'Recording paused — open the session being recorded' : 'Recording — open the session being recorded'}
       style={{ borderRadius: 999, borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)', fontFamily: 'var(--mono)', letterSpacing: '0.06em' }}
     >
       <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: live.paused ? 'var(--ink-3)' : 'var(--red)' }} />

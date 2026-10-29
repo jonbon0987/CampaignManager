@@ -11,6 +11,10 @@ interface SearchResult {
   label: string;
   detail?: string;
   tab: Tab;
+  /** Which Combat sub-tab the record lives in. */
+  kind?: 'statblock' | 'encounter';
+  /** Opens a view of the tab rather than one record (session prep). */
+  view?: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
   group: string;
 }
@@ -18,10 +22,11 @@ interface SearchResult {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onNavigate: (tab: Tab) => void;
+  onOpenRecord: (tab: Tab, id: string, kind?: string) => void;
+  onOpenView: (tab: Tab, view: string) => void;
 }
 
-export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
+export default function SearchOverlay({ open, onClose, onOpenRecord, onOpenView }: Props) {
   const campaign = useCampaign();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +67,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: p.id, label: `Session #${p.session_number} Prep`,
           detail: p.prep_date ?? undefined,
-          tab: 'sessions', icon: ScrollText, group: 'Session Prep',
+          tab: 'sessions', view: 'prep', icon: ScrollText, group: 'Session Prep',
         });
       }
     }
@@ -154,7 +159,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: c.id, label: c.name,
           detail: [c.creature_type, c.challenge_rating ? `CR ${c.challenge_rating}` : null].filter(Boolean).join(' · ') || undefined,
-          tab: 'combat', icon: Skull, group: 'Stat Sheets',
+          tab: 'combat', kind: 'statblock', icon: Skull, group: 'Stat Sheets',
         });
       }
     }
@@ -165,7 +170,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
         matches.push({
           id: e.id, label: e.name,
           detail: e.status ?? undefined,
-          tab: 'combat', icon: Swords, group: 'Encounters',
+          tab: 'combat', kind: 'encounter', icon: Swords, group: 'Encounters',
         });
       }
     }
@@ -185,7 +190,8 @@ export default function SearchOverlay({ open, onClose, onNavigate }: Props) {
   }, [selectedIdx]);
 
   const handleSelect = (result: SearchResult) => {
-    onNavigate(result.tab);
+    if (result.view) onOpenView(result.tab, result.view);
+    else onOpenRecord(result.tab, result.id, result.kind);
     onClose();
   };
 

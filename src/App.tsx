@@ -58,6 +58,11 @@ const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
   cast: 'list', threads: 'board', modules: 'list', sessions: 'log',
 };
 
+// The view a tab must be in to show a single record.
+const LIST_VIEW: Partial<Record<Tab, string>> = {
+  cast: 'list', modules: 'list', sessions: 'log',
+};
+
 function AppInner({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', threads: 'board', modules: 'list', sessions: 'log' });
@@ -74,18 +79,23 @@ function AppInner({ user }: { user: User }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState('all');
-  // A record the user asked to open (e.g. from the sidebar "Recent" list). The
-  // destination tab reads its id, selects that record, then clears the target.
-  const [openTarget, setOpenTarget] = useState<{ tab: Tab; id: string } | null>(null);
+  // A record the user asked to open (e.g. from search or the sidebar "Recent"
+  // list). The destination tab reads its id, selects that record, then clears
+  // the target. `kind` tells Combat which sub-tab the record lives in.
+  const [openTarget, setOpenTarget] = useState<{ tab: Tab; id: string; kind?: string } | null>(null);
 
-  const openRecord = useCallback((tab: Tab, id: string) => {
+  const openRecord = useCallback((tab: Tab, id: string, kind?: string) => {
     setActiveTab(tab);
-    setOpenTarget({ tab, id });
+    // Records only show in each tab's list view, not its web or timeline.
+    const listView = LIST_VIEW[tab];
+    if (listView) setViewModes(prev => ({ ...prev, [tab]: listView }));
+    setOpenTarget({ tab, id, kind });
   }, []);
   const clearOpenTarget = useCallback(() => setOpenTarget(null), []);
 
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
+  const openIdFor = (tab: Tab) => (openTarget?.tab === tab ? openTarget.id : null);
   const { loading, error, pcs } = useCampaign();
   const chat = useAIChat(useCampaignAssistantBackend());
   const pcNames = pcs.map(p => p.character_name).filter(Boolean);
@@ -202,7 +212,7 @@ function AppInner({ user }: { user: User }) {
             viewMode={activeViewMode}
             setViewMode={setViewMode}
             viewOptions={TAB_VIEW_OPTIONS[activeTab]}
-            status={<RecordingIndicator onOpen={() => setActiveTab('sessions')} />}
+            status={<RecordingIndicator onOpen={sessionId => openRecord('sessions', sessionId)} />}
           />
 
           <div className="cm-canvas">
@@ -216,14 +226,14 @@ function AppInner({ user }: { user: User }) {
             ) : (
               <>
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
-                {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} openId={openTarget?.tab === 'cast' ? openTarget.id : null} onOpenConsumed={clearOpenTarget} />}
-                {activeTab === 'lore'      && <Lore openId={openTarget?.tab === 'lore' ? openTarget.id : null} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('lore'); setImportOpen(true); }} />}
-                {activeTab === 'locations' && <Locations openId={openTarget?.tab === 'locations' ? openTarget.id : null} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
-                {activeTab === 'threads'   && <Threads viewMode={viewModes.threads ?? 'board'} onNavigate={setActiveTab} />}
+                {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} openId={openIdFor('cast')} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'lore'      && <Lore openId={openIdFor('lore')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('lore'); setImportOpen(true); }} />}
+                {activeTab === 'locations' && <Locations openId={openIdFor('locations')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
+                {activeTab === 'threads'   && <Threads viewMode={viewModes.threads ?? 'board'} onNavigate={setActiveTab} openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'ideas'     && <Ideas onNavigate={setActiveTab} />}
-                {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} />}
-                {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} />}
-                {activeTab === 'combat'    && <CombatView onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} />}
+                {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} openId={openIdFor('sessions')} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'combat'    && <CombatView onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={openTarget?.tab === 'combat' ? openTarget : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'settings'  && <SettingsView />}
               </>
             )}
@@ -236,7 +246,8 @@ function AppInner({ user }: { user: User }) {
         <SearchOverlay
           open={searchOpen}
           onClose={() => setSearchOpen(false)}
-          onNavigate={setActiveTab}
+          onOpenRecord={openRecord}
+          onOpenView={(tab, view) => { setActiveTab(tab); setViewModes(p => ({ ...p, [tab]: view })); }}
         />
         <DiceRoller
           open={diceOpen}
@@ -251,7 +262,7 @@ function AppInner({ user }: { user: User }) {
             setRunMode(next);
             if (!next) setSessionBarOpen(false);
           }}
-          onNavigate={setActiveTab}
+          onOpenRecord={openRecord}
           pcNames={pcNames}
         />
         {captureOpen && (

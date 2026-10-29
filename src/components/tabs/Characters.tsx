@@ -77,7 +77,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
   // incoming external request is the legitimate case for setState in an effect.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (openId) { setSelectedId(openId); onOpenConsumed?.(); }
+    if (openId) { setSelectedId(openId); setFilter('all'); setMetFilter('all'); setSearch(''); onOpenConsumed?.(); }
   }, [openId, onOpenConsumed]);
 
   // Build unified list

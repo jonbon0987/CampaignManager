@@ -31,7 +31,7 @@ function rollDie(sides: number): number {
 
 // ─── Search panel ─────────────────────────────────────────────────────────────
 
-function SearchPanel({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
+function SearchPanel({ onOpenRecord }: { onOpenRecord: (tab: Tab, id: string) => void }) {
   const campaign = useCampaign();
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +75,7 @@ function SearchPanel({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
           <button
             key={x.id}
             className="sb-search-item"
-            onClick={() => { onNavigate(x.tab); }}
+            onClick={() => { onOpenRecord(x.tab, x.id); }}
           >
             <span className="sb-search-glyph">{x.glyph}</span>
             <span className="sb-search-label">{x.label}</span>
@@ -335,7 +335,7 @@ interface SessionBarProps {
   onClose: () => void;
   runMode: boolean;
   onToggleRun: () => void;
-  onNavigate: (tab: Tab) => void;
+  onOpenRecord: (tab: Tab, id: string) => void;
   pcNames?: string[];
 }
 
@@ -344,7 +344,7 @@ export default function SessionBar({
   onClose,
   runMode,
   onToggleRun,
-  onNavigate,
+  onOpenRecord,
   pcNames = [],
 }: SessionBarProps) {
   const [tab, setTab] = useState<'init' | 'dice' | 'search'>('init');
@@ -404,7 +404,7 @@ export default function SessionBar({
           />
         )}
         {tab === 'dice' && <DicePanel log={diceLog} setLog={setDiceLog} />}
-        {tab === 'search' && <SearchPanel onNavigate={onNavigate} />}
+        {tab === 'search' && <SearchPanel onOpenRecord={onOpenRecord} />}
       </div>
     </div>
   );

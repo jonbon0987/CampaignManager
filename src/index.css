@@ -1945,10 +1945,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border-top: 1px solid var(--rule);
 }
 
-/* ═══ Run-mode overlay ═══ */
-.cm-run .cm-side, .cm-run .cm-top { opacity: .7; }
-.cm-run .cm-canvas { opacity: .55; pointer-events: none; }
-
 /* ═══ Session Bar ═══ */
 .sb {
   position: fixed;

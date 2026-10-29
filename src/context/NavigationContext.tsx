@@ -31,7 +31,7 @@ interface NavigationProviderProps {
   children: ReactNode;
   setActiveTab: (tab: Tab) => void;
   /** Switches to a tab and selects a record there (for tabs that take an open target). */
-  openRecord?: (tab: Tab, id: string) => void;
+  openRecord?: (tab: Tab, id: string, kind?: string) => void;
 }
 
 export function NavigationProvider({ children, setActiveTab, openRecord }: NavigationProviderProps) {
@@ -48,7 +48,7 @@ export function NavigationProvider({ children, setActiveTab, openRecord }: Navig
     if (timer) clearTimeout(timer);
 
     const tab = ENTITY_TAB_MAP[entityType];
-    if (openRecord) openRecord(tab, id);
+    if (openRecord) openRecord(tab, id, entityType);
     else setActiveTab(tab);
     setHighlightedEntityId(id);
 

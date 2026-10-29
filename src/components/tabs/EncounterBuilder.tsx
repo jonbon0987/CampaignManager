@@ -18,7 +18,7 @@ import {
 // Main component
 // ================================================================
 
-export default function EncounterBuilder() {
+export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void } = {}) {
   const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, pcs } = useCampaign();
   const confirm = useConfirm();
 
@@ -27,6 +27,12 @@ export default function EncounterBuilder() {
 
   // Search
   const [search, setSearch] = useState('');
+
+  // Select an encounter requested from outside the tab (search).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openId) { setSelectedId(openId); setSearch(''); onOpenConsumed?.(); }
+  }, [openId, onOpenConsumed]);
 
   // AI encounter generator
   const [genOpen, setGenOpen] = useState(false);
