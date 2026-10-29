@@ -6,6 +6,7 @@ import WorldCreationGate from './WorldCreationGate';
 import CampaignCreationGate from './CampaignCreationGate';
 import { signOut } from '../../lib/auth';
 import useLocalStorage from '../../hooks/useLocalStorage';
+import { OverflowMenu, type OverflowMenuEntry } from '../ui/OverflowMenu';
 import type { WorldTab, WorldCampaign } from '../../types/world';
 
 interface WorldNavItem {
@@ -29,6 +30,12 @@ const CAMPAIGN_EYEBROW: Record<WorldCampaign['status'], string> = {
   paused: 'Paused campaign',
   completed: 'Completed',
 };
+const STATUS_LABEL: Record<WorldCampaign['status'], string> = {
+  active: 'Active',
+  paused: 'Paused',
+  completed: 'Completed',
+};
+
 const CAMPAIGN_CTA: Record<WorldCampaign['status'], string> = {
   active: 'Continue session ›',
   paused: 'Resume campaign ›',
@@ -200,7 +207,7 @@ function CampaignFlyout({ campaigns, activeCampaignId, openCampaign }: CampaignF
 export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () => void; onOpenDice?: () => void }) {
   const {
     activeWorld, campaigns, worldTab, setWorldTab, loading,
-    activeCampaignId, openCampaign, deleteCampaign,
+    activeCampaignId, openCampaign, deleteCampaign, updateCampaign,
     npcs, factions, locations, lore, bestiary, encounters, worldRandomEncounterTables, timeline,
   } = useWorld();
   const confirm = useConfirm();
@@ -215,8 +222,7 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
     return () => { shell?.classList.remove('w-side-collapsed'); };
   }, [collapsed]);
 
-  const handleDeleteCampaign = async (e: React.MouseEvent, id: string, name: string) => {
-    e.stopPropagation();
+  const handleDeleteCampaign = async (id: string, name: string) => {
     const ok = await confirm({
       title: 'Delete campaign',
       message: `Delete "${name}"? This cannot be undone.`,
@@ -225,6 +231,17 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
     });
     if (ok) await deleteCampaign(id);
   };
+
+  // Status changes and delete live in a ⋯ menu, away from the Continue button.
+  const campaignMenu = (c: WorldCampaign): OverflowMenuEntry[] => [
+    ...(Object.keys(STATUS_LABEL) as WorldCampaign['status'][])
+      .filter(st => st !== c.status)
+      .map(st => ({ label: `Mark as ${STATUS_LABEL[st].toLowerCase()}`, onClick: () => void updateCampaign(c.id, { status: st }) })),
+    { sep: true },
+    { label: 'Delete campaign', danger: true, onClick: () => void handleDeleteCampaign(c.id, c.name) },
+  ];
+  // Clicks and keys in the menu shouldn't open the campaign row it sits on.
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 
   const counts: Partial<Record<WorldTab, number>> = {
     timeline: timeline.length,
@@ -350,12 +367,9 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
               onClick={() => openCampaign(heroCampaign.id)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openCampaign(heroCampaign.id); }}
             >
-              {/* eslint-disable-next-line no-restricted-syntax -- bespoke sidebar affordance */}
-              <button className="wc-hero-del" title="Delete campaign"
-                onClick={e => handleDeleteCampaign(e, heroCampaign.id, heroCampaign.name)}
-              >
-                ✕
-              </button>
+              <div className="wc-hero-menu" onClick={stop} onKeyDown={stop}>
+                <OverflowMenu items={campaignMenu(heroCampaign)} />
+              </div>
               <div className="wc-hero-eyebrow">
                 <span className={`wc-dot wc-dot-${heroCampaign.status}`} />
                 {activeCampaignId === heroCampaign.id ? 'Now playing' : CAMPAIGN_EYEBROW[heroCampaign.status]}
@@ -382,12 +396,9 @@ export default function WorldSidebar({ onOpenAI, onOpenDice }: { onOpenAI?: () =
               <span className={`wc-dot wc-dot-${c.status}`} />
               <span className="wc-row-name">{c.name}</span>
               <span className="wc-row-n">{c.sessions} sess</span>
-              {/* eslint-disable-next-line no-restricted-syntax -- bespoke sidebar affordance */}
-              <button className="wc-row-del" title="Delete campaign"
-                onClick={e => handleDeleteCampaign(e, c.id, c.name)}
-              >
-                ✕
-              </button>
+              <div className="wc-row-menu" onClick={stop} onKeyDown={stop}>
+                <OverflowMenu items={campaignMenu(c)} />
+              </div>
             </div>
           ))}
 

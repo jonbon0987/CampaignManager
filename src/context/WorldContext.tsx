@@ -64,6 +64,7 @@ function dbNPCToWorldNPC(n: NPC): WorldNPC {
     role: n.role ?? '',
     status: n.status as WorldNPC['status'],
     desc: n.description ?? '',
+    dmNotes: n.dm_notes ?? '',
     factions: n.faction_ids ?? [],
     location: n.location,
     era: '',
@@ -90,6 +91,11 @@ function dbLocationToWorldLocation(l: DBLocation): WorldLocation {
     name: l.name,
     type: l.location_type ?? '',
     desc: l.description ?? '',
+    region: l.region ?? '',
+    population: l.population ?? '',
+    status: l.status ?? '',
+    history: l.history ?? '',
+    dmNotes: l.dm_notes ?? '',
     tags: [],
     parent: l.parent_id ?? null,
   };
@@ -101,6 +107,7 @@ function dbLoreToWorldLore(e: LoreEntry): WorldLoreEntry {
     worldId: e.world_id ?? '',
     title: e.title,
     desc: e.content ?? '',
+    dmOnly: e.dm_only ?? false,
     tags: e.category ? [e.category] : [],
   };
 }
@@ -562,25 +569,13 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const upsertWorldNPC = useCallback(async (
     data: Partial<NPC> & { id: string },
   ): Promise<void> => {
-    const dbEntry = await NPCsDB.upsert({
-      name: data.name ?? '',
-      world_id: activeWorldId,
-      campaign_id: null,
-      role: data.role ?? null,
-      status: data.status ?? 'active',
-      description: data.description ?? null,
-      hooks_motivations: null,
-      dm_notes: data.dm_notes ?? null,
-      location: data.location ?? null,
-      faction_ids: data.faction_ids ?? [],
-      affiliation: null,
-      first_session: null,
-      met_by_pcs: false,
-      statblock_id: null,
-      id: data.id,
-    });
-    setNpcs(prev => prev.map(n => n.id === dbEntry.id ? dbNPCToWorldNPC(dbEntry) : n));
-  }, [activeWorldId]);
+    // Only the fields the World editor sends change. A canon entry is shared
+    // with campaigns, which edit columns the World editor doesn't show; a
+    // whole-row save here used to blank those.
+    const { id, ...patch } = data;
+    const dbEntry = await NPCsDB.update(id, patch);
+    setNpcs(prev => prev.map(x => x.id === dbEntry.id ? dbNPCToWorldNPC(dbEntry) : x));
+  }, []);
 
   const deleteWorldNPC = useCallback(async (id: string): Promise<void> => {
     await NPCsDB.delete(id);
@@ -606,19 +601,13 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const upsertWorldFaction = useCallback(async (
     data: Partial<Faction> & { id: string },
   ): Promise<void> => {
-    const dbEntry = await FactionsDB.upsert({
-      name: data.name ?? '',
-      world_id: activeWorldId,
-      campaign_id: null,
-      faction_type: data.faction_type ?? null,
-      overview: data.overview ?? null,
-      key_figures: data.key_figures ?? null,
-      agenda: data.agenda ?? null,
-      dm_notes: data.dm_notes ?? null,
-      id: data.id,
-    });
-    setFactions(prev => prev.map(f => f.id === dbEntry.id ? dbFactionToWorldFaction(dbEntry) : f));
-  }, [activeWorldId]);
+    // Only the fields the World editor sends change. A canon entry is shared
+    // with campaigns, which edit columns the World editor doesn't show; a
+    // whole-row save here used to blank those.
+    const { id, ...patch } = data;
+    const dbEntry = await FactionsDB.update(id, patch);
+    setFactions(prev => prev.map(x => x.id === dbEntry.id ? dbFactionToWorldFaction(dbEntry) : x));
+  }, []);
 
   const deleteWorldFaction = useCallback(async (id: string): Promise<void> => {
     await FactionsDB.delete(id);
@@ -628,17 +617,13 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const upsertWorldLore = useCallback(async (
     data: Partial<LoreEntry> & { id: string },
   ): Promise<void> => {
-    const dbEntry = await LoreDB.upsert({
-      title: data.title ?? '',
-      world_id: activeWorldId,
-      campaign_id: null,
-      category: data.category ?? null,
-      content: data.content ?? null,
-      dm_only: data.dm_only ?? false,
-      id: data.id,
-    });
-    setLore(prev => prev.map(l => l.id === dbEntry.id ? dbLoreToWorldLore(dbEntry) : l));
-  }, [activeWorldId]);
+    // Only the fields the World editor sends change. A canon entry is shared
+    // with campaigns, which edit columns the World editor doesn't show; a
+    // whole-row save here used to blank those.
+    const { id, ...patch } = data;
+    const dbEntry = await LoreDB.update(id, patch);
+    setLore(prev => prev.map(x => x.id === dbEntry.id ? dbLoreToWorldLore(dbEntry) : x));
+  }, []);
 
   const deleteWorldLore = useCallback(async (id: string): Promise<void> => {
     await LoreDB.delete(id);
@@ -648,22 +633,13 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const upsertWorldLocation = useCallback(async (
     data: Partial<DBLocation> & { id: string },
   ): Promise<void> => {
-    const dbEntry = await LocationsDB.upsert({
-      name: data.name ?? '',
-      world_id: activeWorldId,
-      campaign_id: null,
-      location_type: data.location_type ?? 'landmark',
-      parent_id: data.parent_id ?? null,
-      region: data.region ?? null,
-      population: data.population ?? null,
-      status: data.status ?? null,
-      description: data.description ?? null,
-      history: data.history ?? null,
-      dm_notes: data.dm_notes ?? null,
-      id: data.id,
-    });
-    setLocations(prev => prev.map(l => l.id === dbEntry.id ? dbLocationToWorldLocation(dbEntry) : l));
-  }, [activeWorldId]);
+    // Only the fields the World editor sends change. A canon entry is shared
+    // with campaigns, which edit columns the World editor doesn't show; a
+    // whole-row save here used to blank those.
+    const { id, ...patch } = data;
+    const dbEntry = await LocationsDB.update(id, patch);
+    setLocations(prev => prev.map(x => x.id === dbEntry.id ? dbLocationToWorldLocation(dbEntry) : x));
+  }, []);
 
   const deleteWorldLocation = useCallback(async (id: string): Promise<void> => {
     await LocationsDB.delete(id);

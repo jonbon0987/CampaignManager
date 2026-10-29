@@ -1,43 +1,39 @@
 interface ShortcutsOverlayProps {
   open: boolean;
   onClose: () => void;
+  /** The world shell has no search, sidebar shortcut or recorder. */
+  scope?: 'campaign' | 'world';
 }
 
-const GROUPS = [
+interface Shortcut { keys: string[]; label: string; campaignOnly?: boolean }
+
+// Only keys that are actually wired up belong here.
+const GROUPS: { title: string; shortcuts: Shortcut[] }[] = [
   { title: 'Navigation', shortcuts: [
-    { keys: ['⌘', 'K'], label: 'Campaign Assistant' },
-    { keys: ['⌘', '/'], label: 'Search' },
-    { keys: ['⌘', '\\'], label: 'Toggle sidebar' },
-    { keys: ['⌘', '.'], label: 'Toggle scratchpad' },
-  ]},
-  { title: 'Lists', shortcuts: [
-    { keys: ['↑', '↓'], label: 'Navigate list items' },
-    { keys: ['↵'], label: 'Open selected item' },
-    { keys: ['⌘', '⌫'], label: 'Delete selected' },
-  ]},
-  { title: 'Create', shortcuts: [
-    { keys: ['⌘', '⇧', 'N'], label: 'New NPC' },
-    { keys: ['⌘', '⇧', 'L'], label: 'New location' },
-    { keys: ['⌘', '⇧', 'S'], label: 'New session' },
-    { keys: ['⌘', '⇧', 'E'], label: 'New encounter' },
+    { keys: ['⌘', 'K'], label: 'Assistant' },
+    { keys: ['⌘', '/'], label: 'Search', campaignOnly: true },
+    { keys: ['⌘', '\\'], label: 'Collapse sidebar', campaignOnly: true },
+    { keys: ['⌘', '.'], label: 'Scratchpad' },
   ]},
   { title: 'Editing', shortcuts: [
-    { keys: ['@'], label: 'Insert entity mention' },
-    { keys: ['⌘', 'S'], label: 'Force save' },
-    { keys: ['Esc'], label: 'Close panel / overlay' },
+    { keys: ['@'], label: 'Mention an entry' },
+    { keys: ['/'], label: 'Format menu, in a text field' },
+    { keys: ['⌘', 'S'], label: 'Save now' },
   ]},
-  { title: 'Session', shortcuts: [
-    { keys: ['⌘', '⇧', 'R'], label: 'Toggle Run Session' },
-    { keys: ['Space'], label: 'Next initiative turn' },
+  { title: 'Recording', shortcuts: [
+    { keys: ['M'], label: 'Mark a moment', campaignOnly: true },
   ]},
   { title: 'Overlays', shortcuts: [
     { keys: ['?'], label: 'Show shortcuts' },
-    { keys: ['Esc'], label: 'Close overlays' },
+    { keys: ['Esc'], label: 'Close' },
   ]},
 ];
 
-export default function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
+export default function ShortcutsOverlay({ open, onClose, scope = 'campaign' }: ShortcutsOverlayProps) {
   if (!open) return null;
+  const groups = GROUPS
+    .map(g => ({ ...g, shortcuts: g.shortcuts.filter(sc => scope === 'campaign' || !sc.campaignOnly) }))
+    .filter(g => g.shortcuts.length);
 
   return (
     <div className="v6-ks-back" onClick={onClose}>
@@ -49,7 +45,7 @@ export default function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProp
           <button className="v6-ks-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="v6-ks-grid">
-          {GROUPS.map((g, gi) => (
+          {groups.map((g, gi) => (
             <div key={gi} className="v6-ks-group">
               <div className="v6-ks-group-title">{g.title}</div>
               {g.shortcuts.map((s, si) => (

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
-import { InitiativeTracker } from '../InitiativeTracker';
+import { InitiativeTracker, type PartyMember } from '../InitiativeTracker';
 import {
   RandomEncounterDetail,
   type RandomEncounterSaveData,
@@ -35,7 +35,8 @@ export default function RandomEncounters({ onImportFromWorld }: { onImportFromWo
   const [genTableOpen, setGenTableOpen] = useState(false);
 
   const activePCs = pcs.filter(p => p.is_active);
-  const activePCNames = activePCs.map(p => p.character_name);
+  // The active party, with the HP and AC set on each PC in Cast.
+  const partyMembers: PartyMember[] = activePCs.map(p => ({ name: p.character_name, maxHp: p.max_hp, ac: p.armor_class }));
   // Party size + average level auto-fill from active PCs (the DM can still
   // override both in the roll bar). PCs without a level set are ignored.
   const leveledPCs = activePCs.filter(p => typeof p.level === 'number' && p.level > 0);
@@ -294,7 +295,7 @@ export default function RandomEncounters({ onImportFromWorld }: { onImportFromWo
           <InitiativeTracker
             encounter={runningEncounter}
             statblocks={monsterStatblocks}
-            pcNames={activePCNames}
+            party={partyMembers}
             onClose={() => setRunningEncounter(null)}
           />
         </div>

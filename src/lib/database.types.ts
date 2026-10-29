@@ -105,6 +105,8 @@ export interface PlayerCharacter {
   race: string | null;
   class: string | null;
   level: number | null;
+  max_hp: number | null;             // feeds the initiative tracker
+  armor_class: number | null;
   background: string | null;
   story_hooks: string | null;
   key_npcs: string | null;

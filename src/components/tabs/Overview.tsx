@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
+import { getHookCategoryStyle } from '../../lib/theme';
 import type { Tab } from '../../App';
 
 interface OverviewProps {
@@ -13,9 +14,8 @@ interface OverviewProps {
 
 export default function Overview({ onNavigate }: OverviewProps) {
   const {
-    overview, setOverview,
-    sessions, pcs, npcs, locations, factions,
-    hooks, lore, modules, monsterStatblocks, encounters,
+    overview, setOverview, selectedCampaign,
+    sessions, pcs, hooks, modules,
   } = useCampaign();
 
   const [form, setForm] = useState(overview);
@@ -41,8 +41,9 @@ export default function Overview({ onNavigate }: OverviewProps) {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // Derived data
-  const activeHooks = hooks.filter(h => h.is_active);
+  // Derived data. A thread is active only in the Active state (not seeds,
+  // cold or resolved); older rows without a state fall back to is_active.
+  const activeHooks = hooks.filter(h => (h.state ?? (h.is_active ? 'active' : 'resolved')) === 'active');
   const activeModules = modules.filter(m => m.status === 'active');
   const activePCs = pcs.filter(pc => pc.is_active);
   const recentSessions = [...sessions]
@@ -50,12 +51,11 @@ export default function Overview({ onNavigate }: OverviewProps) {
   const lastSession = recentSessions[0];
   const currentModule = activeModules[0];
 
-  // Session count and next session info
+  // Session count and the next session's number
   const sessionCount = sessions.length;
-  const nextSessionDate = lastSession?.session_date
-    ? formatNextSession(lastSession.session_date)
-    : null;
-  const partyName = overview.title || 'The Party';
+  const nextSessionNumber = lastSession ? lastSession.session_number + 1 : 1;
+  // The Overview title falls back to the campaign's name, which every campaign has.
+  const campaignTitle = overview.title || selectedCampaign?.name || 'Untitled Campaign';
 
   return (
     <div className="ov" style={{ height: '100%', overflowY: 'auto' }}>
@@ -63,7 +63,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
       <div className="ov-eyebrow">Chronicle</div>
 
       {/* Campaign title */}
-      <h1 className="ov-title">{overview.title || 'Untitled Campaign'}</h1>
+      <h1 className="ov-title">{campaignTitle}</h1>
 
       {/* Tagline / plot summary as italic gold subtitle */}
       {overview.plotSummary && (
@@ -75,16 +75,16 @@ export default function Overview({ onNavigate }: OverviewProps) {
       {/* Info strip: Session count, Next session, Party */}
       <div className="ov-strip">
         <div className="ov-strip-item">
-          <span className="ov-strip-label">Session</span>
+          <span className="ov-strip-label">Sessions played</span>
           <span className="ov-strip-value">{sessionCount}</span>
         </div>
         <div className="ov-strip-item">
           <span className="ov-strip-label">Next</span>
-          <span className="ov-strip-value">{nextSessionDate || '—'}</span>
+          <span className="ov-strip-value">Session {nextSessionNumber}</span>
         </div>
         <div className="ov-strip-item">
           <span className="ov-strip-label">Party</span>
-          <span className="ov-strip-value">{activePCs.length > 0 ? `${activePCs.length} members` : '—'}</span>
+          <span className="ov-strip-value">{activePCs.length > 0 ? `${activePCs.length} ${activePCs.length === 1 ? 'member' : 'members'}` : '—'}</span>
         </div>
       </div>
 
@@ -101,7 +101,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
               <>
                 <div className="ov-card-big">{currentModule.title}</div>
                 {currentModule.chapter && (
-                  <div className="ov-card-sub">sessions {currentModule.chapter}</div>
+                  <div className="ov-card-sub">Chapter {currentModule.chapter}</div>
                 )}
                 {currentModule.summary && (
                   <div className="ov-card-desc">{currentModule.summary}</div>
@@ -152,7 +152,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
           <div className="ov-card-body">
             {activeHooks.length === 0 ? (
               <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
-                No active hooks
+                No active threads
               </div>
             ) : (
               <div>
@@ -160,7 +160,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
                   <div key={h.id} className="ov-list-item">
                     <span
                       className="ov-list-dot"
-                      style={{ backgroundColor: hookColor(h.category) }}
+                      style={{ backgroundColor: getHookCategoryStyle(h.category).badge }}
                     />
                     <span className="ov-list-name">{h.title}</span>
                     {h.category && (
@@ -312,26 +312,4 @@ export default function Overview({ onNavigate }: OverviewProps) {
 function truncate(s: string, max: number) {
   if (s.length <= max) return s;
   return s.slice(0, max).replace(/\s+\S*$/, '') + '…';
-}
-
-function hookColor(category?: string | null): string {
-  switch (category) {
-    case 'main_plot': return 'var(--red)';
-    case 'side':      return 'var(--info)';
-    case 'character_arc': return 'var(--gold)';
-    case 'lore':      return 'var(--moss)';
-    default:          return 'var(--ink-3)';
-  }
-}
-
-function formatNextSession(lastDate: string): string | null {
-  try {
-    const d = new Date(lastDate);
-    if (isNaN(d.getTime())) return null;
-    // Show next likely session date (7 days later)
-    d.setDate(d.getDate() + 7);
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  } catch {
-    return null;
-  }
 }

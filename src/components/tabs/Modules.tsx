@@ -10,7 +10,7 @@
    - ModuleWeb gets the same onOpen, so "Open in editor →" / a node
      double-click jumps straight into the Atlas editor.
    ════════════════════════════════════════════════════════════════ */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
@@ -213,9 +213,15 @@ function ModuleCreatePanel({
 
 // ─── shell ────────────────────────────────────────────────────────────────────
 
-export default function Modules({ viewMode = 'list', setViewMode }: { viewMode?: string; setViewMode?: (v: string) => void }) {
+export default function Modules({ viewMode = 'list', setViewMode, openId: requestedId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; openId?: string | null; onOpenConsumed?: () => void }) {
   const { modules } = useCampaign();
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // Open a module requested from outside the tab (search, Recent).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (requestedId) { setOpenId(requestedId); onOpenConsumed?.(); }
+  }, [requestedId, onOpenConsumed]);
   const openModule = openId ? modules.find(m => m.id === openId) ?? null : null;
 
   // Opening a module from the web jumps to the full editor — leave the web view

@@ -432,7 +432,7 @@ function LiveRecorder() {
 // --------------- Saved recordings ---------------
 
 const STATUS_LABEL: Record<string, { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' }> = {
-  processing: { label: 'Saved', color: 'muted' },
+  processing: { label: 'Saved', color: 'muted' }, // refined from the tracks below
   uploading: { label: 'Saving', color: 'muted' },
   review: { label: 'Ready to review', color: 'gold' },
   applied: { label: 'Applied', color: 'green' },
@@ -455,7 +455,6 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const [filling, setFilling] = useState(false);
   const writeChronicle = useWriteChronicle();
   const missing = recording.status === 'review' ? recording.settings.chronicleMissing ?? [] : [];
-  const status = STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' as const };
 
   useEffect(() => { setRecording(initial); }, [initial]);
 
@@ -470,6 +469,13 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const transcribing = !!tracks?.some(t => t.transcription_status === 'submitted');
   const canTranscribe = !!tracks?.some(t => t.transcription_status === 'pending' || t.transcription_status === 'failed');
   const transcribed = !!tracks?.length && tracks.every(t => t.transcription_status === 'done');
+  // "Processing" covers everything from saved to transcribed, so say which.
+  const status: { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' } =
+    recording.status === 'processing' && tracks
+      ? transcribing ? { label: 'Transcribing', color: 'muted' }
+        : transcribed ? { label: 'Transcribed', color: 'blue' }
+        : { label: 'Not transcribed yet', color: 'muted' }
+      : STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' };
 
   // While AssemblyAI works, ask the server to check in every few seconds.
   useEffect(() => {
@@ -695,14 +701,14 @@ export function RecorderPanel({ session }: { session: Session }) {
 }
 
 /** A small "● REC" pill for the top bar while a recording runs anywhere in the app. */
-export function RecordingIndicator({ onOpen }: { onOpen: () => void }) {
+export function RecordingIndicator({ onOpen }: { onOpen: (sessionId: string) => void }) {
   const { live } = useRecording();
   if (!live) return null;
   return (
     <Button
       size="xs"
-      onClick={onOpen}
-      aria-label={live.paused ? 'Recording paused — open Session Notes' : 'Recording — open Session Notes'}
+      onClick={() => onOpen(live.recording.session_id)}
+      aria-label={live.paused ? 'Recording paused — open the session being recorded' : 'Recording — open the session being recorded'}
       style={{ borderRadius: 999, borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)', fontFamily: 'var(--mono)', letterSpacing: '0.06em' }}
     >
       <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: live.paused ? 'var(--ink-3)' : 'var(--red)' }} />

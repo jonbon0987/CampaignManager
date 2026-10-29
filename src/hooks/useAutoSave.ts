@@ -13,6 +13,9 @@ export function useAutoSave<T>({ data, onSave, delay = 2000, enabled = true }: U
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True from an edit until its save starts. Kept apart from timerRef because
+  // the data effect's cleanup clears the timer before the unmount flush runs.
+  const pendingRef = useRef(false);
   const latestDataRef = useRef(data);
   const onSaveRef = useRef(onSave);
   const initialDataRef = useRef<string | null>(null);
@@ -33,6 +36,7 @@ export function useAutoSave<T>({ data, onSave, delay = 2000, enabled = true }: U
 
   const doSave = useCallback(async () => {
     if (!isMountedRef.current) return;
+    pendingRef.current = false;
     setStatus('saving');
     setError(null);
     try {
@@ -57,15 +61,29 @@ export function useAutoSave<T>({ data, onSave, delay = 2000, enabled = true }: U
     await doSave();
   }, [doSave]);
 
+  // ⌘S / Ctrl+S saves a pending change right away, and keeps the browser's
+  // own "Save page" dialog from opening while an autosaving editor is open.
+  useEffect(() => {
+    if (!enabled) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's' || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      if (timerRef.current) void saveNow();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [enabled, saveNow]);
+
   // Watch data changes and schedule debounced save
   useEffect(() => {
     if (!enabled) return;
 
     const serialized = JSON.stringify(data);
     // Don't trigger save if data matches the last saved state
-    if (serialized === initialDataRef.current) return;
+    if (serialized === initialDataRef.current) { pendingRef.current = false; return; }
 
     setStatus('unsaved');
+    pendingRef.current = true;
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
@@ -81,7 +99,8 @@ export function useAutoSave<T>({ data, onSave, delay = 2000, enabled = true }: U
     };
   }, [data, delay, enabled, doSave]);
 
-  // Flush on unmount
+  // Flush on unmount: an edit still waiting for its debounce is saved now, so
+  // switching records right after typing doesn't lose it.
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -89,8 +108,12 @@ export function useAutoSave<T>({ data, onSave, delay = 2000, enabled = true }: U
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
+      }
+      if (pendingRef.current) {
+        pendingRef.current = false;
         // Fire-and-forget flush — can't await in cleanup
-        onSaveRef.current(latestDataRef.current);
+        void Promise.resolve(onSaveRef.current(latestDataRef.current))
+          .catch(err => console.error('Couldn’t save on close', err));
       }
     };
   }, []);

@@ -242,10 +242,20 @@ function SessionDetail({
 }
 
 /* Session log — master-detail layout */
-function SessionLog() {
+function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void }) {
   const { sessions, upsertSession } = useCampaign();
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Select a session requested from outside the tab (search, the REC pill),
+  // clearing the list search so it isn't filtered out.
+  useEffect(() => {
+    if (!openId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedId(openId);
+    setSearch('');
+    onOpenConsumed?.();
+  }, [openId, onOpenConsumed]);
 
   const filtered = sessions
     .filter(s => {
@@ -683,10 +693,10 @@ function SessionPrepView() {
 
 // ─── shell ────────────────────────────────────────────────────────────────────
 
-export default function SessionNotes({ viewMode = 'log' }: { viewMode?: string; setViewMode?: (v: string) => void }) {
+export default function SessionNotes({ viewMode = 'log', openId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; openId?: string | null; onOpenConsumed?: () => void }) {
   return (
     <div style={{ height: '100%', overflow: 'hidden' }}>
-      {viewMode === 'log'      && <SessionLog />}
+      {viewMode === 'log'      && <SessionLog openId={openId} onOpenConsumed={onOpenConsumed} />}
       {viewMode === 'timeline' && <SessionTimeline />}
       {viewMode === 'prep'     && <SessionPrepView />}
     </div>

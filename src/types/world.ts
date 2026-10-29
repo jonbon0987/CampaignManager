@@ -25,6 +25,7 @@ export interface WorldNPC {
   role: string;
   status: 'active' | 'deceased' | 'mythic' | 'unknown';
   desc: string;
+  dmNotes?: string;
   factions: string[];
   location: string | null;
   era: string;
@@ -37,6 +38,11 @@ export interface WorldLocation {
   name: string;
   type: string;
   desc: string;
+  region?: string;
+  population?: string;
+  status?: string;
+  history?: string;
+  dmNotes?: string;
   tags: string[];
   parent: string | null;
 }
@@ -46,6 +52,7 @@ export interface WorldLoreEntry {
   worldId: string;
   title: string;
   desc: string;
+  dmOnly?: boolean;
   tags: string[];
 }
 

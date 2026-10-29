@@ -13,6 +13,7 @@ import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../Sidebar';
 import CharacterWeb from './CharacterWeb';
 import { useAutoSave } from '../../hooks/useAutoSave';
+import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
@@ -77,7 +78,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
   // incoming external request is the legitimate case for setState in an effect.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (openId) { setSelectedId(openId); onOpenConsumed?.(); }
+    if (openId) { setSelectedId(openId); setFilter('all'); setMetFilter('all'); setSearch(''); onOpenConsumed?.(); }
   }, [openId, onOpenConsumed]);
 
   // Build unified list
@@ -136,14 +137,17 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
 
   const addFaction = async () => {
     const result = await upsertFaction({ name: '', faction_type: 'other', overview: null, key_figures: null, agenda: null, dm_notes: null });
+    markDraft(result.id);
     setSelectedId(result.id);
   };
   const addPC = async () => {
     const result = await upsertPC({ character_name: '', is_active: true, faction_ids: [] });
+    markDraft(result.id);
     setSelectedId(result.id);
   };
   const addNPC = async () => {
     const result = await upsertNPC({ name: '', status: 'active', met_by_pcs: false, faction_ids: [] });
+    markDraft(result.id);
     setSelectedId(result.id);
   };
 
@@ -260,6 +264,8 @@ function CastDetail({ item, factions, statblocks, openStatBlock, onDeselect }: C
 }
 
 /* ── NPC Detail ── */
+
+const isEmpty = (v: string | null | undefined) => !v?.trim();
 
 type NPCFormData = {
   name: string;
@@ -400,6 +406,9 @@ function NPCDetail({
   };
 
   const statblockOptions = statblocks.map(m => ({ id: m.id, label: m.name }));
+
+  useDiscardBlankDraft(npc.id, isEmpty(form.name) && isEmpty(form.role) && isEmpty(form.affiliation) && isEmpty(form.description)
+    && isEmpty(form.hooks_motivations) && isEmpty(form.dm_notes) && isEmpty(form.location) && isEmpty(form.disposition), deleteNPC);
 
   const set = <K extends keyof NPCFormData>(key: K, val: NPCFormData[K]) =>
     setForm(f => ({ ...f, [key]: val }));
@@ -641,6 +650,9 @@ type PCFormData = {
   is_active: boolean;
   faction_ids: string[];
   statblock_id: string | null;
+  level: number | null;
+  max_hp: number | null;
+  armor_class: number | null;
 };
 
 function PCDetail({
@@ -670,6 +682,9 @@ function PCDetail({
     is_active: pc.is_active,
     faction_ids: pc.faction_ids ?? [],
     statblock_id: pc.statblock_id,
+    level: pc.level,
+    max_hp: pc.max_hp,
+    armor_class: pc.armor_class,
   });
 
   useEffect(() => {
@@ -685,6 +700,9 @@ function PCDetail({
       is_active: pc.is_active,
       faction_ids: pc.faction_ids ?? [],
       statblock_id: pc.statblock_id,
+      level: pc.level,
+      max_hp: pc.max_hp,
+      armor_class: pc.armor_class,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pc.id]);
@@ -698,7 +716,9 @@ function PCDetail({
         player_name: data.player_name,
         race: data.race,
         class: data.class,
-        level: pc.level,
+        level: data.level,
+        max_hp: data.max_hp,
+        armor_class: data.armor_class,
         background: data.background,
         story_hooks: data.story_hooks,
         key_npcs: data.key_npcs,
@@ -717,6 +737,9 @@ function PCDetail({
       onDeselect();
     }
   };
+
+  useDiscardBlankDraft(pc.id, isEmpty(form.character_name) && isEmpty(form.player_name) && isEmpty(form.race) && isEmpty(form.class)
+    && isEmpty(form.background) && isEmpty(form.story_hooks) && isEmpty(form.key_npcs) && isEmpty(form.dm_notes), deletePC);
 
   const set = <K extends keyof PCFormData>(key: K, val: PCFormData[K]) =>
     setForm(f => ({ ...f, [key]: val }));
@@ -790,6 +813,30 @@ function PCDetail({
             maxLength={limitFor('player_characters', 'class')}
           />
         </div>
+      </div>
+
+      {/* Combat numbers: they fill in the initiative tracker */}
+      <div className="as-grid-3">
+        {([
+          ['level', 'Level', 'e.g. 5'],
+          ['max_hp', 'Max HP', 'e.g. 38'],
+          ['armor_class', 'AC', 'e.g. 16'],
+        ] as const).map(([key, label, hint]) => (
+          <div key={key} className="as-fl">
+            <label className="as-ll" htmlFor={`pc-${key}`}>{label}</label>
+            <input
+              id={`pc-${key}`}
+              className="as-input"
+              type="number"
+              inputMode="numeric"
+              min={minFor('player_characters', key)}
+              max={maxFor('player_characters', key)}
+              value={form[key] ?? ''}
+              onChange={e => set(key, e.target.value ? parseInt(e.target.value, 10) : null)}
+              placeholder={hint}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Background */}
@@ -938,6 +985,9 @@ function FactionDetail({
       onDeselect();
     }
   };
+
+  useDiscardBlankDraft(faction.id, isEmpty(form.name) && isEmpty(form.overview) && isEmpty(form.key_figures)
+    && isEmpty(form.agenda) && isEmpty(form.dm_notes), deleteFaction);
 
   const set = <K extends keyof FactionFormData>(key: K, val: FactionFormData[K]) =>
     setForm(f => ({ ...f, [key]: val }));

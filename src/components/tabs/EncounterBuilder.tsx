@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
-import { InitiativeTracker } from '../InitiativeTracker';
+import { InitiativeTracker, type PartyMember } from '../InitiativeTracker';
 import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
 import { Button } from '../ui/Button';
 import type { Encounter, MonsterStatblock } from '../../lib/database.types';
@@ -18,7 +18,7 @@ import {
 // Main component
 // ================================================================
 
-export default function EncounterBuilder() {
+export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void } = {}) {
   const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, pcs } = useCampaign();
   const confirm = useConfirm();
 
@@ -27,6 +27,12 @@ export default function EncounterBuilder() {
 
   // Search
   const [search, setSearch] = useState('');
+
+  // Select an encounter requested from outside the tab (search).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openId) { setSelectedId(openId); setSearch(''); onOpenConsumed?.(); }
+  }, [openId, onOpenConsumed]);
 
   // AI encounter generator
   const [genOpen, setGenOpen] = useState(false);
@@ -38,7 +44,11 @@ export default function EncounterBuilder() {
   const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
 
   // Active PC names for initiative tracker
-  const activePCNames = pcs.filter(p => p.is_active).map(p => p.character_name);
+  // The active party, with the HP and AC set on each PC in Cast.
+  const party = useMemo<PartyMember[]>(
+    () => pcs.filter(p => p.is_active).map(p => ({ name: p.character_name, maxHp: p.max_hp, ac: p.armor_class })),
+    [pcs],
+  );
 
   // Adapter so the shared EncounterDetail can call the campaign upsert
   const campaignUpsert = useCallback(
@@ -319,7 +329,7 @@ export default function EncounterBuilder() {
           <InitiativeTracker
             encounter={runningEncounter}
             statblocks={monsterStatblocks}
-            pcNames={activePCNames}
+            party={party}
             onClose={() => setRunningEncounter(null)}
           />
         </div>

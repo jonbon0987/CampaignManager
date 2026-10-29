@@ -256,6 +256,8 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
   },
   player_characters: {
     level: [1, 20],
+    max_hp: [1, 999],
+    armor_class: [1, 40],
   },
   npcs: {
     first_session: [0, 9_999],

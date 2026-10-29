@@ -337,12 +337,12 @@
 
 /* Hero card — the resume target */
 .wc-hero {
-  display: block; width: 100%; text-align: left; position: relative; overflow: hidden;
+  display: block; width: 100%; text-align: left; position: relative;
   border: 1px solid var(--gold-line); border-radius: 8px; padding: 13px 14px 12px;
   background: linear-gradient(180deg, rgba(201,168,76,.11), rgba(201,168,76,.03));
   cursor: pointer; animation: wcHeroIn .28s ease;
 }
-.wc-hero::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.wc-hero::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); border-radius: 7px 0 0 7px; }
 @keyframes wcHeroIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .wc-hero-eyebrow { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
 .wc-hero-name { font-family: var(--display); font-size: 18px; font-weight: 600; line-height: 1.18; color: var(--ink); }
@@ -367,12 +367,11 @@
 .wc-row:hover .wc-row-name { color: var(--ink); }
 .wc-row-name { flex: 1; min-width: 0; font-family: var(--display); font-size: 13.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wc-row-n { font-family: var(--mono); font-size: 10px; color: var(--ink-4); flex: 0 0 auto; }
-.wc-row-del { display: none; background: transparent; border: none; color: var(--ink-3); font-size: 12px; line-height: 1; padding: 2px 4px; cursor: pointer; flex: 0 0 auto; }
-.wc-row:hover .wc-row-del { display: block; }
-.wc-row-del:hover { color: var(--red); }
-.wc-hero-del { position: absolute; top: 8px; right: 8px; z-index: 1; display: none; background: transparent; border: none; color: var(--ink-3); font-size: 12px; line-height: 1; padding: 3px 5px; cursor: pointer; }
-.wc-hero:hover .wc-hero-del { display: block; }
-.wc-hero-del:hover { color: var(--red); }
+.wc-row-menu { flex: 0 0 auto; opacity: 0; transition: opacity 0.12s; }
+.wc-row:hover .wc-row-menu, .wc-row:focus-within .wc-row-menu { opacity: 1; }
+.wc-hero-menu { position: absolute; top: 6px; right: 6px; z-index: 2; opacity: 0; transition: opacity 0.12s; }
+.wc-hero:hover .wc-hero-menu, .wc-hero:focus-within .wc-hero-menu { opacity: 1; }
+@media (hover: none) { .wc-row-menu, .wc-hero-menu { opacity: 1; } }
 
 /* Status dots (shared by hero eyebrow + rows) */
 .wc-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; display: inline-block; }

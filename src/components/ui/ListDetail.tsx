@@ -96,7 +96,7 @@ export function ListDetail({
                 variant="secondary"
                 size="sm"
                 onClick={onGenerate}
-                style={{ color: '#c060d0', background: '#2a1a3a', borderColor: '#5a2a7a' }}
+                style={{ color: 'var(--arcane)', background: 'var(--arcane-bg)', borderColor: 'var(--arcane-line)' }}
               >
                 {generateLabel}
               </Button>

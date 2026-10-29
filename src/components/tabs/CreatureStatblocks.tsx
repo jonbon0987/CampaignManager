@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
@@ -307,7 +307,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 // MAIN COMPONENT
 // ================================================================
 
-export default function CreatureStatblocks({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
+export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromWorld?: () => void; openId?: string | null; onOpenConsumed?: () => void }) {
   const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, overview } = useCampaign();
   const confirm = useConfirm();
 
@@ -315,6 +315,14 @@ export default function CreatureStatblocks({ onImportFromWorld }: { onImportFrom
   const [editing, setEditing] = useState<MonsterStatblock | null>(null);
   const [form, setForm] = useState<MonsterForm>(emptyMonsterForm());
   const [viewing, setViewing] = useState<MonsterStatblock | null>(null);
+
+  // Open the stat sheet requested from outside the tab (search).
+  useEffect(() => {
+    if (!openId) return;
+    const m = monsterStatblocks.find(x => x.id === openId);
+    if (m) setViewing(m);
+    onOpenConsumed?.();
+  }, [openId, monsterStatblocks, onOpenConsumed]);
   const [filterType, setFilterType] = useState<string>('all');
   const [search, setSearch] = useState('');
 

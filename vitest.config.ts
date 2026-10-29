@@ -21,8 +21,6 @@ export default defineConfig({
         'src/vite-env.d.ts',
         'src/lib/database.types.ts',
         'src/lib/supabase.ts',
-        'src/lib/seed*.{ts,js}',
-        'src/lib/migrate_chapter1.ts',
         'src/lib/worldSeeds.ts',
         'src/lib/campaignSeeds.ts',
         'src/data/**',

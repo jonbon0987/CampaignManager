@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import EncounterBuilder from './EncounterBuilder';
 import CreatureStatblocks from './CreatureStatblocks';
 import RandomEncounters from './RandomEncounters';
@@ -7,8 +7,24 @@ type SubTab = 'encounters' | 'random' | 'statblocks';
 
 // onImportFromWorld receives the world-import entity type for the active sub-tab
 // ('bestiary' for stat sheets, 'randomEncounter' for random tables).
-export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: (type: string) => void }) {
+export default function CombatView({ onImportFromWorld, openTarget, onOpenConsumed }: {
+  onImportFromWorld?: (type: string) => void;
+  /** A record requested from outside (search, an @-mention): a stat sheet or an encounter. */
+  openTarget?: { id: string; kind?: string } | null;
+  onOpenConsumed?: () => void;
+}) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('encounters');
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  // Show the sub-tab the requested record lives in, then hand its id down.
+  useEffect(() => {
+    if (!openTarget) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveSubTab(openTarget.kind === 'encounter' ? 'encounters' : 'statblocks');
+    setOpenId(openTarget.id);
+    onOpenConsumed?.();
+  }, [openTarget, onOpenConsumed]);
+  const clearOpenId = () => setOpenId(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -52,9 +68,9 @@ export default function CombatView({ onImportFromWorld }: { onImportFromWorld?: 
 
       {/* Sub-tab content */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {activeSubTab === 'encounters' && <EncounterBuilder />}
+        {activeSubTab === 'encounters' && <EncounterBuilder openId={openId} onOpenConsumed={clearOpenId} />}
         {activeSubTab === 'random' && <RandomEncounters onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('randomEncounter') : undefined} />}
-        {activeSubTab === 'statblocks' && <CreatureStatblocks onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('bestiary') : undefined} />}
+        {activeSubTab === 'statblocks' && <CreatureStatblocks onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('bestiary') : undefined} openId={openId} onOpenConsumed={clearOpenId} />}
       </div>
     </div>
   );

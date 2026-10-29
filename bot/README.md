@@ -34,7 +34,7 @@ The bot runs on your computer while you play, like `vercel dev`. It never talks 
 
 ## At the table
 
-- In Session Notes, **Record this session** now has a **Players on Discord** section. Pick the voice channel and say who each person plays; that's remembered for the campaign.
+- In Sessions, **Record this session** now has a **Players on Discord** section. Pick the voice channel and say who each person plays; that's remembered for the campaign.
 - Tick **Agreed to recording** for Discord players too. The bot only records people linked to a character whose player has agreed, or linked as the DM. Anyone else in the channel is never recorded.
 - The bot posts a notice in the channel when recording starts and stops. **Pause** in the app pauses the bot too.
 - **End & save** waits for the bot to upload the Discord audio before transcription starts.

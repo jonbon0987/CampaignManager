@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -38,7 +38,7 @@ function StateBadge({ state }: { state: string | null }) {
   );
 }
 
-export default function Threads({ viewMode = 'board' }: { viewMode?: string; onNavigate?: (t: Tab) => void }) {
+export default function Threads({ viewMode = 'board', openId, onOpenConsumed }: { viewMode?: string; onNavigate?: (t: Tab) => void; openId?: string | null; onOpenConsumed?: () => void }) {
   const { hooks, upsertHook, deleteHook } = useCampaign();
   const confirm = useConfirm();
   const [modalOpen, setModalOpen] = useState(false);
@@ -60,6 +60,20 @@ export default function Threads({ viewMode = 'board' }: { viewMode?: string; onN
     setForm({ title: h.title, category: h.category, description: h.description, state: stateOf(h) });
     setModalOpen(true);
   };
+
+  // Open a thread requested from outside the tab (search, Recent), then clear
+  // the request so it doesn't re-fire.
+  useEffect(() => {
+    if (!openId) return;
+    const h = hooks.find(x => x.id === openId);
+    if (h) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditingId(h.id);
+      setForm({ title: h.title, category: h.category, description: h.description, state: h.state ?? (h.is_active ? 'active' : 'resolved') });
+      setModalOpen(true);
+    }
+    onOpenConsumed?.();
+  }, [openId, hooks, onOpenConsumed]);
 
   const save = async () => {
     const existing = editingId ? hooks.find(h => h.id === editingId) : null;

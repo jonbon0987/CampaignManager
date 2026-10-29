@@ -6,6 +6,7 @@ import { ListDetail, DetailPanel, DetailSection, EmptyDetail } from '../ui/ListD
 import { OriginBand, type Origin } from '../ui/OriginBand';
 import { pushRecent } from '../Sidebar';
 import { useAutoSave } from '../../hooks/useAutoSave';
+import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
@@ -100,7 +101,7 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
       name: '', location_type: 'landmark', region: null, parent_id: parentId,
       description: null, dm_notes: null, history: null, population: null, status: null, world_id: null,
     });
-    if (result) setSelectedId(result.id);
+    if (result) { markDraft(result.id); setSelectedId(result.id); }
   };
 
   const publish = async (loc: Location) => {
@@ -263,10 +264,14 @@ interface DetailProps {
 }
 
 function LocationDetail({ location, origin, allLocations, onOpenInCanon, onPublish, onDetach, onDelete }: { location: Location } & DetailProps) {
-  const { upsertLocation } = useCampaign();
+  const { upsertLocation, deleteLocation } = useCampaign();
   const [form, setForm] = useState<LocationForm>(() => locationToForm(location));
 
   useEffect(() => { setForm(locationToForm(location)); }, [location.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A place with anything written, or with places inside it, is kept.
+  const blank = !form.name.trim() && !form.region.trim() && !form.population.trim() && !form.description.trim()
+    && !form.history.trim() && !form.dm_notes.trim() && !allLocations.some(l => l.parent_id === location.id);
+  useDiscardBlankDraft(location.id, blank, deleteLocation);
 
   const { status, saveNow } = useAutoSave<LocationForm>({
     data: form,
