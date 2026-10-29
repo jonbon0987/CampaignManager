@@ -138,6 +138,13 @@ function AppInner({ user }: { user: User }) {
         return;
       }
 
+      // ⌘\ → collapse or expand the sidebar
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        setSidebarOpen(prev => !prev);
+        return;
+      }
+
       // ? → shortcuts overlay (only when not typing)
       if (e.key === '?' && !isInput && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
@@ -153,7 +160,7 @@ function AppInner({ user }: { user: User }) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [setSidebarOpen]);
 
   const showSidebar = isMobile ? mobileMenuOpen : sidebarOpen;
 
@@ -593,7 +600,7 @@ function WorldShell() {
       <Workbench open={aiOpen} onClose={() => setAiOpen(false)} chat={chat} />
       <DiceRoller open={diceOpen} onClose={() => setDiceOpen(false)} />
       <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
-      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} scope="world" />
     </div>
     </WorldEntityRefProvider>
   );

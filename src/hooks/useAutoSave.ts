@@ -61,6 +61,19 @@ export function useAutoSave<T>({ data, onSave, delay = 2000, enabled = true }: U
   useEffect(() => {
     if (!enabled) return;
 
+  // ⌘S / Ctrl+S saves a pending change right away, and keeps the browser's
+  // own "Save page" dialog from opening while an autosaving editor is open.
+  useEffect(() => {
+    if (!enabled) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's' || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      if (timerRef.current) void saveNow();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [enabled, saveNow]);
+
     const serialized = JSON.stringify(data);
     // Don't trigger save if data matches the last saved state
     if (serialized === initialDataRef.current) return;
