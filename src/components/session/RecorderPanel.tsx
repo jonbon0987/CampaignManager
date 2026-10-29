@@ -432,7 +432,7 @@ function LiveRecorder() {
 // --------------- Saved recordings ---------------
 
 const STATUS_LABEL: Record<string, { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' }> = {
-  processing: { label: 'Saved', color: 'muted' },
+  processing: { label: 'Saved', color: 'muted' }, // refined from the tracks below
   uploading: { label: 'Saving', color: 'muted' },
   review: { label: 'Ready to review', color: 'gold' },
   applied: { label: 'Applied', color: 'green' },
@@ -455,7 +455,6 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const [filling, setFilling] = useState(false);
   const writeChronicle = useWriteChronicle();
   const missing = recording.status === 'review' ? recording.settings.chronicleMissing ?? [] : [];
-  const status = STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' as const };
 
   useEffect(() => { setRecording(initial); }, [initial]);
 
@@ -470,6 +469,13 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const transcribing = !!tracks?.some(t => t.transcription_status === 'submitted');
   const canTranscribe = !!tracks?.some(t => t.transcription_status === 'pending' || t.transcription_status === 'failed');
   const transcribed = !!tracks?.length && tracks.every(t => t.transcription_status === 'done');
+  // "Processing" covers everything from saved to transcribed, so say which.
+  const status: { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' } =
+    recording.status === 'processing' && tracks
+      ? transcribing ? { label: 'Transcribing', color: 'muted' }
+        : transcribed ? { label: 'Transcribed', color: 'blue' }
+        : { label: 'Not transcribed yet', color: 'muted' }
+      : STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' };
 
   // While AssemblyAI works, ask the server to check in every few seconds.
   useEffect(() => {

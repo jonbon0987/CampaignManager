@@ -374,6 +374,8 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
     applied: all.filter(p => p.status === 'applied').length,
     edited: all.filter(p => p.edits).length,
   };
+  // Nothing left to accept or apply: every change is applied or skipped.
+  const settled = proposals !== null && counts.pending === 0 && counts.accepted === 0;
   const live = applied.filter(r => !r.undone_at);
   const beforeOf = (proposalId: string) =>
     live.find(r => r.proposal_id === proposalId && r.entity_table !== 'entity_session_entries')?.before as Record<string, unknown> | null | undefined;
@@ -446,11 +448,13 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
     <div role="dialog" aria-modal="true" aria-label="Review the Chronicle" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'var(--bg)', color: 'var(--ink)', display: 'flex', flexDirection: 'column' }}>
       <header style={{ flex: '0 0 auto', background: 'var(--bg)', borderBottom: '1px solid var(--rule)', padding: '14px 28px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '12px 24px' }}>
         <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Session Notes</Button>
+          <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Back</Button>
           <div className="cm-section-title" style={{ color: 'var(--gold)' }}>Session {session?.session_number ?? ''} · Review</div>
           <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 30, lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
           <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--ink-2)' }}>
-            {all.length} proposed changes. Edit, accept or skip each one — nothing reaches the campaign until you apply.
+            {settled && counts.applied
+              ? `${counts.applied} change${counts.applied === 1 ? '' : 's'} applied to the campaign. Undo the write-back to send them back to review.`
+              : `${all.length} proposed changes. Edit, accept or skip each one — nothing reaches the campaign until you apply.`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -458,10 +462,15 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
             <span style={{ color: 'var(--success)' }}>{counts.accepted} accepted</span> · {counts.edited} edited · {counts.skipped} skipped · <span style={{ color: 'var(--gold)' }}>{counts.pending} to review</span>{counts.applied ? ` · ${counts.applied} applied` : ''}
           </span>
           {live.length > 0 && <Button variant="danger" onClick={() => void undo()} disabled={!!busy}><Undo2 size={12} /> {busy === 'undo' ? `Undoing${progress ? ` ${progress.done + 1} of ${progress.total}` : ''}…` : 'Undo write-back'}</Button>}
-          <Button onClick={() => void setStatus(all.filter(p => p.status === 'pending').map(p => p.id), 'accepted')} disabled={!counts.pending || !!busy}>Accept the rest</Button>
-          <Button variant="primary" onClick={() => void apply()} disabled={!counts.accepted || !!busy || !writer}>
-            {busy === 'apply' ? `Applying${progress ? ` ${progress.done + 1} of ${progress.total}` : ''}…` : `Apply ${counts.accepted} change${counts.accepted === 1 ? '' : 's'}`}
-          </Button>
+          {/* Once every change is applied or skipped there's nothing left to accept or apply. */}
+          {!settled && (
+            <>
+              <Button onClick={() => void setStatus(all.filter(p => p.status === 'pending').map(p => p.id), 'accepted')} disabled={!counts.pending || !!busy}>Accept the rest</Button>
+              <Button variant="primary" onClick={() => void apply()} disabled={!counts.accepted || !!busy || !writer}>
+                {busy === 'apply' ? `Applying${progress ? ` ${progress.done + 1} of ${progress.total}` : ''}…` : `Apply ${counts.accepted} change${counts.accepted === 1 ? '' : 's'}`}
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
@@ -495,7 +504,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
 
         <main style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 26 }}>
           {proposals === null && <p style={{ color: 'var(--ink-3)' }}>Loading proposals…</p>}
-          {proposals?.length === 0 && <p style={{ color: 'var(--ink-3)' }}>This recording has no proposed changes. Write the chronicle from Session Notes first.</p>}
+          {proposals?.length === 0 && <p style={{ color: 'var(--ink-3)' }}>This recording has no proposed changes. Write the chronicle from the session's recording first.</p>}
           {visibleGroups.map(g => {
             const pending = g.items.filter(p => p.status === 'pending');
             return (
