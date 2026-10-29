@@ -126,11 +126,17 @@ export const getModuleTypeInfo = (t: string | null | undefined): TypeInfo =>
 // Entity-link kinds (icon + label + color/bg/border) — from ui/EntityLinkToolbar.tsx (`entityConfig`)
 export const entityLinkConfig: Record<string, { icon: string; label: string; color: string; bg: string; border: string }> = {
   statblock: { icon: '⚔', label: 'Stat Sheet', color: 'var(--arcane)', bg: 'var(--arcane-bg)', border: 'var(--arcane-line)' },
-  npc:       { icon: '❦', label: 'NPC',        color: 'var(--info)',   bg: 'var(--info-bg)',   border: 'var(--info-line)' },
-  location:  { icon: '✦', label: 'Location',   color: '#60c080',       bg: '#1a3a2a',          border: '#2a6a4a' },
-  session:   { icon: '❧', label: 'Session',    color: 'var(--gold)',   bg: 'var(--warn-bg)',   border: '#5a5a2a' },
-  faction:   { icon: '◈', label: 'Faction',    color: '#b070b0',       bg: '#2a1a2a',          border: 'var(--arcane-line)' },
-  hook:      { icon: '✧', label: 'Hook',       color: '#e0a060',       bg: '#3a2a1a',          border: '#7a5a2a' },
+  npc:       { icon: '❦', label: 'NPC',        color: 'var(--link-npc)',      bg: 'var(--link-npc-bg)',      border: 'var(--link-npc-line)' },
+  location:  { icon: '✦', label: 'Location',   color: 'var(--link-location)', bg: 'var(--link-location-bg)', border: 'var(--link-location-line)' },
+  session:   { icon: '❧', label: 'Session',    color: 'var(--link-session)',  bg: 'var(--link-session-bg)',  border: 'var(--link-session-line)' },
+  faction:   { icon: '◈', label: 'Faction',    color: 'var(--link-faction)',  bg: 'var(--link-faction-bg)',  border: 'var(--link-faction-line)' },
+  hook:      { icon: '✧', label: 'Hook',       color: 'var(--link-hook)',     bg: 'var(--link-hook-bg)',     border: 'var(--link-hook-line)' },
+};
+
+/** The color an entity of this kind is named in (chronicle, review, history). */
+export const entityKindColor: Record<'session' | 'pc' | 'npc' | 'location' | 'faction' | 'lore' | 'hook', string> = {
+  session: 'var(--link-session)', pc: 'var(--ink)', npc: 'var(--link-npc)', location: 'var(--link-location)',
+  faction: 'var(--link-faction)', lore: 'var(--gold)', hook: 'var(--link-hook)',
 };
 
 // Encounter difficulty ramp — from tabs/moduleDetail/SubmoduleEditor.tsx (`diffColor`) and combat surfaces

@@ -27,6 +27,8 @@ vi.mock('../ui/SlashField', () => ({
     <textarea aria-label="summary" value={value ?? ''} onChange={e => onChange(e.target.value)} />
   ),
 }));
+vi.mock('../session/SessionHistory', () => ({ SessionHistory: () => null }));
+vi.mock('../session/SessionUpdateBand', () => ({ SessionUpdateBand: () => null }));
 
 import Threads from './Threads';
 

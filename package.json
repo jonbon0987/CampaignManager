@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "migrate": "tsx scripts/migrate.ts",
+    "bot": "npm --prefix bot start",
     "migrate:gen-constraints": "tsx scripts/genFieldConstraints.ts"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "dotenv": "^17.3.1",
+    "fix-webm-duration": "1.0.6",
     "groq-sdk": "^1.5.0",
     "lucide-react": "^1.7.0",
     "mammoth": "^1.12.0",

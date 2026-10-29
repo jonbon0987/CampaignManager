@@ -17,6 +17,8 @@ interface TopbarProps {
   viewMode?: string;
   setViewMode?: (v: string) => void;
   viewOptions?: ViewOption[];
+  /** Shown first in the right cluster, e.g. the recording indicator. */
+  status?: React.ReactNode;
 }
 
 export default function Topbar({
@@ -32,6 +34,7 @@ export default function Topbar({
   viewMode,
   setViewMode,
   viewOptions,
+  status,
 }: TopbarProps) {
   const { activeWorld, backToWorld } = useWorld();
 
@@ -85,6 +88,8 @@ export default function Topbar({
 
       {/* Right cluster */}
       <div className="cm-top-actions">
+        {status}
+
         {/* Scratchpad */}
         {!isMobile && (
           <ToolbarButton

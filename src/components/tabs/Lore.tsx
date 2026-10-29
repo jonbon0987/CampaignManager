@@ -13,6 +13,8 @@ import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
 import type { LoreEntry } from '../../lib/database.types';
+import { SessionHistory } from '../session/SessionHistory';
+import { SessionUpdateBand } from '../session/SessionUpdateBand';
 
 const GLYPH = '❦';
 const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
@@ -216,6 +218,7 @@ function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelet
   return (
     <DetailPanel eyebrow="Lore" title="">
       <OriginBand origin={origin} noun="lore entry" onOpenInCanon={onOpenInCanon} onPublish={onPublish} onDetach={onDetach} />
+      <SessionUpdateBand entityType="lore" entityId={entry.id} />
 
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
@@ -244,6 +247,10 @@ function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelet
 
       <DetailSection title="Content">
         <SlashField value={form.content ?? ''} onChange={v => set('content', v)} placeholder="Lore content…" minHeight="184px" maxLength={limitFor('lore_entries', 'content')} />
+      </DetailSection>
+
+      <DetailSection title="Session History">
+        <SessionHistory entityType="lore" entityId={entry.id} />
       </DetailSection>
     </DetailPanel>
   );

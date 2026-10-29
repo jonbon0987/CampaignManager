@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
@@ -9,6 +9,7 @@ import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
+import { RecorderPanel } from '../session/RecorderPanel';
 import type { Session } from '../../lib/database.types';
 
 type SessionForm = {
@@ -97,6 +98,9 @@ function SessionDetail({
     dm_notes: session.dm_notes,
   });
 
+  // The session as last seen from the server, to tell outside changes from the DM's edits.
+  const lastSaved = useRef(session);
+
   // Reset form when session changes
   useEffect(() => {
     setForm({
@@ -108,7 +112,28 @@ function SessionDetail({
       hooks_notes: session.hooks_notes,
       dm_notes: session.dm_notes,
     });
+    lastSaved.current = session;
   }, [session.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Take in changes made elsewhere (a recording's write-back, the assistant)
+  // for fields the DM hasn't touched here. Without this the form kept the old
+  // value and autosave would write it back over the new one.
+  useEffect(() => {
+    const prev = lastSaved.current;
+    lastSaved.current = session;
+    if (prev.id !== session.id) return;
+    setForm(f => {
+      let changed = false;
+      const next = { ...f };
+      for (const k of Object.keys(f) as (keyof SessionForm)[]) {
+        if (session[k] !== prev[k] && f[k] === prev[k]) {
+          (next as Record<string, unknown>)[k] = session[k];
+          changed = true;
+        }
+      }
+      return changed ? next : f;
+    });
+  }, [session]);
 
   const { status, saveNow } = useAutoSave({
     data: form,
@@ -162,6 +187,8 @@ function SessionDetail({
             />
           </div>
         </div>
+
+        <RecorderPanel session={session} />
 
         {/* Recap / Summary */}
         <div className="cm-section">

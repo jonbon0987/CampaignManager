@@ -18,6 +18,8 @@ import { SlashField } from '../ui/SlashField';
 import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
+import { SessionHistory } from '../session/SessionHistory';
+import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 
 // ── Voice data stored in localStorage keyed by NPC id ────────────────────────
@@ -264,6 +266,7 @@ type NPCFormData = {
   role: string | null;
   affiliation: string | null;
   status: NPC['status'];
+  disposition: string | null;
   description: string | null;
   hooks_motivations: string | null;
   dm_notes: string | null;
@@ -302,6 +305,7 @@ function NPCDetail({
     role: npc.role,
     affiliation: npc.affiliation,
     status: npc.status,
+    disposition: npc.disposition,
     description: npc.description,
     hooks_motivations: npc.hooks_motivations,
     dm_notes: npc.dm_notes,
@@ -318,6 +322,7 @@ function NPCDetail({
       role: npc.role,
       affiliation: npc.affiliation,
       status: npc.status,
+      disposition: npc.disposition,
       description: npc.description,
       hooks_motivations: npc.hooks_motivations,
       dm_notes: npc.dm_notes,
@@ -339,6 +344,7 @@ function NPCDetail({
         role: data.role,
         affiliation: data.affiliation,
         status: data.status,
+        disposition: data.disposition,
         description: data.description,
         hooks_motivations: data.hooks_motivations,
         dm_notes: data.dm_notes,
@@ -381,7 +387,7 @@ function NPCDetail({
     await upsertNPC({
       id: npc.id,
       name: form.name, role: form.role, affiliation: form.affiliation, status: form.status,
-      description: form.description, hooks_motivations: form.hooks_motivations, dm_notes: form.dm_notes,
+      disposition: form.disposition, description: form.description, hooks_motivations: form.hooks_motivations, dm_notes: form.dm_notes,
       location: form.location, first_session: form.first_session, met_by_pcs: form.met_by_pcs,
       faction_ids: form.faction_ids, statblock_id: form.statblock_id,
       world_id: activeWorldId || npc.world_id || null,
@@ -410,6 +416,8 @@ function NPCDetail({
           { label: 'Delete NPC', danger: true, onClick: handleDelete },
         ]} />
       </div>
+
+      <SessionUpdateBand entityType="npc" entityId={npc.id} />
 
       {/* Eyebrow */}
       <div className="cm-eyebrow">Non-Player Character</div>
@@ -477,6 +485,16 @@ function NPCDetail({
             onChange={e => set('location', e.target.value || null)}
             placeholder="Where found…"
             maxLength={limitFor('npcs', 'location')}
+          />
+        </div>
+        <div className="as-fl">
+          <label className="as-ll">Toward the party</label>
+          <input
+            className="as-input"
+            value={form.disposition ?? ''}
+            onChange={e => set('disposition', e.target.value || null)}
+            placeholder="Wary, friendly, owes them a favor…"
+            maxLength={limitFor('npcs', 'disposition')}
           />
         </div>
         <div className="as-fl">
@@ -600,6 +618,11 @@ function NPCDetail({
           )}
         </div>
       </div>
+
+      <div className="as-fl">
+        <label className="as-ll">Session History</label>
+        <SessionHistory entityType="npc" entityId={npc.id} />
+      </div>
     </div>
   );
 }
@@ -710,6 +733,8 @@ function PCDetail({
           { label: 'Delete Character', danger: true, onClick: handleDelete },
         ]} />
       </div>
+
+      <SessionUpdateBand entityType="pc" entityId={pc.id} />
 
       {/* Eyebrow */}
       <div className="cm-eyebrow">Player Character</div>
@@ -836,6 +861,11 @@ function PCDetail({
           searchPlaceholder="Search stat sheets…"
         />
       </div>
+
+      <div className="as-fl">
+        <label className="as-ll">Session History</label>
+        <SessionHistory entityType="pc" entityId={pc.id} />
+      </div>
     </div>
   );
 }
@@ -923,6 +953,8 @@ function FactionDetail({
         ]} />
       </div>
 
+      <SessionUpdateBand entityType="faction" entityId={faction.id} />
+
       {/* Eyebrow */}
       <div className="cm-eyebrow">Faction</div>
 
@@ -995,6 +1027,11 @@ function FactionDetail({
           minHeight="96px"
           maxLength={limitFor('factions', 'dm_notes')}
         />
+      </div>
+
+      <div className="as-fl">
+        <label className="as-ll">Session History</label>
+        <SessionHistory entityType="faction" entityId={faction.id} />
       </div>
     </div>
   );

@@ -22,11 +22,11 @@ const COMMON = ['id', 'campaign_id', 'world_id'];
 
 const COLUMNS: Record<string, string[]> = {
   upsertSession: ['session_number', 'session_date', 'summary', 'combats', 'loot_rewards', 'hooks_notes', 'dm_notes'],
-  upsertNPC: ['name', 'role', 'affiliation', 'status', 'description', 'hooks_motivations', 'dm_notes', 'location', 'first_session', 'met_by_pcs', 'faction_ids', 'statblock_id'],
+  upsertNPC: ['name', 'role', 'affiliation', 'status', 'disposition', 'description', 'hooks_motivations', 'dm_notes', 'location', 'first_session', 'met_by_pcs', 'faction_ids', 'statblock_id'],
   upsertPC: ['character_name', 'player_name', 'race', 'class', 'background', 'story_hooks', 'key_npcs', 'dm_notes', 'is_active', 'faction_ids', 'statblock_id'],
   upsertLocation: ['name', 'region', 'location_type', 'population', 'status', 'history', 'description', 'dm_notes'],
   upsertFaction: ['name', 'faction_type', 'overview', 'key_figures', 'agenda', 'dm_notes'],
-  upsertHook: ['title', 'category', 'description', 'last_updated_session', 'is_active', 'dm_only_notes'],
+  upsertHook: ['title', 'category', 'description', 'state', 'last_updated_session', 'is_active', 'dm_only_notes'],
   upsertLore: ['title', 'category', 'content', 'dm_only'],
   upsertModule: ['chapter', 'title', 'synopsis', 'status', 'played_session', 'encounters', 'rewards', 'dm_notes', 'faction_id', 'node_role'],
   upsertMonsterStatblock: ['name', 'creature_type', 'challenge_rating', 'armor_class', 'ac_descriptor', 'hit_points', 'hit_dice', 'speed', 'str', 'dex', 'con', 'int', 'wis', 'cha', 'saving_throws', 'skills', 'damage_immunities', 'damage_resistances', 'condition_immunities', 'senses', 'languages', 'content', 'dm_notes', 'tags', 'sort_order'],

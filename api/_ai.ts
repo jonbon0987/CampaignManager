@@ -299,6 +299,13 @@ export interface StructuredExtractOpts {
   /** JSON schema for the expected output (used as tool schema for Claude, or JSON prompt for Gemini) */
   schema: Record<string, unknown>;
   schemaDescription: string;
+  /** Output cap; defaults to 8192. Raise it for long inputs that yield many items. */
+  maxOutputTokens?: number;
+  /**
+   * Keep retrying a busy or rate-limited Gemini until this time (epoch ms),
+   * waiting as long as Google asks, instead of giving up after two retries.
+   */
+  retryUntil?: number;
 }
 
 // Recover as many complete objects as possible from the `actions` array of a
@@ -341,6 +348,7 @@ function salvageActionsArray(text: string): unknown[] | null {
 /** Extract structured JSON using tool use (Claude) or JSON-prompted generation (Gemini). */
 export async function structuredExtract(opts: StructuredExtractOpts): Promise<unknown> {
   const { provider, system, userContent, schema, schemaDescription } = opts;
+  const maxOutputTokens = opts.maxOutputTokens ?? 8192;
 
   if (provider === 'gemini') {
     const client = getGeminiClient();
@@ -355,7 +363,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
         // too-small default silently truncates the actions array (a handful of
         // entities instead of everything the document actually has) rather than
         // erroring. 8192 matches the cap Claude's branch below uses for parity.
-        maxOutputTokens: 8192,
+        maxOutputTokens,
       },
     });
 
@@ -369,7 +377,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
     // per-pass catch in parse-document.ts logs a warning and moves on). Retry
     // with backoff — honoring Google's suggested retryDelay on a 429 — so a
     // rate-limited pass gets a second chance instead of coming back empty.
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; ; attempt++) {
       try {
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: userContent + jsonSchemaHint }] }],
@@ -396,17 +404,27 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
         const isRateLimit = err instanceof GoogleGenerativeAIFetchError && err.status === 429;
         const isRetryable = isRateLimit ||
           (err instanceof GoogleGenerativeAIFetchError && (err.status === 503 || err.status === 500));
-        if (isRetryable && attempt < 2) {
+        if (isRetryable) {
           const suggested = isRateLimit ? retryDelaySeconds((err as GoogleGenerativeAIFetchError).errorDetails) : null;
-          // Cap the honored wait so one slow pass can't stall the whole import.
-          const waitMs = suggested != null ? Math.min(suggested, 20) * 1000 : (attempt + 1) * 3000;
-          await new Promise(r => setTimeout(r, waitMs));
-          continue;
+          const backoff = Math.min((attempt + 1) * 3000, 15_000);
+          if (opts.retryUntil == null) {
+            // Cap the honored wait so one slow pass can't stall the whole import.
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, suggested != null ? Math.min(suggested, 20) * 1000 : backoff));
+              continue;
+            }
+          } else {
+            // A caller with a time budget waits as long as Google asks, within it.
+            const waitMs = suggested != null ? (suggested + 1) * 1000 : backoff;
+            if (Date.now() + waitMs < opts.retryUntil) {
+              await new Promise(r => setTimeout(r, waitMs));
+              continue;
+            }
+          }
         }
         throw err;
       }
     }
-    throw new Error('Gemini structured extraction failed after retries');
   }
 
   // Claude — tool use with retry
@@ -415,7 +433,7 @@ export async function structuredExtract(opts: StructuredExtractOpts): Promise<un
       const client = getAnthropicClient();
       const stream = client.messages.stream({
         model: 'claude-sonnet-5',
-        max_tokens: 8192,
+        max_tokens: maxOutputTokens,
         system,
         tools: [
           {

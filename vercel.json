@@ -5,6 +5,12 @@
     },
     "api/chat.ts": {
       "maxDuration": 300
+    },
+    "api/transcription.ts": {
+      "maxDuration": 60
+    },
+    "api/chronicle.ts": {
+      "maxDuration": 300
     }
   }
 }

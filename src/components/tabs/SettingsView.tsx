@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { signOut } from '../../lib/auth';
 import { Button } from '../ui/Button';
+import { DiscordBotSettings } from '../session/DiscordBotSettings';
 
 function SettingRow({ label, help, children }: { label: string; help: string; children: React.ReactNode }) {
   return (
@@ -95,6 +96,16 @@ export default function SettingsView() {
                   {hideAiInSession ? 'On' : 'Off'}
                 </TogglePill>
               </SettingRow>
+            </section>
+
+            {/* Discord */}
+            <section className="cm-section">
+              <div className="cm-section-head">
+                <span className="cm-section-rule" />
+                <span className="cm-section-title">Discord</span>
+                <span className="cm-section-rule" />
+              </div>
+              <DiscordBotSettings />
             </section>
 
             {/* Account */}

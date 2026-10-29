@@ -14,6 +14,8 @@ vi.mock('../../context/WorldContext', () => ({ useWorld: () => h.world.value }))
 vi.mock('../../context/ConfirmContext', () => ({ useConfirm: () => h.confirm.value }));
 vi.mock('../../context/StatBlockPanelContext', () => ({ useStatBlockPanel: () => ({ openStatBlock: vi.fn() }) }));
 vi.mock('./CharacterWeb', () => ({ default: () => <div>CHARACTER_WEB</div> }));
+vi.mock('../session/SessionHistory', () => ({ SessionHistory: () => null }));
+vi.mock('../session/SessionUpdateBand', () => ({ SessionUpdateBand: () => null }));
 
 import Characters from './Characters';
 

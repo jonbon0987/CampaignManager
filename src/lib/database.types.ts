@@ -129,6 +129,7 @@ export interface NPC {
   hooks_motivations: string | null;
   dm_notes: string | null;
   location: string | null;
+  disposition: string | null;        // attitude toward the party, e.g. "Wary", "Fearful ally"
   first_session: number | null;
   met_by_pcs: boolean;
   faction_ids: string[];
@@ -304,7 +305,9 @@ export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_i
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type SessionPrepInsert = Omit<SessionPrep, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+// disposition is optional: it's written by the session-recording review, and an
+// NPC save that omits it (every edit form) leaves the stored value untouched.
+export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition'> & { disposition?: string | null };
 export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
@@ -470,6 +473,234 @@ export interface RandomEncounterTable {
 }
 
 export type RandomEncounterTableInsert = Omit<RandomEncounterTable, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
+// --------------- Session recording & transcription ---------------
+
+export type RecordingStatus = 'recording' | 'uploading' | 'processing' | 'review' | 'applied' | 'failed' | 'cancelled';
+
+// How the DM asked for the chronicle to be written up (session_recordings.settings).
+export interface RecordingSettings {
+  depth?: 'brief' | 'standard' | 'thorough';
+  dropTableTalk?: boolean;      // leave out out-of-character chatter
+  asidesToDmNotes?: boolean;    // the DM's asides go to dm_notes only
+  keepAudioDays?: number | null; // null = keep forever, 0 = delete after review
+  postRecapToDiscord?: boolean;
+  tablePcIds?: string[];        // PCs whose players were at the table (not on Discord)
+  discord?: DiscordTarget;      // also record this Discord voice channel (the bot does it)
+  chronicleMissing?: ('session' | 'people' | 'places')[]; // chronicle parts that couldn't be written (ChroniclePart)
+}
+
+// --------------- Discord (the bot in bot/ fills these in) ---------------
+
+/** The voice channel a recording asks the bot to join. */
+export interface DiscordTarget {
+  guildId: string;
+  channelId: string;
+  channelName: string;
+  /** Where to post the player recap afterwards (a text channel), if anywhere. */
+  recapChannelId?: string | null;
+}
+
+export type DiscordState = 'connecting' | 'recording' | 'finishing' | 'done' | 'failed';
+
+export interface DiscordMember { id: string; name: string; bot?: boolean }
+export interface DiscordVoiceChannel { id: string; name: string; members: DiscordMember[] }
+export interface DiscordTextChannel { id: string; name: string }
+export interface DiscordGuild { id: string; name: string; voice: DiscordVoiceChannel[]; text: DiscordTextChannel[] }
+
+export interface DiscordBotPresence {
+  id: string;
+  user_id: string;
+  bot_tag: string | null;
+  heartbeat_at: string;
+  guilds: DiscordGuild[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscordPost {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  recording_id: string | null;
+  channel_id: string;
+  content: string;
+  status: 'pending' | 'sent' | 'failed';
+  error: string | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionRecording {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  session_id: string;
+  status: RecordingStatus;
+  status_detail: string | null;
+  started_at: string;
+  ended_at: string | null;
+  duration_ms: number | null;
+  settings: RecordingSettings;
+  audio_expires_at: string | null;
+  paused_at: string | null;          // set while paused; the bot stops capturing too
+  discord_state: DiscordState | null; // null = no Discord for this recording
+  discord_detail: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TrackSource = 'table' | 'discord' | 'upload';
+export type TranscriptionStatus = 'pending' | 'submitted' | 'done' | 'failed';
+
+export interface RecordingTrack {
+  id: string;
+  user_id: string;
+  recording_id: string;
+  source: TrackSource;
+  label: string | null;
+  discord_user_id: string | null;
+  pc_id: string | null;
+  offset_ms: number;            // track start relative to the recording start
+  storage_path: string | null;  // the joined full-length file, once assembled
+  mime_type: string | null;
+  duration_ms: number | null;
+  transcription_status: TranscriptionStatus;
+  transcription_job_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecordingChunk {
+  id: string;
+  user_id: string;
+  track_id: string;
+  seq: number;
+  storage_path: string;
+  start_ms: number;             // relative to the track start
+  duration_ms: number | null;
+  byte_size: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TranscriptSegment {
+  id: string;
+  user_id: string;
+  recording_id: string;
+  track_id: string;
+  start_ms: number;             // relative to the recording start
+  end_ms: number;
+  speaker_label: string | null;
+  pc_id: string | null;
+  is_dm: boolean;
+  text: string;
+  dropped_as_echo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecordingMoment {
+  id: string;
+  user_id: string;
+  recording_id: string;
+  at_ms: number;
+  label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpeakerLink {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  discord_user_id: string;
+  discord_username: string | null;
+  pc_id: string | null;
+  is_dm: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlayerConsent {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  pc_id: string;
+  consented_at: string;
+  method: 'in_person' | 'discord' | 'other' | null;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProposalStatus = 'pending' | 'accepted' | 'skipped' | 'applied';
+
+export interface ChronicleProposal {
+  id: string;
+  user_id: string;
+  recording_id: string;
+  campaign_id: string;
+  group_key: string;
+  action: Record<string, unknown>;        // ImportAction shape (src/lib/documentImport.ts)
+  edits: Record<string, unknown> | null;  // the DM's overrides, applied over `action`
+  status: ProposalStatus;
+  source_ms: number | null;
+  source_quote: string | null;
+  source_speaker: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChronicleApplied {
+  id: string;
+  user_id: string;
+  recording_id: string;
+  proposal_id: string | null;
+  entity_table: string;
+  entity_id: string;
+  operation: 'create' | 'update';
+  before: Record<string, unknown> | null; // row before the update; null for a create
+  applied_at: string;
+  undone_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SessionEntryEntityType = 'pc' | 'npc' | 'location' | 'faction' | 'lore' | 'hook';
+
+export interface EntitySessionEntry {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  session_id: string;
+  recording_id: string | null;
+  entity_type: SessionEntryEntityType;
+  entity_id: string;
+  text: string;
+  source_ms: number | null;
+  source_quote: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SessionRecordingInsert = Omit<SessionRecording, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'started_at' | 'settings' | 'paused_at' | 'discord_state' | 'discord_detail'>
+  & Partial<Pick<SessionRecording, 'status' | 'started_at' | 'settings' | 'paused_at' | 'discord_state' | 'discord_detail'>>;
+export type RecordingTrackInsert = Omit<RecordingTrack, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'offset_ms' | 'transcription_status'>
+  & Partial<Pick<RecordingTrack, 'offset_ms' | 'transcription_status'>>;
+export type RecordingChunkInsert = Omit<RecordingChunk, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type TranscriptSegmentInsert = Omit<TranscriptSegment, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type RecordingMomentInsert = Omit<RecordingMoment, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type SpeakerLinkInsert = Omit<SpeakerLink, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type PlayerConsentInsert = Omit<PlayerConsent, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'consented_at' | 'revoked_at'>
+  & Partial<Pick<PlayerConsent, 'consented_at' | 'revoked_at'>>;
+export type ChronicleProposalInsert = Omit<ChronicleProposal, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'edits'>
+  & Partial<Pick<ChronicleProposal, 'status' | 'edits'>>;
+export type ChronicleAppliedInsert = Omit<ChronicleApplied, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'applied_at' | 'undone_at'>;
+export type EntitySessionEntryInsert = Omit<EntitySessionEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type DiscordPostInsert = Omit<DiscordPost, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'error' | 'sent_at'>;
 export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
 export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
 export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
@@ -597,6 +828,78 @@ export interface Database {
         Row: RandomEncounterTable;
         Insert: Omit<RandomEncounterTable, 'id' | 'created_at' | 'updated_at'> & { id?: string };
         Update: Partial<Omit<RandomEncounterTable, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      session_recordings: {
+        Row: SessionRecording;
+        Insert: SessionRecordingInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<SessionRecording, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      recording_tracks: {
+        Row: RecordingTrack;
+        Insert: RecordingTrackInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<RecordingTrack, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      recording_chunks: {
+        Row: RecordingChunk;
+        Insert: RecordingChunkInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<RecordingChunk, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      transcript_segments: {
+        Row: TranscriptSegment;
+        Insert: TranscriptSegmentInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<TranscriptSegment, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      recording_moments: {
+        Row: RecordingMoment;
+        Insert: RecordingMomentInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<RecordingMoment, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      speaker_links: {
+        Row: SpeakerLink;
+        Insert: SpeakerLinkInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<SpeakerLink, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      player_consents: {
+        Row: PlayerConsent;
+        Insert: PlayerConsentInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<PlayerConsent, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      chronicle_proposals: {
+        Row: ChronicleProposal;
+        Insert: ChronicleProposalInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<ChronicleProposal, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      chronicle_applied: {
+        Row: ChronicleApplied;
+        Insert: ChronicleAppliedInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<ChronicleApplied, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      entity_session_entries: {
+        Row: EntitySessionEntry;
+        Insert: EntitySessionEntryInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<EntitySessionEntry, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      discord_bot_presence: {
+        Row: DiscordBotPresence;
+        Insert: Omit<DiscordBotPresence, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<DiscordBotPresence, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      discord_posts: {
+        Row: DiscordPost;
+        Insert: DiscordPostInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<DiscordPost, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
     };

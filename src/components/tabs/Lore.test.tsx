@@ -12,6 +12,8 @@ const h = vi.hoisted(() => ({
 vi.mock('../../context/CampaignContext', () => ({ useCampaign: () => h.campaign.value }));
 vi.mock('../../context/WorldContext', () => ({ useWorld: () => h.world.value }));
 vi.mock('../../context/ConfirmContext', () => ({ useConfirm: () => h.confirm.value }));
+vi.mock('../session/SessionHistory', () => ({ SessionHistory: () => null }));
+vi.mock('../session/SessionUpdateBand', () => ({ SessionUpdateBand: () => null }));
 
 import Lore from './Lore';
 
