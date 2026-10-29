@@ -40,7 +40,12 @@ export function DiscordBotSettings() {
         It runs on this computer while you play.
       </p>
       {!bot.online && (
-        <ol className="text-sm flex flex-col gap-2" style={{ margin: 0, paddingLeft: 20, color: 'var(--ink)', listStyle: 'decimal' }}>
+        // Setup is a one-off, so it folds away once the bot has been seen.
+        <details open={!bot.presence}>
+          <summary className="text-sm" style={{ cursor: 'pointer', color: 'var(--gold)' }}>
+            {bot.presence ? 'Set up the bot again' : 'Set up the bot (once)'}
+          </summary>
+        <ol className="text-sm flex flex-col gap-2" style={{ margin: '10px 0 0', paddingLeft: 20, color: 'var(--ink)', listStyle: 'decimal' }}>
           <li>Create a bot at the Discord Developer Portal (New Application → Bot), copy its token, and invite it to your server with View Channels, Connect and Send Messages.</li>
           <li>Copy your service role key from Supabase (Project Settings → API keys).</li>
           <li>
@@ -52,6 +57,13 @@ export function DiscordBotSettings() {
           </li>
           <li>Start it with <span className="cm-kbd">npm run bot</span>. This shows “Running” within a few seconds.</li>
         </ol>
+        <p className="text-xs" style={{ margin: '8px 0 0', color: 'var(--ink-3)' }}>The full steps, and what to do if something goes wrong, are in <span className="cm-kbd">bot/README.md</span>.</p>
+        </details>
+      )}
+      {!bot.online && bot.presence && (
+        <p className="text-sm" style={{ margin: 0, color: 'var(--ink)' }}>
+          Start it with <span className="cm-kbd">npm run bot</span> before you record.
+        </p>
       )}
       <p className="text-xs" style={{ margin: 0, color: 'var(--ink-3)' }}>
         Only people you link to a character whose player has agreed to recording (or link as the DM) are recorded. The bot posts a notice in the channel when recording starts and stops.
