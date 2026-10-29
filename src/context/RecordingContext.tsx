@@ -14,8 +14,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react';
 import {
   SessionRecordings, RecordingTracks, RecordingChunks, RecordingMoments, SessionAudio, sessionAudioPath,
+  DiscordBotPresenceRows, DISCORD_BOT_STALE_MS,
 } from '../lib/db';
-import type { RecordingMoment, SessionRecording } from '../lib/database.types';
+import type { DiscordTarget, RecordingMoment, SessionRecording } from '../lib/database.types';
 import { ChunkedRecorder, type RecorderLike } from '../lib/recording/chunker';
 import { createChunkStore, chunkKey } from '../lib/recording/chunkStore';
 import { ChunkUploader, type UploaderStatus } from '../lib/recording/uploader';
@@ -28,6 +29,26 @@ import {
 import { useCampaign } from './CampaignContext';
 
 const SAVED_DETAIL = 'Audio saved.';
+const DISCORD_WAIT_MS = 90_000;
+
+/**
+ * Ending a recording also ends the Discord capture, which the bot finishes on
+ * its own clock: give it time to save the players' audio so transcription
+ * includes them. If the bot isn't running, don't wait; when it next starts it
+ * finishes the capture, and Transcribe picks up those tracks.
+ */
+async function waitForDiscord(rec: SessionRecording): Promise<void> {
+  if (!rec.discord_state || rec.discord_state === 'done' || rec.discord_state === 'failed') return;
+  const bot = await DiscordBotPresenceRows.get().catch(() => null);
+  if (!bot || Date.now() - Date.parse(bot.heartbeat_at) > DISCORD_BOT_STALE_MS) return;
+  await SessionRecordings.update(rec.id, { status_detail: 'Saving the Discord audio…' }).catch(() => {});
+  const until = Date.now() + DISCORD_WAIT_MS;
+  while (Date.now() < until) {
+    await new Promise(r => setTimeout(r, 2_000));
+    const now = await SessionRecordings.get(rec.id).catch(() => null);
+    if (!now || now.discord_state === 'done' || now.discord_state === 'failed') return;
+  }
+}
 
 /**
  * Hands a saved recording to transcription. If that can't start (no key, no
@@ -59,7 +80,7 @@ interface RecordingContextValue {
   /** Bumped whenever a recording is created, saved or discarded, so lists can refetch. */
   version: number;
   getLevel: () => number;
-  start: (sessionId: string, opts: { deviceId?: string; tablePcIds: string[] }) => Promise<void>;
+  start: (sessionId: string, opts: { deviceId?: string; tablePcIds: string[]; discord?: DiscordTarget | null }) => Promise<void>;
   resumeInterrupted: (recording: SessionRecording, deviceId?: string) => Promise<void>;
   pause: () => void;
   resume: () => void;
@@ -198,7 +219,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     }
   }, [store, uploader]);
 
-  const start = useCallback<RecordingContextValue['start']>(async (sessionId, { deviceId, tablePcIds }) => {
+  const start = useCallback<RecordingContextValue['start']>(async (sessionId, { deviceId, tablePcIds, discord }) => {
     if (liveRef.current) throw new Error('A recording is already running.');
     if (!selectedCampaignId) throw new Error('No campaign selected.');
     setBusy(true);
@@ -206,7 +227,10 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     try {
       recording = await SessionRecordings.upsert({
         campaign_id: selectedCampaignId, session_id: sessionId, status: 'recording', status_detail: null,
-        ended_at: null, duration_ms: null, audio_expires_at: null, settings: { tablePcIds },
+        ended_at: null, duration_ms: null, audio_expires_at: null,
+        settings: { tablePcIds, ...(discord ? { discord } : {}) },
+        // The Discord bot watches for this and joins the channel.
+        ...(discord ? { discord_state: 'connecting' as const, discord_detail: `Waiting for the bot to join #${discord.channelName}…` } : {}),
       });
       await startTrack(recording, deviceId, 0);
       bump();
@@ -232,15 +256,23 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     }
   }, [startTrack, bump]);
 
+  // paused_at tells the Discord bot to stop capturing too.
+  const markPaused = (recordingId: string, paused: boolean) => {
+    SessionRecordings.update(recordingId, { paused_at: paused ? new Date().toISOString() : null })
+      .catch(e => console.error('Couldn’t record the pause for the Discord bot', e));
+  };
+
   const pause = useCallback(() => {
     if (!rig.current || !liveRef.current) return;
     rig.current.chunker.pause();
+    markPaused(liveRef.current.recording.id, true);
     setLive(l => l && { ...l, paused: true });
   }, []);
 
   const resume = useCallback(() => {
     if (!rig.current || !liveRef.current) return;
     rig.current.chunker.resume();
+    markPaused(liveRef.current.recording.id, false);
     setLive(l => l && { ...l, paused: false });
   }, []);
 
@@ -287,13 +319,14 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
         await teardown();
         setLive(null);
       }
-      const rec = await SessionRecordings.update(recordingId, { status: 'uploading', ended_at: new Date().toISOString() });
+      const rec = await SessionRecordings.update(recordingId, { status: 'uploading', ended_at: new Date().toISOString(), paused_at: null });
       const tracks = await RecordingTracks.getByRecording(recordingId);
       for (const t of tracks) {
         if (t.source !== 'table' || t.storage_path) continue;
         const joined = await uploader.joinTrack(recordingId, t.id, t.mime_type ?? 'audio/webm');
         if (joined) await RecordingTracks.update(t.id, { storage_path: joined.path, duration_ms: joined.durationMs });
       }
+      await waitForDiscord(rec);
       await SessionRecordings.update(recordingId, {
         status: 'processing',
         status_detail: SAVED_DETAIL,

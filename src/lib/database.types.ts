@@ -486,6 +486,49 @@ export interface RecordingSettings {
   keepAudioDays?: number | null; // null = keep forever, 0 = delete after review
   postRecapToDiscord?: boolean;
   tablePcIds?: string[];        // PCs whose players were at the table (not on Discord)
+  discord?: DiscordTarget;      // also record this Discord voice channel (the bot does it)
+}
+
+// --------------- Discord (the bot in bot/ fills these in) ---------------
+
+/** The voice channel a recording asks the bot to join. */
+export interface DiscordTarget {
+  guildId: string;
+  channelId: string;
+  channelName: string;
+  /** Where to post the player recap afterwards (a text channel), if anywhere. */
+  recapChannelId?: string | null;
+}
+
+export type DiscordState = 'connecting' | 'recording' | 'finishing' | 'done' | 'failed';
+
+export interface DiscordMember { id: string; name: string; bot?: boolean }
+export interface DiscordVoiceChannel { id: string; name: string; members: DiscordMember[] }
+export interface DiscordTextChannel { id: string; name: string }
+export interface DiscordGuild { id: string; name: string; voice: DiscordVoiceChannel[]; text: DiscordTextChannel[] }
+
+export interface DiscordBotPresence {
+  id: string;
+  user_id: string;
+  bot_tag: string | null;
+  heartbeat_at: string;
+  guilds: DiscordGuild[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscordPost {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  recording_id: string | null;
+  channel_id: string;
+  content: string;
+  status: 'pending' | 'sent' | 'failed';
+  error: string | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SessionRecording {
@@ -500,6 +543,9 @@ export interface SessionRecording {
   duration_ms: number | null;
   settings: RecordingSettings;
   audio_expires_at: string | null;
+  paused_at: string | null;          // set while paused; the bot stops capturing too
+  discord_state: DiscordState | null; // null = no Discord for this recording
+  discord_detail: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -639,8 +685,8 @@ export interface EntitySessionEntry {
   updated_at: string;
 }
 
-export type SessionRecordingInsert = Omit<SessionRecording, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'started_at' | 'settings'>
-  & Partial<Pick<SessionRecording, 'status' | 'started_at' | 'settings'>>;
+export type SessionRecordingInsert = Omit<SessionRecording, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'started_at' | 'settings' | 'paused_at' | 'discord_state' | 'discord_detail'>
+  & Partial<Pick<SessionRecording, 'status' | 'started_at' | 'settings' | 'paused_at' | 'discord_state' | 'discord_detail'>>;
 export type RecordingTrackInsert = Omit<RecordingTrack, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'offset_ms' | 'transcription_status'>
   & Partial<Pick<RecordingTrack, 'offset_ms' | 'transcription_status'>>;
 export type RecordingChunkInsert = Omit<RecordingChunk, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
@@ -653,6 +699,7 @@ export type ChronicleProposalInsert = Omit<ChronicleProposal, 'id' | 'user_id' |
   & Partial<Pick<ChronicleProposal, 'status' | 'edits'>>;
 export type ChronicleAppliedInsert = Omit<ChronicleApplied, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'applied_at' | 'undone_at'>;
 export type EntitySessionEntryInsert = Omit<EntitySessionEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type DiscordPostInsert = Omit<DiscordPost, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'error' | 'sent_at'>;
 export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
 export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
 export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
@@ -840,6 +887,18 @@ export interface Database {
         Row: EntitySessionEntry;
         Insert: EntitySessionEntryInsert & { id?: string; user_id: string };
         Update: Partial<Omit<EntitySessionEntry, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      discord_bot_presence: {
+        Row: DiscordBotPresence;
+        Insert: Omit<DiscordBotPresence, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<DiscordBotPresence, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      discord_posts: {
+        Row: DiscordPost;
+        Insert: DiscordPostInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<DiscordPost, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
     };

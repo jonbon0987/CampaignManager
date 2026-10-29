@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "migrate": "tsx scripts/migrate.ts",
+    "bot": "npm --prefix bot start",
     "migrate:gen-constraints": "tsx scripts/genFieldConstraints.ts"
   },
   "dependencies": {

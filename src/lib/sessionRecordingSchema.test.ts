@@ -3,17 +3,18 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TEXT_LIMITS } from './fieldLimits';
 
-// 0032 hand-writes its CHECK constraints (0028 is generated but already
+// 0032 and 0033 hand-write their CHECK constraints (0028 is generated but already
 // applied), so guard against them drifting from fieldLimits.ts.
-const sql = readFileSync(join(__dirname, '../../migrations/0032_session_recordings.sql'), 'utf8');
+const sql = readFileSync(join(__dirname, '../../migrations/0032_session_recordings.sql'), 'utf8')
+  + readFileSync(join(__dirname, '../../migrations/0033_discord_bot.sql'), 'utf8');
 
 const RECORDING_TABLES = [
   'session_recordings', 'recording_tracks', 'recording_chunks', 'transcript_segments',
   'recording_moments', 'speaker_links', 'chronicle_proposals', 'chronicle_applied',
-  'entity_session_entries',
+  'entity_session_entries', 'discord_bot_presence', 'discord_posts',
 ];
 
-describe('migration 0032 field constraints', () => {
+describe('migrations 0032–0033 field constraints', () => {
   const cases: [string, string, number][] = [['npcs', 'disposition', TEXT_LIMITS.npcs.disposition]];
   for (const table of RECORDING_TABLES) {
     for (const [col, max] of Object.entries(TEXT_LIMITS[table] ?? {})) cases.push([table, col, max]);

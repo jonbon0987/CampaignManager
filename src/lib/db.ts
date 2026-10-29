@@ -36,6 +36,7 @@ import type {
   TranscriptSegment, TranscriptSegmentInsert,
   RecordingMoment, RecordingMomentInsert,
   SpeakerLink, SpeakerLinkInsert,
+  DiscordBotPresence, DiscordPost, DiscordPostInsert,
   PlayerConsent, PlayerConsentInsert,
   ChronicleProposal, ChronicleProposalInsert,
   ChronicleApplied, ChronicleAppliedInsert,
@@ -1360,6 +1361,40 @@ export const SpeakerLinks = {
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('speaker_links').delete().eq('id', id);
     if (error) throw error;
+  },
+};
+
+// --------------- Discord bot (see bot/ and migration 0033) ---------------
+
+/** A heartbeat older than this means the bot isn't running. */
+export const DISCORD_BOT_STALE_MS = 45_000;
+
+export const DiscordBotPresenceRows = {
+  /** The bot's last report, or null if it has never run for this user. */
+  async get(): Promise<DiscordBotPresence | null> {
+    const { data, error } = await supabase.from('discord_bot_presence').select('*').maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+};
+
+export const DiscordPosts = {
+  async queue(post: DiscordPostInsert): Promise<DiscordPost> {
+    validateFieldLimits('discord_posts', post);
+    const user_id = await getUserId();
+    const { data, error } = await supabase.from('discord_posts').insert({ ...post, user_id }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getByRecording(recordingId: string): Promise<DiscordPost[]> {
+    const { data, error } = await supabase
+      .from('discord_posts')
+      .select('*')
+      .eq('recording_id', recordingId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
   },
 };
 

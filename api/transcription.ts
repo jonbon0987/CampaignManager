@@ -41,6 +41,7 @@ interface TrackRow {
   recording_id: string;
   source: 'table' | 'discord' | 'upload';
   label: string | null;
+  discord_user_id: string | null;
   pc_id: string | null;
   offset_ms: number;
   storage_path: string | null;
@@ -121,13 +122,17 @@ async function start(sb: Supa, recordingId: string) {
 
   for (const t of toSend) {
     const signed = await must(sb.storage.from(BUCKET).createSignedUrl(t.storage_path!, SIGNED_URL_SECONDS));
+    // Speaker labels are what make AssemblyAI return utterances (speaker turns),
+    // so they're on even for a Discord track, which is one person.
     const body: Record<string, unknown> = {
       audio_url: signed.signedUrl,
-      speaker_labels: t.source !== 'discord',
+      speaker_labels: true,
       ...(keyterms.length ? { keyterms_prompt: keyterms } : {}),
     };
-    // Players plus the DM; allow a couple of guests or voices the DM does in character.
-    if (t.source === 'table' && atTable > 0) {
+    if (t.source === 'discord') {
+      body.speakers_expected = 1;
+    } else if (t.source === 'table' && atTable > 0) {
+      // Players plus the DM; allow a couple of guests or voices the DM does in character.
       body.speaker_options = { min_speakers_expected: 1, max_speakers_expected: atTable + 3 };
     }
     const job = await aai('', { method: 'POST', body: JSON.stringify(body) });
@@ -163,7 +168,11 @@ async function poll(sb: Supa, recordingId: string) {
     try {
       const chunks = await must(sb.from('recording_chunks').select('seq, start_ms, duration_ms').eq('track_id', t.id));
       const utterances = (job.utterances ?? []) as Utterance[];
-      const segments = utterancesToSegments(utterances, t, chunks ?? []);
+      // A Discord account linked as the DM speaks as the DM.
+      const isDm = t.source === 'discord' && t.discord_user_id
+        ? !!(await must(sb.from('speaker_links').select('is_dm').eq('campaign_id', rec.campaign_id).eq('discord_user_id', t.discord_user_id).maybeSingle()) as { is_dm: boolean } | null)?.is_dm
+        : false;
+      const segments = utterancesToSegments(utterances, { ...t, is_dm: isDm }, chunks ?? []);
       await must(sb.from('transcript_segments').delete().eq('track_id', t.id).select('id'));
       for (let i = 0; i < segments.length; i += INSERT_BATCH) {
         await must(sb.from('transcript_segments').insert(segments.slice(i, i + INSERT_BATCH).map(s => ({ ...s, user_id: rec.user_id }))).select('id'));

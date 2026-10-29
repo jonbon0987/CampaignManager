@@ -7,7 +7,7 @@
 // -----------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileText, ListChecks, Play } from 'lucide-react';
+import { ArrowLeft, FileText, ListChecks, Play, Send } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useEntityRefs } from '../../context/EntityRefContext';
 import { useToast } from '../../context/ToastContext';
@@ -22,6 +22,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { TranscriptModal } from './TranscriptModal';
 import { ChronicleReview } from './ChronicleReview';
+import { PostRecapModal } from './PostRecapModal';
 
 const GLYPH: Record<EntityKind | 'session', string> = { session: '❧', pc: '❖', npc: '❦', location: '✦', faction: '◈', lore: '✦', hook: '✧' };
 const SESSION_FIELD: Record<SessionField, string> = {
@@ -78,6 +79,7 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
   const [moments, setMoments] = useState<RecordingMoment[]>([]);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showPost, setShowPost] = useState(false);
 
   const load = useCallback(() => Promise.all([
     ChronicleProposals.getByRecording(initial.id),
@@ -97,10 +99,10 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
 
   useEffect(() => {
     // Capture phase, so a modal this was opened from doesn't close with it.
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !showTranscript && !showReview) { e.stopPropagation(); onClose(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !showTranscript && !showReview && !showPost) { e.stopPropagation(); onClose(); } };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [showTranscript, showReview, onClose]);
+  }, [showTranscript, showReview, showPost, onClose]);
 
   const model = useMemo(() => buildChronicle(proposals ?? [], log), [proposals, log]);
   const session = sessions.find(s => s.id === recording.session_id) ?? null;
@@ -195,6 +197,7 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {session && <Button size="sm" onClick={() => setShowPost(true)}><Send size={12} /> Post to Discord</Button>}
           <Button size="sm" onClick={() => setShowTranscript(true)}><FileText size={12} /> Transcript</Button>
           <Button size="sm" onClick={() => setShowReview(true)}><ListChecks size={12} /> Review or undo</Button>
         </div>
@@ -331,6 +334,7 @@ export function ChronicleView({ recording: initial, onClose, onChanged }: {
       </div>
 
       {showTranscript && <TranscriptModal recording={recording} onClose={() => setShowTranscript(false)} />}
+      {showPost && session && <PostRecapModal recording={recording} session={session} onClose={() => setShowPost(false)} />}
       {showReview && (
         <ChronicleReview
           recording={recording}

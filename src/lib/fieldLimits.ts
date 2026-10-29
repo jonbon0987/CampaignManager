@@ -195,6 +195,15 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
   // Session recording & transcription (migration 0032).
   session_recordings: {
     status_detail: LIMIT.STATLINE,
+    discord_detail: LIMIT.STATLINE,
+  },
+  discord_bot_presence: {
+    bot_tag: LIMIT.NAME,
+  },
+  discord_posts: {
+    channel_id: LIMIT.TAG,
+    content: LIMIT.PROSE,
+    error: LIMIT.STATLINE,
   },
   recording_tracks: {
     label: LIMIT.NAME,

@@ -45,7 +45,15 @@ describe('utterancesToSegments', () => {
   it('attributes a Discord track to its player', () => {
     const discord = { ...table, id: 't2', source: 'discord' as const, label: 'dana', pc_id: 'pc-mirela', offset_ms: 2_000 };
     const [seg] = utterancesToSegments([{ speaker: 'A', start: 0, end: 1_000, text: 'Detect Magic on the stair.' }], discord, []);
-    expect(seg).toMatchObject({ speaker_label: 'dana', pc_id: 'pc-mirela', start_ms: 2_000 });
+    expect(seg).toMatchObject({ speaker_label: 'dana', pc_id: 'pc-mirela', start_ms: 2_000, is_dm: false });
+  });
+
+  it('marks a Discord track linked as the DM as the DM’s lines', () => {
+    const dm = { ...table, id: 't3', source: 'discord' as const, label: 'jon', pc_id: null, is_dm: true };
+    const [seg] = utterancesToSegments([{ speaker: 'A', start: 0, end: 1_000, text: 'Roll initiative.' }], dm, []);
+    expect(seg).toMatchObject({ speaker_label: 'jon', is_dm: true, pc_id: null });
+    // The table mic is never marked as the DM wholesale; its voices are assigned one by one.
+    expect(utterancesToSegments([{ speaker: 'A', start: 0, end: 1, text: 'x' }], { ...table, is_dm: true }, [])[0].is_dm).toBe(false);
   });
 
   it('caps a very long turn at the column limit', () => {

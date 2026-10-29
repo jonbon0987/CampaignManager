@@ -1,0 +1,19 @@
+{
+  "name": "dm-lair-discord-bot",
+  "private": true,
+  "type": "module",
+  "description": "Records a Discord voice channel, one track per player, for DM Lair's session recordings.",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.19.2",
+    "@supabase/supabase-js": "^2.101.1",
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.3.1",
+    "tsx": "^4.21.0"
+  }
+}

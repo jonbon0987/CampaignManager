@@ -81,6 +81,8 @@ export interface TrackForTranscript {
   label: string | null;
   pc_id: string | null;
   offset_ms: number;
+  /** A Discord track whose account is linked as the DM. */
+  is_dm?: boolean;
 }
 
 const MAX_LINE = 8_000; // transcript_segments.text limit
@@ -97,8 +99,8 @@ export function utterancesToSegments(utterances: Utterance[], track: TrackForTra
       end_ms: audioToSessionMs(u.end, chunks, track.offset_ms),
       // A Discord track is one person; the table mic and uploads are diarized ("A", "B", …).
       speaker_label: track.source === 'discord' ? (track.label ?? 'Discord') : `Speaker ${u.speaker}`,
-      pc_id: track.source === 'discord' ? track.pc_id : null,
-      is_dm: false,
+      pc_id: track.source === 'discord' && !track.is_dm ? track.pc_id : null,
+      is_dm: track.source === 'discord' && !!track.is_dm,
       text,
       dropped_as_echo: false,
     });

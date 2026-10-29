@@ -13,7 +13,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
 import { useRecording } from '../../context/RecordingContext';
 import { PlayerConsents, RecordingTracks, SessionAudio, SessionRecordings } from '../../lib/db';
-import type { PlayerConsent, RecordingMoment, Session, SessionRecording } from '../../lib/database.types';
+import type { PlayerConsent, RecordingMoment, Session, SessionRecording, SpeakerLink } from '../../lib/database.types';
 import { listMicrophones } from '../../lib/recording/audio';
 import { transcription, type TranscriptionState } from '../../lib/recording/transcriptionApi';
 import { durationLabel } from '../../lib/recording/chronicle';
@@ -21,6 +21,9 @@ import { TranscriptModal } from './TranscriptModal';
 import { ChronicleModal } from './ChronicleModal';
 import { ChronicleReview } from './ChronicleReview';
 import { ChronicleView } from './ChronicleView';
+import { DiscordMembers, DiscordStateLine } from './DiscordVoice';
+import { useDiscordBot, useDiscordCapture } from '../../hooks/useDiscordBot';
+import { rememberChannel, rememberedChannel, voiceChannels } from '../../lib/discord';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -91,6 +94,18 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
   const [deviceId, setDeviceId] = useState('');
   const [atTable, setAtTable] = useState<Set<string>>(() => new Set(activePcs.map(p => p.id)));
   const [consents, setConsents] = useState<PlayerConsent[] | null>(null); // null while loading
+  const bot = useDiscordBot();
+  const channels = voiceChannels(bot.presence);
+  const [channelId, setChannelId] = useState<string | null>(() => rememberedChannel(selectedCampaignId));
+  const channel = bot.online ? channels.find(c => c.channelId === channelId) ?? null : null;
+
+  // Someone linked to a PC in the Discord channel isn't at the table.
+  const memberKey = channel?.members.map(m => m.id).join(',') ?? '';
+  const onLinks = (links: SpeakerLink[]) => {
+    const inChannel = new Set(memberKey.split(',').filter(Boolean));
+    const remote = new Set(links.filter(l => l.pc_id && inChannel.has(l.discord_user_id)).map(l => l.pc_id!));
+    if (remote.size) setAtTable(prev => new Set([...prev].filter(id => !remote.has(id))));
+  };
 
   useEffect(() => {
     void listMicrophones().then(setMics).catch(() => setMics([]));
@@ -121,7 +136,12 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
 
   const begin = async () => {
     try {
-      await start(session.id, { deviceId: deviceId || undefined, tablePcIds: [...atTable] });
+      rememberChannel(selectedCampaignId, channel?.channelId ?? null);
+      await start(session.id, {
+        deviceId: deviceId || undefined,
+        tablePcIds: [...atTable],
+        discord: channel ? { guildId: channel.guildId, channelId: channel.channelId, channelName: channel.channelName } : null,
+      });
       onClose();
     } catch (e) {
       const msg = errorMessage(e);
@@ -188,6 +208,32 @@ function StartRecordingModal({ session, onClose }: { session: Session; onClose: 
           </p>
         </div>
 
+        <div>
+          <SectionLabel label="Players on Discord" />
+          {!bot.loaded ? (
+            <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Checking for the Discord bot…</p>
+          ) : !bot.online ? (
+            <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>
+              To record players on Discord, start the DM Lair bot on this computer (<span className="cm-kbd">npm run bot</span>). Setup is in Settings → Discord.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <select className="as-select" aria-label="Discord voice channel" value={channel?.channelId ?? ''} onChange={e => setChannelId(e.target.value || null)}>
+                <option value="">Don’t record Discord</option>
+                {channels.map(c => (
+                  <option key={c.channelId} value={c.channelId}>{c.label}{c.members.length ? ` · ${c.members.filter(m => !m.bot).length} in it` : ''}</option>
+                ))}
+              </select>
+              {channel && <DiscordMembers members={channel.members} consents={consents} onLinksChange={onLinks} />}
+              {channel && (
+                <p className="text-xs" style={{ color: 'var(--ink-3)', margin: 0 }}>
+                  The bot records each person on their own track and posts a notice in the channel. Tick “Agreed to recording” above for players on Discord too.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         <p className="text-xs" style={{ color: 'var(--ink-3)', margin: 0 }}>
           Audio is saved on this device every minute and uploaded to your private storage as you go. Keep this tab open; switching tabs in the app is fine.
         </p>
@@ -224,8 +270,17 @@ function LiveRecorder() {
   const { live, busy, upload, getLevel, pause, resume, markMoment, renameMoment, deleteMoment, end, retryUploads } = useRecording();
   const confirm = useConfirm();
   const toast = useToast();
+  const discord = useDiscordCapture(live?.recording ?? null);
+  const bot = useDiscordBot(!!live?.recording.discord_state);
+  const [consents, setConsents] = useState<PlayerConsent[] | null>(null);
+  const campaignId = live?.recording.campaign_id;
+  useEffect(() => {
+    if (campaignId) PlayerConsents.getAll(campaignId).then(setConsents).catch(() => setConsents([]));
+  }, [campaignId]);
   if (!live) return null;
   const { recording, paused, moments } = live;
+  const target = recording.settings.discord;
+  const channel = target ? voiceChannels(bot.presence).find(c => c.channelId === target.channelId) : null;
 
   const stop = async () => {
     if (!(await confirm({ title: 'End recording?', message: 'The recording stops and the audio is saved to this session.', confirmLabel: 'End & save' }))) return;
@@ -268,6 +323,20 @@ function LiveRecorder() {
         )}
         <span style={{ marginLeft: 'auto' }}>{(recording.settings.tablePcIds?.length ?? 0)} at the table · consent recorded</span>
       </div>
+
+      {target && (
+        <details style={{ borderTop: '1px solid var(--rule-soft)', paddingTop: 10 }}>
+          <summary className="flex items-center gap-2" style={{ cursor: 'pointer', listStyle: 'none' }}>
+            <span className="cm-section-title" style={{ marginRight: 4 }}>Discord · #{target.channelName}</span>
+            <DiscordStateLine state={discord?.discord_state} detail={discord?.discord_detail} botOnline={bot.online} />
+          </summary>
+          <div style={{ marginTop: 10 }}>
+            {channel
+              ? <DiscordMembers members={channel.members} consents={consents} />
+              : <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>The bot can’t see this channel right now.</p>}
+          </div>
+        </details>
+      )}
 
       {moments.length > 0 && (
         <div>
