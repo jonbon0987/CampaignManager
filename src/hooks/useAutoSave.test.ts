@@ -103,19 +103,34 @@ describe('useAutoSave', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  // NOTE: the hook intends to flush a *pending* debounced save on unmount
-  // (useAutoSave.ts lines 84-96), but that flush does not currently fire: the
-  // data-change effect's cleanup nulls timerRef before the flush effect's
-  // cleanup reads it (React runs passive cleanups top-to-bottom). Documented
-  // here rather than asserted, since asserting either outcome would codify the
-  // ordering. See the separate follow-up task to fix the flush ordering.
-  it('cancels the pending debounced save on unmount (flush currently does not fire)', async () => {
+  it('flushes a pending debounced save on unmount, once', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const { rerender, unmount } = setup({ data: { v: 1 }, onSave, delay: 2000 });
     rerender({ data: { v: 2 }, onSave, delay: 2000 }); // schedule
     unmount();
-    // Advancing past the delay must not fire a save after unmount either way.
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledWith({ v: 2 });
+    // The cancelled timer must not save a second time.
     await advance(5000);
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not flush on unmount once the pending edit has saved', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const { rerender, unmount } = setup({ data: { v: 1 }, onSave, delay: 2000 });
+    rerender({ data: { v: 2 }, onSave, delay: 2000 });
+    await advance(2500); // the debounced save runs
+    expect(onSave).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not flush an edit that was undone back to the saved value', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const { rerender, unmount } = setup({ data: { v: 1 }, onSave, delay: 2000 });
+    rerender({ data: { v: 2 }, onSave, delay: 2000 });
+    rerender({ data: { v: 1 }, onSave, delay: 2000 });
+    unmount();
     expect(onSave).not.toHaveBeenCalled();
   });
 });
