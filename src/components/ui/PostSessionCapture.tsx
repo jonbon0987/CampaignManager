@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from './Button';
@@ -10,7 +10,7 @@ interface PostSessionCaptureProps {
 const MOODS = ['quiet', 'tense', 'triumphant', 'tragic', 'chaotic', 'neutral'];
 
 export function PostSessionCapture({ onClose }: PostSessionCaptureProps) {
-  const { sessions, pcs, npcs, hooks, upsertSession } = useCampaign();
+  const { sessions, upsertSession, upsertIdea } = useCampaign();
 
   const nextNumber = sessions.length > 0
     ? Math.max(...sessions.map(s => s.session_number)) + 1
@@ -26,20 +26,42 @@ export function PostSessionCapture({ onClose }: PostSessionCaptureProps) {
 
   const [saving, setSaving] = useState(false);
 
+  // Esc closes, like every other dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const handleSave = async () => {
     if (!form.summary.trim()) return;
     setSaving(true);
-    await upsertSession({
-      session_number: form.sessionNum,
-      session_date: form.date,
-      summary: form.summary,
-      combats: null,
-      loot_rewards: null,
-      hooks_notes: form.newNames || null,
-      dm_notes: form.mood !== 'neutral' ? `Mood: ${form.mood}` : null,
-    });
-    setSaving(false);
-    onClose();
+    try {
+      // Add to the session if it already exists (a recorded one, say) rather
+      // than creating a second session with the same number.
+      const existing = sessions.find(s => s.session_number === form.sessionNum);
+      const join = (prev: string | null | undefined, next: string) =>
+        prev?.trim() ? `${prev.trim()}\n\n${next}` : next;
+      const moodLine = form.mood !== 'neutral' ? `Mood: ${form.mood}` : null;
+      await upsertSession({
+        ...(existing ? { id: existing.id } : {}),
+        session_number: form.sessionNum,
+        session_date: existing?.session_date ?? form.date,
+        summary: join(existing?.summary, form.summary.trim()),
+        combats: existing?.combats ?? null,
+        loot_rewards: existing?.loot_rewards ?? null,
+        hooks_notes: existing?.hooks_notes ?? null,
+        dm_notes: moodLine ? join(existing?.dm_notes, moodLine) : existing?.dm_notes ?? null,
+      });
+      // Improvised names go to the Ideas inbox, one each, to flesh out later.
+      const names = form.newNames.split(/[,;\n]/).map(n => n.trim()).filter(Boolean);
+      for (const name of names) {
+        await upsertIdea({ text: `${name} (came up in Session ${form.sessionNum})`, tag: 'new name', promoted_hook_id: null });
+      }
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -123,13 +145,14 @@ export function PostSessionCapture({ onClose }: PostSessionCaptureProps) {
               placeholder="NPCs, places, or items that came up improvised..."
               style={inputStyle}
             />
+            <span className="text-xs" style={{ color: 'var(--ink-3)' }}>Separate them with commas. Each one lands in Ideas to flesh out later.</span>
           </div>
         </div>
 
         <div className="psc-foot">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || !form.summary.trim()}>
-            {saving ? 'Saving...' : 'Save Session'}
+            {saving ? 'Saving…' : 'Save to session'}
           </Button>
         </div>
       </div>
