@@ -11,7 +11,7 @@
   z-index: 50;
   /* align-items:center + child margin:auto keeps the crest reachable on short
      viewports. Do NOT add justify-content:center — it clips. */
-  background: radial-gradient(120% 90% at 50% -10%, #1b1710 0%, var(--bg) 60%);
+  background: radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--gold) 3.5%, var(--bg)) 0%, var(--bg) 60%);
 }
 /* Additional-world mode: same gate as an overlay above the app chrome. */
 .fwg-gate.fwg-overlay { z-index: 9500; }
@@ -73,7 +73,7 @@ textarea.fwg-inp { resize: vertical; min-height: 96px; line-height: 1.5; }
 
 .fwg-btn-row { display: flex; align-items: center; gap: 10px; margin-top: 26px; }
 .fwg-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: var(--radius); font-size: 15px; font-weight: 500; cursor: pointer; border: 1px solid transparent; font-family: var(--serif); transition: opacity .14s, background .14s, border-color .14s; }
-.fwg-btn-primary { background: var(--gold); color: #211a0c; border-color: var(--gold); }
+.fwg-btn-primary { background: var(--gold); color: var(--bg); border-color: var(--gold); }
 .fwg-btn-primary:hover { background: var(--gold-2); }
 .fwg-btn-primary:disabled { opacity: .4; cursor: not-allowed; }
 .fwg-btn-ghost { background: transparent; color: var(--ink-2); border-color: var(--rule); }

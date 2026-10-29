@@ -401,7 +401,7 @@ function LoginScreen() {
 
         {mode === 'forgot' && (
           <form onSubmit={handleForgotSubmit} className="flex flex-col gap-3">
-            <p className="text-xs text-center" style={{ color: '#a09080' }}>
+            <p className="text-xs text-center" style={{ color: 'var(--ink-2)' }}>
               Enter your email and we'll send you a reset link.
             </p>
             <input
@@ -432,7 +432,7 @@ function LoginScreen() {
 
         {mode === 'forgot-sent' && (
           <div className="flex flex-col gap-3 text-center">
-            <p className="text-sm" style={{ color: '#e8d5b0' }}>
+            <p className="text-sm" style={{ color: 'var(--ink)' }}>
               Check your email — a reset link is on its way.
             </p>
             <button type="button" style={linkStyle} onClick={() => { setError(''); setMode('signin'); }}>
@@ -489,7 +489,7 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
       </div>
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
         {done ? (
-          <p className="text-sm text-center" style={{ color: '#7db87d' }}>Password updated! Signing you in…</p>
+          <p className="text-sm text-center" style={{ color: 'var(--success)' }}>Password updated! Signing you in…</p>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input

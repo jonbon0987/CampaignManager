@@ -550,14 +550,14 @@ export default function ModuleWeb({ onOpen, initialModuleId }: {
               <path d="M0,0 L0,6 L8,3 z" fill="var(--gold)" />
             </marker>
             <radialGradient id="orr-well">
-              <stop offset="0%" stopColor="#c9a84c" stopOpacity=".055" />
-              <stop offset="70%" stopColor="#c9a84c" stopOpacity=".014" />
-              <stop offset="100%" stopColor="#c9a84c" stopOpacity="0" />
+              <stop offset="0%" style={{ stopColor: 'var(--gold)' }} stopOpacity=".055" />
+              <stop offset="70%" style={{ stopColor: 'var(--gold)' }} stopOpacity=".014" />
+              <stop offset="100%" style={{ stopColor: 'var(--gold)' }} stopOpacity="0" />
             </radialGradient>
             <radialGradient id="orr-well-hot">
-              <stop offset="0%" stopColor="#c9a84c" stopOpacity=".13" />
-              <stop offset="70%" stopColor="#c9a84c" stopOpacity=".03" />
-              <stop offset="100%" stopColor="#c9a84c" stopOpacity="0" />
+              <stop offset="0%" style={{ stopColor: 'var(--gold)' }} stopOpacity=".13" />
+              <stop offset="70%" style={{ stopColor: 'var(--gold)' }} stopOpacity=".03" />
+              <stop offset="100%" style={{ stopColor: 'var(--gold)' }} stopOpacity="0" />
             </radialGradient>
           </defs>
 
