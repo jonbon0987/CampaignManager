@@ -251,7 +251,7 @@ function WorldNPCEditDetail({ entity }: { entity: any }) {
     role: entity.role ?? '',
     status: entity.status ?? 'active',
     description: entity.desc ?? '',
-    dm_notes: '',
+    dm_notes: entity.dmNotes ?? '',
   }));
 
   useEffect(() => {
@@ -260,7 +260,7 @@ function WorldNPCEditDetail({ entity }: { entity: any }) {
       role: entity.role ?? '',
       status: entity.status ?? 'active',
       description: entity.desc ?? '',
-      dm_notes: '',
+      dm_notes: entity.dmNotes ?? '',
     });
   }, [entity.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -413,7 +413,7 @@ export function WorldLocationsView() {
           <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>
         )
       }
-      detail={sel ? <WorldLocationDetail loc={sel} allLocations={locations} /> : <EmptyDetail>Select a location.</EmptyDetail>}
+      detail={sel ? <WorldLocationDetail key={sel.id} loc={sel} allLocations={locations} /> : <EmptyDetail>Select a location.</EmptyDetail>}
     />
   );
 }
@@ -457,14 +457,14 @@ function WorldLocationDetail({ loc, allLocations }: { loc: WorldLocation; allLoc
 
   const toForm = (l: WorldLocation): LocForm => ({
     name: l.name ?? '',
-    region: '',
+    region: l.region ?? '',
     location_type: l.type ?? 'landmark',
     parent_id: l.parent ?? '',
-    population: '',
-    status: 'active',
+    population: l.population ?? '',
+    status: l.status || 'active',
     description: l.desc ?? '',
-    history: '',
-    dm_notes: '',
+    history: l.history ?? '',
+    dm_notes: l.dmNotes ?? '',
   });
 
   const [form, setForm] = useState<LocForm>(() => toForm(loc));
@@ -613,7 +613,7 @@ function WorldLoreDetail({ entry }: { entry: any }) {
   const [form, setForm] = useState<LoreForm>(() => ({
     title: entry.title ?? '',
     category: entry.tags?.[0] ?? 'history',
-    dm_only: false,
+    dm_only: entry.dmOnly ?? false,
     content: entry.desc ?? '',
   }));
 
@@ -621,7 +621,7 @@ function WorldLoreDetail({ entry }: { entry: any }) {
     setForm({
       title: entry.title ?? '',
       category: entry.tags?.[0] ?? 'history',
-      dm_only: false,
+      dm_only: entry.dmOnly ?? false,
       content: entry.desc ?? '',
     });
   }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps

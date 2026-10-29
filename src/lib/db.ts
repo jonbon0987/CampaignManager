@@ -399,6 +399,19 @@ export const NPCs = {
     return data;
   },
 
+  /** Changes only the columns given, leaving the rest as they are. */
+  async update(id: string, patch: Partial<NPCInsert>): Promise<NPC> {
+    validateFieldLimits('npcs', patch);
+    const { data, error } = await supabase
+      .from('npcs')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   async upsert(npc: NPCInsert & { id?: string }): Promise<NPC> {
     validateFieldLimits('npcs', npc);
     const user_id = await getUserId();
@@ -457,6 +470,19 @@ export const Locations = {
     return data;
   },
 
+  /** Changes only the columns given, leaving the rest as they are. */
+  async update(id: string, patch: Partial<LocationInsert>): Promise<Location> {
+    validateFieldLimits('locations', patch);
+    const { data, error } = await supabase
+      .from('locations')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   async upsert(location: LocationInsert & { id?: string }): Promise<Location> {
     validateFieldLimits('locations', location);
     const user_id = await getUserId();
@@ -497,6 +523,19 @@ export const Factions = {
       .select('*')
       .eq('world_id', worldId)
       .order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  /** Changes only the columns given, leaving the rest as they are. */
+  async update(id: string, patch: Partial<FactionInsert>): Promise<Faction> {
+    validateFieldLimits('factions', patch);
+    const { data, error } = await supabase
+      .from('factions')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
     if (error) throw error;
     return data;
   },
@@ -633,6 +672,19 @@ export const Lore = {
       .select('*')
       .eq('campaign_id', campaignId)
       .order('title');
+    if (error) throw error;
+    return data;
+  },
+
+  /** Changes only the columns given, leaving the rest as they are. */
+  async update(id: string, patch: Partial<LoreEntryInsert>): Promise<LoreEntry> {
+    validateFieldLimits('lore_entries', patch);
+    const { data, error } = await supabase
+      .from('lore_entries')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
     if (error) throw error;
     return data;
   },
