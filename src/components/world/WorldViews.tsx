@@ -23,6 +23,7 @@ import type { MonsterForm } from '../tabs/CreatureStatblocks';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { useAutoSave } from '../../hooks/useAutoSave';
+import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import type { MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
@@ -61,8 +62,8 @@ export function WorldNPCsView() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'npc' | 'faction'>('all');
 
-  const addCharacter = async () => { const id = await createNPC(); if (id) setSelected('npcs', id); };
-  const addFaction = async () => { const id = await createFaction(); if (id) setSelected('npcs', id); };
+  const addCharacter = async () => { const id = await createNPC(); if (id) { markDraft(id); setSelected('npcs', id); } };
+  const addFaction = async () => { const id = await createFaction(); if (id) { markDraft(id); setSelected('npcs', id); } };
 
   type ListItem = { id: string; name: string; kind: 'npc' | 'faction'; role?: string; type?: string; status?: string; era?: string; desc?: string; factions?: string[]; location?: string | null; tags?: string[]; tone?: string; };
 
@@ -191,6 +192,8 @@ function WorldFactionEditDetail({ entity }: { entity: any }) {
     enabled: true,
   });
 
+  useDiscardBlankDraft(entity.id, !form.name.trim() && !form.overview.trim() && !form.dm_notes.trim(), deleteWorldFaction);
+
   const set = <K extends keyof FactionForm>(key: K, value: FactionForm[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
@@ -279,6 +282,8 @@ function WorldNPCEditDetail({ entity }: { entity: any }) {
     delay: 800,
     enabled: true,
   });
+
+  useDiscardBlankDraft(entity.id, !form.name.trim() && !form.role.trim() && !form.description.trim() && !form.dm_notes.trim(), deleteWorldNPC);
 
   const set = <K extends keyof NPCForm>(key: K, value: NPCForm[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -405,7 +410,7 @@ export function WorldLocationsView() {
       count={visible ? visible.size : locations.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={async () => { const id = await createLocation(); if (id) setSelected('locations', id); }}
+      onAdd={async () => { const id = await createLocation(); if (id) { markDraft(id); setSelected('locations', id); } }}
       list={
         locations.length === 0 ? (
           <div className="cm-empty is-inline">No locations yet — add one to start the map</div>
@@ -490,6 +495,10 @@ function WorldLocationDetail({ loc, allLocations }: { loc: WorldLocation; allLoc
     delay: 800,
     enabled: true,
   });
+
+  // A place with anything written, or with places inside it, is kept.
+  useDiscardBlankDraft(loc.id, !form.name.trim() && !form.region.trim() && !form.population.trim() && !form.description.trim()
+    && !form.history.trim() && !form.dm_notes.trim() && !allLocations.some(l => l.parent === loc.id), deleteWorldLocation);
 
   const set = <K extends keyof LocForm>(key: K, value: LocForm[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -578,7 +587,7 @@ export function WorldLoreView() {
       count={items.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={async () => { const id = await createLoreEntry(); if (id) setSelected('lore', id); }}
+      onAdd={async () => { const id = await createLoreEntry(); if (id) { markDraft(id); setSelected('lore', id); } }}
       list={
         <div>
           {items.map(x => (
@@ -640,6 +649,8 @@ function WorldLoreDetail({ entry }: { entry: any }) {
     delay: 800,
     enabled: true,
   });
+
+  useDiscardBlankDraft(entry.id, !form.title.trim() && !form.content.trim(), deleteWorldLore);
 
   const set = <K extends keyof LoreForm>(key: K, value: LoreForm[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));

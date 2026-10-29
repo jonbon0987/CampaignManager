@@ -7,6 +7,7 @@ import { Badge } from '../ui/Badge';
 import { OriginBand, type Origin } from '../ui/OriginBand';
 import { pushRecent } from '../Sidebar';
 import { useAutoSave } from '../../hooks/useAutoSave';
+import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
@@ -72,7 +73,7 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
 
   const handleAdd = async () => {
     const result = await upsertLore({ title: '', category: null, content: null, dm_only: false, world_id: null });
-    if (result) setSelectedId(result.id);
+    if (result) { markDraft(result.id); setSelectedId(result.id); }
   };
 
   const publish = async (entry: LoreEntry) => {
@@ -191,10 +192,11 @@ interface DetailProps {
 }
 
 function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelete }: { entry: LoreEntry } & DetailProps) {
-  const { upsertLore } = useCampaign();
+  const { upsertLore, deleteLore } = useCampaign();
   const [form, setForm] = useState<LoreForm>(() => loreToForm(entry));
 
   useEffect(() => { setForm(loreToForm(entry)); }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useDiscardBlankDraft(entry.id, !form.title.trim() && !form.content.trim(), deleteLore);
 
   const { status, saveNow } = useAutoSave<LoreForm>({
     data: form,
