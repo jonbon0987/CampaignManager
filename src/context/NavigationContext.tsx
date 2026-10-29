@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Tab } from '../App';
 import type { EntityType } from '../components/ui/StatBlockText';
@@ -23,6 +23,8 @@ interface NavigationContextValue {
   highlightedEntityId: string | null;
   /** Clear the highlight */
   clearHighlight: () => void;
+  /** Tells the shell which record a tab is showing, so the URL can name it. */
+  reportRecord?: (tab: Tab, id: string | null) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -32,9 +34,10 @@ interface NavigationProviderProps {
   setActiveTab: (tab: Tab) => void;
   /** Switches to a tab and selects a record there (for tabs that take an open target). */
   openRecord?: (tab: Tab, id: string, kind?: string) => void;
+  reportRecord?: (tab: Tab, id: string | null) => void;
 }
 
-export function NavigationProvider({ children, setActiveTab, openRecord }: NavigationProviderProps) {
+export function NavigationProvider({ children, setActiveTab, openRecord, reportRecord }: NavigationProviderProps) {
   const [highlightedEntityId, setHighlightedEntityId] = useState<string | null>(null);
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,10 +73,19 @@ export function NavigationProvider({ children, setActiveTab, openRecord }: Navig
   }, [setActiveTab, openRecord, timer]);
 
   return (
-    <NavigationContext.Provider value={{ navigateToEntity, highlightedEntityId, clearHighlight }}>
+    <NavigationContext.Provider value={{ navigateToEntity, highlightedEntityId, clearHighlight, reportRecord }}>
       {children}
     </NavigationContext.Provider>
   );
+}
+
+/**
+ * Puts the record a tab is showing into the URL. Pass the record the DM picked
+ * (null for none). Outside the campaign shell, such as in tests, it does nothing.
+ */
+export function useReportRecord(tab: Tab, id: string | null | undefined) {
+  const report = useContext(NavigationContext)?.reportRecord;
+  useEffect(() => { report?.(tab, id ?? null); }, [report, tab, id]);
 }
 
 export function useNavigation() {

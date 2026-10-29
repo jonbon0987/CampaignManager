@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useReportRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
@@ -246,6 +247,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
   const { sessions, upsertSession } = useCampaign();
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('sessions', selectedId);
 
   // Select a session requested from outside the tab (search, the REC pill),
   // clearing the list search so it isn't filtered out.

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -38,6 +39,7 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('locations', selectedId);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   // Open a record requested from outside the tab (e.g. the sidebar "Recent"

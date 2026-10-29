@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -42,6 +43,7 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('lore', selectedId);
 
   // Open a record requested from outside the tab (e.g. the sidebar "Recent"
   // list), then clear the request so it doesn't re-fire. Syncing selection to an
