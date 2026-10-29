@@ -14,34 +14,20 @@ export default function StatBlockPanel() {
 
   const ts = getTypeStyle(statblock?.creature_type ?? null);
 
+  // Docked in the shell's right-hand rail (a full-screen sheet on a phone).
+  if (!open) return null;
+
   return (
-    <>
-      {/* Mobile backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 sm:hidden"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 997 }}
-          onClick={closeStatBlock}
-        />
-      )}
-      <div
-        className="stat-block-panel"
+      <aside
+        className="stat-block-panel cm-rail-panel"
+        aria-label={statblock ? `Stat block: ${statblock.name}` : 'Stat block'}
         style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          height: '100vh',
+          height: '100%',
           backgroundColor: 'var(--bg)',
           borderLeft: '1px solid var(--rule)',
           display: 'flex',
           flexDirection: 'column',
-          zIndex: 998,
-          boxShadow: open ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',
-          // Mobile: full width, slide from right via transform
-          // Desktop: fixed 440px, slide via right offset
-          width: 'min(440px, 100vw)',
-          transform: open ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.3s ease',
+          minWidth: 0,
         }}
       >
       {/* Header */}
@@ -122,6 +108,7 @@ export default function StatBlockPanel() {
             flexShrink: 0,
           }}
           title="Close"
+          aria-label="Close stat block"
         >
           ✕
         </button>
@@ -164,10 +151,9 @@ export default function StatBlockPanel() {
             color: 'var(--ink-3)',
           }}
         >
-          Edit this stat sheet in the Stat Sheets tab.
+          Edit this stat sheet under Encounters › Stat Sheets.
         </div>
       )}
-    </div>
-    </>
+      </aside>
   );
 }

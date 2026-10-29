@@ -5,7 +5,7 @@ import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { ListDetail, DetailPanel, DetailSection, EmptyDetail } from '../ui/ListDetail';
 import { OriginBand, type Origin } from '../ui/OriginBand';
-import { pushRecent } from '../Sidebar';
+import { pushRecent } from '../../lib/recent';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { OverflowMenu } from '../ui/OverflowMenu';

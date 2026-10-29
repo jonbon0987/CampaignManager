@@ -11,7 +11,7 @@ import { SearchableSelect } from '../ui/SearchableSelect';
 import { getFactionTypeStyle } from '../../lib/theme';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
-import { pushRecent } from '../Sidebar';
+import { pushRecent } from '../../lib/recent';
 import CharacterWeb from './CharacterWeb';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';

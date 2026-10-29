@@ -6,7 +6,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { ListDetail, ListRow, DetailPanel, DetailSection, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
 import { OriginBand, type Origin } from '../ui/OriginBand';
-import { pushRecent } from '../Sidebar';
+import { pushRecent } from '../../lib/recent';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { OverflowMenu } from '../ui/OverflowMenu';
