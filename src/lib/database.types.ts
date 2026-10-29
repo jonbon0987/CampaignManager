@@ -487,6 +487,7 @@ export interface RecordingSettings {
   postRecapToDiscord?: boolean;
   tablePcIds?: string[];        // PCs whose players were at the table (not on Discord)
   discord?: DiscordTarget;      // also record this Discord voice channel (the bot does it)
+  chronicleMissing?: ('session' | 'people' | 'places')[]; // chronicle parts that couldn't be written (ChroniclePart)
 }
 
 // --------------- Discord (the bot in bot/ fills these in) ---------------

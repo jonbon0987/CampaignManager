@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { itemsToProposals, formatTranscript, normalizeConfidence, type KnownIds, type EntityChange, type SessionFieldChange } from './chronicle';
+import { itemsToProposals, formatTranscript, normalizeConfidence, partsLabel, entityKey, mergeEntityChange, type KnownIds, type EntityChange, type SessionFieldChange } from './chronicle';
 
 const lines = [
   { start_ms: 1_000, speaker: 'DM', text: 'The rain hammers the docks as Brenna Coldwater steps out.' },
@@ -130,5 +130,39 @@ describe('itemsToProposals — current values', () => {
     ], { sessionId: 's1', lines, known: known(), pcNames: new Map(), current });
     expect(out).toHaveLength(1);
     expect((out[0].action as EntityChange).set).toEqual({ disposition: 'Friendly' });
+  });
+});
+
+describe('itemsToProposals — player characters filed as NPCs', () => {
+  it('sends an NPC item with a PC’s id or full name to that PC’s card', () => {
+    const out = run([
+      { kind: 'pc', pc_id: 'pc-kutter', did: 'Asked about Gorval.', source_line: 2, confidence: 0.9 },
+      { kind: 'npc', matched_id: 'pc-kutter', name: 'Kutter', interaction: 'Pressed Brenna.', source_line: 2, confidence: 0.8 },
+      { kind: 'npc', matched_id: null, name: ' kutter ', interaction: 'Kept watch.', source_line: 1 },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].group_key).toBe('pcs');
+    const pc = out[0].action as EntityChange;
+    expect(pc).toMatchObject({ entity_type: 'pc', matched_id: 'pc-kutter', name: 'Kutter', entry: 'Asked about Gorval. Pressed Brenna. Kept watch.' });
+  });
+
+  it('keeps a real NPC match even when the name is a PC’s', () => {
+    const [p] = run([{ kind: 'npc', matched_id: 'npc-brenna', name: 'Kutter', interaction: 'Met.', source_line: 1 }]);
+    expect((p.action as EntityChange).entity_type).toBe('npc');
+  });
+});
+
+describe('chronicle parts', () => {
+  it('names the parts that couldn’t be written', () => {
+    expect(partsLabel(['places'])).toBe('Places, lore and threads');
+    expect(partsLabel(['session', 'people'])).toBe('The recap and party, and NPCs and factions');
+  });
+
+  it('keys cards by entity, or by name for new ones, and merges a change into a card', () => {
+    const a: EntityChange = { kind: 'entity', entity_type: 'npc', matched_id: null, name: 'Sable Thorne', set: { role: 'Spy' }, append: {}, entry: 'Named.', reasoning: '', confidence: 0.9 };
+    const b: EntityChange = { ...a, name: 'sable thorne ', set: { disposition: 'Cold' }, append: { description: 'Scarred.' }, entry: 'Seen at the docks.', confidence: 0.6 };
+    expect(entityKey(a)).toBe(entityKey(b));
+    expect(entityKey({ ...a, matched_id: 'npc-x' })).toBe('npc:npc-x');
+    expect(mergeEntityChange({ ...a }, b)).toMatchObject({ entry: 'Named. Seen at the docks.', set: { role: 'Spy', disposition: 'Cold' }, append: { description: 'Scarred.' }, confidence: 0.6 });
   });
 });

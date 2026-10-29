@@ -6,12 +6,10 @@
 // -----------------------------------------------------------
 
 import { useEffect, useState } from 'react';
-import { useCampaign } from '../../context/CampaignContext';
 import { TranscriptSegments } from '../../lib/db';
-import type { SessionRecording } from '../../lib/database.types';
-import { formatCampaignContext } from '../../lib/campaignContext';
-import { getAIProvider } from '../../lib/aiProvider';
-import { writeChronicle, type ChronicleSettings } from '../../lib/recording/transcriptionApi';
+import type { RecordingSettings, SessionRecording } from '../../lib/database.types';
+import type { ChronicleSettings } from '../../lib/recording/transcriptionApi';
+import { savedChronicleSettings, useWriteChronicle } from '../../hooks/useWriteChronicle';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 
@@ -26,15 +24,10 @@ export function ChronicleModal({ recording, rewrite, onClose, onOpenTranscript, 
   rewrite: boolean;
   onClose: () => void;
   onOpenTranscript: () => void;
-  onWritten: (result: { status: SessionRecording['status']; status_detail: string }) => void;
+  onWritten: (result: { status: SessionRecording['status']; status_detail: string; settings: RecordingSettings }) => void;
 }) {
-  const campaign = useCampaign();
-  const saved = recording.settings;
-  const [settings, setSettings] = useState<ChronicleSettings>({
-    depth: saved.depth ?? 'thorough',
-    dropTableTalk: saved.dropTableTalk ?? true,
-    asidesToDmNotes: saved.asidesToDmNotes ?? true,
-  });
+  const writeChronicle = useWriteChronicle();
+  const [settings, setSettings] = useState<ChronicleSettings>(() => savedChronicleSettings(recording));
   const [unassigned, setUnassigned] = useState<number | null>(null);
   const [writing, setWriting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,12 +48,7 @@ export function ChronicleModal({ recording, rewrite, onClose, onOpenTranscript, 
     setWriting(true);
     setError(null);
     try {
-      const context = formatCampaignContext({
-        sessions: campaign.sessions, pcs: campaign.pcs, npcs: campaign.npcs, locations: campaign.locations,
-        factions: campaign.factions, hooks: campaign.hooks, lore: campaign.lore, modules: campaign.modules,
-        overviewTitle: campaign.overview.title, overviewPlot: campaign.overview.plotSummary,
-      });
-      const result = await writeChronicle(recording.id, context, settings, getAIProvider());
+      const result = await writeChronicle(recording, settings);
       onWritten(result);
       onClose();
     } catch (e) {

@@ -18,6 +18,22 @@ export type EntityKind = 'pc' | 'npc' | 'location' | 'faction' | 'lore' | 'hook'
 export type SessionField = 'summary' | 'combats' | 'loot_rewards' | 'hooks_notes' | 'dm_notes';
 export type ChronicleGroup = 'session' | 'pcs' | 'npcs' | 'locations' | 'lore' | 'factions' | 'threads' | 'loot';
 
+/** The chronicle is written in three parts; one can fail (a busy AI) and be filled in later. */
+export type ChroniclePart = 'session' | 'people' | 'places';
+export const CHRONICLE_PARTS: ChroniclePart[] = ['session', 'people', 'places'];
+export const CHRONICLE_PART_LABEL: Record<ChroniclePart, string> = {
+  session: 'the recap and party',
+  people: 'NPCs and factions',
+  places: 'places, lore and threads',
+};
+
+/** "the recap and party and NPCs and factions" → "The recap and party, and NPCs and factions". */
+export function partsLabel(parts: ChroniclePart[]): string {
+  const names = parts.map(p => CHRONICLE_PART_LABEL[p]);
+  const text = names.length > 1 ? `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}` : names[0] ?? '';
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /** A change to one campaign entity, plus the line it gets in its Session History. */
 export interface EntityChange {
   kind: 'entity';
@@ -117,6 +133,21 @@ export function normalizeConfidence(raw: unknown): number {
   return Math.min(1, Math.max(0, n >= 2 ? n / 100 : n));
 }
 
+/** Which card a change belongs on: one per existing entity, or per new name. */
+export function entityKey(change: EntityChange): string {
+  return `${change.entity_type}:${change.matched_id ?? `new:${change.name.trim().toLowerCase()}`}`;
+}
+
+/** Folds a second change to the same entity into the first (mutates `into`). */
+export function mergeEntityChange(into: EntityChange, extra: EntityChange): EntityChange {
+  into.entry = [into.entry, extra.entry].filter(Boolean).join(' ') || null;
+  into.set = { ...into.set, ...extra.set };
+  into.append = { ...into.append };
+  for (const [f, t] of Object.entries(extra.append)) into.append[f] = into.append[f] ? `${into.append[f]}\n\n${t}` : t;
+  into.confidence = Math.min(into.confidence, extra.confidence);
+  return into;
+}
+
 /**
  * Turns the AI's items into proposal drafts. Items that are empty, cite a PC
  * that isn't in the campaign, or don't fit any kind are dropped; a matched_id
@@ -143,6 +174,7 @@ export function itemsToProposals(
       : { source_ms: null, source_quote: null, source_speaker: null };
   };
   const matched = (kind: EntityKind, id: unknown) => (typeof id === 'string' && ctx.known[kind].has(id) ? id : null);
+  const pcByName = new Map([...ctx.pcNames].map(([id, name]) => [name.trim().toLowerCase(), id]));
   const meta = (it: Sourced) => ({ reasoning: clean(it.reasoning), confidence: normalizeConfidence(it.confidence) });
 
   const session = (field: SessionField, group: ChronicleGroup, it: Sourced & { text?: unknown }) => {
@@ -168,11 +200,7 @@ export function itemsToProposals(
       add();
       if (drafts.length === before) return;
       const extra = drafts.pop()!.action as EntityChange;
-      const into = drafts[seen.get(key)!].action as EntityChange;
-      into.entry = [into.entry, extra.entry].filter(Boolean).join(' ') || null;
-      into.set = { ...into.set, ...extra.set };
-      for (const [f, t] of Object.entries(extra.append)) into.append[f] = into.append[f] ? `${into.append[f]}\n\n${t}` : t;
-      into.confidence = Math.min(into.confidence, extra.confidence);
+      mergeEntityChange(drafts[seen.get(key)!].action as EntityChange, extra);
       return;
     }
     const before = drafts.length;
@@ -198,6 +226,13 @@ export function itemsToProposals(
       }
       case 'npc': {
         const id = matched('npc', it.matched_id);
+        // A player character filed as an NPC (by their id or full name) is
+        // that PC, never a new NPC who duplicates them.
+        const pcId = id ? null : matched('pc', it.matched_id) ?? pcByName.get(clean(it.name).toLowerCase()) ?? null;
+        if (pcId) {
+          mergeInto(`pc:${pcId}`, () => entity('pcs', it, { entity_type: 'pc', matched_id: pcId, name: ctx.pcNames.get(pcId) ?? clean(it.name), set: {}, append: {}, entry: orNull(it.interaction) }));
+          break;
+        }
         const status = it.status && NPC_STATUSES.has(it.status) ? it.status : null;
         mergeInto(id && `npc:${id}`, () => entity('npcs', it, {
           entity_type: 'npc', matched_id: id, name: clean(it.name), entry: orNull(it.interaction),

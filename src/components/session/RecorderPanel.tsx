@@ -16,7 +16,8 @@ import { PlayerConsents, RecordingTracks, SessionAudio, SessionRecordings } from
 import type { PlayerConsent, RecordingMoment, Session, SessionRecording, SpeakerLink } from '../../lib/database.types';
 import { listMicrophones } from '../../lib/recording/audio';
 import { transcription, type TranscriptionState } from '../../lib/recording/transcriptionApi';
-import { durationLabel } from '../../lib/recording/chronicle';
+import { durationLabel, partsLabel } from '../../lib/recording/chronicle';
+import { savedChronicleSettings, useWriteChronicle } from '../../hooks/useWriteChronicle';
 import { TranscriptModal } from './TranscriptModal';
 import { ChronicleModal } from './ChronicleModal';
 import { ChronicleReview } from './ChronicleReview';
@@ -380,6 +381,9 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
   const [showChronicle, setShowChronicle] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showView, setShowView] = useState(false);
+  const [filling, setFilling] = useState(false);
+  const writeChronicle = useWriteChronicle();
+  const missing = recording.status === 'review' ? recording.settings.chronicleMissing ?? [] : [];
   const status = STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' as const };
 
   useEffect(() => { setRecording(initial); }, [initial]);
@@ -428,6 +432,19 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
     }
   };
 
+  const fillIn = async () => {
+    setFilling(true);
+    setRecording(r => ({ ...r, status_detail: `Writing ${partsLabel(missing).toLowerCase()}… about a minute` }));
+    try {
+      const result = await writeChronicle(recording, savedChronicleSettings(recording), true);
+      setRecording(r => ({ ...r, status: result.status, status_detail: result.status_detail, settings: result.settings }));
+    } catch (e) {
+      setRecording(r => ({ ...r, status_detail: errorMessage(e) }));
+    } finally {
+      setFilling(false);
+    }
+  };
+
   const listen = async () => {
     try {
       const tracks = (await RecordingTracks.getByRecording(recording.id)).filter(t => t.storage_path);
@@ -454,8 +471,13 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
             <ListChecks size={11} /> {recording.status === 'review' ? 'Review changes' : 'Review'}
           </Button>
         )}
+        {transcribed && missing.length > 0 && (
+          <Button size="xs" variant="primary" onClick={() => void fillIn()} disabled={filling}>
+            <ScrollText size={11} /> {filling ? 'Writing…' : 'Fill in missing parts'}
+          </Button>
+        )}
         {transcribed && recording.status !== 'applied' && (
-          <Button size="xs" variant={recording.status === 'review' ? 'secondary' : 'primary'} onClick={() => setShowChronicle(true)}>
+          <Button size="xs" variant={recording.status === 'review' ? 'secondary' : 'primary'} onClick={() => setShowChronicle(true)} disabled={filling}>
             <ScrollText size={11} /> {recording.status === 'review' ? 'Rewrite chronicle' : 'Write the chronicle'}
           </Button>
         )}
@@ -474,7 +496,7 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
           Transcribing… this takes a few minutes per hour of audio. You can leave this page.
         </span>
       ) : recording.status_detail && (
-        <span className="text-xs" style={{ color: recording.status === 'failed' ? 'var(--red)' : 'var(--ink-3)' }}>{recording.status_detail}</span>
+        <span className="text-xs" style={{ color: recording.status === 'failed' ? 'var(--red)' : missing.length ? 'var(--warn)' : 'var(--ink-3)' }}>{recording.status_detail}</span>
       )}
       {showTranscript && <TranscriptModal recording={recording} onClose={() => setShowTranscript(false)} />}
       {showReview && (
@@ -497,7 +519,7 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
           rewrite={recording.status === 'review'}
           onClose={() => setShowChronicle(false)}
           onOpenTranscript={() => { setShowChronicle(false); setShowTranscript(true); }}
-          onWritten={r => setRecording(prev => ({ ...prev, status: r.status, status_detail: r.status_detail }))}
+          onWritten={r => setRecording(prev => ({ ...prev, status: r.status, status_detail: r.status_detail, settings: r.settings }))}
         />
       )}
       {audio?.map(a => (

@@ -4,12 +4,16 @@
 // NPC interactions, places, lore, threads and loot — saved as proposals the DM
 // reviews before anything changes in the campaign.
 //
-//   POST { recordingId, campaignContext, settings?, provider? }
+//   POST { recordingId, campaignContext, settings?, provider?, missingOnly? }
 //
 // The transcript is read here (as the signed-in user, under row-level
 // security) and numbered; the AI cites line numbers, and the quotes and times
 // on each proposal come from those real lines (src/lib/recording/chronicle.ts).
-// Three focused passes run in parallel to stay well inside the time limit.
+// Three focused passes write it: in parallel on Claude, one after another on
+// Gemini, whose free tier counts input tokens per minute and each pass sends
+// the whole campaign. A pass that still fails is remembered in
+// settings.chronicleMissing, and { missingOnly: true } writes just those,
+// keeping the proposals already made.
 // -----------------------------------------------------------
 
 import './_env.js';
@@ -17,7 +21,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { requireAuth, userSupabase } from './_auth.js';
 import { resolveProvider, structuredExtract, friendlyError, type AIProvider } from './_ai.js';
 import {
-  formatTranscript, itemsToProposals, clockLabel, type KnownIds, type TranscriptLine,
+  formatTranscript, itemsToProposals, clockLabel, entityKey, mergeEntityChange, partsLabel,
+  type ChronicleAction, type ChroniclePart, type EntityChange, type KnownIds, type ProposalDraft, type TranscriptLine,
 } from '../src/lib/recording/chronicle.js';
 
 type Supa = ReturnType<typeof userSupabase>;
@@ -27,6 +32,8 @@ interface Settings { depth?: Depth; dropTableTalk?: boolean; asidesToDmNotes?: b
 
 const MAX_OUTPUT_TOKENS = 16_384;
 const INSERT_BATCH = 200;
+// Stop retrying a busy AI in time to save what was written (maxDuration is 300 s).
+const TIME_BUDGET_MS = 260_000;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -55,6 +62,7 @@ const maybe = (description: string) => ({ type: ['string', 'null'], description 
 const matchedId = { type: ['string', 'null'], description: 'The [id:…] of the existing entry this is, or null if it is new. Never invent an id.' };
 
 interface Pass {
+  key: ChroniclePart;
   label: string;
   focus: string;
   items: Record<string, unknown>[];
@@ -73,12 +81,14 @@ function passes(settings: Settings): Pass[] {
   }
   return [
     {
+      key: 'session',
       label: 'session & party',
       focus: 'Write the session record: one summary item; a combats item only if there was a fight; a loot item only if something was gained; a left_open item; and one pc item for each player character who did something notable.'
         + (settings.asidesToDmNotes !== false ? ' Add a dm_asides item only if the DM made asides meant for themself.' : ''),
       items: session,
     },
     {
+      key: 'people',
       label: 'people & factions',
       focus: 'One npc item for each non-player character the party met, talked to, fought, or learned about this session, and one faction item for each faction that came up.',
       items: [
@@ -100,6 +110,7 @@ function passes(settings: Settings): Pass[] {
       ],
     },
     {
+      key: 'places',
       label: 'places, lore & threads',
       focus: 'One location item for each place the party went to or learned about, one lore item for each piece of setting knowledge revealed to the players, and one thread item for each plot thread that moved.'
         + ' Lore is knowledge about the world (history, legends, religion, magic, how things work) — never events of this session, where someone is, or a mystery the party is pursuing; those are threads.'
@@ -163,7 +174,7 @@ ${DEPTH[settings.depth ?? 'thorough']}
 Return your items in the "actions" array of the propose_import_actions tool.`;
 }
 
-async function runPass(provider: AIProvider, campaignContext: string, transcript: string, pass: Pass, settings: Settings, moments: string): Promise<unknown[]> {
+async function runPass(provider: AIProvider, campaignContext: string, transcript: string, pass: Pass, settings: Settings, moments: string, retryUntil?: number): Promise<unknown[]> {
   const schema = {
     type: 'object',
     properties: { actions: { type: 'array', items: { anyOf: pass.items } } },
@@ -176,6 +187,7 @@ async function runPass(provider: AIProvider, campaignContext: string, transcript
     schema,
     schemaDescription: `Propose the ${pass.label} part of the session chronicle.`,
     maxOutputTokens: MAX_OUTPUT_TOKENS,
+    retryUntil,
   });
   const actions = (result as { actions?: unknown[] })?.actions;
   return Array.isArray(actions) ? actions : [];
@@ -217,7 +229,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await requireAuth(req, res);
   if (!userId) return;
 
-  const body = (req.body ?? {}) as { recordingId?: string; campaignContext?: string; settings?: Settings; provider?: string };
+  const startedAt = Date.now();
+  const body = (req.body ?? {}) as { recordingId?: string; campaignContext?: string; settings?: Settings; provider?: string; missingOnly?: boolean };
   if (!body.recordingId || typeof body.campaignContext !== 'string') {
     return res.status(400).json({ error: 'Expected { recordingId, campaignContext }' });
   }
@@ -251,15 +264,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const momentText = (moments as { at_ms: number; label: string | null }[])
       .map(m => `- ${clockLabel(m.at_ms)}${m.label ? ` ${m.label}` : ''}`).join('\n');
 
-    await setDetail({ status_detail: 'Writing the chronicle…', settings: { ...(rec.settings ?? {}), ...settings } });
+    const missing: ChroniclePart[] = rec.settings?.chronicleMissing ?? [];
+    const toRun = body.missingOnly && missing.length ? passes(settings).filter(p => missing.includes(p.key)) : passes(settings);
+    const partial = toRun.length < passes(settings).length;
+    await setDetail({ status_detail: partial ? `Writing ${partsLabel(toRun.map(p => p.key)).toLowerCase()}…` : 'Writing the chronicle…' });
 
     const provider = resolveProvider(body.provider);
     const transcript = formatTranscript(lines);
-    const results = await Promise.allSettled(
-      passes(settings).map(p => runPass(provider, body.campaignContext!, transcript, p, settings, momentText)),
-    );
-    const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-    if (failed.length === results.length) throw failed[0].reason;
+    const run = (p: Pass, retryUntil?: number) => runPass(provider, body.campaignContext!, transcript, p, settings, momentText, retryUntil);
+    let results: PromiseSettledResult<unknown[]>[];
+    if (provider === 'gemini') {
+      // One at a time, each pass sharing what's left of the time budget.
+      results = [];
+      for (const [i, p] of toRun.entries()) {
+        const left = startedAt + TIME_BUDGET_MS - Date.now();
+        results.push(await run(p, Date.now() + left / (toRun.length - i)).then(
+          value => ({ status: 'fulfilled' as const, value }),
+          reason => ({ status: 'rejected' as const, reason }),
+        ));
+      }
+    } else {
+      results = await Promise.allSettled(toRun.map(p => run(p)));
+    }
+    const failedParts = toRun.filter((_, i) => results[i].status === 'rejected').map(p => p.key);
+    const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    failures.forEach((f, i) => console.error(`chronicle: ${failedParts[i]} part failed`, f.reason));
+    if (failures.length === results.length) throw failures[0].reason;
 
     const items = results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
     const { known, current } = await campaignState(sb, rec.campaign_id);
@@ -271,18 +301,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       pcNames: new Map([...pcById.values()].map(p => [p.id, p.character_name])),
     });
 
-    // A rewrite replaces the earlier proposals, except any already applied.
-    await must(sb.from('chronicle_proposals').delete().eq('recording_id', recordingId).neq('status', 'applied').select('id'));
-    for (let i = 0; i < drafts.length; i += INSERT_BATCH) {
-      await must(sb.from('chronicle_proposals').insert(drafts.slice(i, i + INSERT_BATCH).map(d => ({
+    let toInsert: ProposalDraft[] = drafts;
+    let kept = 0;
+    if (partial) {
+      // Filling in missing parts keeps what's there; a change to an entity
+      // that already has a card is added to that card.
+      const existing = await must(sb.from('chronicle_proposals').select('id, action, sort_order, status').eq('recording_id', recordingId)) as
+        { id: string; action: ChronicleAction; sort_order: number; status: string }[];
+      kept = existing.filter(e => e.status !== 'applied').length;
+      const open = new Map(existing.filter(e => e.status === 'pending' && e.action.kind === 'entity').map(e => [entityKey(e.action as EntityChange), e]));
+      const next = Math.max(-1, ...existing.map(e => e.sort_order)) + 1;
+      toInsert = [];
+      for (const d of drafts) {
+        const into = d.action.kind === 'entity' ? open.get(entityKey(d.action)) : undefined;
+        if (into) {
+          await must(sb.from('chronicle_proposals').update({ action: mergeEntityChange(into.action as EntityChange, d.action as EntityChange) }).eq('id', into.id).select('id'));
+        } else {
+          toInsert.push({ ...d, sort_order: next + d.sort_order });
+        }
+      }
+    } else {
+      // A rewrite replaces the earlier proposals, except any already applied.
+      await must(sb.from('chronicle_proposals').delete().eq('recording_id', recordingId).neq('status', 'applied').select('id'));
+    }
+    for (let i = 0; i < toInsert.length; i += INSERT_BATCH) {
+      await must(sb.from('chronicle_proposals').insert(toInsert.slice(i, i + INSERT_BATCH).map(d => ({
         ...d, user_id: userId, recording_id: recordingId, campaign_id: rec.campaign_id,
       }))).select('id'));
     }
 
-    const partial = failed.length ? ` (${failed.length} part${failed.length > 1 ? 's' : ''} couldn’t be written — try again to fill ${failed.length > 1 ? 'them' : 'it'} in)` : '';
-    const detail = `${drafts.length} proposed change${drafts.length === 1 ? '' : 's'} ready to review${partial}.`;
-    await must(setDetail({ status: 'review', status_detail: detail.slice(0, 500) }).select('id'));
-    return res.status(200).json({ count: drafts.length, status: 'review', status_detail: detail });
+    const count = kept + toInsert.length;
+    const { chronicleMissing: _previous, ...savedSettings } = rec.settings ?? {};
+    void _previous;
+    const nextSettings = { ...savedSettings, ...settings, ...(failedParts.length ? { chronicleMissing: failedParts } : {}) };
+    // "Gemini is temporarily unavailable." — the first sentence says enough on a status line.
+    const why = friendlyError(failures[0]?.reason).split(/(?<=\.)\s/)[0].replace(/\.$/, '');
+    const detail = `${count} proposed change${count === 1 ? '' : 's'} ready to review.`
+      + (failedParts.length ? ` ${partsLabel(failedParts)} couldn’t be written (${why}). Fill ${failedParts.length > 1 ? 'them' : 'it'} in when it’s less busy.` : '');
+    await must(setDetail({ status: 'review', status_detail: detail.slice(0, 500), settings: nextSettings }).select('id'));
+    return res.status(200).json({ count, status: 'review', status_detail: detail, settings: nextSettings });
   } catch (err) {
     const status = err instanceof HttpError ? err.status : 500;
     const message = err instanceof HttpError ? err.message : friendlyError(err);
