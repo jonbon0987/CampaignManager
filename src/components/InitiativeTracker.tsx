@@ -53,10 +53,17 @@ interface HpSnapshot {
   deathSaves: DeathSaves;
 }
 
+/** A player character joining the fight, with what the Cast tab knows of them. */
+export interface PartyMember {
+  name: string;
+  maxHp: number | null;
+  ac: number | null;
+}
+
 interface InitiativeTrackerProps {
   encounter: Encounter;
   statblocks: MonsterStatblock[];
-  pcNames?: string[];
+  party?: PartyMember[];
   onClose: () => void;
 }
 
@@ -101,7 +108,7 @@ function hpColor(hp: number, max: number): string {
 const DEATH_STATE = ['unconscious', 'dying', 'stable', 'dead'] as const;
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose }: InitiativeTrackerProps) {
+export function InitiativeTracker({ encounter, statblocks, party = [], onClose }: InitiativeTrackerProps) {
   const initialCombatants = useMemo(() => {
     const result: Combatant[] = [];
     const encounterCombatants = parseCombatants(encounter.combatants);
@@ -132,17 +139,19 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
       }
     }
 
-    for (const name of pcNames) {
+    for (const pc of party) {
+      // A PC without Max HP in Cast starts at 0, which reads as "not set", not "down".
+      const pcHp = pc.maxHp ?? 0;
       result.push({
         id: crypto.randomUUID(),
-        name,
+        name: pc.name,
         initiative: null,
         dexMod: 0,
-        maxHp: 0,
-        currentHp: 0,
+        maxHp: pcHp,
+        currentHp: pcHp,
         temp: 0,
         deathSaves: { s: 0, f: 0 },
-        ac: null,
+        ac: pc.ac,
         conditions: new Set(),
         isPC: true,
         statblock: null,
@@ -151,7 +160,7 @@ export function InitiativeTracker({ encounter, statblocks, pcNames = [], onClose
     }
 
     return result;
-  }, [encounter.combatants, statblocks, pcNames]);
+  }, [encounter.combatants, statblocks, party]);
 
   const [combatants, setCombatants] = useState<Combatant[]>(initialCombatants);
   const [currentTurn, setCurrentTurn] = useState<number>(-1);

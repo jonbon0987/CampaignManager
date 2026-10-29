@@ -650,6 +650,9 @@ function PCDetail({
   onDeselect,
 }: {
   item: CastItem;
+  level: number | null;
+  max_hp: number | null;
+  armor_class: number | null;
   factions: Faction[];
   statblocks: { id: string; name: string }[];
   onDeselect: () => void;
@@ -679,6 +682,9 @@ function PCDetail({
       race: pc.race,
       class: pc.class,
       background: pc.background,
+    level: pc.level,
+    max_hp: pc.max_hp,
+    armor_class: pc.armor_class,
       story_hooks: pc.story_hooks,
       key_npcs: pc.key_npcs,
       dm_notes: pc.dm_notes,
@@ -694,11 +700,16 @@ function PCDetail({
     onSave: async (data) => {
       await upsertPC({
         id: pc.id,
+      level: pc.level,
+      max_hp: pc.max_hp,
+      armor_class: pc.armor_class,
         character_name: data.character_name,
         player_name: data.player_name,
         race: data.race,
         class: data.class,
-        level: pc.level,
+        level: data.level,
+        max_hp: data.max_hp,
+        armor_class: data.armor_class,
         background: data.background,
         story_hooks: data.story_hooks,
         key_npcs: data.key_npcs,
@@ -802,6 +813,30 @@ function PCDetail({
           minHeight="120px"
           maxLength={limitFor('player_characters', 'background')}
         />
+      </div>
+
+      {/* Combat numbers: they fill in the initiative tracker */}
+      <div className="as-grid-3">
+        {([
+          ['level', 'Level', 'e.g. 5'],
+          ['max_hp', 'Max HP', 'e.g. 38'],
+          ['armor_class', 'AC', 'e.g. 16'],
+        ] as const).map(([key, label, hint]) => (
+          <div key={key} className="as-fl">
+            <label className="as-ll" htmlFor={`pc-${key}`}>{label}</label>
+            <input
+              id={`pc-${key}`}
+              className="as-input"
+              type="number"
+              inputMode="numeric"
+              min={minFor('player_characters', key)}
+              max={maxFor('player_characters', key)}
+              value={form[key] ?? ''}
+              onChange={e => set(key, e.target.value ? parseInt(e.target.value, 10) : null)}
+              placeholder={hint}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Story Hooks */}

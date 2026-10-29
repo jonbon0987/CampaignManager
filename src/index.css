@@ -3010,6 +3010,12 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   gap: 12px;
   margin-bottom: 4px;
 }
+.as-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
+}
 
 /* Horizontal meta strip */
 .as-meta {
