@@ -1959,7 +1959,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ssd-choice-name { font-family: var(--serif); font-size: 15px; color: var(--ink); }
 .ssd-choice-meta { grid-column: 2; font-family: var(--serif); font-size: 12px; font-style: italic; color: var(--ink-3); }
 .ssd-record > span { display: flex; flex-direction: column; }
-.ssd-sub { margin: -14px 0 0 28px; border-top-left-radius: 0; border-top-right-radius: 0; }
 
 /* Table notes on a session's recap */
 .ss-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }

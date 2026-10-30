@@ -35,7 +35,6 @@ import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
 import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
-import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayStrip } from './components/play/PlayStrip';
 import { PlayTools } from './components/play/PlayTools';
 import { StartSessionDialog } from './components/play/StartSessionDialog';
