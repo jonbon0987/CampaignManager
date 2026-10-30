@@ -41,6 +41,72 @@ export function budgetFor(diff: Difficulty, size: number, level: number): number
   return THRESH[lvl][idx] * Math.max(1, size);
 }
 
+/** The party's thresholds, summed character by character → [easy, medium, hard, deadly]. */
+export function partyThresholds(levels: number[]): [number, number, number, number] {
+  return levels.reduce<[number, number, number, number]>((t, level) => {
+    const row = THRESH[Math.max(1, Math.min(20, Math.round(level)))];
+    return [t[0] + row[0], t[1] + row[1], t[2] + row[2], t[3] + row[3]];
+  }, [0, 0, 0, 0]);
+}
+
+const MULTIPLIERS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5];
+
+/** The DMG multiplier for `count` foes, a step up for a party under three and down for six or more. */
+export function multiplierFor(count: number, partySize: number): number {
+  const step = count <= 1 ? 1 : count === 2 ? 2 : count <= 6 ? 3 : count <= 10 ? 4 : count <= 14 ? 5 : 6;
+  const shift = partySize < 3 ? 1 : partySize >= 6 ? -1 : 0;
+  return MULTIPLIERS[step + shift];
+}
+
+/** Below the party's easy threshold an encounter is trivial. */
+export type Rating = Difficulty | 'trivial';
+
+export interface EncounterRating {
+  tier: Rating;
+  /** Adjusted XP: the foes' XP times the multiplier for how many there are. */
+  xp: number;
+  thresholds: [number, number, number, number];
+  /** Foes with no CR: they count toward the multiplier but add no XP. */
+  unrated: number;
+}
+
+/**
+ * How hard a set of foes is for a party, by the DMG's rules. Null when there is
+ * no party or no foe with a CR to go on.
+ */
+export function rateEncounter(foes: { cr: string | null; count: number }[], levels: number[]): EncounterRating | null {
+  const xpOf = (cr: string | null) => CR_XP[String(cr ?? '').trim()];
+  const rated = foes.filter(f => xpOf(f.cr) != null && f.count > 0);
+  if (levels.length === 0 || rated.length === 0) return null;
+  const count = foes.reduce((s, f) => s + Math.max(0, f.count), 0);
+  const base = rated.reduce((s, f) => s + xpOf(f.cr) * f.count, 0);
+  const xp = Math.round(base * multiplierFor(count, levels.length));
+  const thresholds = partyThresholds(levels);
+  let tier: Rating = 'trivial';
+  DIFFICULTIES.forEach((d, i) => { if (xp >= thresholds[i]) tier = d; });
+  const unrated = foes.filter(f => xpOf(f.cr) == null).reduce((s, f) => s + Math.max(0, f.count), 0);
+  return { tier, xp, thresholds, unrated };
+}
+
+/** A party member as the rating needs them. */
+export interface PartyLevel { name: string; level: number | null }
+
+/**
+ * The levels an encounter is rated against: the campaign's active PCs when any
+ * has a level set (the rest counted at their average), else the party size and
+ * level typed on the encounter.
+ */
+export function partyLevels(party: PartyLevel[] | undefined, size: string, level: string): number[] {
+  const known = (party ?? []).flatMap(p => (p.level != null ? [p.level] : []));
+  if (party && known.length > 0) {
+    const avg = Math.round(known.reduce((s, l) => s + l, 0) / known.length);
+    return party.map(p => p.level ?? avg);
+  }
+  const n = parseInt(size, 10);
+  const l = parseInt(level, 10);
+  return n > 0 && l > 0 ? Array<number>(Math.min(n, 10)).fill(l) : [];
+}
+
 export interface ScaleCreature {
   id: string;
   name: string;

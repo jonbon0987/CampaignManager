@@ -2727,6 +2727,21 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .lk-was { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 6px; padding: 6px 10px; border-left: 2px solid var(--rule); background: var(--bg-2); font-family: var(--serif); font-size: 13px; }
 .lk-was-label { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
 .lk-was-text { flex: 1; min-width: 0; color: var(--ink-2); font-style: italic; }
+/* Encounter difficulty, worked out from the party */
+.enc-party { font-family: var(--serif); font-size: 13px; color: var(--ink-2); }
+.enc-rate { display: flex; flex-direction: column; gap: 8px; }
+.enc-rate-head { display: flex; align-items: baseline; gap: 10px; }
+.enc-rate-tier { font-family: var(--display); font-size: 20px; text-transform: capitalize; }
+.enc-rate-xp { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.enc-scale { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.enc-scale-step {
+  display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px;
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-transform: capitalize;
+}
+.enc-scale-step.is-reached { background: var(--paper-2); color: var(--ink-2); }
+.enc-scale-step.is-tier { border-color: var(--gold-line); color: var(--ink); }
+
 .as-empty-note { margin: 0; font-family: var(--serif); font-size: 13px; font-style: italic; color: var(--ink-3); }
 
 .as-fl {

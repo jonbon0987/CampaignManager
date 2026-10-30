@@ -11,8 +11,10 @@ import {
   EncounterDetail,
   difficultyColors,
   statusColors,
+  parseCombatants,
   type EncounterSaveData,
 } from '../ui/EncounterDetail';
+import { partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
 
 // ================================================================
 // Main component
@@ -49,6 +51,16 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
     () => pcs.filter(p => p.is_active).map(p => ({ name: p.character_name, maxHp: p.max_hp, ac: p.armor_class })),
     [pcs],
   );
+  // ...and their levels, which rate each encounter.
+  const partyByLevel = useMemo<PartyLevel[]>(
+    () => pcs.filter(p => p.is_active).map(p => ({ name: p.character_name, level: p.level })),
+    [pcs],
+  );
+  const tierOf = (enc: Encounter) =>
+    rateEncounter(
+      parseCombatants(enc.combatants).map(c => ({ cr: c.challenge_rating, count: c.count })),
+      partyLevels(partyByLevel, String(enc.party_size ?? ''), String(enc.party_level ?? '')),
+    )?.tier ?? enc.difficulty;
 
   // Adapter so the shared EncounterDetail can call the campaign upsert
   const campaignUpsert = useCallback(
@@ -91,7 +103,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
     const s = search.toLowerCase();
     return enc.name.toLowerCase().includes(s)
       || (enc.environment ?? '').toLowerCase().includes(s)
-      || (enc.difficulty ?? '').toLowerCase().includes(s);
+      || (tierOf(enc) ?? '').toLowerCase().includes(s);
   });
 
   // Keep selected in sync if data changes
@@ -189,7 +201,8 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
           )}
           {filtered.map(enc => {
             const isActive = selectedEnc?.id === enc.id;
-            const dc = enc.difficulty ? difficultyColors[enc.difficulty] : null;
+            const tier = tierOf(enc);
+            const dc = tier ? difficultyColors[tier] : null;
             const sc = statusColors[enc.status] ?? statusColors.draft;
             return (
               <div
@@ -223,7 +236,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
                         borderRadius: 'var(--radius)',
                         padding: '1px 5px',
                       }}>
-                        {enc.difficulty}
+                        {tier}
                       </span>
                     )}
                     <span style={{
@@ -267,6 +280,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
             onRun={() => setRunningEncounter(selectedEnc)}
             onViewStatblock={sb => openStatBlock(sb.id)}
             upsertEncounter={campaignUpsert}
+            party={partyByLevel}
           />
         )}
       </div>

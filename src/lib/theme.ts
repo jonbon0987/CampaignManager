@@ -145,4 +145,5 @@ export const difficultyColors: Record<string, string> = {
   medium: 'var(--gold-2)',
   hard:   'var(--diff-hard)',
   deadly: 'var(--diff-deadly)',
+  trivial: 'var(--ink-3)',
 };
