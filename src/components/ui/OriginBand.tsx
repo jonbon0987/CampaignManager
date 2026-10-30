@@ -7,20 +7,29 @@ interface OriginBandProps {
   onOpenInCanon: () => void;
   onPublish: () => void;
   onDetach: () => void;
+  /**
+   * A canon entry opens locked, so an edit can't change every campaign by
+   * accident; "Edit canon" unlocks it for as long as it's open.
+   */
+  locked?: boolean;
+  onUnlock?: () => void;
 }
 
 /** Gold (canon) / orange (table-local) provenance banner shown atop an entry detail. */
-export function OriginBand({ origin, noun, onOpenInCanon, onPublish, onDetach }: OriginBandProps) {
+export function OriginBand({ origin, noun, onOpenInCanon, onPublish, onDetach, locked, onUnlock }: OriginBandProps) {
   if (origin === 'imported') {
     return (
       <div className="cm-originband is-canon">
         <span className="cm-originband-glyph">✦</span>
         <div className="cm-originband-body">
-          <div className="cm-originband-kicker">Imported from world canon</div>
+          <div className="cm-originband-kicker">{locked ? 'World canon · locked' : 'Imported from world canon'}</div>
           <div className="cm-originband-text">
-            Shared across every table in this world. Edits here update the canon {noun}.
+            {locked
+              ? `Shared by every campaign in this world that uses it. Edit the canon ${noun} to change it everywhere, or detach a copy to change it only here.`
+              : `Shared across every table in this world. Edits here update the canon ${noun}.`}
           </div>
           <div className="cm-originband-actions">
+            {locked && onUnlock && <button className="cm-publishbtn" onClick={onUnlock}>Edit canon</button>}
             <button className="cm-linklike" onClick={onOpenInCanon}>Open in canon ↗</button>
             <button className="cm-ghost-sm" onClick={onDetach}>Detach copy</button>
           </div>

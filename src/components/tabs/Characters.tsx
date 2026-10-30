@@ -4,11 +4,9 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { ListDetail, ListRow, EmptyDetail, Pill, FilterSep } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
-import { OriginBand, type Origin } from '../ui/OriginBand';
-import { Button } from '../ui/Button';
+import type { Origin } from '../ui/OriginBand';
 import { FactionPillSelector } from '../ui/FactionPillSelector';
 import { SearchableSelect } from '../ui/SearchableSelect';
-import { getFactionTypeStyle } from '../../lib/theme';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../../lib/recent';
@@ -22,13 +20,9 @@ import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { ListRowWithHover } from '../HoverPreview';
 import { SessionHistory } from '../session/SessionHistory';
 import { SessionUpdateBand } from '../session/SessionUpdateBand';
+import { NPCEditor } from '../entity/NPCEditor';
+import { FactionEditor } from '../entity/FactionEditor';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
-
-// ── Voice data stored in localStorage keyed by NPC id ────────────────────────
-interface VoiceData { accent?: string; patterns?: string; phrase?: string; tics?: string; }
-const VOICE_KEY = (id: string) => `npc-voice-${id}`;
-function loadVoice(id: string): VoiceData { try { return JSON.parse(localStorage.getItem(VOICE_KEY(id)) ?? '{}'); } catch { return {}; } }
-function saveVoice(id: string, v: VoiceData) { localStorage.setItem(VOICE_KEY(id), JSON.stringify(v)); }
 
 type CastKind = 'pc' | 'npc' | 'faction';
 type FilterType = 'all' | CastKind;
@@ -227,6 +221,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
             factions={factions}
             statblocks={monsterStatblocks}
             openStatBlock={openStatBlock}
+            onSelect={setSelectedId}
             onDeselect={() => setSelectedId(null)}
           />
         ) : (
@@ -244,399 +239,77 @@ interface CastDetailProps {
   factions: Faction[];
   statblocks: { id: string; name: string }[];
   openStatBlock: (id: string) => void;
+  onSelect: (id: string) => void;
   onDeselect: () => void;
 }
 
-function CastDetail({ item, factions, statblocks, openStatBlock, onDeselect }: CastDetailProps) {
+function CastDetail({ item, factions, statblocks, openStatBlock, onSelect, onDeselect }: CastDetailProps) {
   if (item.kind === 'pc') return (
     <PCDetail item={item} factions={factions} statblocks={statblocks} onDeselect={onDeselect} />
   );
   if (item.kind === 'npc') return (
-    <NPCDetail
-      item={item}
-      factions={factions}
-      statblocks={statblocks}
-      openStatBlock={openStatBlock}
-      onDeselect={onDeselect}
-    />
+    <CampaignNPC npc={item.raw as NPC} factions={factions} statblocks={statblocks} openStatBlock={openStatBlock} onDeselect={onDeselect} />
   );
-  return (
-    <FactionDetail item={item} onDeselect={onDeselect} />
-  );
+  return <CampaignFaction faction={item.raw as Faction} onSelect={onSelect} onDeselect={onDeselect} />;
 }
 
-/* ── NPC Detail ── */
+/* ── NPCs and factions: the shared editors, saving to this campaign ── */
 
-const isEmpty = (v: string | null | undefined) => !v?.trim();
-
-type NPCFormData = {
-  name: string;
-  role: string | null;
-  affiliation: string | null;
-  status: NPC['status'];
-  disposition: string | null;
-  description: string | null;
-  hooks_motivations: string | null;
-  dm_notes: string | null;
-  location: string | null;
-  first_session: number | null;
-  met_by_pcs: boolean;
-  faction_ids: string[];
-  statblock_id: string | null;
-};
-
-function NPCDetail({
-  item,
-  factions,
-  statblocks,
-  openStatBlock,
-  onDeselect,
-}: {
-  item: CastItem;
+function CampaignNPC({ npc, factions, statblocks, openStatBlock, onDeselect }: {
+  npc: NPC;
   factions: Faction[];
   statblocks: { id: string; name: string }[];
   openStatBlock: (id: string) => void;
   onDeselect: () => void;
 }) {
-  const npc = item.raw as NPC;
   const { upsertNPC, deleteNPC, linkedNPCIds, linkNPCToCampaign, unlinkNPCFromCampaign } = useCampaign();
   const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
-  const confirm = useConfirm();
-
   // Imported (linked from world canon) vs. local (this campaign only). Drives the
-  // provenance banner AND the save scope: editing an imported NPC must write to
+  // provenance band AND the save scope: editing an imported NPC must write to
   // the canon row ('global'), not accidentally re-scope it to this campaign.
   const origin: Origin = linkedNPCIds.includes(npc.id) ? 'imported' : 'local';
-
-  const [form, setForm] = useState<NPCFormData>({
-    name: npc.name,
-    role: npc.role,
-    affiliation: npc.affiliation,
-    status: npc.status,
-    disposition: npc.disposition,
-    description: npc.description,
-    hooks_motivations: npc.hooks_motivations,
-    dm_notes: npc.dm_notes,
-    location: npc.location,
-    first_session: npc.first_session,
-    met_by_pcs: npc.met_by_pcs,
-    faction_ids: npc.faction_ids ?? [],
-    statblock_id: npc.statblock_id,
-  });
-
-  useEffect(() => {
-    setForm({
-      name: npc.name,
-      role: npc.role,
-      affiliation: npc.affiliation,
-      status: npc.status,
-      disposition: npc.disposition,
-      description: npc.description,
-      hooks_motivations: npc.hooks_motivations,
-      dm_notes: npc.dm_notes,
-      location: npc.location,
-      first_session: npc.first_session,
-      met_by_pcs: npc.met_by_pcs,
-      faction_ids: npc.faction_ids ?? [],
-      statblock_id: npc.statblock_id,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [npc.id]);
-
-  const { status, saveNow } = useAutoSave({
-    data: form,
-    onSave: async (data) => {
-      await upsertNPC({
-        id: npc.id,
-        name: data.name,
-        role: data.role,
-        affiliation: data.affiliation,
-        status: data.status,
-        disposition: data.disposition,
-        description: data.description,
-        hooks_motivations: data.hooks_motivations,
-        dm_notes: data.dm_notes,
-        location: data.location,
-        first_session: data.first_session,
-        met_by_pcs: data.met_by_pcs,
-        faction_ids: data.faction_ids,
-        statblock_id: data.statblock_id,
-      }, origin === 'imported' ? 'global' : 'campaign');
-    },
-    delay: 800,
-  });
-
-  // Voice state (localStorage only)
-  const [voice, setVoice] = useState<VoiceData>(() => loadVoice(npc.id));
-  useEffect(() => { setVoice(loadVoice(npc.id)); }, [npc.id]);
-
-  const handleVoiceChange = (field: keyof VoiceData, val: string) => {
-    const updated = { ...voice, [field]: val || undefined };
-    setVoice(updated);
-    saveVoice(npc.id, updated);
-  };
-
-  const handleDelete = async () => {
-    const yes = await confirm('Delete this NPC?', 'This cannot be undone.');
-    if (yes) {
-      await deleteNPC(npc.id);
-      onDeselect();
-    }
-  };
-
-  // Provenance actions (mirror Lore/Locations): jump to the canon NPC, promote a
-  // local NPC into shared canon, or detach a linked one back to this campaign only.
-  const openInCanon = () => {
-    setWorldSelected('npcs', npc.id);
-    setWorldTab('npcs');
-    backToWorld();
-  };
-  const publishToCanon = async () => {
-    await upsertNPC({
-      id: npc.id,
-      name: form.name, role: form.role, affiliation: form.affiliation, status: form.status,
-      disposition: form.disposition, description: form.description, hooks_motivations: form.hooks_motivations, dm_notes: form.dm_notes,
-      location: form.location, first_session: form.first_session, met_by_pcs: form.met_by_pcs,
-      faction_ids: form.faction_ids, statblock_id: form.statblock_id,
-      world_id: activeWorldId || npc.world_id || null,
-    }, 'global');
-    await linkNPCToCampaign(npc.id); // keep it visible in this campaign after promoting
-  };
-  const detachFromCanon = async () => {
-    await unlinkNPCFromCampaign(npc.id);
-    onDeselect();
-  };
-
-  const statblockOptions = statblocks.map(m => ({ id: m.id, label: m.name }));
-
-  useDiscardBlankDraft(npc.id, isEmpty(form.name) && isEmpty(form.role) && isEmpty(form.affiliation) && isEmpty(form.description)
-    && isEmpty(form.hooks_motivations) && isEmpty(form.dm_notes) && isEmpty(form.location) && isEmpty(form.disposition), deleteNPC);
-
-  const set = <K extends keyof NPCFormData>(key: K, val: NPCFormData[K]) =>
-    setForm(f => ({ ...f, [key]: val }));
+  type Insert = Parameters<typeof upsertNPC>[0];
 
   return (
-    <div className="as-detail-root">
-      <OriginBand origin={origin} noun="NPC" onOpenInCanon={openInCanon} onPublish={publishToCanon} onDetach={detachFromCanon} />
-
-      {/* Action bar */}
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[
-          { label: 'Delete NPC', danger: true, onClick: handleDelete },
-        ]} />
-      </div>
-
-      <SessionUpdateBand entityType="npc" entityId={npc.id} />
-
-      {/* Eyebrow */}
-      <div className="cm-eyebrow">Non-Player Character</div>
-
-      {/* Title + subtitle inputs */}
-      <input
-        className="as-title"
-        value={form.name}
-        onChange={e => set('name', e.target.value)}
-        placeholder="Character name…"
-        maxLength={limitFor('npcs', 'name')}
-      />
-      <input
-        className="as-sub"
-        value={form.role ?? ''}
-        onChange={e => set('role', e.target.value || null)}
-        placeholder="Role or title…"
-        maxLength={limitFor('npcs', 'role')}
-      />
-
-      {/* Meta strip: status pills + met toggle */}
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Status</span>
-          <div className="as-pills">
-            {(['active', 'deceased', 'unknown'] as NPC['status'][]).map(s => (
-              <button
-                key={s}
-                className={`as-pill-opt${form.status === s ? ' is-active' : ''}`}
-                onClick={() => set('status', s)}
-              >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">Met by PCs</span>
-          <button
-            className={`as-tog${form.met_by_pcs ? ' is-on' : ''}`}
-            onClick={() => set('met_by_pcs', !form.met_by_pcs)}
-          >
-            {form.met_by_pcs ? 'Yes' : 'No'}
-          </button>
-        </div>
-      </div>
-
-      {/* Short fields */}
-      <div className="as-grid-2">
-        <div className="as-fl">
-          <label className="as-ll">Affiliation</label>
-          <input
-            className="as-input"
-            value={form.affiliation ?? ''}
-            onChange={e => set('affiliation', e.target.value || null)}
-            placeholder="Guild, city, group…"
-            maxLength={limitFor('npcs', 'affiliation')}
-          />
-        </div>
-        <div className="as-fl">
-          <label className="as-ll">Location</label>
-          <input
-            className="as-input"
-            value={form.location ?? ''}
-            onChange={e => set('location', e.target.value || null)}
-            placeholder="Where found…"
-            maxLength={limitFor('npcs', 'location')}
-          />
-        </div>
-        <div className="as-fl">
-          <label className="as-ll">Toward the party</label>
-          <input
-            className="as-input"
-            value={form.disposition ?? ''}
-            onChange={e => set('disposition', e.target.value || null)}
-            placeholder="Wary, friendly, owes them a favor…"
-            maxLength={limitFor('npcs', 'disposition')}
-          />
-        </div>
-        <div className="as-fl">
-          <label className="as-ll">First Session #</label>
-          <input
-            className="as-input"
-            type="number"
-            min={minFor('npcs', 'first_session')}
-            max={maxFor('npcs', 'first_session')}
-            value={form.first_session ?? ''}
-            onChange={e => set('first_session', e.target.value ? parseInt(e.target.value, 10) : null)}
-            placeholder="e.g. 3"
-          />
-        </div>
-      </div>
-
-      {/* Description */}
-      <div className="as-fl">
-        <label className="as-ll">Description</label>
-        <SlashField
-          value={form.description ?? ''}
-          onChange={v => set('description', v || null)}
-          placeholder="Physical appearance, personality, quirks…"
-          minHeight="120px"
-          maxLength={limitFor('npcs', 'description')}
-        />
-      </div>
-
-      {/* Hooks & Motivations */}
-      <div className="as-fl">
-        <label className="as-ll">Hooks &amp; Motivations</label>
-        <SlashField
-          value={form.hooks_motivations ?? ''}
-          onChange={v => set('hooks_motivations', v || null)}
-          placeholder="What drives this NPC? What plot hooks do they offer?"
-          minHeight="96px"
-          maxLength={limitFor('npcs', 'hooks_motivations')}
-        />
-      </div>
-
-      {/* Voice (localStorage) */}
-      <div className="as-fl">
-        <label className="as-ll">Voice</label>
-        <div className="as-grid-2">
-          <div className="as-fl">
-            <label className="as-ll">Accent &amp; Delivery</label>
-            <input
-              className="as-input"
-              value={voice.accent ?? ''}
-              onChange={e => handleVoiceChange('accent', e.target.value)}
-              placeholder="e.g. Gravelly baritone, speaks slowly"
-            />
-          </div>
-          <div className="as-fl">
-            <label className="as-ll">Speech Patterns</label>
-            <input
-              className="as-input"
-              value={voice.patterns ?? ''}
-              onChange={e => handleVoiceChange('patterns', e.target.value)}
-              placeholder="e.g. Never finishes sentences"
-            />
-          </div>
-          <div className="as-fl">
-            <label className="as-ll">Signature Phrase</label>
-            <input
-              className="as-input"
-              value={voice.phrase ?? ''}
-              onChange={e => handleVoiceChange('phrase', e.target.value)}
-              placeholder='e.g. "The gods have long ears…"'
-            />
-          </div>
-          <div className="as-fl">
-            <label className="as-ll">Personality Tics</label>
-            <input
-              className="as-input"
-              value={voice.tics ?? ''}
-              onChange={e => handleVoiceChange('tics', e.target.value)}
-              placeholder="e.g. Drums fingers, avoids eye contact"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* DM Notes */}
-      <div className="as-fl">
-        <label className="as-ll">DM Notes</label>
-        <SlashField
-          value={form.dm_notes ?? ''}
-          onChange={v => set('dm_notes', v || null)}
-          placeholder="Private notes, secrets, plans…"
-          minHeight="96px"
-          maxLength={limitFor('npcs', 'dm_notes')}
-        />
-      </div>
-
-      {/* Factions */}
-      <div className="as-fl">
-        <label className="as-ll">Factions</label>
-        <FactionPillSelector
-          selectedIds={form.faction_ids}
-          onChange={ids => set('faction_ids', ids)}
-          factions={factions}
-        />
-      </div>
-
-      {/* Stat block */}
-      <div className="as-fl">
-        <label className="as-ll">Linked Stat Sheet</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <SearchableSelect
-            value={form.statblock_id}
-            onChange={id => set('statblock_id', id)}
-            options={statblockOptions}
-            placeholder="Select stat sheet…"
-            searchPlaceholder="Search stat sheets…"
-          />
-          {form.statblock_id && (
-            <Button variant="primary" size="xs" onClick={() => openStatBlock(form.statblock_id!)}>
-              View
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="as-fl">
-        <label className="as-ll">Session History</label>
-        <SessionHistory entityType="npc" entityId={npc.id} />
-      </div>
-    </div>
+    <NPCEditor
+      npc={npc}
+      scope="campaign"
+      factions={factions}
+      statblocks={statblocks}
+      save={fields => upsertNPC({ id: npc.id, ...fields } as Insert, origin === 'imported' ? 'global' : 'campaign')}
+      remove={deleteNPC}
+      onDeleted={onDeselect}
+      onOpenStatBlock={openStatBlock}
+      canon={{
+        origin,
+        onOpenInCanon: () => { setWorldSelected('npcs', npc.id); setWorldTab('npcs'); backToWorld(); },
+        // Publish promotes it into canon, then keeps it visible here.
+        onPublish: async fields => {
+          await upsertNPC({ id: npc.id, ...fields, world_id: activeWorldId || npc.world_id || null } as Insert, 'global');
+          await linkNPCToCampaign(npc.id);
+        },
+        onDetach: async () => { await unlinkNPCFromCampaign(npc.id); onDeselect(); },
+      }}
+    />
   );
 }
+
+function CampaignFaction({ faction, onSelect, onDeselect }: { faction: Faction; onSelect: (id: string) => void; onDeselect: () => void }) {
+  const { npcs, upsertFaction, deleteFaction } = useCampaign();
+  return (
+    <FactionEditor
+      faction={faction}
+      scope="campaign"
+      npcs={npcs}
+      save={fields => upsertFaction({ id: faction.id, ...fields } as Parameters<typeof upsertFaction>[0])}
+      remove={deleteFaction}
+      onDeleted={onDeselect}
+      onOpenNPC={onSelect}
+    />
+  );
+}
+
+const isEmpty = (v: string | null | undefined) => !v?.trim();
 
 /* ── PC Detail ── */
 
@@ -749,7 +422,7 @@ function PCDetail({
   const statblockOptions = statblocks.map(m => ({ id: m.id, label: m.name }));
 
   return (
-    <div className="as-detail-root">
+    <div className="cm-detail">
       {/* Action bar */}
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
@@ -914,176 +587,6 @@ function PCDetail({
       <div className="as-fl">
         <label className="as-ll">Session History</label>
         <SessionHistory entityType="pc" entityId={pc.id} />
-      </div>
-    </div>
-  );
-}
-
-/* ── Faction Detail ── */
-
-type FactionFormData = {
-  name: string;
-  faction_type: string | null;
-  overview: string | null;
-  key_figures: string | null;
-  agenda: string | null;
-  dm_notes: string | null;
-};
-
-const FACTION_TYPES = ['government', 'religious', 'criminal', 'military', 'scholarly', 'merchant', 'guild', 'arcane', 'other'];
-
-function FactionDetail({
-  item,
-  onDeselect,
-}: {
-  item: CastItem;
-  onDeselect: () => void;
-}) {
-  const faction = item.raw as Faction;
-  const { upsertFaction, deleteFaction } = useCampaign();
-  const confirm = useConfirm();
-
-  const [form, setForm] = useState<FactionFormData>({
-    name: faction.name,
-    faction_type: faction.faction_type,
-    overview: faction.overview,
-    key_figures: faction.key_figures,
-    agenda: faction.agenda,
-    dm_notes: faction.dm_notes,
-  });
-
-  useEffect(() => {
-    setForm({
-      name: faction.name,
-      faction_type: faction.faction_type,
-      overview: faction.overview,
-      key_figures: faction.key_figures,
-      agenda: faction.agenda,
-      dm_notes: faction.dm_notes,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faction.id]);
-
-  const { status, saveNow } = useAutoSave({
-    data: form,
-    onSave: async (data) => {
-      await upsertFaction({
-        id: faction.id,
-        name: data.name,
-        faction_type: data.faction_type,
-        overview: data.overview,
-        key_figures: data.key_figures,
-        agenda: data.agenda,
-        dm_notes: data.dm_notes,
-      });
-    },
-    delay: 800,
-  });
-
-  const handleDelete = async () => {
-    const yes = await confirm('Delete this faction?', 'This cannot be undone.');
-    if (yes) {
-      await deleteFaction(faction.id);
-      onDeselect();
-    }
-  };
-
-  useDiscardBlankDraft(faction.id, isEmpty(form.name) && isEmpty(form.overview) && isEmpty(form.key_figures)
-    && isEmpty(form.agenda) && isEmpty(form.dm_notes), deleteFaction);
-
-  const set = <K extends keyof FactionFormData>(key: K, val: FactionFormData[K]) =>
-    setForm(f => ({ ...f, [key]: val }));
-
-  return (
-    <div className="as-detail-root">
-      {/* Action bar */}
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[
-          { label: 'Delete Faction', danger: true, onClick: handleDelete },
-        ]} />
-      </div>
-
-      <SessionUpdateBand entityType="faction" entityId={faction.id} />
-
-      {/* Eyebrow */}
-      <div className="cm-eyebrow">Faction</div>
-
-      {/* Name */}
-      <input
-        className="as-title"
-        value={form.name}
-        onChange={e => set('name', e.target.value)}
-        placeholder="Faction name…"
-        maxLength={limitFor('factions', 'name')}
-      />
-
-      {/* Type select */}
-      <div className="as-fl">
-        <label className="as-ll">Type</label>
-        <select
-          className="as-select"
-          value={form.faction_type ?? 'other'}
-          onChange={e => set('faction_type', e.target.value)}
-        >
-          {FACTION_TYPES.map(t => (
-            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Overview */}
-      <div className="as-fl">
-        <label className="as-ll">Overview</label>
-        <SlashField
-          value={form.overview ?? ''}
-          onChange={v => set('overview', v || null)}
-          placeholder="What is this faction about?"
-          minHeight="120px"
-          maxLength={limitFor('factions', 'overview')}
-        />
-      </div>
-
-      {/* Key Figures */}
-      <div className="as-fl">
-        <label className="as-ll">Key Figures</label>
-        <SlashField
-          value={form.key_figures ?? ''}
-          onChange={v => set('key_figures', v || null)}
-          placeholder="Important members…"
-          minHeight="96px"
-          maxLength={limitFor('factions', 'key_figures')}
-        />
-      </div>
-
-      {/* Agenda */}
-      <div className="as-fl">
-        <label className="as-ll">Agenda</label>
-        <SlashField
-          value={form.agenda ?? ''}
-          onChange={v => set('agenda', v || null)}
-          placeholder="Goals and plans…"
-          minHeight="96px"
-          maxLength={limitFor('factions', 'agenda')}
-        />
-      </div>
-
-      {/* DM Notes */}
-      <div className="as-fl">
-        <label className="as-ll">DM Notes</label>
-        <SlashField
-          value={form.dm_notes ?? ''}
-          onChange={v => set('dm_notes', v || null)}
-          placeholder="Hidden agendas, secrets…"
-          minHeight="96px"
-          maxLength={limitFor('factions', 'dm_notes')}
-        />
-      </div>
-
-      <div className="as-fl">
-        <label className="as-ll">Session History</label>
-        <SessionHistory entityType="faction" entityId={faction.id} />
       </div>
     </div>
   );

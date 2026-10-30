@@ -284,6 +284,15 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
 };
 
 /** Max character length for a given table.column, or undefined if unconstrained. */
+/**
+ * A field's character counter appears once it's this full, so a finished page
+ * doesn't read as a column of "0 / 8,000" counters.
+ */
+export const COUNTER_FROM = 0.8;
+
+/** Whether a field this long, against this limit, shows its counter. */
+export const showCounter = (count: number, limit: number) => count >= limit * COUNTER_FROM;
+
 export function limitFor(table: string, column: string): number | undefined {
   return TEXT_LIMITS[table]?.[column];
 }

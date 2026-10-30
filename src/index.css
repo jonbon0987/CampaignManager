@@ -2708,6 +2708,13 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 
 /* Field label */
+/* One editor per entity (components/entity) */
+.as-fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
+.as-fieldset:disabled .as-title, .as-fieldset:disabled .as-sub { color: var(--ink-2); }
+.as-addrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 4px; margin-bottom: 24px; }
+.as-addrow-label { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-right: 4px; }
+.as-empty-note { margin: 0; font-family: var(--serif); font-size: 13px; font-style: italic; color: var(--ink-3); }
+
 .as-fl {
   display: flex;
   flex-direction: column;

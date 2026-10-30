@@ -2,21 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
-import { useConfirm } from '../../context/ConfirmContext';
-import { ListDetail, DetailPanel, DetailSection, EmptyDetail } from '../ui/ListDetail';
-import { OriginBand, type Origin } from '../ui/OriginBand';
+import { ListDetail, EmptyDetail } from '../ui/ListDetail';
+import type { Origin } from '../ui/OriginBand';
 import { pushRecent } from '../../lib/recent';
-import { useAutoSave } from '../../hooks/useAutoSave';
-import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
-import { OverflowMenu } from '../ui/OverflowMenu';
-import { SlashField } from '../ui/SlashField';
-import { limitFor } from '../../lib/fieldLimits';
-import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import type { Location } from '../../lib/database.types';
-import { SessionHistory } from '../session/SessionHistory';
-import { SessionUpdateBand } from '../session/SessionUpdateBand';
-
-const LOCATION_TYPES = ['continent', 'city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
+import { LocationEditor, type LocationFields } from '../entity/LocationEditor';
 
 // Type → tree glyph (mirrors the prototype's locTypeGlyph, mapped to this app's types).
 const LOC_GLYPH: Record<string, string> = {
@@ -35,7 +26,6 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
     upsertLocation, deleteLocation, linkLocationToCampaign, unlinkLocationFromCampaign,
   } = useCampaign();
   const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
-  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -106,13 +96,9 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
     if (result) { markDraft(result.id); setSelectedId(result.id); }
   };
 
-  const publish = async (loc: Location) => {
-    await upsertLocation({
-      id: loc.id, name: loc.name, region: loc.region, location_type: loc.location_type,
-      parent_id: loc.parent_id, population: loc.population, status: loc.status,
-      description: loc.description, history: loc.history, dm_notes: loc.dm_notes,
-      world_id: activeWorldId || loc.world_id || null,
-    }, 'global');
+  // Publishing promotes the place into canon, then keeps it visible here.
+  const publish = async (loc: Location, fields: LocationFields) => {
+    await upsertLocation({ id: loc.id, ...fields, world_id: activeWorldId || loc.world_id || null } as Parameters<typeof upsertLocation>[0], 'global');
     await linkLocationToCampaign(loc.id);
   };
 
@@ -191,17 +177,20 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
       }
       detail={
         selected ? (
-          <LocationDetail
+          <LocationEditor
             key={selected.id}
             location={selected}
-            origin={originOf(selected.id)}
+            scope="campaign"
             allLocations={locations}
-            onOpenInCanon={() => openInCanon(selected.id)}
-            onPublish={() => publish(selected)}
-            onDetach={async () => { await unlinkLocationFromCampaign(selected.id); setSelectedId(null); }}
-            onDelete={async () => {
-              const yes = await confirm('Delete this location?', 'Any places nested under it become top-level.');
-              if (yes) { await deleteLocation(selected.id); setSelectedId(null); }
+            save={fields => upsertLocation({ id: selected.id, ...fields, world_id: selected.world_id } as Parameters<typeof upsertLocation>[0],
+              originOf(selected.id) === 'imported' ? 'global' : 'campaign')}
+            remove={deleteLocation}
+            onDeleted={() => setSelectedId(null)}
+            canon={{
+              origin: originOf(selected.id),
+              onOpenInCanon: () => openInCanon(selected.id),
+              onPublish: fields => publish(selected, fields),
+              onDetach: async () => { await unlinkLocationFromCampaign(selected.id); setSelectedId(null); },
             }}
           />
         ) : (
@@ -209,161 +198,5 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
         )
       }
     />
-  );
-}
-
-/* ── Location Detail (autosave, with parent picker) ── */
-
-interface LocationForm {
-  name: string;
-  region: string;
-  location_type: string;
-  parent_id: string;
-  population: string;
-  status: string;
-  description: string;
-  history: string;
-  dm_notes: string;
-}
-
-function locationToForm(loc: Location): LocationForm {
-  return {
-    name: loc.name ?? '',
-    region: loc.region ?? '',
-    location_type: loc.location_type ?? 'landmark',
-    parent_id: loc.parent_id ?? '',
-    population: loc.population ?? '',
-    status: loc.status ?? 'active',
-    description: loc.description ?? '',
-    history: loc.history ?? '',
-    dm_notes: loc.dm_notes ?? '',
-  };
-}
-
-// Ids that can't be a parent of `loc`: itself and its descendants (would form a cycle).
-function forbiddenParents(loc: Location, all: Location[]): Set<string> {
-  const bad = new Set<string>([loc.id]);
-  let added = true;
-  while (added) {
-    added = false;
-    for (const l of all) {
-      if (l.parent_id && bad.has(l.parent_id) && !bad.has(l.id)) {
-        bad.add(l.id);
-        added = true;
-      }
-    }
-  }
-  return bad;
-}
-
-interface DetailProps {
-  origin: Origin;
-  allLocations: Location[];
-  onOpenInCanon: () => void;
-  onPublish: () => void;
-  onDetach: () => void;
-  onDelete: () => void;
-}
-
-function LocationDetail({ location, origin, allLocations, onOpenInCanon, onPublish, onDetach, onDelete }: { location: Location } & DetailProps) {
-  const { upsertLocation, deleteLocation } = useCampaign();
-  const [form, setForm] = useState<LocationForm>(() => locationToForm(location));
-
-  useEffect(() => { setForm(locationToForm(location)); }, [location.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  // A place with anything written, or with places inside it, is kept.
-  const blank = !form.name.trim() && !form.region.trim() && !form.population.trim() && !form.description.trim()
-    && !form.history.trim() && !form.dm_notes.trim() && !allLocations.some(l => l.parent_id === location.id);
-  useDiscardBlankDraft(location.id, blank, deleteLocation);
-
-  const { status, saveNow } = useAutoSave<LocationForm>({
-    data: form,
-    onSave: async (data) => {
-      await upsertLocation({
-        id: location.id,
-        name: data.name || 'Unnamed Location',
-        region: data.region || null,
-        location_type: data.location_type || null,
-        parent_id: data.parent_id || null,
-        population: data.population || null,
-        status: data.status || null,
-        description: data.description || null,
-        history: data.history || null,
-        dm_notes: data.dm_notes || null,
-        world_id: location.world_id,
-      }, origin === 'imported' ? 'global' : 'campaign');
-    },
-    delay: 800,
-    enabled: true,
-  });
-
-  const set = <K extends keyof LocationForm>(key: K, value: LocationForm[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
-
-  const forbidden = useMemo(() => forbiddenParents(location, allLocations), [location, allLocations]);
-  const parentOptions = allLocations
-    .filter(l => !forbidden.has(l.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  return (
-    <DetailPanel eyebrow="Location" title="">
-      <OriginBand origin={origin} noun="place" onOpenInCanon={onOpenInCanon} onPublish={onPublish} onDetach={onDetach} />
-      <SessionUpdateBand entityType="location" entityId={location.id} />
-
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[{ label: 'Delete Location', danger: true, onClick: onDelete }]} />
-      </div>
-
-      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" maxLength={limitFor('locations', 'name')} />
-      <input className="as-sub" value={form.region} onChange={e => set('region', e.target.value)} placeholder="Region…" maxLength={limitFor('locations', 'region')} />
-
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Type</span>
-          <select className="as-select" value={form.location_type} onChange={e => set('location_type', e.target.value)}>
-            {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">Within</span>
-          <select className="as-select" value={form.parent_id} onChange={e => set('parent_id', e.target.value)}>
-            <option value="">— Top level —</option>
-            {parentOptions.map(l => (
-              <option key={l.id} value={l.id}>{l.name || 'Unnamed'}</option>
-            ))}
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">Status</span>
-          <select className="as-select" value={form.status} onChange={e => set('status', e.target.value)}>
-            <option value="active">Active</option>
-            <option value="destroyed">Destroyed</option>
-            <option value="unknown">Unknown</option>
-            <option value="compromised">Compromised</option>
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">Population</span>
-          <input className="as-input" value={form.population} onChange={e => set('population', e.target.value)} placeholder="e.g. ~12,000" maxLength={limitFor('locations', 'population')} />
-        </div>
-      </div>
-
-      <DetailSection title="Description">
-        <SlashField value={form.description ?? ''} onChange={v => set('description', v)} placeholder="Describe this place…" minHeight="96px" maxLength={limitFor('locations', 'description')} />
-      </DetailSection>
-
-      <DetailSection title="History">
-        <SlashField value={form.history ?? ''} onChange={v => set('history', v)} placeholder="Historical events…" minHeight="96px" maxLength={limitFor('locations', 'history')} />
-      </DetailSection>
-
-      <DetailSection title="DM Notes">
-        <SlashField value={form.dm_notes ?? ''} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" minHeight="72px" maxLength={limitFor('locations', 'dm_notes')} />
-      </DetailSection>
-
-      <DetailSection title="Session History">
-        <SessionHistory entityType="location" entityId={location.id} />
-      </DetailSection>
-    </DetailPanel>
   );
 }
