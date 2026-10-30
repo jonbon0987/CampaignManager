@@ -517,6 +517,8 @@ export interface RecordingSettings {
   tablePcIds?: string[];        // PCs whose players were at the table (not on Discord)
   discord?: DiscordTarget;      // also record this Discord voice channel (the bot does it)
   chronicleMissing?: ('session' | 'people' | 'places')[]; // chronicle parts that couldn't be written (ChroniclePart)
+  autoChronicle?: boolean;      // write the chronicle as soon as the transcript is done (cleared once taken on)
+  chronicleStartedAt?: string;  // when the automatic write began, so a stalled one can be offered again
 }
 
 // --------------- Discord (the bot in bot/ fills these in) ---------------

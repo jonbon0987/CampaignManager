@@ -11,6 +11,8 @@ import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { RecorderPanel } from '../session/RecorderPanel';
 import { SessionPrep } from '../session/SessionPrep';
+import { SessionChronicles } from '../session/SessionChronicles';
+import { LeftOpenToInbox } from '../session/LeftOpenToInbox';
 import { blankSession, formatSessionDate, nextSessionNumber, plainText, clip, STATUS_LABEL } from '../../lib/sessionLifecycle';
 import { noteStamp } from '../../lib/playTime';
 import type { Session, SessionPlan, SessionStatus } from '../../lib/database.types';
@@ -67,14 +69,17 @@ function SessionSection({
   icon: Icon,
   label,
   dmOnly,
+  filled,
   children,
 }: {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
   label: string;
   dmOnly?: boolean;
+  /** Has something in it, so it starts open. */
+  filled?: boolean;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!filled);
   return (
     <div
       className="rounded border overflow-hidden"
@@ -276,6 +281,20 @@ function SessionDetail({
           <>
             <RecorderPanel session={session} />
 
+            {/* Recap / Summary */}
+            <div className="cm-section">
+              <SectionLabel label="Recap" />
+              <SlashField
+                value={form.summary ?? ''}
+                onChange={v => set('summary', v || null)}
+                placeholder="What happened this session… A recording writes this for you once it's transcribed."
+                maxLength={limitFor('sessions', 'summary')}
+              />
+            </div>
+
+            {/* What the recording's chronicle wrote into the campaign */}
+            <SessionChronicles sessionId={session.id} />
+
             {tableNotes.length > 0 && (
               <div className="cm-section">
                 <SectionLabel label="Noted at the table" />
@@ -290,20 +309,9 @@ function SessionDetail({
               </div>
             )}
 
-            {/* Recap / Summary */}
-            <div className="cm-section">
-              <SectionLabel label="Recap" />
-              <SlashField
-                value={form.summary ?? ''}
-                onChange={v => set('summary', v || null)}
-                placeholder="What happened this session..."
-                maxLength={limitFor('sessions', 'summary')}
-              />
-            </div>
-
-            {/* Structured fields */}
+            {/* The session's own fields, filled by the chronicle or by hand */}
             <div className="flex flex-col gap-2">
-              <SessionSection icon={Swords} label="Combat Summary">
+              <SessionSection icon={Swords} label="Combat Summary" filled={!!form.combats}>
                 <SlashField
                 value={form.combats ?? ''}
                 onChange={v => set('combats', v || null)}
@@ -311,7 +319,7 @@ function SessionDetail({
                 maxLength={limitFor('sessions', 'combats')}
               />
               </SessionSection>
-              <SessionSection icon={Gift} label="Loot & Rewards">
+              <SessionSection icon={Gift} label="Loot & Rewards" filled={!!form.loot_rewards}>
                 <SlashField
                 value={form.loot_rewards ?? ''}
                 onChange={v => set('loot_rewards', v || null)}
@@ -319,15 +327,16 @@ function SessionDetail({
                 maxLength={limitFor('sessions', 'loot_rewards')}
               />
               </SessionSection>
-              <SessionSection icon={Lightbulb} label="Left open for next time">
+              <SessionSection icon={Lightbulb} label="Left open for next time" filled={!!form.hooks_notes}>
                 <SlashField
                 value={form.hooks_notes ?? ''}
                 onChange={v => set('hooks_notes', v || null)}
                 placeholder="Questions and threads to pick up next session. They show in its prep…"
                 maxLength={limitFor('sessions', 'hooks_notes')}
               />
+                <LeftOpenToInbox text={form.hooks_notes} sessionNumber={form.session_number} />
               </SessionSection>
-              <SessionSection icon={Eye} label="DM Notes" dmOnly>
+              <SessionSection icon={Eye} label="DM Notes" dmOnly filled={!!form.dm_notes}>
                 <SlashField
                 value={form.dm_notes ?? ''}
                 onChange={v => set('dm_notes', v || null)}

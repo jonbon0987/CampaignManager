@@ -1,23 +1,23 @@
 // src/components/session/SessionUpdateBand.tsx
 // -----------------------------------------------------------
 // The band at the top of an entry a recording last wrote to: which session,
-// what it changed, and that session's chronicle a click away.
+// what it changed, and that session's recap a click away.
 // -----------------------------------------------------------
 
 import { useEffect, useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
-import { ChronicleAppliedLog, ChronicleProposals, EntitySessionEntries, SessionRecordings } from '../../lib/db';
-import type { SessionEntryEntityType, SessionRecording } from '../../lib/database.types';
+import { ChronicleAppliedLog, ChronicleProposals, EntitySessionEntries } from '../../lib/db';
+import type { SessionEntryEntityType } from '../../lib/database.types';
 import { buildChronicle, changeCount, whatChanged } from '../../lib/recording/chronicleView';
 import { Button } from '../ui/Button';
-import { ChronicleView } from './ChronicleView';
+import { useOpenRecord } from '../../context/NavigationContext';
 
-interface Update { recordingId: string; sessionNumber: number; count: number; what: string }
+interface Update { sessionId: string; sessionNumber: number; count: number; what: string }
 
 export function SessionUpdateBand({ entityType, entityId }: { entityType: SessionEntryEntityType; entityId: string }) {
   const { sessions, selectedCampaignId } = useCampaign();
   const [update, setUpdate] = useState<Update | null>(null);
-  const [chronicle, setChronicle] = useState<SessionRecording | null>(null);
+  const openRecord = useOpenRecord();
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +35,7 @@ export function SessionUpdateBand({ entityType, entityId }: { entityType: Sessio
       const item = buildChronicle(proposals, log).byKind[entityType].find(i => i.entityId === entityId);
       if (cancelled) return;
       setUpdate({
-        recordingId,
+        sessionId: latest.e.session_id,
         sessionNumber: latest.n,
         count: item ? changeCount(item) : 1,
         what: item ? whatChanged(item).toLowerCase().replace(/ · /g, ', ') : 'session history',
@@ -46,9 +46,8 @@ export function SessionUpdateBand({ entityType, entityId }: { entityType: Sessio
 
   if (!update) return null;
 
-  const openChronicle = () => {
-    SessionRecordings.get(update.recordingId).then(r => { if (r) setChronicle(r); }).catch(() => {});
-  };
+  // The chronicle is part of the session's Recap.
+  const openChronicle = () => openRecord('sessions', update.sessionId);
 
   return (
     <>
@@ -62,7 +61,6 @@ export function SessionUpdateBand({ entityType, entityId }: { entityType: Sessio
         </span>
         <Button variant="link" onClick={openChronicle}>See chronicle</Button>
       </div>
-      {chronicle && <ChronicleView recording={chronicle} onClose={() => setChronicle(null)} />}
     </>
   );
 }

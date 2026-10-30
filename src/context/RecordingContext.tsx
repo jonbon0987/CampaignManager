@@ -27,6 +27,7 @@ import {
   pickRecordingMimeType, uploadMimeType,
 } from '../lib/recording/audio';
 import { useCampaign } from './CampaignContext';
+import { autoChroniclePref } from '../lib/recording/autoChronicle';
 
 const SAVED_DETAIL = 'Audio saved.';
 const DISCORD_WAIT_MS = 90_000;
@@ -228,7 +229,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
       recording = await SessionRecordings.upsert({
         campaign_id: selectedCampaignId, session_id: sessionId, status: 'recording', status_detail: null,
         ended_at: null, duration_ms: null, audio_expires_at: null,
-        settings: { tablePcIds, ...(discord ? { discord } : {}) },
+        settings: { tablePcIds, ...(discord ? { discord } : {}), autoChronicle: autoChroniclePref(selectedCampaignId) },
         // The Discord bot watches for this and joins the channel.
         ...(discord ? { discord_state: 'connecting' as const, discord_detail: `Waiting for the bot to join #${discord.channelName}…` } : {}),
       });
@@ -370,7 +371,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     try {
       recording = await SessionRecordings.upsert({
         campaign_id: selectedCampaignId, session_id: sessionId, status: 'uploading', status_detail: null,
-        ended_at: new Date().toISOString(), duration_ms: null, audio_expires_at: null, settings: {},
+        ended_at: new Date().toISOString(), duration_ms: null, audio_expires_at: null, settings: { autoChronicle: autoChroniclePref(selectedCampaignId) },
       });
       const track = await RecordingTracks.upsert({
         recording_id: recording.id, source: 'upload', label: file.name.slice(0, 120), discord_user_id: null, pc_id: null,

@@ -1177,6 +1177,37 @@ export const SessionRecordings = {
     return data;
   },
 
+  // Recordings on their way to a chronicle: saving, transcribing or written,
+  // or written and waiting for review. The chronicle pipeline watches these.
+  async getInProgress(campaignId: string): Promise<SessionRecording[]> {
+    const { data, error } = await supabase
+      .from('session_recordings')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .in('status', ['uploading', 'processing', 'review'])
+      .order('started_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Takes on writing a recording's chronicle automatically: clears its
+   * autoChronicle flag only if it's still set, so of two open tabs just one
+   * writes it. Returns the recording, or null when another got there first.
+   */
+  async claimAutoChronicle(recording: SessionRecording): Promise<SessionRecording | null> {
+    const { data, error } = await supabase
+      .from('session_recordings')
+      .update({ settings: { ...recording.settings, autoChronicle: false, chronicleStartedAt: new Date().toISOString() } })
+      .eq('id', recording.id)
+      .eq('status', 'processing')
+      .eq('settings->>autoChronicle', 'true')
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
   async get(id: string): Promise<SessionRecording | null> {
     const { data, error } = await supabase
       .from('session_recordings')

@@ -1849,101 +1849,23 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   font-weight: 600;
 }
 
-/* ═══ Post-Session Capture Modal ═══ */
-.psc-back {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3000;
-}
-.psc {
-  width: 720px;
-  max-width: 96vw;
-  max-height: 90vh;
-  background: var(--paper);
-  border: 1px solid var(--gold);
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.5);
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-}
-.psc-head {
-  display: flex;
-  justify-content: space-between;
-  padding: 22px 28px 16px;
-  border-bottom: 1px solid var(--rule);
-}
-.psc-sub {
-  font-family: var(--serif);
-  font-style: italic;
-  color: var(--ink-2);
-  margin-top: 4px;
-  max-width: 50ch;
-  font-size: 13px;
-}
-.psc-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.psc-row-inline { display: flex; gap: 16px; flex-wrap: wrap; }
-.psc-field { display: flex; flex-direction: column; gap: 6px; }
-.psc-field-wide { width: 100%; }
-.psc-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-.psc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.psc-chip {
-  background: var(--paper-2);
-  border: 1px solid var(--rule);
-  color: var(--ink-2);
-  padding: 5px 12px;
-  font-family: var(--serif);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 999px;
-  transition: all 0.12s;
-}
-.psc-chip.is-on {
-  background: color-mix(in oklab, var(--gold) 14%, var(--paper));
-  border-color: var(--gold);
-  color: var(--ink);
-}
-.psc-moods { display: flex; gap: 4px; flex-wrap: wrap; }
-.psc-mood {
-  background: var(--paper-2);
-  border: 1px solid var(--rule);
-  color: var(--ink-2);
-  padding: 4px 10px;
-  font-family: var(--serif);
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 999px;
-  text-transform: capitalize;
-}
-.psc-mood.is-active {
-  background: var(--gold);
-  color: var(--bg);
-  border-color: var(--gold);
-}
-.psc-foot {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding: 16px 28px;
-  border-top: 1px solid var(--rule);
-}
+/* ═══ Recap — the chronicle on a session ═══ */
+.rc { display: flex; flex-direction: column; gap: 28px; }
+.rc-aside { margin-left: 10px; font-size: 12px; font-style: italic; color: var(--ink-3); white-space: nowrap; }
+.rc-party { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.rc-npc { display: grid; grid-template-columns: minmax(130px, 200px) minmax(0, 1fr) auto; gap: 6px 14px; padding: 12px 14px; align-items: start; }
+@media (max-width: 760px) { .rc-npc { grid-template-columns: 1fr; } }
+
+/* A recording, one row: where it is, its next step, a menu */
+.rr { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--rule-soft); }
+.rr-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rr-when { font-family: var(--serif); font-size: 14px; color: var(--ink); }
+.rr-len { color: var(--ink-3); font-size: 13px; }
+.rr-detail { font-family: var(--serif); font-size: 12px; font-style: italic; color: var(--ink-3); }
+
+/* Left open → Threads Inbox */
+.lo-inbox { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.lo-inbox-note { font-family: var(--serif); font-size: 12px; font-style: italic; color: var(--ink-3); }
 
 /* ═══ Play — a session at the table ═══ */
 /* Agenda strip under the top bar */
@@ -1958,6 +1880,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ps-step-mark { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .ps-step.is-current { border-color: var(--gold); color: var(--ink); background: var(--gold-dim); }
 .ps-step.is-current .ps-step-mark { color: var(--gold); }
+.ssd-sub { margin: -14px 0 0 28px; border-top-left-radius: 0; border-top-right-radius: 0; }
 .ps-step.is-done { color: var(--ink-3); }
 .ps-step.is-done .ps-step-mark { color: var(--moss); }
 .ps-enc .ps-step-mark { color: var(--accent); font-size: 12px; }
@@ -2285,6 +2208,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ov-prep-label { color: var(--ink); }
 .ov-prep-value { color: var(--ink-3); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-waiting { display: flex; align-items: baseline; gap: 14px; margin-top: 16px; padding: 10px 18px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
+.ov-waiting-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ov-waiting-item { font-family: var(--serif); font-size: 14px; color: var(--ink-2); }
+.ov-waiting-item.is-ready button { color: var(--gold); }
 @media (max-width: 760px) {
   .ov { padding: 28px 16px 64px; }
   .ov-grid, .ov-next { grid-template-columns: 1fr; }
