@@ -2,24 +2,16 @@ import { useState, useMemo, useEffect } from 'react';
 import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
-import { useConfirm } from '../../context/ConfirmContext';
-import { ListDetail, ListRow, DetailPanel, DetailSection, EmptyDetail } from '../ui/ListDetail';
+import { ListDetail, ListRow, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
-import { OriginBand, type Origin } from '../ui/OriginBand';
+import type { Origin } from '../ui/OriginBand';
 import { pushRecent } from '../../lib/recent';
-import { useAutoSave } from '../../hooks/useAutoSave';
-import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
-import { OverflowMenu } from '../ui/OverflowMenu';
-import { SlashField } from '../ui/SlashField';
-import { limitFor } from '../../lib/fieldLimits';
-import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { ListRowWithHover } from '../HoverPreview';
 import type { LoreEntry } from '../../lib/database.types';
-import { SessionHistory } from '../session/SessionHistory';
-import { SessionUpdateBand } from '../session/SessionUpdateBand';
+import { LoreEditor, type LoreFields } from '../entity/LoreEditor';
 
 const GLYPH = '❦';
-const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
 
 const categoryBadgeColor: Record<string, 'blue' | 'green' | 'red' | 'gold' | 'muted'> = {
   history: 'gold', artifact: 'blue', creature: 'red', magic: 'muted', religion: 'green',
@@ -39,7 +31,6 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
     upsertLore, deleteLore, linkLoreToCampaign, unlinkLoreFromCampaign,
   } = useCampaign();
   const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
-  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,11 +69,9 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
     if (result) { markDraft(result.id); setSelectedId(result.id); }
   };
 
-  const publish = async (entry: LoreEntry) => {
-    await upsertLore({
-      id: entry.id, title: entry.title, category: entry.category, content: entry.content,
-      dm_only: entry.dm_only, world_id: activeWorldId || entry.world_id || null,
-    }, 'global');
+  // Publishing promotes the entry into canon, then keeps it visible here.
+  const publish = async (entry: LoreEntry, fields: LoreFields) => {
+    await upsertLore({ id: entry.id, ...fields, world_id: activeWorldId || entry.world_id || null } as Parameters<typeof upsertLore>[0], 'global');
     await linkLoreToCampaign(entry.id);
   };
 
@@ -149,16 +138,19 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
       }
       detail={
         selected ? (
-          <LoreDetail
+          <LoreEditor
             key={selected.id}
             entry={selected.raw}
-            origin={selected.origin}
-            onOpenInCanon={() => openInCanon(selected.id)}
-            onPublish={() => publish(selected.raw)}
-            onDetach={async () => { await unlinkLoreFromCampaign(selected.id); setSelectedId(null); }}
-            onDelete={async () => {
-              const yes = await confirm('Delete this lore entry?', 'This cannot be undone.');
-              if (yes) { await deleteLore(selected.id); setSelectedId(null); }
+            scope="campaign"
+            save={fields => upsertLore({ id: selected.id, ...fields, world_id: selected.raw.world_id } as Parameters<typeof upsertLore>[0],
+              selected.origin === 'imported' ? 'global' : 'campaign')}
+            remove={deleteLore}
+            onDeleted={() => setSelectedId(null)}
+            canon={{
+              origin: selected.origin,
+              onOpenInCanon: () => openInCanon(selected.id),
+              onPublish: fields => publish(selected.raw, fields),
+              onDetach: async () => { await unlinkLoreFromCampaign(selected.id); setSelectedId(null); },
             }}
           />
         ) : (
@@ -166,96 +158,5 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
         )
       }
     />
-  );
-}
-
-interface LoreForm {
-  title: string;
-  category: string;
-  dm_only: boolean;
-  content: string;
-}
-
-function loreToForm(entry: LoreEntry): LoreForm {
-  return {
-    title: entry.title ?? '',
-    category: entry.category ?? 'history',
-    dm_only: entry.dm_only ?? false,
-    content: entry.content ?? '',
-  };
-}
-
-interface DetailProps {
-  origin: Origin;
-  onOpenInCanon: () => void;
-  onPublish: () => void;
-  onDetach: () => void;
-  onDelete: () => void;
-}
-
-function LoreDetail({ entry, origin, onOpenInCanon, onPublish, onDetach, onDelete }: { entry: LoreEntry } & DetailProps) {
-  const { upsertLore, deleteLore } = useCampaign();
-  const [form, setForm] = useState<LoreForm>(() => loreToForm(entry));
-
-  useEffect(() => { setForm(loreToForm(entry)); }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useDiscardBlankDraft(entry.id, !form.title.trim() && !form.content.trim(), deleteLore);
-
-  const { status, saveNow } = useAutoSave<LoreForm>({
-    data: form,
-    onSave: async (data) => {
-      await upsertLore({
-        id: entry.id,
-        title: data.title || 'Untitled Entry',
-        category: data.category || null,
-        dm_only: data.dm_only,
-        content: data.content || null,
-        world_id: entry.world_id,
-      }, origin === 'imported' ? 'global' : 'campaign');
-    },
-    delay: 800,
-    enabled: true,
-  });
-
-  const set = <K extends keyof LoreForm>(key: K, value: LoreForm[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
-
-  return (
-    <DetailPanel eyebrow="Lore" title="">
-      <OriginBand origin={origin} noun="lore entry" onOpenInCanon={onOpenInCanon} onPublish={onPublish} onDetach={onDetach} />
-      <SessionUpdateBand entityType="lore" entityId={entry.id} />
-
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[{ label: 'Delete entry', danger: true, onClick: onDelete }]} />
-      </div>
-
-      <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" maxLength={limitFor('lore_entries', 'title')} />
-
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Category</span>
-          <select className="as-select" value={form.category} onChange={e => set('category', e.target.value)}>
-            {LORE_CATEGORIES.map(c => <option key={c} value={c}>{cap(c)}</option>)}
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">DM Only</span>
-          <div className="as-pills">
-            <button type="button" className={`as-pill-opt${form.dm_only ? ' is-active' : ''}`} onClick={() => set('dm_only', !form.dm_only)}>
-              {form.dm_only ? 'Hidden from players' : 'Visible to players'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <DetailSection title="Content">
-        <SlashField value={form.content ?? ''} onChange={v => set('content', v)} placeholder="Lore content…" minHeight="184px" maxLength={limitFor('lore_entries', 'content')} />
-      </DetailSection>
-
-      <DetailSection title="Session History">
-        <SessionHistory entityType="lore" entityId={entry.id} />
-      </DetailSection>
-    </DetailPanel>
   );
 }

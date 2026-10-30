@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { ListDetail, ListRow, DetailPanel, DetailSection, Pill, EmptyDetail } from '../ui/ListDetail';
+import { ListDetail, ListRow, DetailPanel, Pill, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../Modal';
 import { EncounterDetail } from '../ui/EncounterDetail';
@@ -22,12 +22,13 @@ import { StatBlockBody, emptyMonsterForm, CREATURE_TYPES, ABILITY_KEYS, AbilityI
 import type { MonsterForm } from '../tabs/CreatureStatblocks';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
-import { useAutoSave } from '../../hooks/useAutoSave';
-import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
-import { OverflowMenu } from '../ui/OverflowMenu';
-import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import type { MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
 import type { WorldLocation } from '../../types/world';
+import { NPCEditor } from '../entity/NPCEditor';
+import { LocationEditor } from '../entity/LocationEditor';
+import { LoreEditor } from '../entity/LoreEditor';
+import { FactionEditor } from '../entity/FactionEditor';
 import type { ReactNode } from 'react';
 
 const VALID_CRS_SET = new Set([
@@ -130,194 +131,40 @@ export function WorldNPCsView() {
   );
 }
 
-const NPC_STATUSES = ['active', 'deceased', 'unknown'] as const;
+// The world's NPCs and factions, in the same editors a campaign uses.
+function WorldNPCDetail({ entity }: { entity: { id: string; kind: 'npc' | 'faction' } }) {
+  const { npcs, factions, worldStatblocks, setSelected, upsertWorldNPC, deleteWorldNPC, upsertWorldFaction, deleteWorldFaction } = useWorld();
+  const factionRows = factions.flatMap(f => (f.row ? [f.row] : []));
+  const npcRows = npcs.flatMap(n => (n.row ? [n.row] : []));
 
-interface NPCForm {
-  name: string;
-  role: string;
-  status: string;
-  description: string;
-  dm_notes: string;
-}
-
-function WorldNPCDetail({ entity }: { entity: any }) {
   if (entity.kind === 'faction') {
-    return <WorldFactionEditDetail key={entity.id} entity={entity} />;
+    const row = factionRows.find(f => f.id === entity.id);
+    if (!row) return <EmptyDetail>Loading…</EmptyDetail>;
+    return (
+      <FactionEditor
+        key={row.id}
+        faction={row}
+        scope="world"
+        npcs={npcRows}
+        save={fields => upsertWorldFaction({ id: row.id, ...fields })}
+        remove={deleteWorldFaction}
+        onOpenNPC={id => setSelected('npcs', id)}
+      />
+    );
   }
 
-  return <WorldNPCEditDetail key={entity.id} entity={entity} />;
-}
-
-const FACTION_TYPES = ['guild', 'government', 'religious', 'criminal', 'military', 'arcane', 'merchant', 'other'] as const;
-
-interface FactionForm {
-  name: string;
-  faction_type: string;
-  overview: string;
-  dm_notes: string;
-}
-
-function WorldFactionEditDetail({ entity }: { entity: any }) {
-  const { npcs, upsertWorldFaction, deleteWorldFaction } = useWorld();
-  const confirm = useConfirm();
-
-  const [form, setForm] = useState<FactionForm>(() => ({
-    name: entity.name ?? '',
-    faction_type: entity.type ?? '',
-    overview: entity.desc ?? '',
-    dm_notes: entity.dmNotes ?? '',
-  }));
-
-  useEffect(() => {
-    setForm({
-      name: entity.name ?? '',
-      faction_type: entity.type ?? '',
-      overview: entity.desc ?? '',
-      dm_notes: entity.dmNotes ?? '',
-    });
-  }, [entity.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { status, saveNow } = useAutoSave<FactionForm>({
-    data: form,
-    onSave: async (data) => {
-      await upsertWorldFaction({
-        id: entity.id,
-        name: data.name || 'Unnamed Faction',
-        faction_type: data.faction_type || null,
-        overview: data.overview || null,
-        dm_notes: data.dm_notes || null,
-      });
-    },
-    delay: 800,
-    enabled: true,
-  });
-
-  useDiscardBlankDraft(entity.id, !form.name.trim() && !form.overview.trim() && !form.dm_notes.trim(), deleteWorldFaction);
-
-  const set = <K extends keyof FactionForm>(key: K, value: FactionForm[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
-
-  const members = npcs.filter(n => n.factions?.includes(entity.id));
-
+  const row = npcRows.find(n => n.id === entity.id);
+  if (!row) return <EmptyDetail>Loading…</EmptyDetail>;
   return (
-    <DetailPanel eyebrow="World Faction" title="">
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[
-          { label: 'Delete Faction', danger: true, onClick: async () => {
-            if (await confirm('Delete this faction?', 'This cannot be undone.')) {
-              await deleteWorldFaction(entity.id);
-            }
-          }},
-        ]} />
-      </div>
-      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Faction name…" maxLength={limitFor('factions', 'name')} />
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Type</span>
-          <select className="as-select" value={form.faction_type} onChange={e => set('faction_type', e.target.value)}>
-            <option value="">—</option>
-            {FACTION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
-          </select>
-        </div>
-      </div>
-      <DetailSection title="Overview">
-        <SlashField value={form.overview} onChange={v => set('overview', v)} placeholder="Describe this faction…" maxLength={limitFor('factions', 'overview')} />
-      </DetailSection>
-      <DetailSection title="DM Notes">
-        <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" maxLength={limitFor('factions', 'dm_notes')} />
-      </DetailSection>
-      <DetailSection title="Known Members">
-        {members.length === 0 ? (
-          <p className="cm-prose" style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>No known members.</p>
-        ) : (
-          <div className="cm-chip-list">
-            {members.map(n => (
-              <span key={n.id} className="cm-chip">
-                <span className="cm-chip-glyph">◇</span>{n.name}
-              </span>
-            ))}
-          </div>
-        )}
-      </DetailSection>
-    </DetailPanel>
-  );
-}
-
-function WorldNPCEditDetail({ entity }: { entity: any }) {
-  const { upsertWorldNPC, deleteWorldNPC, locations } = useWorld();
-  const confirm = useConfirm();
-
-  const [form, setForm] = useState<NPCForm>(() => ({
-    name: entity.name ?? '',
-    role: entity.role ?? '',
-    status: entity.status ?? 'active',
-    description: entity.desc ?? '',
-    dm_notes: entity.dmNotes ?? '',
-  }));
-
-  useEffect(() => {
-    setForm({
-      name: entity.name ?? '',
-      role: entity.role ?? '',
-      status: entity.status ?? 'active',
-      description: entity.desc ?? '',
-      dm_notes: entity.dmNotes ?? '',
-    });
-  }, [entity.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { status, saveNow } = useAutoSave<NPCForm>({
-    data: form,
-    onSave: async (data) => {
-      await upsertWorldNPC({
-        id: entity.id,
-        name: data.name || 'Unnamed NPC',
-        role: data.role || null,
-        status: (data.status as 'active' | 'deceased' | 'unknown') || null,
-        description: data.description || null,
-        dm_notes: data.dm_notes || null,
-      });
-    },
-    delay: 800,
-    enabled: true,
-  });
-
-  useDiscardBlankDraft(entity.id, !form.name.trim() && !form.role.trim() && !form.description.trim() && !form.dm_notes.trim(), deleteWorldNPC);
-
-  const set = <K extends keyof NPCForm>(key: K, value: NPCForm[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
-
-  return (
-    <DetailPanel eyebrow="Character" title="">
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[
-          { label: 'Delete NPC', danger: true, onClick: async () => {
-            if (await confirm('Delete this NPC?', 'This cannot be undone.')) {
-              await deleteWorldNPC(entity.id);
-            }
-          }},
-        ]} />
-      </div>
-      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="NPC name…" maxLength={limitFor('npcs', 'name')} />
-      <input className="as-sub" value={form.role} onChange={e => set('role', e.target.value)} placeholder="Role…" maxLength={limitFor('npcs', 'role')} />
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Status</span>
-          <select className="as-select" value={form.status} onChange={e => set('status', e.target.value)}>
-            {NPC_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-          </select>
-        </div>
-      </div>
-      <DetailSection title="Description">
-        <SlashField value={form.description} onChange={v => set('description', v)} placeholder="Describe this character…" maxLength={limitFor('npcs', 'description')} />
-      </DetailSection>
-      <DetailSection title="DM Notes">
-        <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" maxLength={limitFor('npcs', 'dm_notes')} />
-      </DetailSection>
-    </DetailPanel>
+    <NPCEditor
+      key={row.id}
+      npc={row}
+      scope="world"
+      factions={factionRows}
+      statblocks={worldStatblocks.map(s => ({ id: s.id, name: s.name }))}
+      save={fields => upsertWorldNPC({ id: row.id, ...fields })}
+      remove={deleteWorldNPC}
+    />
   );
 }
 
@@ -331,7 +178,7 @@ const LOC_GLYPH: Record<string, string> = {
 const glyphForType = (t: string | null) => LOC_GLYPH[t ?? 'other'] ?? '✦';
 
 export function WorldLocationsView() {
-  const { locations, selected, setSelected, createLocation } = useWorld();
+  const { locations, selected, setSelected, createLocation, upsertWorldLocation, deleteWorldLocation } = useWorld();
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -418,150 +265,24 @@ export function WorldLocationsView() {
           <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>
         )
       }
-      detail={sel ? <WorldLocationDetail key={sel.id} loc={sel} allLocations={locations} /> : <EmptyDetail>Select a location.</EmptyDetail>}
+      detail={sel?.row ? (
+        <LocationEditor
+          key={sel.id}
+          location={sel.row}
+          scope="world"
+          allLocations={locations.flatMap(l => (l.row ? [l.row] : []))}
+          save={fields => upsertWorldLocation({ id: sel.id, ...fields })}
+          remove={deleteWorldLocation}
+        />
+      ) : <EmptyDetail>Select a location.</EmptyDetail>}
     />
   );
 }
 
-const LOCATION_TYPES = ['continent', 'city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
-const LORE_CATEGORIES = ['history', 'artifact', 'creature', 'magic', 'religion'] as const;
 
 function formatType(t: string | null) {
   if (!t) return '';
   return t.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bHq\b/, 'HQ');
-}
-
-interface LocForm {
-  name: string;
-  region: string;
-  location_type: string;
-  parent_id: string;
-  population: string;
-  status: string;
-  description: string;
-  history: string;
-  dm_notes: string;
-}
-
-// Ids that can't be a parent of `loc`: itself and its descendants (would form a cycle).
-function forbiddenParents(loc: WorldLocation, all: WorldLocation[]): Set<string> {
-  const bad = new Set<string>([loc.id]);
-  let added = true;
-  while (added) {
-    added = false;
-    for (const l of all) {
-      if (l.parent && bad.has(l.parent) && !bad.has(l.id)) { bad.add(l.id); added = true; }
-    }
-  }
-  return bad;
-}
-
-function WorldLocationDetail({ loc, allLocations }: { loc: WorldLocation; allLocations: WorldLocation[] }) {
-  const { upsertWorldLocation, deleteWorldLocation } = useWorld();
-  const confirm = useConfirm();
-
-  const toForm = (l: WorldLocation): LocForm => ({
-    name: l.name ?? '',
-    region: l.region ?? '',
-    location_type: l.type ?? 'landmark',
-    parent_id: l.parent ?? '',
-    population: l.population ?? '',
-    status: l.status || 'active',
-    description: l.desc ?? '',
-    history: l.history ?? '',
-    dm_notes: l.dmNotes ?? '',
-  });
-
-  const [form, setForm] = useState<LocForm>(() => toForm(loc));
-
-  useEffect(() => { setForm(toForm(loc)); }, [loc.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { status, saveNow } = useAutoSave<LocForm>({
-    data: form,
-    onSave: async (data) => {
-      await upsertWorldLocation({
-        id: loc.id,
-        name: data.name || 'Unnamed Location',
-        region: data.region || null,
-        location_type: data.location_type || null,
-        parent_id: data.parent_id || null,
-        population: data.population || null,
-        status: data.status || null,
-        description: data.description || null,
-        history: data.history || null,
-        dm_notes: data.dm_notes || null,
-      });
-    },
-    delay: 800,
-    enabled: true,
-  });
-
-  // A place with anything written, or with places inside it, is kept.
-  useDiscardBlankDraft(loc.id, !form.name.trim() && !form.region.trim() && !form.population.trim() && !form.description.trim()
-    && !form.history.trim() && !form.dm_notes.trim() && !allLocations.some(l => l.parent === loc.id), deleteWorldLocation);
-
-  const set = <K extends keyof LocForm>(key: K, value: LocForm[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
-
-  const forbidden = useMemo(() => forbiddenParents(loc, allLocations), [loc, allLocations]);
-  const parentOptions = allLocations
-    .filter(l => !forbidden.has(l.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  return (
-    <DetailPanel eyebrow="Location" title="">
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[
-          { label: 'Delete Location', danger: true, onClick: async () => {
-            if (await confirm('Delete this location?', 'This cannot be undone.')) {
-              await deleteWorldLocation(loc.id);
-            }
-          }},
-        ]} />
-      </div>
-      <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" maxLength={limitFor('locations', 'name')} />
-      <input className="as-sub" value={form.region} onChange={e => set('region', e.target.value)} placeholder="Region…" maxLength={limitFor('locations', 'region')} />
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Type</span>
-          <select className="as-select" value={form.location_type} onChange={e => set('location_type', e.target.value)}>
-            {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">Within</span>
-          <select className="as-select" value={form.parent_id} onChange={e => set('parent_id', e.target.value)}>
-            <option value="">— Top level —</option>
-            {parentOptions.map(l => <option key={l.id} value={l.id}>{l.name || 'Unnamed'}</option>)}
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">Status</span>
-          <select className="as-select" value={form.status} onChange={e => set('status', e.target.value)}>
-            <option value="active">Active</option>
-            <option value="destroyed">Destroyed</option>
-            <option value="unknown">Unknown</option>
-            <option value="compromised">Compromised</option>
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">Population</span>
-          <input className="as-input" value={form.population} onChange={e => set('population', e.target.value)} placeholder="e.g. ~12,000" maxLength={limitFor('locations', 'population')} />
-        </div>
-      </div>
-      <DetailSection title="Description">
-        <SlashField value={form.description} onChange={v => set('description', v)} placeholder="Describe this place…" maxLength={limitFor('locations', 'description')} />
-      </DetailSection>
-      <DetailSection title="History">
-        <SlashField value={form.history} onChange={v => set('history', v)} placeholder="Historical events…" maxLength={limitFor('locations', 'history')} />
-      </DetailSection>
-      <DetailSection title="DM Notes">
-        <SlashField value={form.dm_notes} onChange={v => set('dm_notes', v)} placeholder="Private DM notes…" maxLength={limitFor('locations', 'dm_notes')} />
-      </DetailSection>
-    </DetailPanel>
-  );
 }
 
 // ═══════════════════════════════════════════
@@ -569,7 +290,7 @@ function WorldLocationDetail({ loc, allLocations }: { loc: WorldLocation; allLoc
 // ═══════════════════════════════════════════
 
 export function WorldLoreView() {
-  const { lore, selected, setSelected, createLoreEntry } = useWorld();
+  const { lore, selected, setSelected, createLoreEntry, upsertWorldLore, deleteWorldLore } = useWorld();
   const [search, setSearch] = useState('');
 
   const items = useMemo(() => {
@@ -603,92 +324,16 @@ export function WorldLoreView() {
           ))}
         </div>
       }
-      detail={sel ? <WorldLoreDetail key={sel.id} entry={sel} /> : <EmptyDetail>Select a lore entry.</EmptyDetail>}
+      detail={sel?.row ? (
+        <LoreEditor
+          key={sel.id}
+          entry={sel.row}
+          scope="world"
+          save={fields => upsertWorldLore({ id: sel.id, ...fields })}
+          remove={deleteWorldLore}
+        />
+      ) : <EmptyDetail>Select a lore entry.</EmptyDetail>}
     />
-  );
-}
-
-interface LoreForm {
-  title: string;
-  category: string;
-  dm_only: boolean;
-  content: string;
-}
-
-function WorldLoreDetail({ entry }: { entry: any }) {
-  const { upsertWorldLore, deleteWorldLore } = useWorld();
-  const confirm = useConfirm();
-
-  const [form, setForm] = useState<LoreForm>(() => ({
-    title: entry.title ?? '',
-    category: entry.tags?.[0] ?? 'history',
-    dm_only: entry.dmOnly ?? false,
-    content: entry.desc ?? '',
-  }));
-
-  useEffect(() => {
-    setForm({
-      title: entry.title ?? '',
-      category: entry.tags?.[0] ?? 'history',
-      dm_only: entry.dmOnly ?? false,
-      content: entry.desc ?? '',
-    });
-  }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { status, saveNow } = useAutoSave<LoreForm>({
-    data: form,
-    onSave: async (data) => {
-      await upsertWorldLore({
-        id: entry.id,
-        title: data.title || 'Untitled Entry',
-        category: data.category || null,
-        dm_only: data.dm_only,
-        content: data.content || null,
-      });
-    },
-    delay: 800,
-    enabled: true,
-  });
-
-  useDiscardBlankDraft(entry.id, !form.title.trim() && !form.content.trim(), deleteWorldLore);
-
-  const set = <K extends keyof LoreForm>(key: K, value: LoreForm[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
-
-  return (
-    <DetailPanel eyebrow="Lore" title="">
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[
-          { label: 'Delete entry', danger: true, onClick: async () => {
-            if (await confirm('Delete this lore entry?', 'This cannot be undone.')) {
-              await deleteWorldLore(entry.id);
-            }
-          }},
-        ]} />
-      </div>
-      <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" maxLength={limitFor('lore_entries', 'title')} />
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Category</span>
-          <select className="as-select" value={form.category} onChange={e => set('category', e.target.value)}>
-            {LORE_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-          </select>
-        </div>
-        <div className="as-mi">
-          <span className="as-ml">DM Only</span>
-          <div className="as-pills">
-            <button type="button" className={`as-pill-opt${form.dm_only ? ' is-active' : ''}`} onClick={() => set('dm_only', !form.dm_only)}>
-              {form.dm_only ? 'Hidden from players' : 'Visible to players'}
-            </button>
-          </div>
-        </div>
-      </div>
-      <DetailSection title="Content">
-        <SlashField value={form.content} onChange={v => set('content', v)} placeholder="Lore content…" maxLength={limitFor('lore_entries', 'content')} />
-      </DetailSection>
-    </DetailPanel>
   );
 }
 

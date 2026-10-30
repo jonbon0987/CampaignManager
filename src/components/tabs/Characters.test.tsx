@@ -73,6 +73,9 @@ describe('Characters (cast list)', () => {
   });
 
   describe('canon provenance', () => {
+    // The editor's fields sit in a fieldset, disabled while the entry is locked.
+    const locked = () => (screen.getByLabelText('Name').closest('fieldset') as HTMLFieldSetElement).disabled;
+
     it('badges an NPC linked from world canon as "imported", but not a local one', () => {
       h.campaign.value = makeCampaignContext({
         npcs: [makeNPC({ id: 'n1', name: 'Canon Kutter' }), makeNPC({ id: 'n2', name: 'Local Marta' })],
@@ -83,14 +86,26 @@ describe('Characters (cast list)', () => {
       expect(screen.getAllByText('imported')).toHaveLength(1);
     });
 
-    it('shows the "Imported from world canon" band when an imported NPC is selected', () => {
+    it('opens an imported NPC locked, so a change can’t reach every campaign by accident', () => {
       h.campaign.value = makeCampaignContext({
         npcs: [makeNPC({ id: 'n1', name: 'Canon Kutter' })],
         linkedNPCIds: ['n1'],
       });
       render(<Characters viewMode="list" />);
       fireEvent.click(screen.getByText('Canon Kutter'));
+      expect(screen.getByText('World canon · locked')).toBeTruthy();
+      expect(locked()).toBe(true);
+
+      fireEvent.click(screen.getByText('Edit canon'));
       expect(screen.getByText('Imported from world canon')).toBeTruthy();
+      expect(locked()).toBe(false);
+    });
+
+    it('never locks a campaign-local NPC', () => {
+      h.campaign.value = makeCampaignContext({ npcs: [makeNPC({ id: 'n2', name: 'Local Marta' })], linkedNPCIds: [] });
+      render(<Characters viewMode="list" />);
+      fireEvent.click(screen.getByText('Local Marta'));
+      expect(locked()).toBe(false);
     });
 
     it('shows the "Created for this table" band for a campaign-local NPC', () => {

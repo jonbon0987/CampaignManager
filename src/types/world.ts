@@ -1,3 +1,5 @@
+import type { Faction, Location, LoreEntry, NPC } from '../lib/database.types';
+
 export interface World {
   id: string;
   name: string;
@@ -16,6 +18,8 @@ export interface WorldFaction {
   tone: string;
   desc: string;
   dmNotes?: string;
+  /** The database row, which the shared editor works on. */
+  row?: Faction;
 }
 
 export interface WorldNPC {
@@ -30,6 +34,8 @@ export interface WorldNPC {
   location: string | null;
   era: string;
   tags: string[];
+  /** The database row, which the shared editor works on. */
+  row?: NPC;
 }
 
 export interface WorldLocation {
@@ -45,6 +51,8 @@ export interface WorldLocation {
   dmNotes?: string;
   tags: string[];
   parent: string | null;
+  /** The database row, which the shared editor works on. */
+  row?: Location;
 }
 
 export interface WorldLoreEntry {
@@ -54,6 +62,8 @@ export interface WorldLoreEntry {
   desc: string;
   dmOnly?: boolean;
   tags: string[];
+  /** The database row, which the shared editor works on. */
+  row?: LoreEntry;
 }
 
 export interface WorldBestiaryEntry {

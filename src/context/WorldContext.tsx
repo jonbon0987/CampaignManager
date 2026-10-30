@@ -69,6 +69,7 @@ function dbNPCToWorldNPC(n: NPC): WorldNPC {
     location: n.location,
     era: '',
     tags: [],
+    row: n,
   };
 }
 
@@ -81,6 +82,7 @@ function dbFactionToWorldFaction(f: Faction): WorldFaction {
     tone: '',
     desc: f.overview ?? '',
     dmNotes: f.dm_notes ?? '',
+    row: f,
   };
 }
 
@@ -98,6 +100,7 @@ function dbLocationToWorldLocation(l: DBLocation): WorldLocation {
     dmNotes: l.dm_notes ?? '',
     tags: [],
     parent: l.parent_id ?? null,
+    row: l,
   };
 }
 
@@ -109,6 +112,7 @@ function dbLoreToWorldLore(e: LoreEntry): WorldLoreEntry {
     desc: e.content ?? '',
     dmOnly: e.dm_only ?? false,
     tags: e.category ? [e.category] : [],
+    row: e,
   };
 }
 

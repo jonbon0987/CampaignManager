@@ -137,9 +137,11 @@ interface SlashFieldProps {
    * contentEditable rich editor, not a plain textarea.
    */
   maxLength?: number;
+  /** Shows the text without letting it be edited (a locked canon entry). */
+  readOnly?: boolean;
 }
 
-export function SlashField({ value, onChange, placeholder, minHeight, variant = 'sectioned', maxLength }: SlashFieldProps) {
+export function SlashField({ value, onChange, placeholder, minHeight, variant = 'sectioned', maxLength, readOnly = false }: SlashFieldProps) {
   const { entities, detailFor, openRef } = useEntityRefs();
   const edRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -396,7 +398,8 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
       <div
         ref={edRef}
         className="sf-editor"
-        contentEditable
+        contentEditable={!readOnly}
+        aria-readonly={readOnly || undefined}
         suppressContentEditableWarning
         data-placeholder={placeholder || 'Write…'}
         data-empty="true"
