@@ -3,20 +3,115 @@ import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useOpenRecord } from '../../context/NavigationContext';
+import { usePlanNextSession } from '../../hooks/useSessionLifecycle';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
 import { getHookCategoryStyle } from '../../lib/theme';
+import {
+  clip, formatSessionDate, lastPlayed, liveSession, nextPlanned, nextSessionNumber, planIds, plainText,
+  prepDone, PREP_PARTS, sessionName, type PrepPart,
+} from '../../lib/sessionLifecycle';
+import type { Session } from '../../lib/database.types';
 import type { Tab } from '../../App';
 
 interface OverviewProps {
   onNavigate: (tab: Tab) => void;
+  runMode: boolean;
+  onToggleRun: () => void;
 }
 
-export default function Overview({ onNavigate }: OverviewProps) {
+const names = (list: string[], none: string) =>
+  list.length === 0 ? none : list.length <= 2 ? list.join(', ') : `${list.slice(0, 2).join(', ')} +${list.length - 2}`;
+
+/** The next session, front and centre: when, how ready, and the way in. */
+function NextSession({ next, runMode, onToggleRun }: { next: Session | null; runMode: boolean; onToggleRun: () => void }) {
+  const { sessions, hooks, encounters, npcs, scenes, updateSession, loadModuleTree } = useCampaign();
+  const openRecord = useOpenRecord();
+  const planNext = usePlanNextSession();
+  const hasAgenda = !!next && planIds(next.plan, 'agenda').length > 0;
+
+  // The agenda's scene names come from the module tree, which isn't loaded up front.
+  useEffect(() => { if (hasAgenda) void loadModuleTree().catch(() => {}); }, [hasAgenda, loadModuleTree]);
+
+  if (!next) {
+    const n = nextSessionNumber(sessions);
+    return (
+      <section className="ov-next">
+        <div className="ov-next-main">
+          <div className="ov-card-title">Next session</div>
+          <div className="ov-next-name">Session {n}</div>
+          <p className="ov-card-sub">Not planned yet.</p>
+          <div className="ov-next-actions">
+            <Button variant="primary" onClick={async () => { const s = await planNext(); if (s) openRecord('sessions', s.id); }}>
+              Plan Session {n}
+            </Button>
+            <Button variant="secondary" onClick={onToggleRun}>{runMode ? '■ End session' : '▶ Start session'}</Button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const live = next.status === 'live';
+  const done = prepDone(next);
+  const titles = (ids: string[], list: { id: string; label: string }[]) =>
+    ids.map(id => list.find(x => x.id === id)?.label).filter((x): x is string => !!x);
+  const agenda = planIds(next.plan, 'agenda');
+  const sceneTitles = titles(agenda, scenes.map(s => ({ id: s.id, label: s.title })));
+  const value: Record<PrepPart, string> = {
+    agenda: agenda.length === 0 ? 'No scenes yet'
+      : sceneTitles.length ? names(sceneTitles, '') : `${agenda.length} scene${agenda.length === 1 ? '' : 's'}`,
+    threads: names(titles(planIds(next.plan, 'threads'), hooks.map(h => ({ id: h.id, label: h.title }))), 'None picked'),
+    encounters: names(titles(planIds(next.plan, 'encounters'), encounters.map(e => ({ id: e.id, label: e.name }))), 'None picked'),
+    npcs: names(titles(planIds(next.plan, 'npcs'), npcs.map(n => ({ id: n.id, label: n.name }))), 'None picked'),
+    notes: next.prep_notes?.trim() ? clip(plainText(next.prep_notes), 60) : 'Empty',
+  };
+  const ready = Object.values(done).filter(Boolean).length;
+
+  return (
+    <section className={`ov-next${live ? ' is-live' : ''}`}>
+      <div className="ov-next-main">
+        <div className="ov-card-title">{live ? '● Live now' : 'Next session · planned'}</div>
+        <div className="ov-next-name">{sessionName(next)}</div>
+        <label className="ov-next-date">
+          <span className="ov-card-sub">{next.session_date ? formatSessionDate(next.session_date) : 'No date yet.'}</span>
+          <input
+            type="date"
+            className="as-input"
+            aria-label={`Date of Session ${next.session_number}`}
+            style={{ colorScheme: 'dark', width: 150 }}
+            value={next.session_date ?? ''}
+            onChange={e => void updateSession(next.id, { session_date: e.target.value || null }).catch(() => {})}
+          />
+        </label>
+        <div className="ov-next-actions">
+          <Button variant="primary" onClick={onToggleRun}>{runMode ? '■ End session' : '▶ Start session'}</Button>
+          <Button variant="secondary" onClick={() => openRecord('sessions', next.id)}>{live ? 'Open session' : 'Continue prep'}</Button>
+        </div>
+      </div>
+      <div className="ov-next-prep">
+        <div className="ov-card-title">Prep · {ready} of {PREP_PARTS.length} ready</div>
+        <ul className="ov-prep-list">
+          {PREP_PARTS.map(p => (
+            <li key={p.id} className={`ov-prep-item${done[p.id] ? ' is-done' : ''}`}>
+              <span className="ov-prep-mark" aria-hidden>{done[p.id] ? '✓' : '○'}</span>
+              <span className="ov-prep-label">{p.label}</span>
+              <span className="ov-prep-value">{value[p.id]}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewProps) {
   const {
     overview, setOverview, selectedCampaign,
-    sessions, pcs, hooks, modules,
+    sessions, pcs, hooks, modules, ideas,
   } = useCampaign();
+  const openRecord = useOpenRecord();
 
   const [form, setForm] = useState(overview);
   const [saved, setSaved] = useState(false);
@@ -44,18 +139,18 @@ export default function Overview({ onNavigate }: OverviewProps) {
   // Derived data. A thread is active only in the Active state (not seeds,
   // cold or resolved); older rows without a state fall back to is_active.
   const activeHooks = hooks.filter(h => (h.state ?? (h.is_active ? 'active' : 'resolved')) === 'active');
-  const activeModules = modules.filter(m => m.status === 'active');
+  const currentModule = modules.find(m => m.status === 'active');
   const activePCs = pcs.filter(pc => pc.is_active);
-  const recentSessions = [...sessions]
-    .sort((a, b) => b.session_number - a.session_number);
-  const lastSession = recentSessions[0];
-  const currentModule = activeModules[0];
-
-  // Session count and the next session's number
-  const sessionCount = sessions.length;
-  const nextSessionNumber = lastSession ? lastSession.session_number + 1 : 1;
+  const next = liveSession(sessions) ?? nextPlanned(sessions);
+  const last = lastPlayed(sessions);
+  const played = sessions.filter(s => s.status === 'done').length;
+  const inbox = ideas.filter(i => !i.promoted_hook_id).length;
   // The Overview title falls back to the campaign's name, which every campaign has.
   const campaignTitle = overview.title || selectedCampaign?.name || 'Untitled Campaign';
+  const meta = [
+    currentModule ? [currentModule.chapter ? `Chapter ${currentModule.chapter}` : null, currentModule.title].filter(Boolean).join(' · ') : null,
+    `${played} session${played === 1 ? '' : 's'} played`,
+  ].filter(Boolean).join(' · ');
 
   return (
     <div className="ov" style={{ height: '100%', overflowY: 'auto' }}>
@@ -64,6 +159,7 @@ export default function Overview({ onNavigate }: OverviewProps) {
 
       {/* Campaign title */}
       <h1 className="ov-title">{campaignTitle}</h1>
+      <div className="ov-meta">{meta}</div>
 
       {/* Tagline / plot summary as italic gold subtitle */}
       {overview.plotSummary && (
@@ -72,81 +168,47 @@ export default function Overview({ onNavigate }: OverviewProps) {
         </p>
       )}
 
-      {/* Info strip: Session count, Next session, Party */}
-      <div className="ov-strip">
-        <div className="ov-strip-item">
-          <span className="ov-strip-label">Sessions played</span>
-          <span className="ov-strip-value">{sessionCount}</span>
-        </div>
-        <div className="ov-strip-item">
-          <span className="ov-strip-label">Next</span>
-          <span className="ov-strip-value">Session {nextSessionNumber}</span>
-        </div>
-        <div className="ov-strip-item">
-          <span className="ov-strip-label">Party</span>
-          <span className="ov-strip-value">{activePCs.length > 0 ? `${activePCs.length} ${activePCs.length === 1 ? 'member' : 'members'}` : '—'}</span>
-        </div>
-      </div>
+      <NextSession next={next} runMode={runMode} onToggleRun={onToggleRun} />
 
-      {/* 2-col: Current Chapter + Last Session */}
+      {inbox > 0 && (
+        <div className="ov-waiting">
+          <span className="ov-card-title">Waiting on you</span>
+          <Button variant="link" onClick={() => onNavigate('ideas')}>
+            {inbox} {inbox === 1 ? 'idea' : 'ideas'} in the Inbox ›
+          </Button>
+        </div>
+      )}
+
+      {/* 2-col: Last time + Threads in motion */}
       <div className="ov-grid">
-        {/* Current Chapter */}
-        <div className="ov-card" onClick={() => onNavigate('modules')}>
+        <div className="ov-card" onClick={() => (last ? openRecord('sessions', last.id) : onNavigate('sessions'))}>
           <div className="ov-card-head">
-            <span className="ov-card-title">Current Chapter</span>
+            <span className="ov-card-title">Last time</span>
             <span className="ov-card-chevron">›</span>
           </div>
           <div className="ov-card-body">
-            {currentModule ? (
+            {last ? (
               <>
-                <div className="ov-card-big">{currentModule.title}</div>
-                {currentModule.chapter && (
-                  <div className="ov-card-sub">Chapter {currentModule.chapter}</div>
+                <div className="ov-card-big">{sessionName(last)}</div>
+                {last.session_date && (
+                  <div className="ov-card-sub">{formatSessionDate(last.session_date)}</div>
                 )}
-                {currentModule.summary && (
-                  <div className="ov-card-desc">{currentModule.summary}</div>
+                {last.summary && (
+                  <div className="ov-card-desc">{plainText(last.summary)}</div>
                 )}
               </>
             ) : (
               <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
-                No active module
+                No sessions played yet
               </div>
             )}
           </div>
         </div>
 
-        {/* Last Session */}
-        <div className="ov-card" onClick={() => onNavigate('sessions')}>
-          <div className="ov-card-head">
-            <span className="ov-card-title">Last Session</span>
-            <span className="ov-card-chevron">›</span>
-          </div>
-          <div className="ov-card-body">
-            {lastSession ? (
-              <>
-                <div className="ov-card-big">#{lastSession.session_number}{lastSession.title ? ` · ${lastSession.title}` : ''}</div>
-                {lastSession.session_date && (
-                  <div className="ov-card-sub">{lastSession.session_date}</div>
-                )}
-                {lastSession.summary && (
-                  <div className="ov-card-desc">{lastSession.summary}</div>
-                )}
-              </>
-            ) : (
-              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
-                No sessions yet
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 2-col: Active Hooks + Party */}
-      <div className="ov-grid">
         {/* Active Threads */}
         <div className="ov-card" onClick={() => onNavigate('threads')}>
           <div className="ov-card-head">
-            <span className="ov-card-title">Active Threads</span>
+            <span className="ov-card-title">Threads in motion</span>
             <span className="ov-card-chevron">›</span>
           </div>
           <div className="ov-card-body">
@@ -179,11 +241,13 @@ export default function Overview({ onNavigate }: OverviewProps) {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Party */}
+      {/* 2-col: Party + Current chapter */}
+      <div className="ov-grid">
         <div className="ov-card" onClick={() => onNavigate('cast')}>
           <div className="ov-card-head">
-            <span className="ov-card-title">Party</span>
+            <span className="ov-card-title">The party</span>
             <span className="ov-card-chevron">›</span>
           </div>
           <div className="ov-card-body">
@@ -208,10 +272,34 @@ export default function Overview({ onNavigate }: OverviewProps) {
                     />
                     <span className="ov-list-name">{pc.character_name}</span>
                     <span className="ov-list-meta">
-                      {[pc.race, pc.class].filter(Boolean).join(' ')}
+                      {`Lv ${pc.level ?? '—'} · HP ${pc.max_hp ?? '—'} · AC ${pc.armor_class ?? '—'}`}
                     </span>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="ov-card" onClick={() => onNavigate('modules')}>
+          <div className="ov-card-head">
+            <span className="ov-card-title">Current chapter</span>
+            <span className="ov-card-chevron">›</span>
+          </div>
+          <div className="ov-card-body">
+            {currentModule ? (
+              <>
+                <div className="ov-card-big">{currentModule.title}</div>
+                {currentModule.chapter && (
+                  <div className="ov-card-sub">Chapter {currentModule.chapter}</div>
+                )}
+                {currentModule.synopsis && (
+                  <div className="ov-card-desc">{plainText(currentModule.synopsis)}</div>
+                )}
+              </>
+            ) : (
+              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
+                No active module
               </div>
             )}
           </div>

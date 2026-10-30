@@ -2492,6 +2492,40 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   overflow: hidden;
 }
 
+/* The next session, on Home */
+.ov-meta { font-family: var(--serif); font-size: 14px; color: var(--ink-3); margin-top: 6px; }
+.ov-next {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 24px;
+  margin-top: 24px;
+  padding: 20px 22px;
+  background: var(--paper);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+}
+.ov-next.is-live { border-color: var(--success-line); }
+.ov-next.is-live > .ov-next-main > .ov-card-title { color: var(--moss); }
+.ov-next:not(:has(.ov-next-prep)) { grid-template-columns: 1fr; }
+.ov-next-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ov-next-name { font-family: var(--display); font-size: 26px; line-height: 1.15; color: var(--ink); font-weight: 500; }
+.ov-next-date { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ov-next-date .ov-card-sub { margin: 0; }
+.ov-next-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.ov-next-prep { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding-left: 24px; border-left: 1px solid var(--rule-soft); }
+.ov-prep-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ov-prep-item { display: grid; grid-template-columns: 16px 130px minmax(0, 1fr); align-items: baseline; gap: 6px; font-size: 13px; }
+.ov-prep-mark { color: var(--ink-3); }
+.ov-prep-item.is-done .ov-prep-mark { color: var(--moss); }
+.ov-prep-label { color: var(--ink); }
+.ov-prep-value { color: var(--ink-3); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-waiting { display: flex; align-items: baseline; gap: 14px; margin-top: 16px; padding: 10px 18px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
+@media (max-width: 760px) {
+  .ov { padding: 28px 16px 64px; }
+  .ov-grid, .ov-next { grid-template-columns: 1fr; }
+  .ov-next-prep { padding-left: 0; border-left: none; padding-top: 16px; border-top: 1px solid var(--rule-soft); }
+}
+
 /* Hook / party list items in overview */
 .ov-list-item {
   display: flex;

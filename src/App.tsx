@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
@@ -44,6 +44,8 @@ import { useCampaignPaletteItems, useWorldPaletteItems } from './components/shel
 import { useShellChrome, shellClass } from './components/shell/useShellChrome';
 import { useRouteSync, currentRoute } from './hooks/useRouteSync';
 import { setRecentScope } from './lib/recent';
+import { liveSession } from './lib/sessionLifecycle';
+import { useSessionRunStatus } from './hooks/useSessionLifecycle';
 import type { Route } from './lib/route';
 import type { WorldTab } from './types/world';
 
@@ -56,7 +58,7 @@ const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = 
   cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship Web' }],
   threads:  [{ id: 'board', label: 'Board' }, { id: 'pipeline', label: 'Pipeline' }, { id: 'inbox', label: 'Inbox' }],
   modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Web' }],
-  sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }],
+  sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }],
 };
 
 const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
@@ -78,9 +80,15 @@ const WORLD_TAB_LABELS: Record<WorldTab, string> = {
   overview: 'Overview', lore: 'Lore', locations: 'Locations', npcs: 'Cast', combat: 'Encounters', timeline: 'Timeline',
 };
 
-/** Ideas is Threads' Inbox now; an old link to it lands there. */
-const normalizeTab = (tab: Tab, view?: string): { tab: Tab; view?: string } =>
-  tab === 'ideas' ? { tab: 'threads', view: 'inbox' } : { tab, view };
+/**
+ * Ideas is Threads' Inbox now, and prep is a tab of each session rather than a
+ * view of its own; old links to either land where they went.
+ */
+const normalizeTab = (tab: Tab, view?: string): { tab: Tab; view?: string } => {
+  if (tab === 'ideas') return { tab: 'threads', view: 'inbox' };
+  if (tab === 'sessions' && view === 'prep') return { tab };
+  return { tab, view };
+};
 
 const RAIL_OVERLAY_CLASS = 'cm-rail';
 
@@ -141,7 +149,7 @@ function AppInner({ user }: { user: User }) {
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
   const openIdFor = (tab: Tab) => (openTarget?.tab === tab ? openTarget.id : null);
-  const { loading, error, pcs, selectedCampaign, selectedCampaignId } = useCampaign();
+  const { loading, error, pcs, sessions, selectedCampaign, selectedCampaignId } = useCampaign();
   const { activeStatBlockId } = useStatBlockPanel();
   const chat = useAIChat(useCampaignAssistantBackend());
   const pcNames = pcs.map(p => p.character_name).filter(Boolean);
@@ -173,12 +181,26 @@ function AppInner({ user }: { user: User }) {
     if (r.recordId) setOpenTarget({ tab: n.tab, id: r.recordId });
   });
 
-  // Starting a session opens the session tools; ending it closes them.
+  // Starting a session opens the session tools and makes the next planned
+  // session live; ending it closes them and marks that session played.
+  const setRunStatus = useSessionRunStatus();
   const toggleRun = useCallback(() => {
     const next = !runMode;
     setRunMode(next);
     setSessionBarOpen(next);
-  }, [runMode]);
+    // A failed status change has already shown its toast.
+    void setRunStatus(next).catch(() => {});
+  }, [runMode, setRunStatus]);
+
+  // A session still live when the campaign loads (the page reloaded mid-game)
+  // picks up in run mode.
+  const resumedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (loading || !selectedCampaignId || resumedFor.current === selectedCampaignId) return;
+    if (sessions.some(s => s.campaign_id !== selectedCampaignId)) return;
+    resumedFor.current = selectedCampaignId;
+    if (liveSession(sessions)) setRunMode(true);
+  }, [loading, selectedCampaignId, sessions]);
 
   const paletteHandlers = useMemo(() => ({
     openRecord,
@@ -252,7 +274,7 @@ function AppInner({ user }: { user: User }) {
               <CanvasLoading label="Loading campaign data…" />
             ) : (
               <>
-                {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} />}
+                {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} runMode={runMode} onToggleRun={toggleRun} />}
                 {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} openId={openIdFor('cast')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'lore'      && <Lore openId={openIdFor('lore')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('lore'); setImportOpen(true); }} />}
                 {activeTab === 'locations' && <Locations openId={openIdFor('locations')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
