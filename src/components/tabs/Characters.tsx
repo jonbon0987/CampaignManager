@@ -1,27 +1,18 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useReportRecord } from '../../context/NavigationContext';
+import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { ListDetail, ListRow, EmptyDetail, Pill, FilterSep } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
 import type { Origin } from '../ui/OriginBand';
-import { FactionPillSelector } from '../ui/FactionPillSelector';
-import { SearchableSelect } from '../ui/SearchableSelect';
-import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../../lib/recent';
 import CharacterWeb from './CharacterWeb';
-import { useAutoSave } from '../../hooks/useAutoSave';
-import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
-import { OverflowMenu } from '../ui/OverflowMenu';
-import { SlashField } from '../ui/SlashField';
-import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
-import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { ListRowWithHover } from '../HoverPreview';
-import { SessionHistory } from '../session/SessionHistory';
-import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import { NPCEditor } from '../entity/NPCEditor';
 import { FactionEditor } from '../entity/FactionEditor';
+import { PCEditor } from '../entity/PCEditor';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 
 type CastKind = 'pc' | 'npc' | 'faction';
@@ -79,6 +70,8 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
 
   // Build unified list
   const all = useMemo<CastItem[]>(() => {
+    const factionNames = (ids: string[] | null) =>
+      (ids ?? []).map(id => factions.find(f => f.id === id)?.name).filter(Boolean).join(', ');
     const items: CastItem[] = [
       ...pcs.map(pc => ({
         id: pc.id,
@@ -93,7 +86,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
         id: npc.id,
         kind: 'npc' as const,
         name: npc.name,
-        subtitle: [npc.role, npc.affiliation].filter(Boolean).join(' · '),
+        subtitle: [npc.role, factionNames(npc.faction_ids) || npc.affiliation].filter(Boolean).join(' · '),
         meta: npc.status === 'deceased' ? 'deceased' : undefined,
         glyph: GLYPHS.npc,
         raw: npc,
@@ -245,7 +238,7 @@ interface CastDetailProps {
 
 function CastDetail({ item, factions, statblocks, openStatBlock, onSelect, onDeselect }: CastDetailProps) {
   if (item.kind === 'pc') return (
-    <PCDetail item={item} factions={factions} statblocks={statblocks} onDeselect={onDeselect} />
+    <CampaignPC pc={item.raw as PlayerCharacter} factions={factions} statblocks={statblocks} onSelect={onSelect} onDeselect={onDeselect} />
   );
   if (item.kind === 'npc') return (
     <CampaignNPC npc={item.raw as NPC} factions={factions} statblocks={statblocks} openStatBlock={openStatBlock} onDeselect={onDeselect} />
@@ -262,8 +255,9 @@ function CampaignNPC({ npc, factions, statblocks, openStatBlock, onDeselect }: {
   openStatBlock: (id: string) => void;
   onDeselect: () => void;
 }) {
-  const { upsertNPC, deleteNPC, linkedNPCIds, linkNPCToCampaign, unlinkNPCFromCampaign } = useCampaign();
+  const { locations, upsertNPC, deleteNPC, linkedNPCIds, linkNPCToCampaign, unlinkNPCFromCampaign } = useCampaign();
   const { activeWorldId, backToWorld, setWorldTab, setSelected: setWorldSelected } = useWorld();
+  const openRecord = useOpenRecord();
   // Imported (linked from world canon) vs. local (this campaign only). Drives the
   // provenance band AND the save scope: editing an imported NPC must write to
   // the canon row ('global'), not accidentally re-scope it to this campaign.
@@ -275,7 +269,9 @@ function CampaignNPC({ npc, factions, statblocks, openStatBlock, onDeselect }: {
       npc={npc}
       scope="campaign"
       factions={factions}
+      locations={locations}
       statblocks={statblocks}
+      onOpenLocation={id => openRecord('locations', id)}
       save={fields => upsertNPC({ id: npc.id, ...fields } as Insert, origin === 'imported' ? 'global' : 'campaign')}
       remove={deleteNPC}
       onDeleted={onDeselect}
@@ -290,6 +286,28 @@ function CampaignNPC({ npc, factions, statblocks, openStatBlock, onDeselect }: {
         },
         onDetach: async () => { await unlinkNPCFromCampaign(npc.id); onDeselect(); },
       }}
+    />
+  );
+}
+
+function CampaignPC({ pc, factions, statblocks, onSelect, onDeselect }: {
+  pc: PlayerCharacter;
+  factions: Faction[];
+  statblocks: { id: string; name: string }[];
+  onSelect: (id: string) => void;
+  onDeselect: () => void;
+}) {
+  const { npcs, upsertPC, deletePC } = useCampaign();
+  return (
+    <PCEditor
+      pc={pc}
+      factions={factions}
+      npcs={npcs}
+      statblocks={statblocks}
+      save={fields => upsertPC({ id: pc.id, ...fields } as Parameters<typeof upsertPC>[0])}
+      remove={deletePC}
+      onDeleted={onDeselect}
+      onOpenNPC={onSelect}
     />
   );
 }
@@ -309,285 +327,3 @@ function CampaignFaction({ faction, onSelect, onDeselect }: { faction: Faction; 
   );
 }
 
-const isEmpty = (v: string | null | undefined) => !v?.trim();
-
-/* ── PC Detail ── */
-
-type PCFormData = {
-  character_name: string;
-  player_name: string | null;
-  race: string | null;
-  class: string | null;
-  background: string | null;
-  story_hooks: string | null;
-  key_npcs: string | null;
-  dm_notes: string | null;
-  is_active: boolean;
-  faction_ids: string[];
-  statblock_id: string | null;
-  level: number | null;
-  max_hp: number | null;
-  armor_class: number | null;
-};
-
-function PCDetail({
-  item,
-  factions,
-  statblocks,
-  onDeselect,
-}: {
-  item: CastItem;
-  factions: Faction[];
-  statblocks: { id: string; name: string }[];
-  onDeselect: () => void;
-}) {
-  const pc = item.raw as PlayerCharacter;
-  const { upsertPC, deletePC } = useCampaign();
-  const confirm = useConfirm();
-
-  const [form, setForm] = useState<PCFormData>({
-    character_name: pc.character_name,
-    player_name: pc.player_name,
-    race: pc.race,
-    class: pc.class,
-    background: pc.background,
-    story_hooks: pc.story_hooks,
-    key_npcs: pc.key_npcs,
-    dm_notes: pc.dm_notes,
-    is_active: pc.is_active,
-    faction_ids: pc.faction_ids ?? [],
-    statblock_id: pc.statblock_id,
-    level: pc.level,
-    max_hp: pc.max_hp,
-    armor_class: pc.armor_class,
-  });
-
-  useEffect(() => {
-    setForm({
-      character_name: pc.character_name,
-      player_name: pc.player_name,
-      race: pc.race,
-      class: pc.class,
-      background: pc.background,
-      story_hooks: pc.story_hooks,
-      key_npcs: pc.key_npcs,
-      dm_notes: pc.dm_notes,
-      is_active: pc.is_active,
-      faction_ids: pc.faction_ids ?? [],
-      statblock_id: pc.statblock_id,
-      level: pc.level,
-      max_hp: pc.max_hp,
-      armor_class: pc.armor_class,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pc.id]);
-
-  const { status, saveNow } = useAutoSave({
-    data: form,
-    onSave: async (data) => {
-      await upsertPC({
-        id: pc.id,
-        character_name: data.character_name,
-        player_name: data.player_name,
-        race: data.race,
-        class: data.class,
-        level: data.level,
-        max_hp: data.max_hp,
-        armor_class: data.armor_class,
-        background: data.background,
-        story_hooks: data.story_hooks,
-        key_npcs: data.key_npcs,
-        dm_notes: data.dm_notes,
-        is_active: data.is_active,
-        faction_ids: data.faction_ids,
-        statblock_id: data.statblock_id,
-      });
-    },
-    delay: 800,
-  });
-
-  const handleDelete = async () => {
-    if (await confirm('Delete this character? This cannot be undone.')) {
-      await deletePC(pc.id);
-      onDeselect();
-    }
-  };
-
-  useDiscardBlankDraft(pc.id, isEmpty(form.character_name) && isEmpty(form.player_name) && isEmpty(form.race) && isEmpty(form.class)
-    && isEmpty(form.background) && isEmpty(form.story_hooks) && isEmpty(form.key_npcs) && isEmpty(form.dm_notes), deletePC);
-
-  const set = <K extends keyof PCFormData>(key: K, val: PCFormData[K]) =>
-    setForm(f => ({ ...f, [key]: val }));
-
-  const statblockOptions = statblocks.map(m => ({ id: m.id, label: m.name }));
-
-  return (
-    <div className="cm-detail">
-      {/* Action bar */}
-      <div className="as-bar">
-        <SaveStatusIndicator status={status} onRetry={saveNow} />
-        <div className="as-spacer" />
-        <OverflowMenu items={[
-          { label: 'Delete Character', danger: true, onClick: handleDelete },
-        ]} />
-      </div>
-
-      <SessionUpdateBand entityType="pc" entityId={pc.id} />
-
-      {/* Eyebrow */}
-      <div className="cm-eyebrow">Player Character</div>
-
-      {/* Title + subtitle inputs */}
-      <input
-        className="as-title"
-        value={form.character_name}
-        onChange={e => set('character_name', e.target.value)}
-        placeholder="Character name…"
-        maxLength={limitFor('player_characters', 'character_name')}
-      />
-      <input
-        className="as-sub"
-        value={form.player_name ?? ''}
-        onChange={e => set('player_name', e.target.value || null)}
-        placeholder="Player name…"
-        maxLength={limitFor('player_characters', 'player_name')}
-      />
-
-      {/* Active toggle */}
-      <div className="as-meta">
-        <div className="as-mi">
-          <span className="as-ml">Active</span>
-          <button
-            className={`as-tog${form.is_active ? ' is-on' : ''}`}
-            onClick={() => set('is_active', !form.is_active)}
-          >
-            {form.is_active ? 'Active' : 'Inactive'}
-          </button>
-        </div>
-      </div>
-
-      {/* Core stat grid */}
-      <div className="as-grid-2">
-        <div className="as-fl">
-          <label className="as-ll">Race</label>
-          <input
-            className="as-input"
-            value={form.race ?? ''}
-            onChange={e => set('race', e.target.value || null)}
-            placeholder="e.g. Dwarf"
-            maxLength={limitFor('player_characters', 'race')}
-          />
-        </div>
-        <div className="as-fl">
-          <label className="as-ll">Class</label>
-          <input
-            className="as-input"
-            value={form.class ?? ''}
-            onChange={e => set('class', e.target.value || null)}
-            placeholder="e.g. Fighter"
-            maxLength={limitFor('player_characters', 'class')}
-          />
-        </div>
-      </div>
-
-      {/* Combat numbers: they fill in the initiative tracker */}
-      <div className="as-grid-3">
-        {([
-          ['level', 'Level', 'e.g. 5'],
-          ['max_hp', 'Max HP', 'e.g. 38'],
-          ['armor_class', 'AC', 'e.g. 16'],
-        ] as const).map(([key, label, hint]) => (
-          <div key={key} className="as-fl">
-            <label className="as-ll" htmlFor={`pc-${key}`}>{label}</label>
-            <input
-              id={`pc-${key}`}
-              className="as-input"
-              type="number"
-              inputMode="numeric"
-              min={minFor('player_characters', key)}
-              max={maxFor('player_characters', key)}
-              value={form[key] ?? ''}
-              onChange={e => set(key, e.target.value ? parseInt(e.target.value, 10) : null)}
-              placeholder={hint}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Background */}
-      <div className="as-fl">
-        <label className="as-ll">Background</label>
-        <SlashField
-          value={form.background ?? ''}
-          onChange={v => set('background', v || null)}
-          placeholder="Character background and history…"
-          minHeight="120px"
-          maxLength={limitFor('player_characters', 'background')}
-        />
-      </div>
-
-      {/* Story Hooks */}
-      <div className="as-fl">
-        <label className="as-ll">Story Hooks</label>
-        <SlashField
-          value={form.story_hooks ?? ''}
-          onChange={v => set('story_hooks', v || null)}
-          placeholder="Personal quests, motivations…"
-          minHeight="96px"
-          maxLength={limitFor('player_characters', 'story_hooks')}
-        />
-      </div>
-
-      {/* Key NPCs */}
-      <div className="as-fl">
-        <label className="as-ll">Key NPCs</label>
-        <SlashField
-          value={form.key_npcs ?? ''}
-          onChange={v => set('key_npcs', v || null)}
-          placeholder="Relationships with NPCs…"
-          minHeight="96px"
-          maxLength={limitFor('player_characters', 'key_npcs')}
-        />
-      </div>
-
-      {/* DM Notes */}
-      <div className="as-fl">
-        <label className="as-ll">DM Notes</label>
-        <SlashField
-          value={form.dm_notes ?? ''}
-          onChange={v => set('dm_notes', v || null)}
-          placeholder="Private notes, secrets, plans…"
-          minHeight="96px"
-          maxLength={limitFor('player_characters', 'dm_notes')}
-        />
-      </div>
-
-      {/* Factions */}
-      <div className="as-fl">
-        <label className="as-ll">Factions</label>
-        <FactionPillSelector
-          selectedIds={form.faction_ids}
-          onChange={ids => set('faction_ids', ids)}
-          factions={factions}
-        />
-      </div>
-
-      {/* Stat block */}
-      <div className="as-fl">
-        <label className="as-ll">Linked Stat Sheet</label>
-        <SearchableSelect
-          value={form.statblock_id}
-          onChange={id => set('statblock_id', id)}
-          options={statblockOptions}
-          placeholder="Select stat sheet…"
-          searchPlaceholder="Search stat sheets…"
-        />
-      </div>
-
-      <div className="as-fl">
-        <label className="as-ll">Session History</label>
-        <SessionHistory entityType="pc" entityId={pc.id} />
-      </div>
-    </div>
-  );
-}

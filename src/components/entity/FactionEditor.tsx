@@ -16,25 +16,27 @@ import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import type { EntityCanon, EntityScope } from './types';
 import type { Faction, NPC } from '../../lib/database.types';
+import { LinkList, WasText } from './LinkPicker';
 
-export type FactionFields = Pick<Faction, 'name' | 'faction_type' | 'overview' | 'key_figures' | 'agenda' | 'dm_notes'>;
+export type FactionFields = Pick<Faction, 'name' | 'faction_type' | 'overview' | 'key_figures' | 'key_figure_ids' | 'agenda' | 'dm_notes'>;
 
 const toFields = (f: Faction): FactionFields => ({
-  name: f.name, faction_type: f.faction_type, overview: f.overview, key_figures: f.key_figures, agenda: f.agenda, dm_notes: f.dm_notes,
+  name: f.name, faction_type: f.faction_type, overview: f.overview, key_figures: f.key_figures, key_figure_ids: f.key_figure_ids ?? [],
+  agenda: f.agenda, dm_notes: f.dm_notes,
 });
 
 const FACTION_TYPES = ['government', 'religious', 'criminal', 'military', 'scholarly', 'merchant', 'guild', 'arcane', 'other'];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const isEmpty = (v: string | null | undefined) => !v?.trim();
 
-type Optional = 'figures' | 'agenda' | 'notes';
-const OPTIONAL_LABEL: Record<Optional, string> = { figures: 'Key figures', agenda: 'Agenda', notes: 'DM notes' };
+type Optional = 'agenda' | 'notes';
+const OPTIONAL_LABEL: Record<Optional, string> = { agenda: 'Agenda', notes: 'DM notes' };
 
 export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, onOpenNPC, canon }: {
   faction: Faction;
   scope: EntityScope;
-  /** NPCs in the same scope, to list its members. */
-  npcs: Pick<NPC, 'id' | 'name' | 'faction_ids'>[];
+  /** NPCs in the same scope: its members, and who can be a key figure. */
+  npcs: Pick<NPC, 'id' | 'name' | 'role' | 'faction_ids'>[];
   save: (fields: FactionFields) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
   onDeleted?: () => void;
@@ -48,10 +50,9 @@ export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, o
   const { status, saveNow } = useAutoSave({ data: form, onSave: async data => { await save(data); }, delay: 800 });
 
   useDiscardBlankDraft(faction.id, isEmpty(form.name) && isEmpty(form.overview) && isEmpty(form.key_figures)
-    && isEmpty(form.agenda) && isEmpty(form.dm_notes), remove);
+    && form.key_figure_ids.length === 0 && isEmpty(form.agenda) && isEmpty(form.dm_notes), remove);
 
   const sections = useOptionalSections<Optional>({
-    figures: !isEmpty(form.key_figures),
     agenda: !isEmpty(form.agenda),
     notes: !isEmpty(form.dm_notes),
   });
@@ -101,6 +102,14 @@ export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, o
         </div>
 
         <div className="as-fl">
+          <span className="as-ll">Key figures</span>
+          <LinkList ids={form.key_figure_ids} glyph="❦" addLabel="+ Add a key figure" empty="No key figures linked."
+            options={npcs.filter(n => n.name).map(n => ({ id: n.id, label: n.name, detail: n.role ?? undefined }))}
+            onChange={ids => set('key_figure_ids', ids)} onOpen={onOpenNPC} disabled={locked} />
+          <WasText text={form.key_figures} onClear={() => set('key_figures', null)} disabled={locked} />
+        </div>
+
+        <div className="as-fl">
           <span className="as-ll">Members</span>
           {members.length === 0 ? (
             <p className="as-empty-note">No NPCs list this faction yet. Add it from an NPC’s Factions.</p>
@@ -115,13 +124,6 @@ export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, o
             </div>
           )}
         </div>
-
-        {sections.shown('figures') && (
-          <div className="as-fl">
-            <label className="as-ll">Key figures</label>
-            <SlashField value={form.key_figures ?? ''} onChange={v => set('key_figures', v || null)} placeholder="Important members…" minHeight="96px" maxLength={limitFor('factions', 'key_figures')} readOnly={locked} />
-          </div>
-        )}
 
         {sections.shown('agenda') && (
           <div className="as-fl">

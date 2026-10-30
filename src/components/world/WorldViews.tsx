@@ -133,7 +133,7 @@ export function WorldNPCsView() {
 
 // The world's NPCs and factions, in the same editors a campaign uses.
 function WorldNPCDetail({ entity }: { entity: { id: string; kind: 'npc' | 'faction' } }) {
-  const { npcs, factions, worldStatblocks, setSelected, upsertWorldNPC, deleteWorldNPC, upsertWorldFaction, deleteWorldFaction } = useWorld();
+  const { npcs, factions, locations, worldStatblocks, setSelected, setWorldTab, upsertWorldNPC, deleteWorldNPC, upsertWorldFaction, deleteWorldFaction } = useWorld();
   const factionRows = factions.flatMap(f => (f.row ? [f.row] : []));
   const npcRows = npcs.flatMap(n => (n.row ? [n.row] : []));
 
@@ -162,6 +162,8 @@ function WorldNPCDetail({ entity }: { entity: { id: string; kind: 'npc' | 'facti
       scope="world"
       factions={factionRows}
       statblocks={worldStatblocks.map(s => ({ id: s.id, name: s.name }))}
+      locations={locations.flatMap(l => (l.row ? [l.row] : []))}
+      onOpenLocation={id => { setWorldTab('locations'); setSelected('locations', id); }}
       save={fields => upsertWorldNPC({ id: row.id, ...fields })}
       remove={deleteWorldNPC}
     />

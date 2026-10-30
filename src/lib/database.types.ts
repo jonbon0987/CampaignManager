@@ -133,7 +133,8 @@ export interface PlayerCharacter {
   armor_class: number | null;
   background: string | null;
   story_hooks: string | null;
-  key_npcs: string | null;
+  key_npcs: string | null;          // text from before key NPCs were links (shown beside them)
+  key_npc_ids: string[];
   dm_notes: string | null;           // DM-only secrets
   is_active: boolean;
   faction_ids: string[];
@@ -154,7 +155,8 @@ export interface NPC {
   description: string | null;
   hooks_motivations: string | null;
   dm_notes: string | null;
-  location: string | null;
+  location: string | null;          // text from before the place was a link (shown beside it)
+  location_id: string | null;
   disposition: string | null;        // attitude toward the party, e.g. "Wary", "Fearful ally"
   first_session: number | null;
   met_by_pcs: boolean;
@@ -190,7 +192,8 @@ export interface Faction {
   name: string;
   faction_type: string | null;
   overview: string | null;
-  key_figures: string | null;
+  key_figures: string | null;       // text from before key figures were links (shown beside them)
+  key_figure_ids: string[];
   agenda: string | null;
   dm_notes: string | null;           // hidden agendas / secrets
   created_at: string;
@@ -333,12 +336,13 @@ export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_i
 type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play';
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
   & Partial<Pick<Session, SessionLifecycle>>;
-export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+// Link columns have database defaults, so a save that leaves them out keeps what's stored.
+export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_npc_ids'> & { key_npc_ids?: string[] };
 // disposition is optional: it's written by the session-recording review, and an
 // NPC save that omits it (every edit form) leaves the stored value untouched.
-export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition'> & { disposition?: string | null };
+export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id'> & { disposition?: string | null; location_id?: string | null };
 export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'> & { key_figure_ids?: string[] };
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
