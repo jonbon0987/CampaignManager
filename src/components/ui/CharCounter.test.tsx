@@ -9,9 +9,14 @@ describe('CharCounter', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('shows "count / limit" while under the limit', () => {
-    render(<CharCounter value="hello" limit={100} />);
-    expect(screen.getByText('5 / 100')).toBeTruthy();
+  it('stays hidden until the field is nearly full', () => {
+    const { container } = render(<CharCounter value={'x'.repeat(79)} limit={100} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('shows "count / limit" once the field is nearly full', () => {
+    render(<CharCounter value={'x'.repeat(85)} limit={100} />);
+    expect(screen.getByText('85 / 100')).toBeTruthy();
   });
 
   it('is not "over" at exactly the limit', () => {
@@ -20,8 +25,8 @@ describe('CharCounter', () => {
   });
 
   it('formats large counts/limits with locale separators', () => {
-    render(<CharCounter value={'x'.repeat(1234)} limit={8000} />);
-    const expected = `${(1234).toLocaleString()} / ${(8000).toLocaleString()}`;
+    render(<CharCounter value={'x'.repeat(7234)} limit={8000} />);
+    const expected = `${(7234).toLocaleString()} / ${(8000).toLocaleString()}`;
     expect(screen.getByText(expected)).toBeTruthy();
   });
 
@@ -33,12 +38,12 @@ describe('CharCounter', () => {
   });
 
   it('uses the muted color while under the limit', () => {
-    render(<CharCounter value="ab" limit={100} />);
-    expect((screen.getByText('2 / 100') as HTMLElement).style.color).toBe('var(--ink-3)');
+    render(<CharCounter value={'x'.repeat(90)} limit={100} />);
+    expect((screen.getByText('90 / 100') as HTMLElement).style.color).toBe('var(--ink-3)');
   });
 
   it('appends a custom className to its own', () => {
-    const { container } = render(<CharCounter value="a" limit={10} className="mine" />);
+    const { container } = render(<CharCounter value="abcdefghi" limit={10} className="mine" />);
     const cls = (container.firstChild as HTMLElement).className;
     expect(cls).toContain('cm-char-counter');
     expect(cls).toContain('mine');

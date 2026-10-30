@@ -12,6 +12,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { showCounter } from '../../lib/fieldLimits';
 import { useEntityRefs } from '../../context/EntityRefContext';
 import type { EntityRef } from '../../context/EntityRefContext';
 import {
@@ -128,7 +129,8 @@ interface SlashFieldProps {
   minHeight?: string;
   variant?: 'fluid' | 'sectioned' | 'default';
   /**
-   * Soft character limit. When set, a live counter is shown; it turns into a
+   * Soft character limit. When set, a live counter shows once the field is
+   * nearly full (see COUNTER_FROM); it turns into a
    * warning once the (serialized markdown) length exceeds the limit. This is a
    * soft cap — the authoritative block happens on save (see lib/fieldLimits +
    * the db.ts write layer). A hard cap mid-typing is avoided because this is a
@@ -407,7 +409,7 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
         onMouseOut={onOut}
         onBlur={() => setTimeout(() => setMenu(null), 160)}
       />
-      {maxLength != null && (
+      {maxLength != null && showCounter(charCount, maxLength) && (
         <div
           className="sf-counter"
           aria-live="polite"

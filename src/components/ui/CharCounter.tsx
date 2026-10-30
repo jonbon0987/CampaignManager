@@ -1,12 +1,14 @@
 // src/components/ui/CharCounter.tsx
 // -----------------------------------------------------------
 // Soft character-limit indicator for prose fields. Shows `count / limit`
-// and, once the value exceeds the limit, flips to a red "N over limit"
-// warning. It NEVER blocks typing — users can finish/paste their text and
+// once the field is nearly full (see COUNTER_FROM) and, once the value
+// exceeds the limit, flips to a red "N over limit" warning. It NEVER blocks typing — users can finish/paste their text and
 // then trim it. The authoritative block is the save-time validation
 // (lib/fieldLimits + the db.ts write layer), which surfaces a toast naming
 // the field and by how much. See also the counter baked into SlashField.
 // -----------------------------------------------------------
+
+import { showCounter } from '../../lib/fieldLimits';
 
 interface CharCounterProps {
   value: string;
@@ -18,6 +20,7 @@ interface CharCounterProps {
 export function CharCounter({ value, limit, className }: CharCounterProps) {
   if (limit == null) return null;
   const count = value.length;
+  if (!showCounter(count, limit)) return null;
   const over = count > limit;
   return (
     <div
