@@ -115,7 +115,8 @@ function Waveform({ getLevel, paused }: { getLevel: () => number; paused: boolea
 
 // --------------- Start dialog ---------------
 
-function StartRecordingModal({ session, onClose }: { session: Session; onClose: () => void }) {
+/** Mic, consent and Discord for a session's recording, then it starts. */
+export function StartRecordingModal({ session, onClose }: { session: Session; onClose: () => void }) {
   const { pcs, selectedCampaignId } = useCampaign();
   const { start, busy } = useRecording();
   const toast = useToast();

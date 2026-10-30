@@ -12,7 +12,7 @@ export function nextSessionNumber(sessions: Session[]): number {
 /** A new, empty session, ready to plan (or to play, with status 'live'). */
 export function blankSession(session_number: number, status: Session['status'] = 'planned'): Omit<SessionInsert, 'campaign_id'> {
   return {
-    session_number, session_date: null, status, title: null, prep_notes: null, plan: {},
+    session_number, session_date: null, status, title: null, prep_notes: null, plan: {}, play: {},
     summary: null, combats: null, loot_rewards: null, hooks_notes: null, dm_notes: null,
   };
 }

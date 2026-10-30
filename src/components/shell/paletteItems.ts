@@ -60,7 +60,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
         const s = await planNext();
         if (s) h.openRecord('sessions', s.id);
       } },
-      { key: 'a:tools', group: 'Actions', glyph: '⚄', label: 'Session tools: initiative and dice', action: true, run: h.openSessionTools },
+      ...(h.runMode ? [{ key: 'a:tools', group: 'Actions', glyph: '⚔', label: 'Table tools: initiative, dice and notes', action: true, run: h.openSessionTools }] : []),
       { key: 'a:note', group: 'Actions', glyph: '✎', label: 'Quick note', detail: 'Saves to the Ideas inbox · ⌘.', action: true, run: h.openNote },
       { key: 'a:npc', group: 'Create', glyph: '❦', label: 'New NPC', action: true, run: create('cast', () => upsertNPC({ name: '', role: null, affiliation: null, status: 'active', description: null, hooks_motivations: null, dm_notes: null, location: null, first_session: null, met_by_pcs: false, faction_ids: [], statblock_id: null, world_id: null })) },
       { key: 'a:pc', group: 'Create', glyph: '❦', label: 'New player character', action: true, run: create('cast', () => upsertPC({ character_name: '', player_name: null, race: null, class: null, level: null, max_hp: null, armor_class: null, background: null, story_hooks: null, key_npcs: null, dm_notes: null, is_active: true, faction_ids: [], statblock_id: null })) },

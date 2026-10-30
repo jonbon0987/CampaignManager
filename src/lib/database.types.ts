@@ -6,6 +6,8 @@
 //   npx supabase gen types typescript --project-id <id> > src/lib/database.types.ts
 // -----------------------------------------------------------
 
+import type { Fight } from './combat';
+
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
 // --------------- World ---------------
@@ -84,8 +86,26 @@ export interface Session {
   status: SessionStatus;
   prep_notes: string | null;         // DM-only
   plan: SessionPlan;
+  play: SessionPlay;
   created_at: string;
   updated_at: string;
+}
+
+/** A dice roll made during a session, newest first in its log. */
+export interface PlayRoll { at: string; expr: string; total: number; rolls: number[] }
+
+/** A note jotted at the table, timestamped. */
+export interface PlayNote { id: string; at: string; text: string }
+
+/** What happened at the table, saved as the session is played. Every key is optional. */
+export interface SessionPlay {
+  started_at?: string;
+  ended_at?: string;
+  /** The agenda scene being played. */
+  scene_id?: string | null;
+  fight?: Fight | null;
+  rolls?: PlayRoll[];
+  notes?: PlayNote[];
 }
 
 /** A session moves planned → live → done. */
@@ -310,7 +330,7 @@ export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_i
 
 // The lifecycle fields have database defaults, so a save that leaves them out
 // (the assistant, post-session capture) keeps what's stored.
-type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan';
+type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play';
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
   & Partial<Pick<Session, SessionLifecycle>>;
 export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;

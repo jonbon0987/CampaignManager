@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { describeRoll, parseDice, roll as rollDice, type DiceRoll } from '../../lib/dice';
 
 export interface PaletteItem {
   /** Unique across the list. */
@@ -21,20 +22,16 @@ export interface PaletteItem {
   run: () => void;
 }
 
-const DICE = /^(?:roll\s+)?(\d*)d(\d+)\s*([+-]\s*\d+)?$/i;
 const MAX_RESULTS = 40;
 
-function rollDice(count: number, sides: number, mod: number) {
-  const rolls = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
-  return { rolls, total: rolls.reduce((a, b) => a + b, 0) + mod };
-}
-
-export default function CommandPalette({ open, onClose, items, onAsk, placeholder }: {
+export default function CommandPalette({ open, onClose, items, onAsk, onRolled, placeholder }: {
   open: boolean;
   onClose: () => void;
   items: PaletteItem[];
   /** Sends the query to the assistant. Absent hides the "Ask" row. */
   onAsk?: (query: string) => void;
+  /** Hears each dice roll, so a session in play can log it. */
+  onRolled?: (roll: DiceRoll) => void;
   placeholder: string;
 }) {
   const [query, setQuery] = useState('');
@@ -56,21 +53,17 @@ export default function CommandPalette({ open, onClose, items, onAsk, placeholde
     const q = query.trim().toLowerCase();
     if (!q) return items.filter(i => i.action);
     const found: PaletteItem[] = [];
-    const dice = q.match(DICE);
+    const dice = parseDice(q);
     if (dice) {
-      const count = Math.min(parseInt(dice[1] || '1', 10), 100);
-      const sides = parseInt(dice[2], 10);
-      const mod = dice[3] ? parseInt(dice[3].replace(/\s/g, ''), 10) : 0;
-      const expr = `${count}d${sides}${mod > 0 ? `+${mod}` : mod < 0 ? mod : ''}`;
-      if (sides > 0) {
-        found.push({
-          key: 'dice', group: 'Dice', glyph: '⚄', label: `Roll ${expr}`, detail: 'Enter to roll; it stays open to roll again',
-          run: () => {
-            const r = rollDice(count, sides, mod);
-            setRoll(`${expr} → ${r.total}${count > 1 || mod ? `   [${r.rolls.join(', ')}]${mod ? ` ${mod > 0 ? '+' : ''}${mod}` : ''}` : ''}`);
-          },
-        });
-      }
+      found.push({
+        key: 'dice', group: 'Dice', glyph: '⚄', label: `Roll ${dice.expr}`,
+        detail: onRolled ? 'Enter to roll; it goes in the session’s dice log' : 'Enter to roll; it stays open to roll again',
+        run: () => {
+          const r = rollDice(dice);
+          setRoll(describeRoll(r));
+          onRolled?.(r);
+        },
+      });
     }
     // Names first: a label that starts with the query, then one with a word
     // that does, then anywhere in the label, then the detail line, then content.
@@ -93,7 +86,7 @@ export default function CommandPalette({ open, onClose, items, onAsk, placeholde
       found.push({ key: 'ask', group: 'Assistant', glyph: '✦', label: `Ask the assistant: “${query.trim()}”`, run: () => { onAsk(query.trim()); onClose(); } });
     }
     return found;
-  }, [query, items, onAsk, onClose]);
+  }, [query, items, onAsk, onRolled, onClose]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setActive(0); }, [query]);
