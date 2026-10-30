@@ -2,16 +2,19 @@
 // -----------------------------------------------------------
 // Reads a recording's transcript, and says who each voice is. A diarized
 // voice ("Speaker B" on the table mic) is assigned once and every line it
-// spoke follows. Lines the room picked up from Discord are hidden.
+// spoke follows. Lines the room picked up from Discord are hidden. Lines can be
+// searched, and each one plays from its moment, on the track it was heard on.
 // -----------------------------------------------------------
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useToast } from '../../context/ToastContext';
 import { RecordingTracks, TranscriptSegments } from '../../lib/db';
 import type { RecordingTrack, SessionRecording, TranscriptSegment } from '../../lib/database.types';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
+import { useRecordingPlayer } from '../../hooks/useRecordingPlayer';
+import { PlayerBar } from './PlayerBar';
 
 const DM = 'dm';
 
@@ -20,6 +23,21 @@ function clock(ms: number): string {
   const h = Math.floor(s / 3600);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${h}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+}
+
+/** `text` with each match of `q` marked. */
+function highlight(text: string, q: string): ReactNode {
+  if (!q) return text;
+  const parts: ReactNode[] = [];
+  const lower = text.toLowerCase();
+  let at = 0;
+  for (let i = lower.indexOf(q); i !== -1; i = lower.indexOf(q, at)) {
+    if (i > at) parts.push(text.slice(at, i));
+    parts.push(<mark key={i} className="tr-hit">{text.slice(i, i + q.length)}</mark>);
+    at = i + q.length;
+  }
+  parts.push(text.slice(at));
+  return parts;
 }
 
 interface Voice {
@@ -37,6 +55,11 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
   const toast = useToast();
   const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
   const [tracks, setTracks] = useState<RecordingTrack[]>([]);
+  const [query, setQuery] = useState('');
+  const [from, setFrom] = useState<TranscriptSegment | null>(null);
+  const { audio, playing, positionMs, loading, pause, playTrack, playRecording } = useRecordingPlayer();
+  // Closing the transcript stops what it was playing.
+  useEffect(() => pause, [pause]);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +91,18 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
   }, [visible, tracks]);
 
   const speakerName = (s: TranscriptSegment) => (s.is_dm ? 'DM' : s.pc_id ? pcName.get(s.pc_id) ?? 'Player' : s.speaker_label ?? 'Unknown');
+  const q = query.trim().toLowerCase();
+  const shown = q ? visible.filter(s => s.text.toLowerCase().includes(q) || speakerName(s).toLowerCase().includes(q)) : visible;
+
+  // A line plays on the track it was heard on (a Discord player's own track,
+  // say), else whichever track covers that moment.
+  const play = (s: TranscriptSegment) => {
+    setFrom(s);
+    const track = tracks.find(t => t.id === s.track_id);
+    (track ? playTrack(track, s.start_ms) : playRecording(recording.id, s.start_ms))
+      .catch(e => toast(e instanceof Error ? e.message : String(e), 'error'));
+  };
+  const isPlaying = (s: TranscriptSegment) => playing && positionMs != null && positionMs >= s.start_ms - 1000 && positionMs < s.end_ms;
 
   const assign = async (voice: Voice, value: string) => {
     const who = { pc_id: value && value !== DM ? value : null, is_dm: value === DM };
@@ -121,20 +156,37 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
             </section>
           )}
 
-          <section>
-            <div className="cm-section-head" style={{ marginBottom: 8 }}>
-              <span className="cm-section-title">{visible.length} lines{echoes > 0 ? ` · ${echoes} Discord echoes hidden` : ''}</span>
+          <section className="tr">
+            <div className="cm-section-head">
+              <span className="cm-section-title">
+                {q ? `${shown.length} of ${visible.length} lines` : `${visible.length} lines`}{echoes > 0 ? ` · ${echoes} Discord echoes hidden` : ''}
+              </span>
               <div className="cm-section-rule" />
             </div>
-            <ol style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '50vh', overflowY: 'auto' }}>
-              {visible.map(s => (
-                <li key={s.id} style={{ display: 'grid', gridTemplateColumns: '64px 130px minmax(0, 1fr)', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--rule-soft)' }}>
-                  <span className="cm-kbd" style={{ color: 'var(--ink-3)', paddingTop: 2 }}>{clock(s.start_ms)}</span>
-                  <span className="text-sm" style={{ color: s.is_dm ? 'var(--gold)' : 'var(--ink)', fontWeight: 500 }}>{speakerName(s)}</span>
-                  <span className="text-sm" style={{ color: 'var(--ink)' }}>{s.text}</span>
-                </li>
-              ))}
-            </ol>
+            <div className="tr-tools">
+              <input className="as-input tr-search" type="search" value={query} onChange={e => setQuery(e.target.value)}
+                placeholder="Search what was said, or who said it…" aria-label="Search the transcript" />
+              <div className="tr-player">
+                <PlayerBar audio={audio} playing={playing} positionMs={positionMs} loading={loading} onPause={pause}
+                  atMs={from?.start_ms ?? null} totalMs={recording.duration_ms}
+                  onPlay={() => play(from ?? shown[0] ?? visible[0])} label="Play from the chosen line" />
+              </div>
+            </div>
+            {shown.length === 0 ? (
+              <p className="as-empty-note">Nothing said matches “{query.trim()}”.</p>
+            ) : (
+              <ol className="tr-lines">
+                {shown.map(s => (
+                  <li key={s.id} className={`tr-line${isPlaying(s) ? ' is-playing' : ''}${from?.id === s.id ? ' is-from' : ''}`}>
+                    <Button size="xs" className="tr-at" onClick={() => play(s)} aria-label={`Play from ${clock(s.start_ms)}`} title="Play from here">
+                      ▶ {clock(s.start_ms)}
+                    </Button>
+                    <span className={`tr-who${s.is_dm ? ' is-dm' : ''}`}>{highlight(speakerName(s), q)}</span>
+                    <span className="tr-text">{highlight(s.text, q)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
         </div>
       )}

@@ -85,7 +85,7 @@ describe('summarizeSeedActions', () => {
     expect(summarizeSeedActions(actions)).toEqual([
       { type: 'upsertNPC', label: 'NPC', count: 2 },
       { type: 'upsertLocation', label: 'Location', count: 1 },
-      { type: 'upsertHook', label: 'Plot Hook', count: 1 },
+      { type: 'upsertHook', label: 'Thread', count: 1 },
     ]);
   });
 

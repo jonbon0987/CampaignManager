@@ -1234,60 +1234,11 @@
 .stage-empty { margin: auto; text-align: center; color: var(--ink-3); font-size: 13px; font-style: italic; line-height: 1.6; padding: 24px; }
 .stage-empty .g { display: block; font-size: 26px; color: var(--ink-3); margin-bottom: 10px; font-style: normal; }
 
-.scard {
-  border: 1px solid var(--rule); border-radius: var(--radius-lg); background: var(--paper);
-  overflow: hidden; animation: wb-card-in .32s cubic-bezier(.2,.7,.3,1);
-  /* Keep natural height in the flex-column list — without this, a full/open
-     tray shrinks the cards to fit and clips them instead of scrolling. */
-  flex-shrink: 0;
-}
-.scard.off { opacity: .45; }
-.scard.committed { border-color: rgba(138,165,107,.4); background: var(--moss-dim); }
-.scard.failed { border-color: rgba(217,105,79,.4); background: var(--red-dim); }
-.scard-top { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; cursor: pointer; }
-.scard-check {
-  width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; border-radius: var(--radius);
-  border: 1px solid var(--rule); display: grid; place-items: center; color: var(--bg);
-  font-size: 11px; background: var(--paper-2);
-}
-.scard-check.on { background: var(--gold); border-color: var(--gold); }
-.scard.committed .scard-check { background: var(--moss); border-color: var(--moss); }
-.scard-main { flex: 1; min-width: 0; }
-.scard-row1 { display: flex; align-items: center; gap: 7px; }
-.scard-name {
-  font-family: var(--display); font-size: 15px; color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
-}
-.scard-kind { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-top: 2px; }
-.scard-kind .g { color: var(--gold); margin-right: 4px; }
-.scard-chev { color: var(--ink-3); font-size: 11px; transition: transform .18s; flex-shrink: 0; margin-top: 3px; }
-.scard.open .scard-chev { transform: rotate(90deg); }
-.scard-body { padding: 2px 14px 14px 40px; border-top: 1px solid var(--rule-soft); max-height: 300px; overflow-y: auto; }
-.scard-why { display: flex; gap: 7px; font-size: 12px; font-style: italic; color: var(--ink-2); line-height: 1.5; margin: 10px 0; }
-.scard-why .g { color: var(--gold); font-style: normal; flex-shrink: 0; }
-.scard-fields { display: flex; flex-direction: column; gap: 11px; }
-
-.scard .conf { font-size: 9px; }
-.scard .conf-bar { width: 34px; }
-
 .conf { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; color: var(--ink-3); flex-shrink: 0; }
 .conf-bar { width: 46px; height: 5px; border-radius: var(--radius); background: var(--rule); overflow: hidden; }
 .conf-bar i { display: block; height: 100%; background: var(--moss); }
 
-.rverb { font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: .08em; padding: 2px 5px; border-radius: var(--radius); flex-shrink: 0; margin-top: 1px; }
-.rverb.create { background: var(--moss-dim); color: var(--moss); border: 1px solid rgba(138,165,107,.35); }
-.rverb.update { background: rgba(127,168,208,.12); color: var(--sky); border: 1px solid rgba(127,168,208,.35); }
-.rverb.delete { background: var(--red-dim); color: var(--red); border: 1px solid rgba(217,105,79,.35); }
-
-.fld-label { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 5px; }
-.fld-old { font-size: 13.5px; color: var(--ink-3); text-decoration: line-through; line-height: 1.55; margin-bottom: 4px; white-space: pre-wrap; }
-.fld-new { font-size: 14.5px; color: var(--ink); line-height: 1.65; text-wrap: pretty; white-space: pre-wrap; }
-.fld-new.box { padding: 9px 12px; background: var(--paper); border: 1px solid var(--rule-soft); border-radius: var(--radius); }
-.fld-add { box-shadow: inset 3px 0 0 var(--moss); padding-left: 12px; }
-
 .stage-foot { border-top: 1px solid var(--rule-soft); padding: 13px 16px; flex-shrink: 0; display: flex; flex-direction: column; gap: 9px; }
-.stage-foot .meta { display: flex; align-items: center; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
-.stage-foot .meta .risk { margin-left: auto; color: var(--moss); }
 .stage-foot .row { display: flex; gap: 9px; }
 .commit-done { display: flex; align-items: center; gap: 9px; padding: 4px 2px; font-family: var(--serif); font-size: 14px; color: var(--moss); }
 /* Audit F4 — .btn/.btn-primary/.btn-sm removed; Workbench tray buttons now use <Button> (flex/align preserved inline). */
