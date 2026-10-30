@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { makeCampaignContext } from '../../test/contextMocks';
 import { makeSession } from '../../test/fixtures';
 import type { EntitySessionEntry } from '../../lib/database.types';
@@ -9,21 +9,18 @@ const h = vi.hoisted(() => ({
   campaign: { value: null as Record<string, unknown> | null },
   toast: vi.fn(),
   getForEntity: vi.fn(),
-  getRecording: vi.fn(),
+  openRecord: vi.fn(),
   playRecording: vi.fn(),
 }));
 vi.mock('../../context/CampaignContext', () => ({ useCampaign: () => h.campaign.value }));
 vi.mock('../../context/ToastContext', () => ({ useToast: () => h.toast }));
 vi.mock('../../lib/db', () => ({
   EntitySessionEntries: { getForEntity: h.getForEntity },
-  SessionRecordings: { get: h.getRecording },
 }));
 vi.mock('../../hooks/useRecordingPlayer', () => ({
   useRecordingPlayer: () => ({ audio: { current: null }, loading: false, playing: false, pause: vi.fn(), playRecording: h.playRecording }),
 }));
-vi.mock('./ChronicleView', () => ({
-  ChronicleView: ({ recording }: { recording: { id: string } }) => <div role="dialog">Chronicle of {recording.id}</div>,
-}));
+vi.mock('../../context/NavigationContext', () => ({ useOpenRecord: () => h.openRecord }));
 
 import { SessionHistory } from './SessionHistory';
 
@@ -39,7 +36,7 @@ beforeEach(() => {
   });
   h.toast.mockReset();
   h.playRecording.mockReset().mockResolvedValue(undefined);
-  h.getRecording.mockReset().mockResolvedValue({ id: 'r1' });
+  h.openRecord.mockReset();
 });
 
 describe('SessionHistory', () => {
@@ -59,13 +56,13 @@ describe('SessionHistory', () => {
     expect(screen.getAllByRole('button', { name: 'See chronicle' })).toHaveLength(1);
   });
 
-  it('plays the line from the recording, and opens the chronicle', async () => {
+  it('plays the line from the recording, and opens the session’s recap for its chronicle', async () => {
     h.getForEntity.mockResolvedValue([entry({ session_id: 's14' })]);
     render(<SessionHistory entityType="npc" entityId="oren" />);
     fireEvent.click(await screen.findByRole('button', { name: /0:02:10/ }));
     expect(h.playRecording).toHaveBeenCalledWith('r1', 130_000);
     fireEvent.click(screen.getByRole('button', { name: 'See chronicle' }));
-    await waitFor(() => expect(screen.getByRole('dialog').textContent).toBe('Chronicle of r1'));
+    expect(h.openRecord).toHaveBeenCalledWith('sessions', 's14');
   });
 
   it('says what will fill it when there’s nothing yet', async () => {

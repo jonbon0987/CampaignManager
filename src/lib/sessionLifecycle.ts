@@ -1,6 +1,7 @@
 // Where each session stands, planned → live → done, and what its prep covers.
 
 import type { Session, SessionInsert, SessionPlan } from './database.types';
+import { plainList } from './recording/chronicleView';
 
 const byNumber = (a: Session, b: Session) => a.session_number - b.session_number;
 
@@ -113,4 +114,10 @@ export function plainText(md: string): string {
 /** Cut to about `max` characters at a word break. */
 export function clip(text: string, max: number): string {
   return text.length > max ? text.slice(0, max).replace(/\s+\S*$/, '') + '…' : text;
+}
+
+/** What a session left open, a line each: a bulleted list's items, else its lines. */
+export function leftOpenLines(text: string | null | undefined): string[] {
+  if (!text?.trim()) return [];
+  return (plainList(text) ?? text.split('\n')).map(l => plainText(l)).filter(Boolean);
 }

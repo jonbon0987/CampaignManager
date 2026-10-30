@@ -5,6 +5,8 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useOpenRecord } from '../../context/NavigationContext';
 import { usePlanNextSession } from '../../hooks/useSessionLifecycle';
+import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContext';
+import { STAGE_LABEL } from '../../lib/recording/pipeline';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
 import { getHookCategoryStyle } from '../../lib/theme';
@@ -145,6 +147,8 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
   const last = lastPlayed(sessions);
   const played = sessions.filter(s => s.status === 'done').length;
   const inbox = ideas.filter(i => !i.promoted_hook_id).length;
+  // Recordings on their way to a chronicle, and chronicles waiting for review.
+  const chronicles = useChroniclePipelineMaybe().entries.filter(e => e.stage === 'ready' || e.stage === 'saving' || e.stage === 'transcribing' || e.stage === 'writing');
   // The Overview title falls back to the campaign's name, which every campaign has.
   const campaignTitle = overview.title || selectedCampaign?.name || 'Untitled Campaign';
   const meta = [
@@ -170,12 +174,33 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
 
       <NextSession next={next} runMode={runMode} onToggleRun={onToggleRun} />
 
-      {inbox > 0 && (
+      {(inbox > 0 || chronicles.length > 0) && (
         <div className="ov-waiting">
           <span className="ov-card-title">Waiting on you</span>
-          <Button variant="link" onClick={() => onNavigate('ideas')}>
-            {inbox} {inbox === 1 ? 'idea' : 'ideas'} in the Inbox ›
-          </Button>
+          <ul className="ov-waiting-list">
+            {chronicles.map(e => {
+              const s = sessions.find(x => x.id === e.recording.session_id);
+              const name = s ? sessionName(s) : 'A session';
+              return (
+                <li key={e.recording.id} className={`ov-waiting-item${e.stage === 'ready' ? ' is-ready' : ''}`}>
+                  {e.stage === 'ready' ? (
+                    <Button variant="link" onClick={() => openRecord('sessions', e.recording.session_id)}>
+                      {name}: the chronicle is ready to review{e.pending ? ` · ${e.pending} change${e.pending === 1 ? '' : 's'}` : ''} ›
+                    </Button>
+                  ) : (
+                    <span><span aria-hidden="true">◐ </span>{name}: {STAGE_LABEL[e.stage].toLowerCase()}…</span>
+                  )}
+                </li>
+              );
+            })}
+            {inbox > 0 && (
+              <li className="ov-waiting-item">
+                <Button variant="link" onClick={() => onNavigate('ideas')}>
+                  {inbox} {inbox === 1 ? 'idea' : 'ideas'} in the Inbox ›
+                </Button>
+              </li>
+            )}
+          </ul>
         </div>
       )}
 

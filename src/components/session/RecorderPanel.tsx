@@ -7,7 +7,7 @@
 // -----------------------------------------------------------
 
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Pause, Play, Square, Upload, Bookmark, X, FileText, ScrollText, ListChecks, BookOpen } from 'lucide-react';
+import { Mic, Pause, Play, Square, Upload, Bookmark, X, ScrollText, ListChecks } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useToast } from '../../context/ToastContext';
@@ -15,13 +15,16 @@ import { useRecording } from '../../context/RecordingContext';
 import { PlayerConsents, RecordingTracks, SessionAudio, SessionRecordings } from '../../lib/db';
 import type { PlayerConsent, RecordingMoment, Session, SessionRecording, SpeakerLink } from '../../lib/database.types';
 import { listMicrophones } from '../../lib/recording/audio';
-import { transcription, type TranscriptionState } from '../../lib/recording/transcriptionApi';
-import { durationLabel, partsLabel } from '../../lib/recording/chronicle';
+import { transcription } from '../../lib/recording/transcriptionApi';
+import { durationLabel } from '../../lib/recording/chronicle';
 import { savedChronicleSettings, useWriteChronicle } from '../../hooks/useWriteChronicle';
 import { TranscriptModal } from './TranscriptModal';
 import { ChronicleModal } from './ChronicleModal';
 import { ChronicleReview } from './ChronicleReview';
-import { ChronicleView } from './ChronicleView';
+import { PostRecapModal } from './PostRecapModal';
+import { OverflowMenu } from '../ui/OverflowMenu';
+import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContext';
+import { STAGE_LABEL, type PipelineStage } from '../../lib/recording/pipeline';
 import { DiscordMembers, DiscordStateLine } from './DiscordVoice';
 import { useDiscordBot, useDiscordCapture } from '../../hooks/useDiscordBot';
 import { rememberChannel, rememberedChannel, voiceChannels } from '../../lib/discord';
@@ -432,94 +435,57 @@ function LiveRecorder() {
 
 // --------------- Saved recordings ---------------
 
-const STATUS_LABEL: Record<string, { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' }> = {
-  processing: { label: 'Saved', color: 'muted' }, // refined from the tracks below
-  uploading: { label: 'Saving', color: 'muted' },
-  review: { label: 'Ready to review', color: 'gold' },
-  applied: { label: 'Applied', color: 'green' },
-  failed: { label: 'Failed', color: 'red' },
-  cancelled: { label: 'Cancelled', color: 'muted' },
+const STAGE_COLOR: Record<PipelineStage, 'gold' | 'green' | 'red' | 'muted' | 'blue'> = {
+  saving: 'muted', 'not-transcribed': 'muted', transcribing: 'muted', transcribed: 'blue', writing: 'muted', ready: 'gold', applied: 'green',
 };
 
-const POLL_MS = 8_000;
-
-function SavedRecordingRow({ recording: initial, onDiscard }: { recording: SessionRecording; onDiscard: () => void }) {
+/**
+ * One recording as one row: where it is on its way to a chronicle, the one
+ * step it needs next, and everything else in a menu. The steps run on their
+ * own for recordings started with that on (see ChroniclePipelineContext).
+ */
+function SavedRecordingRow({ recording: initial, session, onDiscard }: { recording: SessionRecording; session: Session; onDiscard: () => void }) {
   const toast = useToast();
+  const pipeline = useChroniclePipelineMaybe();
+  const entry = pipeline.entryFor(initial.id);
   const [audio, setAudio] = useState<{ label: string; url: string }[] | null>(null);
   const [recording, setRecording] = useState(initial);
-  const [tracks, setTracks] = useState<TranscriptionState['tracks'] | null>(null);
-  const [starting, setStarting] = useState(false);
+  const [busy, setBusy] = useState<null | 'transcribe' | 'fill'>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showChronicle, setShowChronicle] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [showView, setShowView] = useState(false);
-  const [filling, setFilling] = useState(false);
+  const [showPost, setShowPost] = useState(false);
   const writeChronicle = useWriteChronicle();
-  const missing = recording.status === 'review' ? recording.settings.chronicleMissing ?? [] : [];
 
-  useEffect(() => { setRecording(initial); }, [initial]);
+  useEffect(() => { setRecording(entry?.recording ?? initial); }, [initial, entry?.recording]);
 
-  useEffect(() => {
-    let cancelled = false;
-    RecordingTracks.getByRecording(initial.id)
-      .then(rows => { if (!cancelled) setTracks(rows.filter(t => t.storage_path)); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [initial.id]);
-
-  const transcribing = !!tracks?.some(t => t.transcription_status === 'submitted');
-  const canTranscribe = !!tracks?.some(t => t.transcription_status === 'pending' || t.transcription_status === 'failed');
-  const transcribed = !!tracks?.length && tracks.every(t => t.transcription_status === 'done');
-  // "Processing" covers everything from saved to transcribed, so say which.
-  const status: { label: string; color: 'gold' | 'green' | 'red' | 'muted' | 'blue' } =
-    recording.status === 'processing' && tracks
-      ? transcribing ? { label: 'Transcribing', color: 'muted' }
-        : transcribed ? { label: 'Transcribed', color: 'blue' }
-        : { label: 'Not transcribed yet', color: 'muted' }
-      : STATUS_LABEL[recording.status] ?? { label: recording.status, color: 'muted' };
-
-  // While AssemblyAI works, ask the server to check in every few seconds.
-  useEffect(() => {
-    if (!transcribing) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const state = await transcription(initial.id, 'poll');
-        if (cancelled) return;
-        setTracks(state.tracks);
-        setRecording(r => ({ ...r, ...state.recording }));
-      } catch (e) {
-        if (!cancelled) setRecording(r => ({ ...r, status_detail: e instanceof Error ? e.message : String(e) }));
-      }
-    };
-    const t = setInterval(() => void tick(), POLL_MS);
-    void tick();
-    return () => { cancelled = true; clearInterval(t); };
-  }, [transcribing, initial.id]);
+  const stage: PipelineStage = entry?.stage ?? (recording.status === 'applied' ? 'applied' : recording.status === 'review' ? 'ready' : 'not-transcribed');
+  const missing = stage === 'ready' ? recording.settings.chronicleMissing ?? [] : [];
+  const transcribed = stage === 'transcribed' || stage === 'writing' || stage === 'ready' || stage === 'applied';
+  const changed = () => pipeline.refresh();
 
   const transcribe = async () => {
-    setStarting(true);
+    setBusy('transcribe');
     try {
-      const state = await transcription(recording.id, 'start');
-      setTracks(state.tracks);
-      setRecording(r => ({ ...r, ...state.recording }));
+      await transcription(recording.id, 'start');
+      changed();
     } catch (e) {
       toast(errorMessage(e), 'error');
     } finally {
-      setStarting(false);
+      setBusy(null);
     }
   };
 
   const fillIn = async () => {
-    setFilling(true);
-    setRecording(r => ({ ...r, status_detail: `Writing ${partsLabel(missing).toLowerCase()}… about a minute` }));
+    setBusy('fill');
     try {
       const result = await writeChronicle(recording, savedChronicleSettings(recording), true);
       setRecording(r => ({ ...r, status: result.status, status_detail: result.status_detail, settings: result.settings }));
+      changed();
     } catch (e) {
-      setRecording(r => ({ ...r, status_detail: errorMessage(e) }));
+      toast(errorMessage(e), 'error');
     } finally {
-      setFilling(false);
+      setBusy(null);
     }
   };
 
@@ -532,74 +498,73 @@ function SavedRecordingRow({ recording: initial, onDiscard }: { recording: Sessi
     }
   };
 
+  // The one thing to do next.
+  const next = (() => {
+    if (stage === 'not-transcribed') {
+      return <Button size="xs" variant="primary" onClick={() => void transcribe()} disabled={!!busy}>{busy === 'transcribe' ? 'Starting…' : 'Transcribe'}</Button>;
+    }
+    if (stage === 'transcribed') {
+      return <Button size="xs" variant="primary" onClick={() => setShowChronicle(true)}><ScrollText size={11} /> Write the chronicle</Button>;
+    }
+    if (stage === 'ready' && missing.length > 0) {
+      return <Button size="xs" variant="primary" onClick={() => void fillIn()} disabled={!!busy}><ScrollText size={11} /> {busy === 'fill' ? 'Writing…' : 'Fill in missing parts'}</Button>;
+    }
+    if (stage === 'ready') {
+      return <Button size="xs" variant="primary" onClick={() => setShowReview(true)}><ListChecks size={11} /> Review {entry?.pending ? `${entry.pending} change${entry.pending === 1 ? '' : 's'}` : 'changes'}</Button>;
+    }
+    return null;
+  })();
+
+  const moving = stage === 'saving' || stage === 'transcribing' || stage === 'writing';
+  const detail = moving
+    ? stage === 'transcribing' ? 'Transcribing… a few minutes per hour of audio. You can leave this page.'
+      : stage === 'writing' ? 'Writing the chronicle… a minute or two. You can leave this page.'
+      : 'Saving the audio…'
+    : entry?.error ?? recording.status_detail;
+
+  const menu = [
+    ...(transcribed ? [{ label: 'Transcript', onClick: () => setShowTranscript(true) }] : []),
+    ...(audio ? [] : [{ label: 'Listen', onClick: () => void listen() }]),
+    ...(stage === 'ready' && missing.length > 0 ? [{ label: 'Review changes', onClick: () => setShowReview(true) }] : []),
+    ...(stage === 'ready' ? [{ label: 'Rewrite the chronicle', onClick: () => setShowChronicle(true) }] : []),
+    ...(stage === 'applied' ? [{ label: 'Review the write-back', onClick: () => setShowReview(true) }] : []),
+    ...(stage === 'applied' ? [{ label: 'Post player recap to Discord', onClick: () => setShowPost(true) }] : []),
+    { label: 'Delete recording', onClick: onDiscard, danger: true },
+  ];
+
   return (
-    <li style={{ padding: '10px 0', borderBottom: '1px solid var(--rule-soft)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div className="flex items-center gap-3 flex-wrap">
-        <Badge color={status.color}>{status.label}</Badge>
-        <span className="text-sm" style={{ color: 'var(--ink)' }}>
+    <li className="rr">
+      <div className="rr-row">
+        <Badge color={STAGE_COLOR[stage]}>{moving && <span aria-hidden="true">◐ </span>}{STAGE_LABEL[stage]}</Badge>
+        <span className="rr-when">
           {new Date(recording.started_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+          {recording.duration_ms ? <span className="rr-len"> · {formatDuration(recording.duration_ms)}</span> : null}
         </span>
-        {recording.duration_ms ? <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{formatDuration(recording.duration_ms)}</span> : null}
         <span style={{ flex: 1 }} />
-        {recording.status === 'applied' && (
-          <Button size="xs" variant="primary" onClick={() => setShowView(true)}><BookOpen size={11} /> Chronicle</Button>
-        )}
-        {(recording.status === 'review' || recording.status === 'applied') && (
-          <Button size="xs" variant={recording.status === 'review' ? 'primary' : 'secondary'} onClick={() => setShowReview(true)}>
-            <ListChecks size={11} /> {recording.status === 'review' ? 'Review changes' : 'Review'}
-          </Button>
-        )}
-        {transcribed && missing.length > 0 && (
-          <Button size="xs" variant="primary" onClick={() => void fillIn()} disabled={filling}>
-            <ScrollText size={11} /> {filling ? 'Writing…' : 'Fill in missing parts'}
-          </Button>
-        )}
-        {transcribed && recording.status !== 'applied' && (
-          <Button size="xs" variant={recording.status === 'review' ? 'secondary' : 'primary'} onClick={() => setShowChronicle(true)} disabled={filling}>
-            <ScrollText size={11} /> {recording.status === 'review' ? 'Rewrite chronicle' : 'Write the chronicle'}
-          </Button>
-        )}
-        {transcribed && <Button size="xs" onClick={() => setShowTranscript(true)}><FileText size={11} /> Transcript</Button>}
-        {canTranscribe && !transcribing && (
-          <Button size="xs" variant="primary" onClick={() => void transcribe()} disabled={starting}>
-            {starting ? 'Starting…' : tracks?.some(t => t.transcription_status === 'failed') ? 'Try transcribing again' : 'Transcribe'}
-          </Button>
-        )}
-        {!audio && <Button size="xs" onClick={() => void listen()}><Play size={11} /> Listen</Button>}
-        <Button size="xs" variant="danger" onClick={onDiscard}>Delete</Button>
+        {next}
+        <OverflowMenu items={menu} />
       </div>
-      {transcribing ? (
-        <span className="text-xs flex items-center gap-2" style={{ color: 'var(--ink-2)' }}>
-          <span aria-hidden="true" style={{ color: 'var(--gold)' }}>◐</span>
-          Transcribing… this takes a few minutes per hour of audio. You can leave this page.
-        </span>
-      ) : recording.status_detail && (
-        <span className="text-xs" style={{ color: recording.status === 'failed' ? 'var(--red)' : missing.length ? 'var(--warn)' : 'var(--ink-3)' }}>{recording.status_detail}</span>
+      {detail && (
+        <span className="rr-detail" style={{ color: entry?.error || recording.status === 'failed' ? 'var(--red)' : missing.length ? 'var(--warn)' : undefined }}>{detail}</span>
       )}
       {showTranscript && <TranscriptModal recording={recording} onClose={() => setShowTranscript(false)} />}
       {showReview && (
         <ChronicleReview
           recording={recording}
-          onClose={() => setShowReview(false)}
-          onChanged={r => setRecording(prev => ({ ...prev, ...r }))}
-        />
-      )}
-      {showView && (
-        <ChronicleView
-          recording={recording}
-          onClose={() => setShowView(false)}
-          onChanged={r => setRecording(prev => ({ ...prev, ...r }))}
+          onClose={() => { setShowReview(false); changed(); }}
+          onChanged={r => { setRecording(prev => ({ ...prev, ...r })); changed(); }}
         />
       )}
       {showChronicle && (
         <ChronicleModal
           recording={recording}
-          rewrite={recording.status === 'review'}
+          rewrite={stage === 'ready'}
           onClose={() => setShowChronicle(false)}
           onOpenTranscript={() => { setShowChronicle(false); setShowTranscript(true); }}
-          onWritten={r => setRecording(prev => ({ ...prev, status: r.status, status_detail: r.status_detail, settings: r.settings }))}
+          onWritten={r => { setRecording(prev => ({ ...prev, status: r.status, status_detail: r.status_detail, settings: r.settings })); changed(); }}
         />
       )}
+      {showPost && <PostRecapModal recording={recording} session={session} onClose={() => setShowPost(false)} />}
       {audio?.map(a => (
         <div key={a.url} className="flex items-center gap-2 flex-wrap">
           <span className="text-xs" style={{ color: 'var(--ink-2)', minWidth: 120 }}>{a.label}</span>
@@ -692,7 +657,7 @@ export function RecorderPanel({ session }: { session: Session }) {
 
         {saved.length > 0 && (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {saved.map(r => <SavedRecordingRow key={r.id} recording={r} onDiscard={() => void confirmDiscard(r)} />)}
+            {saved.map(r => <SavedRecordingRow key={r.id} recording={r} session={session} onDiscard={() => void confirmDiscard(r)} />)}
           </ul>
         )}
       </div>

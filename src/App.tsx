@@ -17,7 +17,6 @@ import { useAIChat } from './hooks/useAIChat';
 import { useCampaignAssistantBackend, useWorldAssistantBackend } from './hooks/assistantBackend';
 import StatBlockPanel from './components/StatBlockPanel';
 import ShortcutsOverlay from './components/ShortcutsOverlay';
-import { PostSessionCapture } from './components/ui/PostSessionCapture';
 import SettingsView from './components/tabs/SettingsView';
 import { StatBlockPanelProvider, useStatBlockPanel } from './context/StatBlockPanelContext';
 import { NavigationProvider } from './context/NavigationContext';
@@ -36,6 +35,7 @@ import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
 import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
+import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayStrip } from './components/play/PlayStrip';
 import { PlayTools } from './components/play/PlayTools';
 import { StartSessionDialog } from './components/play/StartSessionDialog';
@@ -108,7 +108,6 @@ function AppInner() {
     ...(initial?.view ? { [initial.tab]: initial.view } : {}),
   }));
   const chrome = useShellChrome({ hasNote: true });
-  const [captureOpen, setCaptureOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState('all');
   // A record the user asked to open (search, Recent, a link). The destination
@@ -211,7 +210,6 @@ function AppInner() {
     toggleRun,
     openSessionTools: () => showTool('initiative'),
     openNote: chrome.openNote,
-    openCapture: () => setCaptureOpen(true),
     openShortcuts: chrome.toggleShortcuts,
     backToWorld: world.backToWorld,
   // chrome's openers are stable callbacks or plain setters
@@ -309,9 +307,6 @@ function AppInner() {
         />
         {play.startOpen && <StartSessionDialog />}
         {play.recordFor && <StartRecordingModal session={play.recordFor} onClose={() => { play.clearRecordFor(); showTool('record'); }} />}
-        {captureOpen && (
-          <PostSessionCapture onClose={() => setCaptureOpen(false)} />
-        )}
         <ShortcutsOverlay open={chrome.shortcutsOpen} onClose={chrome.closeShortcuts} />
         <WorldImportDrawer
           open={importOpen}

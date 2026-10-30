@@ -2,19 +2,19 @@
 // -----------------------------------------------------------
 // An entity's Session History: a line per session it came up in, newest first,
 // written by a recording's write-back. Each keeps the line said at the table,
-// playable from the recording, and opens that session's chronicle.
+// playable from the recording, and opens that session's recap.
 // -----------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useToast } from '../../context/ToastContext';
-import { EntitySessionEntries, SessionRecordings } from '../../lib/db';
-import type { EntitySessionEntry, SessionEntryEntityType, SessionRecording } from '../../lib/database.types';
+import { EntitySessionEntries } from '../../lib/db';
+import type { EntitySessionEntry, SessionEntryEntityType } from '../../lib/database.types';
 import { clockLabel } from '../../lib/recording/chronicle';
 import { useRecordingPlayer } from '../../hooks/useRecordingPlayer';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { ChronicleView } from './ChronicleView';
+import { useOpenRecord } from '../../context/NavigationContext';
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -24,7 +24,7 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
   const { audio, playing, pause, playRecording } = useRecordingPlayer();
   const [entries, setEntries] = useState<EntitySessionEntry[] | null>(null);
   const [heard, setHeard] = useState<string | null>(null);
-  const [chronicle, setChronicle] = useState<SessionRecording | null>(null);
+  const openRecord = useOpenRecord();
 
   const load = useCallback(() => EntitySessionEntries.getForEntity(entityType, entityId)
     .then(setEntries)
@@ -46,15 +46,8 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
     void playRecording(e.recording_id, e.source_ms).catch(err => toast(errorMessage(err), 'error'));
   };
 
-  const openChronicle = async (recordingId: string) => {
-    try {
-      const r = await SessionRecordings.get(recordingId);
-      if (r) setChronicle(r);
-      else toast('That recording has been deleted.', 'error');
-    } catch (e) {
-      toast(errorMessage(e), 'error');
-    }
-  };
+  // The chronicle is part of the session's Recap.
+  const openChronicle = (sessionId: string) => openRecord('sessions', sessionId);
 
   if (entries === null) return <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Loading…</p>;
 
@@ -81,7 +74,7 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
               )}
               {e.recording_id && <Badge color="gold">From recording</Badge>}
               <span style={{ flex: 1 }} />
-              {e.recording_id && <Button variant="link" onClick={() => void openChronicle(e.recording_id!)}>See chronicle</Button>}
+              {e.recording_id && <Button variant="link" onClick={() => openChronicle(e.session_id)}>See chronicle</Button>}
             </div>
             <p style={{ margin: 0, color: latest ? 'var(--ink)' : 'var(--ink-2)' }}>{e.text}</p>
             {e.source_quote && (
@@ -104,7 +97,6 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
         );
       })}
       <audio ref={audio} preload="none" hidden />
-      {chronicle && <ChronicleView recording={chronicle} onClose={() => { setChronicle(null); void load(); }} />}
     </div>
   );
 }

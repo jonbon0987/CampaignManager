@@ -7,7 +7,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { usePlanNextSession } from '../../hooks/useSessionLifecycle';
-import { blankSession, nextSessionNumber, sessionName, STATUS_LABEL } from '../../lib/sessionLifecycle';
+import { blankSession, lastPlayed, nextSessionNumber, sessionName, STATUS_LABEL } from '../../lib/sessionLifecycle';
 import type { PaletteItem } from './CommandPalette';
 
 const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' ');
@@ -33,7 +33,6 @@ export interface CampaignPaletteHandlers {
   toggleRun: () => void;
   openSessionTools: () => void;
   openNote: () => void;
-  openCapture: () => void;
   openShortcuts: () => void;
   backToWorld: () => void;
 }
@@ -53,6 +52,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
       if (rec?.id) { markDraft(rec.id); h.openRecord(tab, rec.id); }
     };
     const nextSession = nextSessionNumber(sessions);
+    const last = lastPlayed(sessions);
 
     const actions: PaletteItem[] = [
       { key: 'a:run', group: 'Actions', glyph: h.runMode ? '■' : '▶', label: h.runMode ? 'End session' : 'Start session', action: true, run: h.toggleRun },
@@ -71,7 +71,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
         const s = await upsertSession(blankSession(nextSession));
         if (s?.id) h.openRecord('sessions', s.id);
       } },
-      { key: 'a:capture', group: 'Actions', glyph: '✍', label: 'Post-session quick capture', run: h.openCapture },
+      ...(last ? [{ key: 'a:recap', group: 'Actions', glyph: '✍', label: `Recap ${sessionName(last)}`, detail: 'What happened, what changed, what’s left open', run: () => h.openRecord('sessions', last.id) }] : []),
       { key: 'a:keys', group: 'Actions', glyph: '⌨', label: 'Keyboard shortcuts', run: h.openShortcuts },
       { key: 'a:world', group: 'Actions', glyph: '⊕', label: 'Back to the world', run: h.backToWorld },
       ...CAMPAIGN_PLACES.map(p => ({ key: `go:${p.tab}:${p.view ?? ''}`, group: 'Go to', glyph: p.glyph, label: p.label, run: () => h.openView(p.tab, p.view) })),

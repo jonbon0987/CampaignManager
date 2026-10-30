@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeSession } from '../test/fixtures';
 import {
-  blankSession, clip, localToday, lastPlayed, liveSession, nextPlanned, nextSessionNumber, planIds, plainText,
+  blankSession, clip, leftOpenLines, localToday, lastPlayed, liveSession, nextPlanned, nextSessionNumber, planIds, plainText,
   prepDone, prepProgress, sessionName, withPlanIds,
 } from './sessionLifecycle';
 
@@ -67,6 +67,14 @@ describe('dates', () => {
   it('gives the local date, not the UTC one', () => {
     expect(localToday(new Date(2026, 9, 29, 23, 30))).toBe('2026-10-29');
     expect(localToday(new Date(2026, 0, 5, 0, 5))).toBe('2026-01-05');
+  });
+});
+
+describe('left open', () => {
+  it('takes a bulleted list item by item, and plain text line by line', () => {
+    expect(leftOpenLines('- Who sent the letter?\n- Where is **Gorval**?')).toEqual(['Who sent the letter?', 'Where is Gorval?']);
+    expect(leftOpenLines('Who sent the letter?\n\nThe bell rang twice.')).toEqual(['Who sent the letter?', 'The bell rang twice.']);
+    expect(leftOpenLines('  ')).toEqual([]);
   });
 });
 
