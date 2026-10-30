@@ -34,6 +34,7 @@ import CampaignCreationGate from './components/world/CampaignCreationGate';
 import CanvasLoading from './components/ui/CanvasLoading';
 import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
+import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
 import { PlayStrip } from './components/play/PlayStrip';
 import { PlayTools } from './components/play/PlayTools';
@@ -700,7 +701,9 @@ function WorldRoot({ user }: { user: User }) {
         <StatBlockPanelProvider>
           <RecordingProvider userId={user.id}>
             <PlayProvider>
-              <AppInner />
+              <ChroniclePipelineProvider>
+                <AppInner />
+              </ChroniclePipelineProvider>
             </PlayProvider>
           </RecordingProvider>
         </StatBlockPanelProvider>

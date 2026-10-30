@@ -1958,6 +1958,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ps-step-mark { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .ps-step.is-current { border-color: var(--gold); color: var(--ink); background: var(--gold-dim); }
 .ps-step.is-current .ps-step-mark { color: var(--gold); }
+.ssd-sub { margin: -14px 0 0 28px; border-top-left-radius: 0; border-top-right-radius: 0; }
 .ps-step.is-done { color: var(--ink-3); }
 .ps-step.is-done .ps-step-mark { color: var(--moss); }
 .ps-enc .ps-step-mark { color: var(--accent); font-size: 12px; }

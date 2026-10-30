@@ -9,6 +9,7 @@ import useLocalStorage from '../../hooks/useLocalStorage';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { formatSessionDate, nextSessionNumber, prepProgress, sessionName } from '../../lib/sessionLifecycle';
+import { autoChronicleKey } from '../../lib/recording/autoChronicle';
 
 const NEW = 'new';
 
@@ -20,6 +21,8 @@ export function StartSessionDialog() {
   const planned = sessions.filter(s => s.status === 'planned').sort((a, b) => a.session_number - b.session_number);
   const [choice, setChoice] = useState<string>(() => planned[0]?.id ?? NEW);
   const [record, setRecord] = useLocalStorage(`dnd-record-on-start:${selectedCampaignId ?? ''}`, false);
+  // Read by the recorder when the recording starts (lib/recording/autoChronicle).
+  const [autoChronicle, setAutoChronicle] = useLocalStorage(autoChronicleKey(selectedCampaignId), true);
   const [starting, setStarting] = useState(false);
 
   const picked = planned.find(s => s.id === choice) ?? null;
@@ -84,6 +87,15 @@ export function StartSessionDialog() {
             </span>
           </span>
         </label>
+        {record && canRecord && (
+          <label className="ssd-record ssd-sub">
+            <input type="checkbox" checked={autoChronicle} onChange={e => setAutoChronicle(e.target.checked)} />
+            <span>
+              <span className="ssd-choice-name">Write the chronicle when it ends</span>
+              <span className="ssd-choice-meta">It’s transcribed and written up for you; the changes wait on Home for your review.</span>
+            </span>
+          </label>
+        )}
       </div>
     </Modal>
   );
