@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
 import { WorldProvider, useWorld } from './context/WorldContext';
-import Sidebar from './components/Sidebar';
-import Topbar from './components/Topbar';
 import Overview from './components/tabs/Overview';
 import SessionNotes from './components/tabs/SessionNotes';
 import Characters from './components/tabs/Characters';
@@ -17,39 +16,45 @@ import Workbench from './components/Workbench';
 import { useAIChat } from './hooks/useAIChat';
 import { useCampaignAssistantBackend, useWorldAssistantBackend } from './hooks/assistantBackend';
 import StatBlockPanel from './components/StatBlockPanel';
-import SearchOverlay from './components/SearchOverlay';
-import DiceRoller from './components/DiceRoller';
-import Scratchpad from './components/Scratchpad';
 import ShortcutsOverlay from './components/ShortcutsOverlay';
 import SessionBar from './components/SessionBar';
 import { PostSessionCapture } from './components/ui/PostSessionCapture';
 import SettingsView from './components/tabs/SettingsView';
-import { StatBlockPanelProvider } from './context/StatBlockPanelContext';
+import { StatBlockPanelProvider, useStatBlockPanel } from './context/StatBlockPanelContext';
 import { NavigationProvider } from './context/NavigationContext';
 import { CampaignEntityRefProvider, WorldEntityRefProvider } from './context/EntityRefContext';
 import { signInWithEmail, onAuthStateChange, resetPasswordForEmail, updatePassword } from './lib/auth';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ToastProvider } from './context/ToastContext';
-import useLocalStorage from './hooks/useLocalStorage';
-import WorldSidebar from './components/world/WorldSidebar';
-import WorldTopbar from './components/world/WorldTopbar';
 import WorldOverview from './components/world/WorldOverview';
 import { WorldNPCsView, WorldLocationsView, WorldLoreView, WorldCombatView } from './components/world/WorldViews';
 import WorldTimeline from './components/world/WorldTimeline';
 import WorldImportDrawer from './components/world/WorldImportDrawer';
 import WorldCreationGate from './components/world/WorldCreationGate';
+import CampaignCreationGate from './components/world/CampaignCreationGate';
 import CanvasLoading from './components/ui/CanvasLoading';
 import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator } from './components/session/RecorderPanel';
+import AppSidebar from './components/shell/AppSidebar';
+import AppTopbar from './components/shell/AppTopbar';
+import CommandPalette from './components/shell/CommandPalette';
+import QuickNote from './components/shell/QuickNote';
+import { useMigrateScratchpad } from './components/shell/useMigrateScratchpad';
+import { useCampaignPaletteItems, useWorldPaletteItems } from './components/shell/paletteItems';
+import { useShellChrome, shellClass } from './components/shell/useShellChrome';
+import { useRouteSync, currentRoute } from './hooks/useRouteSync';
+import { setRecentScope } from './lib/recent';
+import type { Route } from './lib/route';
+import type { WorldTab } from './types/world';
 
-// cast = PCs + NPCs + Factions; Lore & Locations are separate compendium tabs;
-// Threads & Ideas are separate play tabs; combat = Stat Sheets + Encounters
+// Tabs in a campaign. Ideas is kept for old links; it now lives in Threads'
+// Inbox view, and Settings opens from the sidebar's footer menu.
 export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'threads' | 'ideas' | 'modules' | 'sessions' | 'combat' | 'settings';
 
 // View options per tab — what the topbar segment control shows
 const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
   cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship Web' }],
-  threads:  [{ id: 'board', label: 'Board' }, { id: 'pipeline', label: 'Pipeline' }],
+  threads:  [{ id: 'board', label: 'Board' }, { id: 'pipeline', label: 'Pipeline' }, { id: 'inbox', label: 'Inbox' }],
   modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Web' }],
   sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }, { id: 'prep', label: 'Prep' }],
 };
@@ -63,163 +68,178 @@ const LIST_VIEW: Partial<Record<Tab, string>> = {
   cast: 'list', modules: 'list', sessions: 'log',
 };
 
+const TAB_LABELS: Record<Tab, string> = {
+  overview: 'Home', cast: 'Cast', lore: 'Lore', locations: 'Locations',
+  threads: 'Threads', ideas: 'Ideas', modules: 'Modules', sessions: 'Sessions',
+  combat: 'Encounters', settings: 'Settings',
+};
+
+const WORLD_TAB_LABELS: Record<WorldTab, string> = {
+  overview: 'Overview', lore: 'Lore', locations: 'Locations', npcs: 'Cast', combat: 'Encounters', timeline: 'Timeline',
+};
+
+/** Ideas is Threads' Inbox now; an old link to it lands there. */
+const normalizeTab = (tab: Tab, view?: string): { tab: Tab; view?: string } =>
+  tab === 'ideas' ? { tab: 'threads', view: 'inbox' } : { tab, view };
+
+const RAIL_OVERLAY_CLASS = 'cm-rail';
+
 function AppInner({ user }: { user: User }) {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [viewModes, setViewModes] = useState<Record<string, string>>({ cast: 'list', threads: 'board', modules: 'list', sessions: 'log' });
-  const [aiOpen, setAiOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [diceOpen, setDiceOpen] = useState(false);
+  const world = useWorld();
+  // Where the URL says to start (a deep link or a refresh).
+  const [initial] = useState(() => {
+    const r = currentRoute();
+    return r?.scope === 'campaign' ? { ...normalizeTab(r.tab, r.view), recordId: r.recordId } : null;
+  });
+  const [activeTab, setActiveTabState] = useState<Tab>(initial?.tab ?? 'overview');
+  const [viewModes, setViewModes] = useState<Record<string, string>>(() => ({
+    cast: 'list', threads: 'board', modules: 'list', sessions: 'log',
+    ...(initial?.view ? { [initial.tab]: initial.view } : {}),
+  }));
+  const chrome = useShellChrome({ hasNote: true });
   const [sessionBarOpen, setSessionBarOpen] = useState(false);
   const [runMode, setRunMode] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
-  const [scratchOpen, setScratchOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState('all');
-  // A record the user asked to open (e.g. from search or the sidebar "Recent"
-  // list). The destination tab reads its id, selects that record, then clears
-  // the target. `kind` tells Combat which sub-tab the record lives in.
-  const [openTarget, setOpenTarget] = useState<{ tab: Tab; id: string; kind?: string } | null>(null);
+  // A record the user asked to open (search, Recent, a link). The destination
+  // tab reads its id, selects that record, then clears the target.
+  const [openTarget, setOpenTarget] = useState<{ tab: Tab; id: string; kind?: string } | null>(
+    initial?.recordId ? { tab: initial.tab, id: initial.recordId } : null,
+  );
+  // The record the active tab reports showing, for the URL.
+  const [shownRecord, setShownRecord] = useState<{ tab: Tab; id: string } | null>(
+    initial?.recordId ? { tab: initial.tab, id: initial.recordId } : null,
+  );
+
+  const setActiveTab = useCallback((tab: Tab) => {
+    const n = normalizeTab(tab);
+    setActiveTabState(n.tab);
+    if (n.view) setViewModes(prev => ({ ...prev, [n.tab]: n.view! }));
+  }, []);
 
   const openRecord = useCallback((tab: Tab, id: string, kind?: string) => {
-    setActiveTab(tab);
+    setActiveTabState(tab);
     // Records only show in each tab's list view, not its web or timeline.
     const listView = LIST_VIEW[tab];
     if (listView) setViewModes(prev => ({ ...prev, [tab]: listView }));
     setOpenTarget({ tab, id, kind });
   }, []);
   const clearOpenTarget = useCallback(() => setOpenTarget(null), []);
+  const openView = useCallback((tab: Tab, view?: string) => {
+    setActiveTabState(tab);
+    if (view) setViewModes(prev => ({ ...prev, [tab]: view }));
+  }, []);
+
+  const reportRecord = useCallback((tab: Tab, id: string | null) => {
+    setShownRecord(prev => {
+      if (id) return prev?.tab === tab && prev.id === id ? prev : { tab, id };
+      return prev?.tab === tab ? null : prev;
+    });
+  }, []);
 
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
   const openIdFor = (tab: Tab) => (openTarget?.tab === tab ? openTarget.id : null);
-  const { loading, error, pcs } = useCampaign();
+  const { loading, error, pcs, selectedCampaign, selectedCampaignId } = useCampaign();
+  const { activeStatBlockId } = useStatBlockPanel();
   const chat = useAIChat(useCampaignAssistantBackend());
   const pcNames = pcs.map(p => p.character_name).filter(Boolean);
 
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const handler = (e: MediaQueryListEvent) => {
-      setIsMobile(e.matches);
-      if (e.matches) setMobileMenuOpen(false);
-    };
-    setIsMobile(mq.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  useMigrateScratchpad();
+  useEffect(() => { setRecentScope(selectedCampaignId); }, [selectedCampaignId]);
 
-  // Global keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable;
+  // Keep the URL on this campaign, tab, record and view, and follow Back.
+  const route: Route | null = world.activeWorldId && world.activeCampaignId ? {
+    scope: 'campaign',
+    worldId: world.activeWorldId,
+    campaignId: world.activeCampaignId,
+    tab: activeTab,
+    recordId: shownRecord?.tab === activeTab ? shownRecord.id : undefined,
+    view: activeViewMode !== (TAB_DEFAULT_VIEW[activeTab] ?? 'list') ? activeViewMode : undefined,
+  } : null;
+  useRouteSync(route, r => {
+    if (r.worldId !== world.activeWorldId) world.setActiveWorldId(r.worldId);
+    if (r.scope === 'world') {
+      world.setWorldTab(r.tab);
+      if (r.recordId) world.setSelected(r.tab, r.recordId);
+      return;
+    }
+    if (r.campaignId !== world.activeCampaignId) world.openCampaign(r.campaignId);
+    const n = normalizeTab(r.tab, r.view);
+    setActiveTabState(n.tab);
+    setViewModes(prev => ({ ...prev, [n.tab]: n.view ?? TAB_DEFAULT_VIEW[n.tab] ?? 'list' }));
+    setShownRecord(r.recordId ? { tab: n.tab, id: r.recordId } : null);
+    if (r.recordId) setOpenTarget({ tab: n.tab, id: r.recordId });
+  });
 
-      // ⌘K → Assistant Workbench
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setAiOpen(prev => !prev);
-        return;
-      }
+  // Starting a session opens the session tools; ending it closes them.
+  const toggleRun = useCallback(() => {
+    const next = !runMode;
+    setRunMode(next);
+    setSessionBarOpen(next);
+  }, [runMode]);
 
-      // ⌘/ → search
-      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
-        e.preventDefault();
-        setSearchOpen(prev => !prev);
-        return;
-      }
+  const paletteHandlers = useMemo(() => ({
+    openRecord,
+    openView,
+    runMode,
+    toggleRun,
+    openSessionTools: () => setSessionBarOpen(true),
+    openNote: chrome.openNote,
+    openCapture: () => setCaptureOpen(true),
+    openShortcuts: chrome.toggleShortcuts,
+    backToWorld: world.backToWorld,
+  // chrome's openers are stable callbacks or plain setters
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [openRecord, openView, runMode, toggleRun, world.backToWorld]);
+  const paletteItems = useCampaignPaletteItems(paletteHandlers);
 
-      // ⌘. → scratchpad
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-        e.preventDefault();
-        setScratchOpen(prev => !prev);
-        return;
-      }
-
-      // ⌘\ → collapse or expand the sidebar
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
-        e.preventDefault();
-        setSidebarOpen(prev => !prev);
-        return;
-      }
-
-      // ? → shortcuts overlay (only when not typing)
-      if (e.key === '?' && !isInput && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        setShortcutsOpen(prev => !prev);
-        return;
-      }
-
-      // Esc → close overlays
-      if (e.key === 'Escape') {
-        setShortcutsOpen(false);
-        setAiOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [setSidebarOpen]);
-
-  const showSidebar = isMobile ? mobileMenuOpen : sidebarOpen;
-
-  // Get the display label for topbar breadcrumb
-  const TAB_LABELS: Record<Tab, string> = {
-    overview: 'Overview', cast: 'Cast', lore: 'Lore', locations: 'Locations',
-    threads: 'Threads', ideas: 'Ideas',
-    modules: 'Modules', sessions: 'Sessions', combat: 'Combat',
-    settings: 'Settings',
-  };
-
-
-  // The Workbench is a modal, so the shell no longer reserves a rail column.
-  const shellClass = [
-    'cm-shell',
-    runMode ? 'cm-run' : '',
-    !isMobile && !sidebarOpen ? 'side-collapsed' : '',
-  ].filter(Boolean).join(' ');
+  // One docked rail: a stat block when one is open, else the assistant.
+  const rail = activeStatBlockId
+    ? <StatBlockPanel />
+    : chrome.assistantOpen ? <Workbench open onClose={() => chrome.setAssistantOpen(false)} chat={chat} /> : null;
 
   return (
-    <NavigationProvider setActiveTab={setActiveTab} openRecord={openRecord}>
+    <NavigationProvider setActiveTab={setActiveTab} openRecord={openRecord} reportRecord={reportRecord}>
       <CampaignEntityRefProvider>
       <RecordingProvider userId={user.id}>
-      <div className={shellClass}>
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          isOpen={showSidebar}
-          onToggle={() => setSidebarOpen(prev => !prev)}
-          onToggleRun={() => {
-            const next = !runMode;
-            setRunMode(next);
-            if (next) setSessionBarOpen(true);
-          }}
-          onOpenAI={() => setAiOpen(true)}
-          onOpenDice={() => setDiceOpen(true)}
-          proposalCount={chat.pendingProposalCount}
-          runMode={runMode}
-          isMobile={isMobile}
-          onCloseMobile={() => setMobileMenuOpen(false)}
+      <div className={shellClass({ collapsed: chrome.sidebarCollapsed, rail: !!rail, isMobile: chrome.isMobile, extra: runMode ? 'cm-run' : '' })}>
+        <AppSidebar
+          scope="campaign"
+          activeId={activeTab}
+          onNavigate={id => setActiveTab(id as Tab)}
+          collapsed={chrome.sidebarCollapsed}
+          onToggleCollapsed={chrome.toggleSidebar}
+          isMobile={chrome.isMobile}
+          mobileOpen={chrome.mobileMenuOpen}
+          onCloseMobile={chrome.closeMobileMenu}
+          onOpenShortcuts={chrome.toggleShortcuts}
+          campaignId={selectedCampaignId}
           onOpenRecent={openRecord}
+          runMode={runMode}
+          onToggleRun={toggleRun}
         />
 
         {/* Main column */}
         <div className="cm-main">
-          <Topbar
-            tabLabel={TAB_LABELS[activeTab]}
-            onOpenMobileMenu={() => setMobileMenuOpen(true)}
-            onOpenSearch={() => setSearchOpen(true)}
-            onToggleDice={() => setSessionBarOpen(prev => !prev)}
-            onOpenCapture={() => setCaptureOpen(true)}
-            onToggleScratch={() => setScratchOpen(prev => !prev)}
-            onToggleShortcuts={() => setShortcutsOpen(prev => !prev)}
-            scratchOpen={scratchOpen}
-            isMobile={isMobile}
+          <AppTopbar
+            crumbs={[
+              { label: world.activeWorld?.name ?? 'World', onClick: world.backToWorld },
+              { label: selectedCampaign?.name ?? 'Campaign' },
+              { label: TAB_LABELS[activeTab] },
+            ]}
+            isMobile={chrome.isMobile}
+            onOpenMobileMenu={chrome.openMobileMenu}
             viewMode={activeViewMode}
             setViewMode={setViewMode}
             viewOptions={TAB_VIEW_OPTIONS[activeTab]}
             status={<RecordingIndicator onOpen={sessionId => openRecord('sessions', sessionId)} />}
+            onOpenPalette={chrome.openPalette}
+            onToggleNote={chrome.toggleNote}
+            noteOpen={chrome.noteOpen}
+            onToggleAssistant={chrome.toggleAssistant}
+            assistantOpen={chrome.assistantOpen}
           />
 
           <div className="cm-canvas">
@@ -236,8 +256,9 @@ function AppInner({ user }: { user: User }) {
                 {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} openId={openIdFor('cast')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'lore'      && <Lore openId={openIdFor('lore')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('lore'); setImportOpen(true); }} />}
                 {activeTab === 'locations' && <Locations openId={openIdFor('locations')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
-                {activeTab === 'threads'   && <Threads viewMode={viewModes.threads ?? 'board'} onNavigate={setActiveTab} openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />}
-                {activeTab === 'ideas'     && <Ideas onNavigate={setActiveTab} />}
+                {activeTab === 'threads'   && (activeViewMode === 'inbox'
+                  ? <Ideas onNavigate={tab => { if (tab === 'threads') setViewModes(p => ({ ...p, threads: 'board' })); setActiveTab(tab); }} />
+                  : <Threads viewMode={activeViewMode} onNavigate={setActiveTab} openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />)}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} openId={openIdFor('sessions')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'combat'    && <CombatView onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={openTarget?.tab === 'combat' ? openTarget : null} onOpenConsumed={clearOpenTarget} />}
@@ -245,38 +266,30 @@ function AppInner({ user }: { user: User }) {
               </>
             )}
           </div>
+          <QuickNote open={chrome.noteOpen} onClose={chrome.closeNote} onOpenInbox={() => openView('threads', 'inbox')} />
         </div>
 
-        <Workbench open={aiOpen} onClose={() => setAiOpen(false)} chat={chat} />
+        {rail && <div className={RAIL_OVERLAY_CLASS}>{rail}</div>}
 
-        <StatBlockPanel />
-        <SearchOverlay
-          open={searchOpen}
-          onClose={() => setSearchOpen(false)}
-          onOpenRecord={openRecord}
-          onOpenView={(tab, view) => { setActiveTab(tab); setViewModes(p => ({ ...p, [tab]: view })); }}
-        />
-        <DiceRoller
-          open={diceOpen}
-          onClose={() => setDiceOpen(false)}
+        <CommandPalette
+          open={chrome.paletteOpen}
+          onClose={chrome.closePalette}
+          items={paletteItems}
+          onAsk={q => { chrome.setAssistantOpen(true); void chat.sendMessage(q); }}
+          placeholder="Search the campaign, jump to a tab, create, roll 2d6, or ask…"
         />
         <SessionBar
           open={sessionBarOpen}
           onClose={() => setSessionBarOpen(false)}
           runMode={runMode}
-          onToggleRun={() => {
-            const next = !runMode;
-            setRunMode(next);
-            if (!next) setSessionBarOpen(false);
-          }}
+          onToggleRun={toggleRun}
           onOpenRecord={openRecord}
           pcNames={pcNames}
         />
         {captureOpen && (
           <PostSessionCapture onClose={() => setCaptureOpen(false)} />
         )}
-        <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
-        <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+        <ShortcutsOverlay open={chrome.shortcutsOpen} onClose={chrome.closeShortcuts} />
         <WorldImportDrawer
           open={importOpen}
           onClose={() => setImportOpen(false)}
@@ -548,69 +561,101 @@ function WorldContent() {
 }
 
 function WorldShell() {
-  const [scratchOpen, setScratchOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [diceOpen, setDiceOpen] = useState(false);
+  const world = useWorld();
+  const chrome = useShellChrome({ hasNote: false });
   const chat = useAIChat(useWorldAssistantBackend());
+  const [newCampaignOpen, setNewCampaignOpen] = useState(false);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable;
-      // ⌘K → World Assistant
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setAiOpen(prev => !prev);
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-        e.preventDefault();
-        setScratchOpen(prev => !prev);
-        return;
-      }
-      if (e.key === '?' && !isInput && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        setShortcutsOpen(prev => !prev);
-        return;
-      }
-      if (e.key === 'Escape') {
-        setShortcutsOpen(false);
-        setAiOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  // Keep the URL on this world, tab and record, and follow Back.
+  const recordId = world.selected[world.worldTab];
+  const route: Route | null = world.activeWorldId
+    ? { scope: 'world', worldId: world.activeWorldId, tab: world.worldTab, recordId: world.worldTab === 'overview' || world.worldTab === 'timeline' ? undefined : recordId }
+    : null;
+  useRouteSync(route, r => {
+    if (r.worldId !== world.activeWorldId) world.setActiveWorldId(r.worldId);
+    if (r.scope === 'campaign') { world.openCampaign(r.campaignId); return; }
+    world.setWorldTab(r.tab);
+    if (r.recordId) world.setSelected(r.tab, r.recordId);
+  });
+
+  const paletteHandlers = useMemo(() => ({
+    openShortcuts: chrome.toggleShortcuts,
+    openNewCampaign: () => setNewCampaignOpen(true),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+  const paletteItems = useWorldPaletteItems(paletteHandlers);
+
+  const rail = chrome.assistantOpen
+    ? <Workbench open onClose={() => chrome.setAssistantOpen(false)} chat={chat} />
+    : null;
 
   return (
     <WorldEntityRefProvider>
-    <div className="cm-shell">
-      <WorldSidebar onOpenAI={() => setAiOpen(true)} onOpenDice={() => setDiceOpen(true)} />
+    <div className={shellClass({ collapsed: chrome.sidebarCollapsed, rail: !!rail, isMobile: chrome.isMobile })}>
+      <AppSidebar
+        scope="world"
+        activeId={world.worldTab}
+        onNavigate={id => world.setWorldTab(id as WorldTab)}
+        collapsed={chrome.sidebarCollapsed}
+        onToggleCollapsed={chrome.toggleSidebar}
+        isMobile={chrome.isMobile}
+        mobileOpen={chrome.mobileMenuOpen}
+        onCloseMobile={chrome.closeMobileMenu}
+        onOpenShortcuts={chrome.toggleShortcuts}
+      />
       <div className="cm-main">
-        <WorldTopbar
-          onToggleScratch={() => setScratchOpen(prev => !prev)}
-          onToggleShortcuts={() => setShortcutsOpen(prev => !prev)}
-          scratchOpen={scratchOpen}
+        <AppTopbar
+          crumbs={[{ label: world.activeWorld?.name ?? 'World' }, { label: WORLD_TAB_LABELS[world.worldTab] }]}
+          isMobile={chrome.isMobile}
+          onOpenMobileMenu={chrome.openMobileMenu}
+          onOpenPalette={chrome.openPalette}
+          onToggleAssistant={chrome.toggleAssistant}
+          assistantOpen={chrome.assistantOpen}
         />
         <div className="cm-canvas">
           <WorldContent />
         </div>
       </div>
-      <Workbench open={aiOpen} onClose={() => setAiOpen(false)} chat={chat} />
-      <DiceRoller open={diceOpen} onClose={() => setDiceOpen(false)} />
-      <Scratchpad open={scratchOpen} onClose={() => setScratchOpen(false)} />
-      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} scope="world" />
+      {rail && <div className={RAIL_OVERLAY_CLASS}>{rail}</div>}
+      <CommandPalette
+        open={chrome.paletteOpen}
+        onClose={chrome.closePalette}
+        items={paletteItems}
+        onAsk={q => { chrome.setAssistantOpen(true); void chat.sendMessage(q); }}
+        placeholder="Search the world, jump to a tab, create, roll 2d6, or ask…"
+      />
+      <ShortcutsOverlay open={chrome.shortcutsOpen} onClose={chrome.closeShortcuts} scope="world" />
+      {newCampaignOpen && createPortal(<CampaignCreationGate onClose={() => setNewCampaignOpen(false)} />, document.body)}
     </div>
     </WorldEntityRefProvider>
   );
 }
 
 function WorldRoot({ user }: { user: User }) {
-  const { worlds, loading, activeCampaignId, activeWorldId } = useWorld();
+  const world = useWorld();
+  const { worlds, loading, activeCampaignId, activeWorldId } = world;
+  // Apply the URL (a deep link or a refresh) once the worlds have loaded, before
+  // either shell starts writing its own route back to it.
+  const [routed, setRouted] = useState(false);
+  useEffect(() => {
+    if (loading || routed) return;
+    const r = currentRoute();
+    const target = r ? worlds.find(w => w.id === r.worldId) : null;
+    if (r && target) {
+      if (r.worldId !== activeWorldId) world.setActiveWorldId(r.worldId);
+      if (r.scope === 'campaign' && target.campaignIds.includes(r.campaignId)) {
+        world.openCampaign(r.campaignId);
+      } else if (r.scope === 'world') {
+        world.setWorldTab(r.tab);
+        if (r.recordId) world.setSelected(r.tab, r.recordId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRouted(true);
+  }, [loading, routed, worlds, activeWorldId, world]);
 
   // Don't flash the gate while worlds are still loading from Supabase.
-  if (loading) {
+  if (loading || !routed) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"

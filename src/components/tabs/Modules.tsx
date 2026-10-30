@@ -11,6 +11,7 @@
      double-click jumps straight into the Atlas editor.
    ════════════════════════════════════════════════════════════════ */
 import { useEffect, useState } from 'react';
+import { useReportRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
@@ -216,6 +217,7 @@ function ModuleCreatePanel({
 export default function Modules({ viewMode = 'list', setViewMode, openId: requestedId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; openId?: string | null; onOpenConsumed?: () => void }) {
   const { modules } = useCampaign();
   const [openId, setOpenId] = useState<string | null>(null);
+  useReportRecord('modules', openId);
 
   // Open a module requested from outside the tab (search, Recent).
   useEffect(() => {

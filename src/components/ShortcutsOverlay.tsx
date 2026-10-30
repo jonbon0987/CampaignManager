@@ -9,11 +9,11 @@ interface Shortcut { keys: string[]; label: string; campaignOnly?: boolean }
 
 // Only keys that are actually wired up belong here.
 const GROUPS: { title: string; shortcuts: Shortcut[] }[] = [
-  { title: 'Navigation', shortcuts: [
-    { keys: ['⌘', 'K'], label: 'Assistant' },
-    { keys: ['⌘', '/'], label: 'Search', campaignOnly: true },
-    { keys: ['⌘', '\\'], label: 'Collapse sidebar', campaignOnly: true },
-    { keys: ['⌘', '.'], label: 'Scratchpad' },
+  { title: 'Anywhere', shortcuts: [
+    { keys: ['⌘', 'K'], label: 'Search, jump, create, roll or ask' },
+    { keys: ['⌘', 'J'], label: 'Assistant' },
+    { keys: ['⌘', '.'], label: 'Quick note to Ideas', campaignOnly: true },
+    { keys: ['⌘', '\\'], label: 'Collapse sidebar' },
   ]},
   { title: 'Editing', shortcuts: [
     { keys: ['@'], label: 'Mention an entry' },

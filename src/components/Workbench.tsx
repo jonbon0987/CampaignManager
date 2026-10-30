@@ -4,7 +4,7 @@
 // the assistant proposes (from chat or from a document import) accumulates in
 // the tray as a curatable card. Nothing reaches the database until Commit.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { entityMeta } from '../lib/documentImport';
 import type { useAIChat } from '../hooks/useAIChat';
 import type { ChatMessage, IngestState, PlanState, StagedChange } from '../hooks/useAIChat';
@@ -298,6 +298,9 @@ function StagingTray({ chat }: { chat: Chat }) {
 }
 
 // ── Shell ──────────────────────────────────────────────────────────────────
+//
+// Docked in the shell's right-hand rail (a full-screen sheet on a phone), so the
+// record you're asking about stays in view. Chat and the staging tray are tabs.
 
 export default function Workbench({
   open,
@@ -310,12 +313,14 @@ export default function Workbench({
 }) {
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [pane, setPane] = useState<'chat' | 'stage'>('chat');
+  const pending = chat.pendingStaged.length;
 
   // Keep the newest message in view as the response streams.
   useEffect(() => {
     const el = threadRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [chat.messages, open]);
+  }, [chat.messages, open, pane]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -326,130 +331,139 @@ export default function Workbench({
   const canSend = (!!chat.input.trim() || !!chat.pendingDocument) && !chat.loading;
 
   return (
-    <div className="wb-scrim" onClick={onClose}>
-      <div
-        className="wb"
-        role="dialog"
-        aria-modal="true"
-        aria-label={chat.title}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="wb-head">
-          <div className="wb-mark">✦</div>
-          <div className="lead">
-            <div className="t">{chat.title}</div>
-            <div className="s">{chat.subtitle}</div>
-          </div>
-          {chat.messages.length > 0 && (
-            <button className="icon-btn" onClick={chat.clearMessages} title="Clear conversation">⌫</button>
-          )}
-          <button
-            className="icon-btn"
-            onClick={onClose}
-            title="Close"
-            aria-label="Close"
-            style={{ border: '1px solid var(--rule)' }}
-          >
-            ×
-          </button>
+    <aside className="wb wb-docked" aria-label={chat.title}>
+      <div className="wb-head">
+        <div className="wb-mark">✦</div>
+        <div className="lead">
+          <div className="t">{chat.title}</div>
+          <div className="s">{chat.subtitle}</div>
         </div>
+        {chat.messages.length > 0 && (
+          <button className="icon-btn" onClick={chat.clearMessages} title="Clear conversation" aria-label="Clear conversation">⌫</button>
+        )}
+        <button
+          className="icon-btn"
+          onClick={onClose}
+          title="Close (⌘J)"
+          aria-label="Close assistant"
+          style={{ border: '1px solid var(--rule)' }}
+        >
+          ×
+        </button>
+      </div>
 
-        <div className="wb-grid">
-          <div className="wb-conv">
-            <div className="wb-thread" ref={threadRef}>
-              {chat.messages.length === 0 ? (
-                <div className="wb-empty">
-                  <div className="mk">✦</div>
-                  <div className="t">What are we building tonight?</div>
-                  <div className="s">
-                    Ask in plain language. Drafts land in the staging tray on the right — you decide what to commit.
-                  </div>
-                  <div className="wb-samples">
-                    {chat.samples.map((s, i) => (
-                      <button key={i} className="wb-sample" onClick={() => chat.sendMessage(s.text)}>
-                        <span className="g">{s.glyph}</span>{s.text}
-                      </button>
-                    ))}
-                  </div>
+      <div className="wb-tabs" role="tablist" aria-label="Assistant">
+        {/* eslint-disable-next-line no-restricted-syntax -- bespoke tab, styled with its strip */}
+        <button role="tab" aria-selected={pane === 'chat'} className={`wb-tab ${pane === 'chat' ? 'is-active' : ''}`} onClick={() => setPane('chat')}>Chat</button>
+        {/* eslint-disable-next-line no-restricted-syntax -- bespoke tab, styled with its strip */}
+        <button role="tab" aria-selected={pane === 'stage'} className={`wb-tab ${pane === 'stage' ? 'is-active' : ''}`} onClick={() => setPane('stage')}>
+          Staged{pending > 0 && <span className="wb-tab-count">{pending}</span>}
+        </button>
+      </div>
+
+      {pane === 'stage' ? (
+        <StagingTray chat={chat} />
+      ) : (
+        <div className="wb-conv">
+          <div className="wb-thread" ref={threadRef}>
+            {chat.messages.length === 0 ? (
+              <div className="wb-empty">
+                <div className="mk">✦</div>
+                <div className="t">What are we building tonight?</div>
+                <div className="s">
+                  Ask in plain language. Drafts collect under Staged; nothing changes until you commit.
                 </div>
+                <div className="wb-samples">
+                  {chat.samples.map((s, i) => (
+                    <button key={i} className="wb-sample" onClick={() => chat.sendMessage(s.text)}>
+                      <span className="g">{s.glyph}</span>{s.text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              chat.messages.map((m, i) => (
+                <Message
+                  key={i}
+                  m={m}
+                  loading={chat.loading && i === chat.messages.length - 1}
+                />
+              ))
+            )}
+          </div>
+
+          {pending > 0 && (
+            // eslint-disable-next-line no-restricted-syntax -- inline notice link
+            <button className="wb-staged-note" onClick={() => setPane('stage')}>
+              ❑ {pending} change{pending === 1 ? '' : 's'} staged — review and commit ›
+            </button>
+          )}
+
+          {chat.apiError && (
+            <div className="wb-error">{chat.apiError}</div>
+          )}
+
+          {chat.pendingDocument && (
+            <div className="wb-attach">
+              <span className="g">▤</span>
+              <span className="fn">
+                {chat.pendingDocument.kind === 'gdocs-url'
+                  ? 'Google Doc'
+                  : chat.pendingDocument.filename ?? 'document'}
+              </span>
+              <span className="hint">Send to extract, or add instructions first.</span>
+              <button
+                className="icon-btn"
+                onClick={() => chat.setPendingDocument(null)}
+                title="Remove attachment"
+                aria-label="Remove attachment"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          <div className="wb-composer">
+            <div className="wb-composer-inner">
+              {chat.supportsDocuments && (
+                <DocumentUploadButton
+                  disabled={chat.loading}
+                  onAttach={input => { chat.setPendingDocument(input); chat.setApiError(''); }}
+                  onError={msg => chat.setApiError(msg)}
+                />
+              )}
+              <textarea
+                ref={inputRef}
+                rows={1}
+                placeholder={chat.composerPlaceholder}
+                aria-label="Message the assistant"
+                value={chat.input}
+                onChange={e => {
+                  chat.setInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                }}
+                onKeyDown={chat.handleKeyDown}
+              />
+              {chat.loading ? (
+                <button className="askbar-send" onClick={chat.stopGeneration} title="Stop" aria-label="Stop">
+                  ■
+                </button>
               ) : (
-                chat.messages.map((m, i) => (
-                  <Message
-                    key={i}
-                    m={m}
-                    loading={chat.loading && i === chat.messages.length - 1}
-                  />
-                ))
+                <button
+                  className="askbar-send"
+                  onClick={() => chat.sendMessage()}
+                  disabled={!canSend}
+                  title="Send"
+                  aria-label="Send"
+                >
+                  ↑
+                </button>
               )}
             </div>
-
-            {chat.apiError && (
-              <div className="wb-error">{chat.apiError}</div>
-            )}
-
-            {chat.pendingDocument && (
-              <div className="wb-attach">
-                <span className="g">▤</span>
-                <span className="fn">
-                  {chat.pendingDocument.kind === 'gdocs-url'
-                    ? 'Google Doc'
-                    : chat.pendingDocument.filename ?? 'document'}
-                </span>
-                <span className="hint">Send to extract, or add instructions first.</span>
-                <button
-                  className="icon-btn"
-                  onClick={() => chat.setPendingDocument(null)}
-                  title="Remove attachment"
-                  aria-label="Remove attachment"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-
-            <div className="wb-composer">
-              <div className="wb-composer-inner">
-                {chat.supportsDocuments && (
-                  <DocumentUploadButton
-                    disabled={chat.loading}
-                    onAttach={input => { chat.setPendingDocument(input); chat.setApiError(''); }}
-                    onError={msg => chat.setApiError(msg)}
-                  />
-                )}
-                <textarea
-                  ref={inputRef}
-                  rows={1}
-                  placeholder={chat.composerPlaceholder}
-                  value={chat.input}
-                  onChange={e => {
-                    chat.setInput(e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                  }}
-                  onKeyDown={chat.handleKeyDown}
-                />
-                {chat.loading ? (
-                  <button className="askbar-send" onClick={chat.stopGeneration} title="Stop">
-                    ■
-                  </button>
-                ) : (
-                  <button
-                    className="askbar-send"
-                    onClick={() => chat.sendMessage()}
-                    disabled={!canSend}
-                    title="Send"
-                    aria-label="Send"
-                  >
-                    ↑
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
-
-          <StagingTray chat={chat} />
         </div>
-      </div>
-    </div>
+      )}
+    </aside>
   );
 }

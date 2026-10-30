@@ -12,7 +12,8 @@ export interface OverflowMenuSep {
 
 export type OverflowMenuEntry = OverflowMenuItem | OverflowMenuSep;
 
-export function OverflowMenu({ items }: { items: OverflowMenuEntry[] }) {
+/** `up` opens the menu above its button, for menus near the bottom of the screen. */
+export function OverflowMenu({ items, up = false }: { items: OverflowMenuEntry[]; up?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -27,16 +28,17 @@ export function OverflowMenu({ items }: { items: OverflowMenuEntry[] }) {
 
   return (
     <div ref={ref} className="as-ov">
-      <button className="as-ov-btn" onClick={() => setOpen(o => !o)} title="More actions">
+      <button className="as-ov-btn" onClick={() => setOpen(o => !o)} title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded={open}>
         ···
       </button>
       {open && (
-        <div className="as-ov-menu">
+        <div className={`as-ov-menu${up ? ' is-up' : ''}`} role="menu">
           {items.map((item, i) => {
             if ('sep' in item) return <div key={i} className="as-ov-sep" />;
             return (
               <button
                 key={i}
+                role="menuitem"
                 className={`as-ov-item${item.danger ? ' is-danger' : ''}`}
                 onClick={() => { setOpen(false); item.onClick(); }}
               >

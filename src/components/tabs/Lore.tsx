@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { ListDetail, ListRow, DetailPanel, DetailSection, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
 import { OriginBand, type Origin } from '../ui/OriginBand';
-import { pushRecent } from '../Sidebar';
+import { pushRecent } from '../../lib/recent';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { OverflowMenu } from '../ui/OverflowMenu';
@@ -42,6 +43,7 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('lore', selectedId);
 
   // Open a record requested from outside the tab (e.g. the sidebar "Recent"
   // list), then clear the request so it doesn't re-fire. Syncing selection to an

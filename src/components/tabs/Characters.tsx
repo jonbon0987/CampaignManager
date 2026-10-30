@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { ListDetail, ListRow, EmptyDetail, Pill, FilterSep } from '../ui/ListDetail';
@@ -10,7 +11,7 @@ import { SearchableSelect } from '../ui/SearchableSelect';
 import { getFactionTypeStyle } from '../../lib/theme';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
-import { pushRecent } from '../Sidebar';
+import { pushRecent } from '../../lib/recent';
 import CharacterWeb from './CharacterWeb';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { markDraft, useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -72,6 +73,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
   const [filter, setFilter] = useState<FilterType>('all');
   const [metFilter, setMetFilter] = useState<MetFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('cast', selectedId);
 
   // Open a record requested from outside the tab (e.g. the sidebar "Recent"
   // list), then clear the request so it doesn't re-fire. Syncing selection to an
