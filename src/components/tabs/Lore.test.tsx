@@ -29,25 +29,25 @@ describe('Lore', () => {
   it('renders the tab with a zero count when empty', () => {
     render(<Lore />);
     expect(screen.getByText('Lore')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '+ Lore' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '+ Add lore' })).toBeTruthy();
   });
 
   it('creates a blank lore entry via the add button', () => {
     render(<Lore />);
-    fireEvent.click(screen.getByRole('button', { name: '+ Lore' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add lore' }));
     expect(cc().upsertLore).toHaveBeenCalledWith({ title: '', category: null, content: null, dm_only: false, world_id: null });
   });
 
   it('opens the world-import drawer from the header button', () => {
     const onImportFromWorld = vi.fn();
     render(<Lore onImportFromWorld={onImportFromWorld} />);
-    fireEvent.click(screen.getByRole('button', { name: '⊕ Import Lore' }));
+    fireEvent.click(screen.getByRole('button', { name: '⊕ Import lore' }));
     expect(onImportFromWorld).toHaveBeenCalled();
   });
 
   it('hides the import button when no import handler is provided', () => {
     render(<Lore />);
-    expect(screen.queryByRole('button', { name: '⊕ Import Lore' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '⊕ Import lore' })).toBeNull();
   });
 
   it('defaults to the first entry when no openId is given', () => {

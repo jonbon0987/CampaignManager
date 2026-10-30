@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parsedToMonsterForm, mergeMissing, buildCompletionPrompt } from './statblockCompletion';
+import { parsedToMonsterForm, mergeMissing, buildCompletionPrompt, formFromStatblock, statblockFieldsFromForm } from './statblockCompletion';
+import type { MonsterStatblock } from './database.types';
 import { emptyMonsterForm, type MonsterForm } from '../components/tabs/CreatureStatblocks';
 
 describe('parsedToMonsterForm', () => {
@@ -70,5 +71,21 @@ describe('buildCompletionPrompt', () => {
   it('does not demand content when it is already provided', () => {
     const p = buildCompletionPrompt({ ...emptyMonsterForm(), content: 'Multiattack. The creature makes two attacks.' });
     expect(p).not.toContain('"content" field is REQUIRED');
+  });
+});
+
+describe('a stat sheet and its form', () => {
+  it('saves numbers as numbers and blanks as null', () => {
+    const fields = statblockFieldsFromForm({ ...emptyMonsterForm(), name: 'Wolf', armor_class: '13', hit_points: ' 11 ', str: 'x', speed: '' });
+    expect(fields).toMatchObject({ name: 'Wolf', armor_class: 13, hit_points: 11, str: null, speed: null, creature_type: 'monstrosity' });
+  });
+
+  it('round-trips a saved sheet through the form', () => {
+    const sheet = {
+      ...statblockFieldsFromForm({ ...emptyMonsterForm(), name: 'Ghoul', creature_type: 'undead', challenge_rating: '1', armor_class: '12', hit_points: '22', dex: '15', senses: 'darkvision 60 ft.' }),
+      id: 's1', sort_order: 3,
+    } as MonsterStatblock;
+    expect(statblockFieldsFromForm(formFromStatblock(sheet))).toEqual(statblockFieldsFromForm(formFromStatblock({ ...sheet })));
+    expect(formFromStatblock(sheet)).toMatchObject({ name: 'Ghoul', armor_class: '12', dex: '15', con: '', senses: 'darkvision 60 ft.' });
   });
 });

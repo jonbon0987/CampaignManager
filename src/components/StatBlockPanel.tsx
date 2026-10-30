@@ -154,7 +154,7 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
             color: 'var(--ink-3)',
           }}
         >
-          Edit this stat sheet under Encounters › Stat Sheets.
+          Edit this stat sheet under Encounters › Stat sheets.
         </div>
       )}
       </aside>

@@ -53,7 +53,7 @@ describe('Modules (list view)', () => {
 
   it('creates a module from the inline panel (title required)', () => {
     render(<Modules viewMode="list" />);
-    fireEvent.click(screen.getByRole('button', { name: '+ Add' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add module' }));
 
     const createBtn = screen.getByRole('button', { name: 'Create Module' }) as HTMLButtonElement;
     expect(createBtn.disabled).toBe(true); // no title yet

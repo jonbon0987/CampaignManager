@@ -105,6 +105,10 @@ export const THREAD_STATES = ['seed', 'active', 'cold', 'resolved'] as const;
 
 export const getThreadState = (s: string | null) => threadStateMeta[s ?? 'active'] ?? threadStateMeta['active'];
 
+/** What a thread is about: its kind. */
+export const THREAD_KINDS = ['main_plot', 'side_quest', 'character_arc', 'faction'] as const;
+export const formatThreadKind = (k: string | null) => (!k ? 'Misc' : k.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()));
+
 // Module / scene element types (glyph + label + color) — from tabs/moduleDetail/pickers.tsx (`TYPE_META`)
 export interface TypeInfo { label: string; glyph: string; color: string; }
 export const moduleTypeMeta: Record<string, TypeInfo> = {

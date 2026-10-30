@@ -577,6 +577,9 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     if (!selectedCampaignId) return;
     await HooksDB.delete(id);
     setHooks(prev => prev.filter(r => r.id !== id));
+    // An idea promoted to this thread goes back to the Inbox (the column is
+    // ON DELETE SET NULL); show it there without a reload.
+    setIdeas(prev => prev.map(i => (i.promoted_hook_id === id ? { ...i, promoted_hook_id: null } : i)));
   }, [selectedCampaignId]);
 
   // ---- Ideas (inbox) ----

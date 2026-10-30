@@ -156,9 +156,9 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
       search={search}
       onSearchChange={setSearch}
       onAdd={handleAdd}
-      addLabel="+ Location"
+      addLabel="+ Add location"
       onImport={onImportFromWorld}
-      importLabel="⊕ Import Location"
+      importLabel="⊕ Import location"
       list={
         <>
 

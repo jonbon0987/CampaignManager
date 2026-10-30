@@ -7,7 +7,7 @@
 import { useState, useRef } from 'react';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
-import { useManualSave } from '../../../hooks/useManualSave';
+import { useAutoSave } from '../../../hooks/useAutoSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
@@ -43,12 +43,12 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
 
   const [form, setForm] = useState<ModuleForm>(() => toForm(module));
   const [buildOut, setBuildOut] = useState(false);
-  const prevId = useRef(module.id);
-  if (prevId.current !== module.id) { prevId.current = module.id; setForm(toForm(module)); }
 
-  const { status, save, isDirty } = useManualSave<ModuleForm>({
+  // Saves as you type; the editor is keyed by module, so a switch flushes the
+  // last edit to the module it belongs to.
+  const { status, saveNow: save } = useAutoSave<ModuleForm>({
     data: form,
-    resetKey: module.id,
+    delay: 800,
     onSave: async (d) => {
       await upsertModule({
         id: module.id,
@@ -74,6 +74,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
     <div className="cm-detail">
       <div className="md-editor">
         <div className="as-bar">
+          <SaveStatusIndicator status={status} onRetry={save} />
           <div className="as-spacer" />
           <Button variant="secondary" size="sm" onClick={() => setBuildOut(true)}>
             ✦ Build out
@@ -179,13 +180,6 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
                 })}
               </div>
             )}
-        </div>
-
-        {/* save bar */}
-        <div className="md-savebar">
-          <SaveStatusIndicator status={status} onRetry={save} />
-          <div className="as-spacer" />
-          <Button variant="primary" disabled={!isDirty} onClick={save}>Save changes</Button>
         </div>
       </div>
 

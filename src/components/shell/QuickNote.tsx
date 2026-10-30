@@ -1,8 +1,8 @@
 // ⌘. — jot a note without leaving the page. While a session is in play it
 // goes in that session's table notes (and its recap); otherwise into the
-// campaign's Ideas inbox. Replaces the Scratchpad, which kept notes in this
-// browser only and shared them across every campaign. Its notes move into
-// Ideas the first time a campaign opens.
+// campaign's Inbox, the first column of Threads. Replaces the Scratchpad,
+// which kept notes in this browser only and shared them across every
+// campaign. Its notes move into the Inbox the first time a campaign opens.
 
 import { useEffect, useRef, useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
@@ -51,7 +51,7 @@ export default function QuickNote({ open, onClose, onOpenInbox, onSessionNote, s
     try {
       await upsertIdea({ text: body, tag: null, promoted_hook_id: null });
       setText('');
-      toast('Saved to Ideas', 'success');
+      toast('Saved to the Inbox', 'success');
       onClose();
     } finally {
       setSaving(false);
@@ -63,7 +63,7 @@ export default function QuickNote({ open, onClose, onOpenInbox, onSessionNote, s
       <div className="cm-note-head">
         <span className="cm-note-title">✎ {toSession ? `Note for Session ${sessionNumber}` : 'Quick note'}</span>
         {/* eslint-disable-next-line no-restricted-syntax -- inline text link */}
-        <button className="cm-note-link" onClick={() => { onOpenInbox(); onClose(); }}>Ideas inbox ›</button>
+        <button className="cm-note-link" onClick={() => { onOpenInbox(); onClose(); }}>Inbox ›</button>
       </div>
       <textarea
         ref={ref}
@@ -77,10 +77,10 @@ export default function QuickNote({ open, onClose, onOpenInbox, onSessionNote, s
       />
       <div className="cm-note-foot">
         <span className="cm-note-hint"><kbd className="cm-kbd">⌘↵</kbd> save · <kbd className="cm-kbd">Esc</kbd> close</span>
-        {toSession && <Button variant="ghost" size="sm" onClick={() => void save()} disabled={!text.trim() || saving}>To Ideas</Button>}
+        {toSession && <Button variant="ghost" size="sm" onClick={() => void save()} disabled={!text.trim() || saving}>To the Inbox</Button>}
         {toSession
           ? <Button variant="primary" size="sm" onClick={saveToSession} disabled={!text.trim()}>Add to session</Button>
-          : <Button variant="primary" size="sm" onClick={() => void save()} disabled={!text.trim() || saving}>{saving ? 'Saving…' : 'Save to Ideas'}</Button>}
+          : <Button variant="primary" size="sm" onClick={() => void save()} disabled={!text.trim() || saving}>{saving ? 'Saving…' : 'Save to Inbox'}</Button>}
       </div>
     </div>
   );

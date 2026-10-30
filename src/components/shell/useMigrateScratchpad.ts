@@ -1,5 +1,5 @@
 // Moves the old Scratchpad's notes (kept in this browser only, shared by every
-// campaign) into the Ideas inbox of the first campaign opened, then forgets them.
+// campaign) into the Inbox of the first campaign opened, then forgets them.
 
 import { useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';

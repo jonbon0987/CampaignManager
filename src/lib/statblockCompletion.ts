@@ -8,6 +8,7 @@
 // -----------------------------------------------------------
 
 import type { MonsterForm } from '../components/tabs/CreatureStatblocks';
+import type { MonsterStatblock } from './database.types';
 
 const s = (v: unknown): string => (v == null ? '' : String(v));
 
@@ -128,4 +129,34 @@ export function buildCompletionPrompt(
 
 Respond with a single JSON object using this exact structure (no markdown, no commentary — just raw JSON). Include the provided fields unchanged plus every field you filled in:
 ${STATBLOCK_JSON_SPEC}`;
+}
+
+/** A saved stat sheet as the editor's form (numbers as text, blanks as ''). */
+export function formFromStatblock(m: MonsterStatblock): MonsterForm {
+  const n = (v: number | null) => (v != null ? String(v) : '');
+  return {
+    name: m.name, creature_type: m.creature_type ?? 'monstrosity', challenge_rating: m.challenge_rating ?? '',
+    armor_class: n(m.armor_class), ac_descriptor: m.ac_descriptor ?? '', hit_points: n(m.hit_points), hit_dice: m.hit_dice ?? '',
+    speed: m.speed ?? '', str: n(m.str), dex: n(m.dex), con: n(m.con), int: n(m.int), wis: n(m.wis), cha: n(m.cha),
+    saving_throws: m.saving_throws ?? '', skills: m.skills ?? '', damage_immunities: m.damage_immunities ?? '',
+    damage_resistances: m.damage_resistances ?? '', condition_immunities: m.condition_immunities ?? '',
+    senses: m.senses ?? '', languages: m.languages ?? '', content: m.content ?? '', dm_notes: m.dm_notes ?? '', tags: m.tags ?? '',
+  };
+}
+
+/** The columns a stat sheet's form writes. */
+export type StatSheetFields = Omit<MonsterStatblock, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'campaign_id' | 'world_id' | 'sort_order'>;
+
+/** The editor's form as the columns to save (numbers parsed, blanks as null). */
+export function statblockFieldsFromForm(f: MonsterForm): StatSheetFields {
+  const int = (v: string) => { const x = parseInt(v.trim(), 10); return Number.isNaN(x) ? null : x; };
+  const text = (v: string) => v || null;
+  return {
+    name: f.name, creature_type: text(f.creature_type), challenge_rating: text(f.challenge_rating),
+    armor_class: int(f.armor_class), ac_descriptor: text(f.ac_descriptor), hit_points: int(f.hit_points), hit_dice: text(f.hit_dice),
+    speed: text(f.speed), str: int(f.str), dex: int(f.dex), con: int(f.con), int: int(f.int), wis: int(f.wis), cha: int(f.cha),
+    saving_throws: text(f.saving_throws), skills: text(f.skills), damage_immunities: text(f.damage_immunities),
+    damage_resistances: text(f.damage_resistances), condition_immunities: text(f.condition_immunities),
+    senses: text(f.senses), languages: text(f.languages), content: text(f.content), dm_notes: text(f.dm_notes), tags: text(f.tags),
+  };
 }

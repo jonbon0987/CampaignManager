@@ -8,12 +8,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
-import { useManualSave } from '../../../hooks/useManualSave';
+import { useAutoSave } from '../../../hooks/useAutoSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
 import { limitFor } from '../../../lib/fieldLimits';
-import { Button } from '../../ui/Button';
 import { wouldCreateSubmoduleCycle } from '../../../lib/moduleUtils';
 import type { Module, Submodule, Scene, MonsterStatblock, Encounter } from '../../../lib/database.types';
 import {
@@ -40,12 +39,10 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
   const [form, setForm] = useState<SceneForm>(() => toForm(scene));
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
-  const prevId = useRef(scene.id);
-  if (prevId.current !== scene.id) { prevId.current = scene.id; setForm(toForm(scene)); }
 
-  const { status, save, isDirty } = useManualSave<SceneForm>({
+  const { status } = useAutoSave<SceneForm>({
     data: form,
-    resetKey: scene.id,
+    delay: 800,
     onSave: async (d) => {
       await upsertScene({
         id: scene.id,
@@ -119,9 +116,6 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
                 onPick={linkCreature} />
             </div>
           </div>
-          <div className="md-savebar-inline">
-            <Button variant="primary" size="sm" disabled={!isDirty} onClick={save}>Save scene</Button>
-          </div>
         </div>
       )}
     </div>
@@ -153,14 +147,12 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
   const [form, setForm] = useState<SubForm>(() => toForm(submodule));
   const subRef = useRef(submodule);
   subRef.current = submodule;
-  const prevId = useRef(submodule.id);
-  if (prevId.current !== submodule.id) { prevId.current = submodule.id; setForm(toForm(submodule)); }
 
   useEffect(() => { loadScenes(submodule.id); }, [submodule.id, loadScenes]);
 
-  const { status, save, isDirty } = useManualSave<SubForm>({
+  const { status, saveNow: save } = useAutoSave<SubForm>({
     data: form,
-    resetKey: submodule.id,
+    delay: 800,
     onSave: async (d) => {
       await upsertSubmodule({
         id: submodule.id,
@@ -219,6 +211,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
       <div className="md-editor">
         {/* action bar */}
         <div className="as-bar">
+          <SaveStatusIndicator status={status} onRetry={save} />
           <div className="as-spacer" />
           <OverflowMenu items={[{
             label: 'Delete Submodule', danger: true,
@@ -351,13 +344,6 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
               });
             }}>＋ Scene</button>
           </div>
-        </div>
-
-        {/* save bar */}
-        <div className="md-savebar">
-          <SaveStatusIndicator status={status} onRetry={save} />
-          <div className="as-spacer" />
-          <Button variant="primary" disabled={!isDirty} onClick={save}>Save changes</Button>
         </div>
       </div>
     </div>

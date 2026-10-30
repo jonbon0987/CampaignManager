@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
-import { SlashField } from '../ui/SlashField';
-import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
-import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
-import { getTypeStyle } from '../../lib/theme';
 import { StatBlockText } from '../ui/StatBlockText';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
@@ -16,7 +12,10 @@ import {
   useSelectedContextEntities,
   type ContextRef,
 } from '../ui/EntityContextPicker';
-import { parsedToMonsterForm, mergeMissing, buildCompletionPrompt } from '../../lib/statblockCompletion';
+import { parsedToMonsterForm, statblockFieldsFromForm } from '../../lib/statblockCompletion';
+import { markDraft } from '../../hooks/useDiscardBlankDraft';
+import { ListDetail, ListRow, EmptyDetail, Pill } from '../ui/ListDetail';
+import { StatSheetEditor } from '../entity/StatSheetEditor';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -310,21 +309,18 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 
 export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromWorld?: () => void; openId?: string | null; onOpenConsumed?: () => void }) {
   const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, overview } = useCampaign();
-  const confirm = useConfirm();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<MonsterStatblock | null>(null);
-  const [form, setForm] = useState<MonsterForm>(emptyMonsterForm());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string>('all');
+  const [search, setSearch] = useState('');
   const { openStatBlock, activeStatBlockId, closeStatBlock } = useStatBlockPanel();
 
   // Open the stat sheet requested from outside the tab (search).
   useEffect(() => {
     if (!openId) return;
-    if (monsterStatblocks.some(x => x.id === openId)) openStatBlock(openId);
+    if (monsterStatblocks.some(x => x.id === openId)) { setSelectedId(openId); setSearch(''); setFilterType('all'); }
     onOpenConsumed?.();
-  }, [openId, monsterStatblocks, onOpenConsumed, openStatBlock]);
-  const [filterType, setFilterType] = useState<string>('all');
-  const [search, setSearch] = useState('');
+  }, [openId, monsterStatblocks, onOpenConsumed]);
 
   // Generate modal state
   const [genModalOpen, setGenModalOpen] = useState(false);
@@ -338,120 +334,18 @@ export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenCo
   const [genError, setGenError] = useState('');
   const [genLoading, setGenLoading] = useState(false);
 
-  // "Fill in missing details" — completes the open sheet, preserving filled values.
-  const [fillLoading, setFillLoading] = useState(false);
-  const [fillError, setFillError] = useState('');
-  // Bumped after a fill to remount the content/dm_notes SlashFields (they only
-  // read `value` on mount).
-  const [fillNonce, setFillNonce] = useState(0);
-
-  const field = (key: keyof MonsterForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm(prev => ({ ...prev, [key]: e.target.value }));
-
-  const handleFillMissing = async () => {
-    setFillError('');
-    setFillLoading(true);
-    try {
-      const prompt = buildCompletionPrompt(form);
-      const res = await fetch('/api/generate-creature', {
-        method: 'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({ prompt, provider: getAIProvider() }),
-      });
-      const data = await res.json() as { text?: string; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? `Server error: ${res.status}`);
-      const jsonText = (data.text ?? '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-      const parsed = JSON.parse(jsonText) as Record<string, unknown>;
-      setForm(prev => mergeMissing(prev, parsedToMonsterForm(parsed)));
-      setFillNonce(n => n + 1);
-    } catch (err) {
-      setFillError(`Couldn't fill in the sheet: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setFillLoading(false);
-    }
+  // A new sheet is a draft until it has a name; its page opens straight away.
+  const handleAdd = async () => {
+    const m = await upsertMonsterStatblock({ ...statblockFieldsFromForm(emptyMonsterForm()), sort_order: monsterStatblocks.length, world_id: null });
+    markDraft(m.id);
+    setFilterType('all');
+    setSearch('');
+    setSelectedId(m.id);
   };
 
-  const openAdd = () => {
-    setEditing(null);
-    setForm(emptyMonsterForm());
-    setFillError('');
-    setModalOpen(true);
-  };
-
-  const openEdit = (m: MonsterStatblock) => {
-    setEditing(m);
-    setFillError('');
-    setForm({
-      name: m.name,
-      creature_type: m.creature_type ?? 'monstrosity',
-      challenge_rating: m.challenge_rating ?? '',
-      armor_class: m.armor_class != null ? String(m.armor_class) : '',
-      ac_descriptor: m.ac_descriptor ?? '',
-      hit_points: m.hit_points != null ? String(m.hit_points) : '',
-      hit_dice: m.hit_dice ?? '',
-      speed: m.speed ?? '',
-      str: m.str != null ? String(m.str) : '',
-      dex: m.dex != null ? String(m.dex) : '',
-      con: m.con != null ? String(m.con) : '',
-      int: m.int != null ? String(m.int) : '',
-      wis: m.wis != null ? String(m.wis) : '',
-      cha: m.cha != null ? String(m.cha) : '',
-      saving_throws: m.saving_throws ?? '',
-      skills: m.skills ?? '',
-      damage_immunities: m.damage_immunities ?? '',
-      damage_resistances: m.damage_resistances ?? '',
-      condition_immunities: m.condition_immunities ?? '',
-      senses: m.senses ?? '',
-      languages: m.languages ?? '',
-      content: m.content ?? '',
-      dm_notes: m.dm_notes ?? '',
-      tags: m.tags ?? '',
-    });
-    setModalOpen(true);
-  };
-
-  const toIntOrNull = (s: string): number | null => {
-    const n = parseInt(s.trim(), 10);
-    return isNaN(n) ? null : n;
-  };
-
-  const handleSave = async () => {
-    await upsertMonsterStatblock({
-      ...(editing ? { id: editing.id } : {}),
-      name: form.name,
-      creature_type: form.creature_type || null,
-      challenge_rating: form.challenge_rating || null,
-      armor_class: toIntOrNull(form.armor_class),
-      ac_descriptor: form.ac_descriptor || null,
-      hit_points: toIntOrNull(form.hit_points),
-      hit_dice: form.hit_dice || null,
-      speed: form.speed || null,
-      str: toIntOrNull(form.str),
-      dex: toIntOrNull(form.dex),
-      con: toIntOrNull(form.con),
-      int: toIntOrNull(form.int),
-      wis: toIntOrNull(form.wis),
-      cha: toIntOrNull(form.cha),
-      saving_throws: form.saving_throws || null,
-      skills: form.skills || null,
-      damage_immunities: form.damage_immunities || null,
-      damage_resistances: form.damage_resistances || null,
-      condition_immunities: form.condition_immunities || null,
-      senses: form.senses || null,
-      languages: form.languages || null,
-      content: form.content || null,
-      dm_notes: form.dm_notes || null,
-      tags: form.tags || null,
-      sort_order: editing?.sort_order ?? monsterStatblocks.length,
-    });
-    setModalOpen(false);
-  };
-
-  const handleDelete = async (m: MonsterStatblock) => {
-    if (await confirm(`Delete "${m.name}"?`)) {
-      await deleteMonsterStatblock(m.id);
-      if (activeStatBlockId === m.id) closeStatBlock();
-    }
+  const removeSheet = async (id: string) => {
+    await deleteMonsterStatblock(id);
+    if (activeStatBlockId === id) closeStatBlock();
   };
 
   const openGenModal = () => {
@@ -547,10 +441,11 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       const jsonText = (data.text ?? '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       const parsed = JSON.parse(jsonText) as Record<string, unknown>;
 
+      const m = await upsertMonsterStatblock({ ...statblockFieldsFromForm(parsedToMonsterForm(parsed)), sort_order: monsterStatblocks.length, world_id: null });
       setGenModalOpen(false);
-      setEditing(null);
-      setForm(parsedToMonsterForm(parsed));
-      setModalOpen(true);
+      setFilterType('all');
+      setSearch('');
+      setSelectedId(m.id);
     } catch (err) {
       setGenError(`Generation failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -571,167 +466,46 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
   const usedTypes = Array.from(new Set(monsterStatblocks.map(m => m.creature_type ?? 'other'))).sort();
 
+  const selected = monsterStatblocks.find(m => m.id === selectedId) ?? filtered[0] ?? null;
+
   return (
-    <div style={{ maxWidth: '900px', padding: '28px' }}>
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="min-w-0">
-          <h2 className="text-xl font-bold leading-tight" style={{ color: 'var(--gold)', fontFamily: 'var(--serif)' }}>
-            Stat Sheets
-          </h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>{monsterStatblocks.length} stat sheet{monsterStatblocks.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="flex-1" />
-        <button
-          onClick={openGenModal}
-          title="Generate a stat sheet with AI"
-          aria-label="Generate a stat sheet with AI"
-          className="px-3 py-1.5 rounded text-sm font-medium transition-colors"
-          style={{ backgroundColor: 'var(--arcane-bg)', color: 'var(--arcane)', border: '1px solid var(--arcane-line)' }}
-        >
-          ✦
-        </button>
-        {onImportFromWorld && (
-          <button
-            onClick={onImportFromWorld}
-            className="inline-flex items-center justify-center gap-1.5 rounded border font-medium transition-colors duration-150 px-3 py-1.5 text-sm"
-            style={{ backgroundColor: 'transparent', color: 'var(--ink-2)', borderColor: 'var(--border)', fontFamily: 'var(--serif)' }}
-          >
-            ⊕ Import
-          </button>
+    <>
+      <ListDetail
+        title="Stat sheets"
+        count={monsterStatblocks.length}
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={() => void handleAdd()}
+        addLabel="+ Add stat sheet"
+        onGenerate={openGenModal}
+        onImport={onImportFromWorld}
+        filters={monsterStatblocks.length > 0 && (
+          <>
+            <Pill active={filterType === 'all'} onClick={() => setFilterType('all')}>All</Pill>
+            {usedTypes.map(t => <Pill key={t} active={filterType === t} onClick={() => setFilterType(filterType === t ? 'all' : t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</Pill>)}
+          </>
         )}
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center justify-center gap-1.5 rounded border font-medium transition-colors duration-150 px-3 py-1.5 text-sm"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)', borderColor: 'var(--gold)', fontFamily: 'var(--serif)' }}
-        >
-          + Add Stat Sheet
-        </button>
-      </div>
-
-      {/* Filter bar */}
-      {monsterStatblocks.length > 0 && (
-        <div className="flex items-center gap-3 mb-5 flex-wrap">
-          <input
-            type="text"
-            placeholder="Search by name, tag, or CR..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-0 px-3 py-1.5 rounded text-sm outline-none"
-            style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule)', minWidth: '180px' }}
+        list={filtered.length === 0
+          ? <div className="cm-empty is-inline">{monsterStatblocks.length === 0 ? 'No stat sheets yet. Add one, or generate one.' : 'No stat sheets match.'}</div>
+          : filtered.map(m => (
+            <ListRow key={m.id} active={selected?.id === m.id} onClick={() => setSelectedId(m.id)} glyph="◆"
+              title={m.name || 'Unnamed creature'}
+              subtitle={[m.creature_type ?? 'other', m.challenge_rating && `CR ${m.challenge_rating}`, m.hit_points != null && `${m.hit_points} HP`].filter(Boolean).join(' · ')} />
+          ))}
+        detail={selected ? (
+          <StatSheetEditor
+            key={selected.id}
+            statblock={selected}
+            scope="campaign"
+            save={fields => upsertMonsterStatblock({ id: selected.id, ...fields, sort_order: selected.sort_order, world_id: selected.world_id })}
+            remove={removeSheet}
+            onDeleted={() => setSelectedId(null)}
+            onView={() => openStatBlock(selected.id)}
           />
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => setFilterType('all')}
-              className="text-xs px-2.5 py-1 rounded border"
-              style={{
-                backgroundColor: filterType === 'all' ? 'var(--gold-dim)' : 'var(--paper)',
-                color: filterType === 'all' ? 'var(--gold)' : 'var(--ink-2)',
-                borderColor: filterType === 'all' ? 'var(--gold-line)' : 'var(--rule)',
-              }}
-            >
-              All
-            </button>
-            {usedTypes.map(t => {
-              const ts = getTypeStyle(t);
-              const active = filterType === t;
-              return (
-                <button
-                  key={t}
-                  onClick={() => setFilterType(active ? 'all' : t)}
-                  className="text-xs px-2.5 py-1 rounded border capitalize"
-                  style={{
-                    backgroundColor: active ? ts.bg : 'var(--paper)',
-                    color: active ? ts.text : 'var(--ink-2)',
-                    borderColor: active ? ts.border : 'var(--rule)',
-                  }}
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* List */}
-      {monsterStatblocks.length === 0 ? (
-        <div className="text-center py-16" style={{ color: 'var(--ink-3)' }}>
-          No stat sheets yet. Add your first one!
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-10" style={{ color: 'var(--ink-3)' }}>
-          No stat sheets match your filter.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map(m => {
-            const ts = getTypeStyle(m.creature_type);
-            return (
-              <div
-                key={m.id}
-                className="rounded-lg border p-4 flex items-center gap-4"
-                style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)' }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span
-                      className="text-xs px-2 py-0.5 rounded border capitalize shrink-0"
-                      style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border }}
-                    >
-                      {m.creature_type ?? 'other'}
-                    </span>
-                    <span className="font-semibold text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
-                      {m.name}
-                    </span>
-                    {m.challenge_rating && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)' }}>
-                        CR {m.challenge_rating}
-                      </span>
-                    )}
-                    {m.armor_class != null && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--immune)' }}>
-                        AC {m.armor_class}
-                      </span>
-                    )}
-                    {m.hit_points != null && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--red)' }}>
-                        {m.hit_points} HP
-                      </span>
-                    )}
-                  </div>
-                  {m.tags && (
-                    <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{m.tags}</p>
-                  )}
-                </div>
-                <div className="flex gap-1.5 shrink-0">
-                  <button
-                    onClick={() => openStatBlock(m.id)}
-                    className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}
-                  >
-                    View
-                  </button>
-                  <button
-                    onClick={() => openEdit(m)}
-                    className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(m)}
-                    className="text-xs px-2.5 py-1 rounded"
-                    style={{ backgroundColor: 'var(--paper-2)', color: 'var(--red)', border: '1px solid var(--rule)' }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        ) : (
+          <EmptyDetail>Select a stat sheet, or add one.</EmptyDetail>
+        )}
+      />
 
       {/* ================================================================
           GENERATE MODAL
@@ -853,149 +627,6 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </div>
       </Modal>
 
-      {/* ================================================================
-          ADD / EDIT MODAL
-      ================================================================ */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editing ? `Edit: ${editing.name}` : 'New Stat Sheet'}
-        onSave={handleSave}
-        wide
-      >
-        {/* AI: complete the empty fields from what's already entered */}
-        <div style={{ marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--rule)' }}>
-          <button
-            onClick={handleFillMissing}
-            disabled={fillLoading}
-            title="Let the DM Assistant complete the empty fields, keeping what you've entered"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium"
-            style={{
-              backgroundColor: 'var(--arcane-bg)', color: 'var(--arcane)', border: '1px solid var(--arcane-line)',
-              cursor: fillLoading ? 'default' : 'pointer', opacity: fillLoading ? 0.7 : 1,
-            }}
-          >
-            {fillLoading ? 'Filling in…' : '✦ Fill in missing details'}
-          </button>
-          <p className="text-xs mt-1.5" style={{ color: 'var(--ink-3)' }}>
-            Completes empty fields (stats, actions, senses…) to match what you've entered — your filled-in values are kept.
-          </p>
-          {fillError && <p className="text-sm mt-1.5" style={{ color: 'var(--red)' }}>{fillError}</p>}
-        </div>
-
-        {/* Row 1: type / CR / name / tags */}
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Creature Type">
-            <select value={form.creature_type} onChange={field('creature_type')} style={inputStyle}>
-              {CREATURE_TYPES.map(t => (
-                <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-              ))}
-            </select>
-          </FormField>
-          <FormField label="Challenge Rating">
-            <input type="text" value={form.challenge_rating} onChange={field('challenge_rating')} placeholder="e.g., 1/4, 5, 17" maxLength={limitFor('monster_statblocks', 'challenge_rating')} style={inputStyle} />
-          </FormField>
-        </div>
-        <FormField label="Name">
-          <input type="text" value={form.name} onChange={field('name')} placeholder="e.g., Cave Troll, Shadow Drake" maxLength={limitFor('monster_statblocks', 'name')} style={inputStyle} />
-        </FormField>
-        <FormField label="Tags">
-          <input type="text" value={form.tags} onChange={field('tags')} placeholder="Comma-separated: boss, undead, ranged..." maxLength={limitFor('monster_statblocks', 'tags')} style={inputStyle} />
-        </FormField>
-
-        {/* Divider */}
-        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
-
-        {/* Row: AC / HP / Speed */}
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <FormField label="Armor Class">
-              <input type="number" min={1} max={30} value={form.armor_class} onChange={field('armor_class')} placeholder="e.g. 15" style={inputStyle} />
-            </FormField>
-            <input
-              type="text"
-              value={form.ac_descriptor}
-              onChange={field('ac_descriptor')}
-              placeholder="e.g. natural armor"
-              maxLength={limitFor('monster_statblocks', 'ac_descriptor')}
-              style={{ ...inputStyle, marginTop: '4px', fontSize: '0.75rem' }}
-            />
-          </div>
-          <div>
-            <FormField label="Hit Points">
-              <input type="number" min={1} max={maxFor('monster_statblocks', 'hit_points')} value={form.hit_points} onChange={field('hit_points')} placeholder="e.g. 45" style={inputStyle} />
-            </FormField>
-            <input
-              type="text"
-              value={form.hit_dice}
-              onChange={field('hit_dice')}
-              placeholder="e.g. 6d10+12"
-              maxLength={limitFor('monster_statblocks', 'hit_dice')}
-              style={{ ...inputStyle, marginTop: '4px', fontSize: '0.75rem' }}
-            />
-          </div>
-          <FormField label="Speed">
-            <input type="text" value={form.speed} onChange={field('speed')} placeholder="e.g. 30 ft., fly 60 ft." maxLength={limitFor('monster_statblocks', 'speed')} style={inputStyle} />
-          </FormField>
-        </div>
-
-        {/* Ability scores */}
-        <div>
-          <div style={{ ...sectionLabel, marginTop: '4px' }}>Ability Scores</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
-            {ABILITY_KEYS.map(({ key, label }) => (
-              <AbilityInput key={key} label={label} value={form[key] as string} onChange={field(key)} />
-            ))}
-          </div>
-        </div>
-
-        {/* Saving throws + skills */}
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Saving Throws">
-            <input type="text" value={form.saving_throws} onChange={field('saving_throws')} placeholder="e.g. Dex +4, Con +6" maxLength={limitFor('monster_statblocks', 'saving_throws')} style={inputStyle} />
-          </FormField>
-          <FormField label="Skills">
-            <input type="text" value={form.skills} onChange={field('skills')} placeholder="e.g. Perception +5, Stealth +4" maxLength={limitFor('monster_statblocks', 'skills')} style={inputStyle} />
-          </FormField>
-        </div>
-
-        {/* Immunities / resistances */}
-        <div className="grid grid-cols-3 gap-3">
-          <FormField label="Damage Resistances">
-            <input type="text" value={form.damage_resistances} onChange={field('damage_resistances')} placeholder="e.g. fire, cold" maxLength={limitFor('monster_statblocks', 'damage_resistances')} style={inputStyle} />
-          </FormField>
-          <FormField label="Damage Immunities">
-            <input type="text" value={form.damage_immunities} onChange={field('damage_immunities')} placeholder="e.g. poison, psychic" maxLength={limitFor('monster_statblocks', 'damage_immunities')} style={inputStyle} />
-          </FormField>
-          <FormField label="Condition Immunities">
-            <input type="text" value={form.condition_immunities} onChange={field('condition_immunities')} placeholder="e.g. charmed, frightened" maxLength={limitFor('monster_statblocks', 'condition_immunities')} style={inputStyle} />
-          </FormField>
-        </div>
-
-        {/* Senses + languages */}
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Senses">
-            <input type="text" value={form.senses} onChange={field('senses')} placeholder="e.g. darkvision 60 ft., passive Perception 15" maxLength={limitFor('monster_statblocks', 'senses')} style={inputStyle} />
-          </FormField>
-          <FormField label="Languages">
-            <input type="text" value={form.languages} onChange={field('languages')} placeholder="e.g. Common, Draconic" maxLength={limitFor('monster_statblocks', 'languages')} style={inputStyle} />
-          </FormField>
-        </div>
-
-        {/* Divider */}
-        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
-
-        {/* Actions & Traits free-form. SlashField reads `value` only on mount, so
-            `fillNonce` in the key remounts it when "Fill in missing details" writes
-            new content (plain inputs update on their own). */}
-        <FormField label="Actions & Traits">
-          <SlashField key={`content-${editing?.id ?? 'new'}-${fillNonce}`} value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))} placeholder={`Paste or write actions, bonus actions, reactions, and legendary actions here.\n\nSpecial Traits\nActions\nReactions\nLegendary Actions...`} minHeight="280px" maxLength={limitFor('monster_statblocks', 'content')} />
-        </FormField>
-        <FormField label="DM Notes">
-          <SlashField key={`dmnotes-${editing?.id ?? 'new'}-${fillNonce}`} value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))} placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" maxLength={limitFor('monster_statblocks', 'dm_notes')} />
-        </FormField>
-      </Modal>
-
-    </div>
+    </>
   );
 }

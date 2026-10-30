@@ -29,12 +29,12 @@ describe('Locations', () => {
   it('shows the inline empty message and a top-level add button', () => {
     render(<Locations />);
     expect(screen.getByText('No places yet — create one or import from canon')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '+ Location' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '+ Add location' })).toBeTruthy();
   });
 
   it('adds a root landmark via the add button', () => {
     render(<Locations />);
-    fireEvent.click(screen.getByRole('button', { name: '+ Location' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add location' }));
     expect(cc().upsertLocation).toHaveBeenCalledWith(
       expect.objectContaining({ name: '', location_type: 'landmark', parent_id: null }),
     );
@@ -43,7 +43,7 @@ describe('Locations', () => {
   it('opens the world-import drawer from the header button', () => {
     const onImportFromWorld = vi.fn();
     render(<Locations onImportFromWorld={onImportFromWorld} />);
-    fireEvent.click(screen.getByRole('button', { name: '⊕ Import Location' }));
+    fireEvent.click(screen.getByRole('button', { name: '⊕ Import location' }));
     expect(onImportFromWorld).toHaveBeenCalled();
   });
 

@@ -3,75 +3,39 @@ import EncounterBuilder from './EncounterBuilder';
 import CreatureStatblocks from './CreatureStatblocks';
 import RandomEncounters from './RandomEncounters';
 
-type SubTab = 'encounters' | 'random' | 'statblocks';
+export type CombatSubView = 'encounters' | 'random' | 'statblocks';
 
-// onImportFromWorld receives the world-import entity type for the active sub-tab
-// ('bestiary' for stat sheets, 'randomEncounter' for random tables).
-export default function CombatView({ onImportFromWorld, openTarget, onOpenConsumed }: {
+// The Encounters tab: encounters, random tables and stat sheets, switched from
+// the topbar like every other tab's views. onImportFromWorld receives the
+// world-import entity type for the view ('bestiary' for stat sheets,
+// 'randomEncounter' for random tables).
+export default function CombatView({ view, setView, onImportFromWorld, openTarget, onOpenConsumed }: {
+  view: string;
+  setView: (v: CombatSubView) => void;
   onImportFromWorld?: (type: string) => void;
   /** A record requested from outside (search, an @-mention): a stat sheet or an encounter. */
   openTarget?: { id: string; kind?: string } | null;
   onOpenConsumed?: () => void;
 }) {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('encounters');
   const [openId, setOpenId] = useState<string | null>(null);
 
-  // Show the sub-tab the requested record lives in, then hand its id down.
+  // Show the view the requested record lives in, then hand its id down.
   useEffect(() => {
     if (!openTarget) return;
+    setView(openTarget.kind === 'encounter' ? 'encounters' : 'statblocks');
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveSubTab(openTarget.kind === 'encounter' ? 'encounters' : 'statblocks');
     setOpenId(openTarget.id);
     onOpenConsumed?.();
-  }, [openTarget, onOpenConsumed]);
+  }, [openTarget, onOpenConsumed, setView]);
   const clearOpenId = () => setOpenId(null);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Sub-tab bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          padding: '10px 28px 0',
-          borderBottom: '1px solid var(--rule)',
-          flexShrink: 0,
-        }}
-      >
-        {([
-          { id: 'encounters', label: 'Encounters' },
-          { id: 'random', label: 'Random Tables' },
-          { id: 'statblocks', label: 'Stat Sheets' },
-        ] as const).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveSubTab(tab.id)}
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              fontFamily: 'var(--serif)',
-              cursor: 'pointer',
-              border: 'none',
-              borderBottom: activeSubTab === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
-              backgroundColor: 'transparent',
-              color: activeSubTab === tab.id ? 'var(--gold)' : 'var(--ink-3)',
-              marginBottom: '-1px',
-              transition: 'color 0.15s',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Sub-tab content */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        {activeSubTab === 'encounters' && <EncounterBuilder openId={openId} onOpenConsumed={clearOpenId} />}
-        {activeSubTab === 'random' && <RandomEncounters onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('randomEncounter') : undefined} />}
-        {activeSubTab === 'statblocks' && <CreatureStatblocks onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('bestiary') : undefined} openId={openId} onOpenConsumed={clearOpenId} />}
-      </div>
+    <div style={{ height: '100%', overflow: 'auto' }}>
+      {view === 'random'
+        ? <RandomEncounters onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('randomEncounter') : undefined} />
+        : view === 'statblocks'
+          ? <CreatureStatblocks onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('bestiary') : undefined} openId={openId} onOpenConsumed={clearOpenId} />
+          : <EncounterBuilder openId={openId} onOpenConsumed={clearOpenId} />}
     </div>
   );
 }

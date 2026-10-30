@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Faction, Location, NPC, PlayerCharacter } from '../../lib/database.types';
+import type { Faction, Location, MonsterStatblock, NPC, PlayerCharacter } from '../../lib/database.types';
 
 const h = vi.hoisted(() => ({ confirm: vi.fn() }));
 vi.mock('../../context/ConfirmContext', () => ({ useConfirm: () => h.confirm }));
@@ -17,6 +17,7 @@ import { NPCEditor } from './NPCEditor';
 import { FactionEditor } from './FactionEditor';
 import { LocationEditor } from './LocationEditor';
 import { PCEditor } from './PCEditor';
+import { StatSheetEditor } from './StatSheetEditor';
 
 const npc = (over: Partial<NPC> = {}) => ({
   id: 'n1', name: 'Brenna', role: 'Harbormaster', affiliation: null, status: 'active', disposition: null, description: 'Tall.',
@@ -152,5 +153,41 @@ describe('LocationEditor', () => {
     render(<LocationEditor location={all[1]} scope="world" allLocations={all} save={vi.fn()} remove={vi.fn()} />);
     const options = [...(screen.getByLabelText('Within') as HTMLSelectElement).options].map(o => o.textContent);
     expect(options).toEqual(['— Top level —', 'Coast', 'Inland']);
+  });
+});
+
+describe('StatSheetEditor', () => {
+  const sheet = (over: Partial<MonsterStatblock> = {}) => ({
+    id: 's1', name: 'Ghoul', creature_type: 'undead', challenge_rating: '1', armor_class: 12, ac_descriptor: null, hit_points: 22, hit_dice: null,
+    speed: '30 ft.', str: 13, dex: 15, con: 10, int: 7, wis: 10, cha: 6, saving_throws: null, skills: null, damage_immunities: 'poison',
+    damage_resistances: null, condition_immunities: null, senses: null, languages: null, content: null, dm_notes: null, tags: null, sort_order: 0,
+    ...over,
+  }) as MonsterStatblock;
+
+  it('saves as you type, numbers as numbers', async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<StatSheetEditor statblock={sheet()} scope="campaign" save={save} remove={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Hit points'), { target: { value: '30' } });
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ghoul', hit_points: 30, armor_class: 12, damage_immunities: 'poison' })), { timeout: 2000 });
+  });
+
+  it('opens the sheet in the rail once the last edit is saved', async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const onView = vi.fn();
+    render(<StatSheetEditor statblock={sheet()} scope="world" save={save} remove={vi.fn()} onView={onView} />);
+    expect(screen.getByText('World stat sheet')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'View sheet' }));
+    await waitFor(() => expect(onView).toHaveBeenCalled());
+    expect(save).toHaveBeenCalled();
+  });
+
+  it('deletes after the DM confirms', async () => {
+    const remove = vi.fn().mockResolvedValue(undefined);
+    const onDeleted = vi.fn();
+    render(<StatSheetEditor statblock={sheet()} scope="campaign" save={vi.fn()} remove={remove} onDeleted={onDeleted} />);
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Delete stat sheet'));
+    await waitFor(() => expect(remove).toHaveBeenCalledWith('s1'));
+    expect(onDeleted).toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
+import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
 import type { Module, Faction } from '../../lib/database.types';
 import { factionTypeColors } from '../../lib/theme';
@@ -69,13 +70,9 @@ function ModuleList({ onOpen }: { onOpen: (id: string) => void }) {
     <div className="cm-md" style={{ height: '100%' }}>
       {/* Left rail */}
       <div className="cm-md-list">
-        <div className="cm-md-list-head">
-          <div>
-            <div className="cm-md-eyebrow">Campaign</div>
-            <div className="cm-md-title">Modules</div>
-          </div>
-          <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>+ Add</Button>
-        </div>
+        <PageHeader className="cm-md-list-head" eyebrow={`${modules.length} ${modules.length === 1 ? 'module' : 'modules'}`} title="Modules">
+          <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>+ Add module</Button>
+        </PageHeader>
         <div className="cm-md-list-scroll">
           {modules.length === 0 ? (
             <div className="cm-empty">No modules yet.</div>
