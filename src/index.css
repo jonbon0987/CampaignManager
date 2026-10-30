@@ -3718,3 +3718,19 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .rv-card.is-applied .rv-check { background: var(--moss); border-color: var(--moss); cursor: default; }
 .rv-card .conf { font-size: 9px; }
 .rv-card .conf-bar { width: 34px; }
+
+/* A recording's transcript: searchable, each line plays from its moment */
+.tr { display: flex; flex-direction: column; gap: 10px; }
+.tr-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.tr-search { flex: 1 1 260px; }
+.tr-player { flex: 1 1 260px; min-width: 0; }
+.tr-lines { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.tr-line { display: grid; grid-template-columns: 92px 130px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--rule-soft); border-radius: var(--radius); }
+.tr-line.is-from { background: var(--paper-2); }
+.tr-line.is-playing { background: var(--gold-dim); box-shadow: inset 2px 0 0 var(--gold); }
+.tr-at { justify-self: start; font-family: var(--mono); color: var(--ink-3); }
+.tr-who { font-family: var(--serif); font-size: 14px; font-weight: 500; color: var(--ink); }
+.tr-who.is-dm { color: var(--gold); }
+.tr-text { font-family: var(--serif); font-size: 14px; line-height: 1.5; color: var(--ink); }
+.tr-hit { background: var(--gold-dim); color: var(--gold); border-radius: 2px; padding: 0 1px; }
+@media (max-width: 640px) { .tr-line { grid-template-columns: 1fr; gap: 2px; } }
