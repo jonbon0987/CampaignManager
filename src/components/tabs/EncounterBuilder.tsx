@@ -1,17 +1,16 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { Modal } from '../Modal';
 import { InitiativeTracker } from '../InitiativeTracker';
 import type { PartyMember } from '../../lib/combat';
 import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
 import { Button } from '../ui/Button';
-import type { Encounter, MonsterStatblock } from '../../lib/database.types';
+import type { Encounter } from '../../lib/database.types';
 import {
   EncounterDetail,
   difficultyColors,
   statusColors,
-  sectionLabel,
   type EncounterSaveData,
 } from '../ui/EncounterDetail';
 
@@ -42,7 +41,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
   const [runningEncounter, setRunningEncounter] = useState<Encounter | null>(null);
 
   // Creature sheet viewer
-  const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
+  const { openStatBlock } = useStatBlockPanel();
 
   // Active PC names for initiative tracker
   // The active party, with the HP and AC set on each PC in Cast.
@@ -266,52 +265,12 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
             monsterStatblocks={monsterStatblocks}
             onDelete={() => handleDelete(selectedEnc)}
             onRun={() => setRunningEncounter(selectedEnc)}
-            onViewStatblock={setViewingStatblock}
+            onViewStatblock={sb => openStatBlock(sb.id)}
             upsertEncounter={campaignUpsert}
           />
         )}
       </div>
 
-      {/* ================================================================
-          CREATURE SHEET VIEWER
-      ================================================================ */}
-      {viewingStatblock && (
-        <Modal isOpen={!!viewingStatblock} onClose={() => setViewingStatblock(null)} title={viewingStatblock.name} wide>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              {viewingStatblock.creature_type && (
-                <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)', borderColor: 'var(--red-line)' }}>
-                  {viewingStatblock.creature_type}
-                </span>
-              )}
-              {viewingStatblock.challenge_rating && (
-                <span className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
-                  CR {viewingStatblock.challenge_rating}
-                </span>
-              )}
-              {viewingStatblock.tags && (
-                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewingStatblock.tags}</span>
-              )}
-            </div>
-            {viewingStatblock.content && (
-              <pre className="text-sm whitespace-pre-wrap rounded p-3"
-                style={{ color: 'var(--ink)', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-                {viewingStatblock.content}
-              </pre>
-            )}
-            {viewingStatblock.dm_notes && (
-              <div>
-                <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingStatblock.dm_notes}
-                </p>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
 
       {/* ================================================================
           AI ENCOUNTER GENERATOR

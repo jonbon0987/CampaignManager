@@ -1,11 +1,14 @@
-import { useCampaign } from '../context/CampaignContext';
 import { useStatBlockPanel } from '../context/StatBlockPanelContext';
 import { StatBlockBody, isStatBlockEmpty } from './tabs/CreatureStatblocks';
 import { getTypeStyle } from '../lib/theme';
+import type { MonsterStatblock } from '../lib/database.types';
 
-export default function StatBlockPanel() {
+/**
+ * The one place a stat sheet is read, docked in the rail, in a campaign or the
+ * world. Every "view stat sheet" opens it (useStatBlockPanel().openStatBlock).
+ */
+export default function StatBlockPanel({ statblocks: monsterStatblocks }: { statblocks: MonsterStatblock[] }) {
   const { activeStatBlockId, closeStatBlock } = useStatBlockPanel();
-  const { monsterStatblocks } = useCampaign();
 
   const open = activeStatBlockId !== null;
   const statblock = activeStatBlockId

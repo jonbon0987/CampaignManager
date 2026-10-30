@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
@@ -314,15 +315,14 @@ export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenCo
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MonsterStatblock | null>(null);
   const [form, setForm] = useState<MonsterForm>(emptyMonsterForm());
-  const [viewing, setViewing] = useState<MonsterStatblock | null>(null);
+  const { openStatBlock, activeStatBlockId, closeStatBlock } = useStatBlockPanel();
 
   // Open the stat sheet requested from outside the tab (search).
   useEffect(() => {
     if (!openId) return;
-    const m = monsterStatblocks.find(x => x.id === openId);
-    if (m) setViewing(m);
+    if (monsterStatblocks.some(x => x.id === openId)) openStatBlock(openId);
     onOpenConsumed?.();
-  }, [openId, monsterStatblocks, onOpenConsumed]);
+  }, [openId, monsterStatblocks, onOpenConsumed, openStatBlock]);
   const [filterType, setFilterType] = useState<string>('all');
   const [search, setSearch] = useState('');
 
@@ -450,7 +450,7 @@ export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenCo
   const handleDelete = async (m: MonsterStatblock) => {
     if (await confirm(`Delete "${m.name}"?`)) {
       await deleteMonsterStatblock(m.id);
-      if (viewing?.id === m.id) setViewing(null);
+      if (activeStatBlockId === m.id) closeStatBlock();
     }
   };
 
@@ -706,7 +706,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                   <button
-                    onClick={() => setViewing(m)}
+                    onClick={() => openStatBlock(m.id)}
                     className="text-xs px-2.5 py-1 rounded"
                     style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}
                   >
@@ -996,51 +996,6 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </FormField>
       </Modal>
 
-      {/* ================================================================
-          VIEW MODAL
-      ================================================================ */}
-      {viewing && (
-        <Modal
-          isOpen={!!viewing}
-          onClose={() => setViewing(null)}
-          title={viewing.name}
-          wide
-        >
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              {(() => {
-                const ts = getTypeStyle(viewing.creature_type);
-                return (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded border capitalize"
-                    style={{ backgroundColor: ts.bg, color: ts.text, borderColor: ts.border }}
-                  >
-                    {viewing.creature_type ?? 'other'}
-                  </span>
-                );
-              })()}
-              {viewing.challenge_rating && (
-                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
-                  CR {viewing.challenge_rating}
-                </span>
-              )}
-              {viewing.tags && (
-                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewing.tags}</span>
-              )}
-            </div>
-            <StatBlockBody m={viewing} />
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => { setViewing(null); openEdit(viewing); }}
-                className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
