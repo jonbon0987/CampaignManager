@@ -1,19 +1,20 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { Modal } from '../Modal';
 import { InitiativeTracker } from '../InitiativeTracker';
 import type { PartyMember } from '../../lib/combat';
 import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
 import { Button } from '../ui/Button';
-import type { Encounter, MonsterStatblock } from '../../lib/database.types';
+import type { Encounter } from '../../lib/database.types';
 import {
   EncounterDetail,
   difficultyColors,
   statusColors,
-  sectionLabel,
+  parseCombatants,
   type EncounterSaveData,
 } from '../ui/EncounterDetail';
+import { partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
 
 // ================================================================
 // Main component
@@ -42,7 +43,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
   const [runningEncounter, setRunningEncounter] = useState<Encounter | null>(null);
 
   // Creature sheet viewer
-  const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
+  const { openStatBlock } = useStatBlockPanel();
 
   // Active PC names for initiative tracker
   // The active party, with the HP and AC set on each PC in Cast.
@@ -50,6 +51,16 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
     () => pcs.filter(p => p.is_active).map(p => ({ name: p.character_name, maxHp: p.max_hp, ac: p.armor_class })),
     [pcs],
   );
+  // ...and their levels, which rate each encounter.
+  const partyByLevel = useMemo<PartyLevel[]>(
+    () => pcs.filter(p => p.is_active).map(p => ({ name: p.character_name, level: p.level })),
+    [pcs],
+  );
+  const tierOf = (enc: Encounter) =>
+    rateEncounter(
+      parseCombatants(enc.combatants).map(c => ({ cr: c.challenge_rating, count: c.count })),
+      partyLevels(partyByLevel, String(enc.party_size ?? ''), String(enc.party_level ?? '')),
+    )?.tier ?? enc.difficulty;
 
   // Adapter so the shared EncounterDetail can call the campaign upsert
   const campaignUpsert = useCallback(
@@ -92,7 +103,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
     const s = search.toLowerCase();
     return enc.name.toLowerCase().includes(s)
       || (enc.environment ?? '').toLowerCase().includes(s)
-      || (enc.difficulty ?? '').toLowerCase().includes(s);
+      || (tierOf(enc) ?? '').toLowerCase().includes(s);
   });
 
   // Keep selected in sync if data changes
@@ -190,7 +201,8 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
           )}
           {filtered.map(enc => {
             const isActive = selectedEnc?.id === enc.id;
-            const dc = enc.difficulty ? difficultyColors[enc.difficulty] : null;
+            const tier = tierOf(enc);
+            const dc = tier ? difficultyColors[tier] : null;
             const sc = statusColors[enc.status] ?? statusColors.draft;
             return (
               <div
@@ -224,7 +236,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
                         borderRadius: 'var(--radius)',
                         padding: '1px 5px',
                       }}>
-                        {enc.difficulty}
+                        {tier}
                       </span>
                     )}
                     <span style={{
@@ -266,52 +278,13 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
             monsterStatblocks={monsterStatblocks}
             onDelete={() => handleDelete(selectedEnc)}
             onRun={() => setRunningEncounter(selectedEnc)}
-            onViewStatblock={setViewingStatblock}
+            onViewStatblock={sb => openStatBlock(sb.id)}
             upsertEncounter={campaignUpsert}
+            party={partyByLevel}
           />
         )}
       </div>
 
-      {/* ================================================================
-          CREATURE SHEET VIEWER
-      ================================================================ */}
-      {viewingStatblock && (
-        <Modal isOpen={!!viewingStatblock} onClose={() => setViewingStatblock(null)} title={viewingStatblock.name} wide>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              {viewingStatblock.creature_type && (
-                <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)', borderColor: 'var(--red-line)' }}>
-                  {viewingStatblock.creature_type}
-                </span>
-              )}
-              {viewingStatblock.challenge_rating && (
-                <span className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
-                  CR {viewingStatblock.challenge_rating}
-                </span>
-              )}
-              {viewingStatblock.tags && (
-                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewingStatblock.tags}</span>
-              )}
-            </div>
-            {viewingStatblock.content && (
-              <pre className="text-sm whitespace-pre-wrap rounded p-3"
-                style={{ color: 'var(--ink)', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-                {viewingStatblock.content}
-              </pre>
-            )}
-            {viewingStatblock.dm_notes && (
-              <div>
-                <div style={sectionLabel}>DM Notes</div>
-                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingStatblock.dm_notes}
-                </p>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
 
       {/* ================================================================
           AI ENCOUNTER GENERATOR

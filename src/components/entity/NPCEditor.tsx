@@ -20,12 +20,13 @@ import { useCanonLock } from './useCanonLock';
 import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import type { EntityCanon, EntityScope } from './types';
-import type { Faction, NPC } from '../../lib/database.types';
+import type { Faction, Location, NPC } from '../../lib/database.types';
+import { SingleLink, WasText } from './LinkPicker';
 
 /** What the editor writes back: every field it shows. */
 export type NPCFields = Pick<NPC,
   'name' | 'role' | 'affiliation' | 'status' | 'disposition' | 'description' | 'hooks_motivations'
-  | 'dm_notes' | 'location' | 'first_session' | 'met_by_pcs' | 'faction_ids' | 'statblock_id'>;
+  | 'dm_notes' | 'location' | 'location_id' | 'first_session' | 'met_by_pcs' | 'faction_ids' | 'statblock_id'>;
 
 const toFields = (npc: NPC): NPCFields => ({
   name: npc.name,
@@ -37,6 +38,7 @@ const toFields = (npc: NPC): NPCFields => ({
   hooks_motivations: npc.hooks_motivations,
   dm_notes: npc.dm_notes,
   location: npc.location,
+  location_id: npc.location_id ?? null,
   first_session: npc.first_session,
   met_by_pcs: npc.met_by_pcs,
   faction_ids: npc.faction_ids ?? [],
@@ -54,16 +56,19 @@ const isEmpty = (v: string | null | undefined) => !v?.trim();
 type Optional = 'hooks' | 'voice' | 'notes' | 'statblock';
 const OPTIONAL_LABEL: Record<Optional, string> = { hooks: 'Hooks & motivations', voice: 'Voice', notes: 'DM notes', statblock: 'Stat sheet' };
 
-export function NPCEditor({ npc, scope, factions, statblocks, save, remove, onDeleted, onOpenStatBlock, canon }: {
+export function NPCEditor({ npc, scope, factions, locations, statblocks, save, remove, onDeleted, onOpenStatBlock, onOpenLocation, canon }: {
   npc: NPC;
   scope: EntityScope;
   /** Factions it can belong to, in the same scope. */
   factions: Faction[];
+  /** Places it can be found at, in the same scope. */
+  locations: Pick<Location, 'id' | 'name' | 'region'>[];
   statblocks: { id: string; name: string }[];
   save: (fields: NPCFields) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
   onDeleted?: () => void;
   onOpenStatBlock?: (id: string) => void;
+  onOpenLocation?: (id: string) => void;
   canon?: EntityCanon<NPCFields>;
 }) {
   const confirm = useConfirm();
@@ -145,12 +150,11 @@ export function NPCEditor({ npc, scope, factions, statblocks, save, remove, onDe
 
         <div className="as-grid-2">
           <div className="as-fl">
-            <label className="as-ll" htmlFor={`npc-aff-${npc.id}`}>Affiliation</label>
-            <input id={`npc-aff-${npc.id}`} className="as-input" value={form.affiliation ?? ''} onChange={e => set('affiliation', e.target.value || null)} placeholder="Guild, city, group…" maxLength={limitFor('npcs', 'affiliation')} />
-          </div>
-          <div className="as-fl">
-            <label className="as-ll" htmlFor={`npc-loc-${npc.id}`}>Location</label>
-            <input id={`npc-loc-${npc.id}`} className="as-input" value={form.location ?? ''} onChange={e => set('location', e.target.value || null)} placeholder="Where found…" maxLength={limitFor('npcs', 'location')} />
+            <span className="as-ll">Found at</span>
+            <SingleLink id={form.location_id} glyph="✦" placeholder="+ Link a place"
+              options={locations.filter(l => l.name).map(l => ({ id: l.id, label: l.name, detail: l.region ?? undefined }))}
+              onChange={id => set('location_id', id)} onOpen={onOpenLocation} disabled={locked} />
+            <WasText text={form.location} onClear={() => set('location', null)} disabled={locked} />
           </div>
           <div className="as-fl">
             <label className="as-ll" htmlFor={`npc-disp-${npc.id}`}>Toward the party</label>
@@ -173,6 +177,7 @@ export function NPCEditor({ npc, scope, factions, statblocks, save, remove, onDe
         <div className="as-fl">
           <label className="as-ll">Factions</label>
           <FactionPillSelector selectedIds={form.faction_ids} onChange={ids => set('faction_ids', ids)} factions={factions} />
+          <WasText text={form.affiliation} onClear={() => set('affiliation', null)} disabled={locked} />
         </div>
 
         {sections.shown('hooks') && (

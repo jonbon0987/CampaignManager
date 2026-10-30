@@ -172,6 +172,16 @@ export function formatCampaignContext(data: {
 }): string {
   const submodules = data.submodules ?? [];
   const scenes = data.scenes ?? [];
+  // Links show as names, so the model reads who and where rather than ids.
+  const byId = <T extends { id: string }>(rows: T[], label: (r: T) => string) => {
+    const m = new Map(rows.map(r => [r.id, label(r)]));
+    return (id: string) => m.get(id) ?? null;
+  };
+  const npcName = byId(data.npcs, n => n.name);
+  const factionName = byId(data.factions, f => f.name);
+  const placeName = byId(data.locations, l => l.name);
+  const names = (ids: string[] | null | undefined, name: (id: string) => string | null) =>
+    (ids ?? []).map(name).filter(Boolean).join(', ');
   return `Campaign: ${data.overviewTitle || 'Unnamed Campaign'}
 Plot summary: ${data.overviewPlot || '(none)'}
 
@@ -181,16 +191,16 @@ SESSIONS (${data.sessions.length}):
 ${data.sessions.map(s => `  #${s.session_number} (${s.session_date ?? 'no date'}): ${s.summary ?? '(no summary)'} [id:${s.id}]`).join('\n') || '  (none)'}
 
 PLAYER CHARACTERS (${data.pcs.length}):
-${data.pcs.map(p => `  ${p.character_name} — ${p.race ?? '?'} ${p.class ?? '?'}, played by ${p.player_name ?? '?'} [id:${p.id}]${textFields(p as unknown as Record<string, unknown>, ['background', 'story_hooks', 'key_npcs', 'dm_notes'])}`).join('\n') || '  (none)'}
+${data.pcs.map(p => `  ${p.character_name} — ${p.race ?? '?'} ${p.class ?? '?'}, played by ${p.player_name ?? '?'}${names(p.key_npc_ids, npcName) ? `; key NPCs: ${names(p.key_npc_ids, npcName)}` : ''} [id:${p.id}]${textFields(p as unknown as Record<string, unknown>, ['background', 'story_hooks', 'key_npcs', 'dm_notes'])}`).join('\n') || '  (none)'}
 
 NPCS (${data.npcs.length}):
-${data.npcs.map(n => `  ${n.name} (${n.role ?? '?'}, ${n.affiliation ?? '?'}, ${n.status}${n.met_by_pcs ? ', met' : ''}${n.disposition ? `, toward the party: ${n.disposition}` : ''}) [id:${n.id}]${textFields(n as unknown as Record<string, unknown>, ['description', 'hooks_motivations', 'dm_notes'])}`).join('\n') || '  (none)'}
+${data.npcs.map(n => `  ${n.name} (${n.role ?? '?'}, ${names(n.faction_ids, factionName) || n.affiliation || 'no faction'}${n.location_id && placeName(n.location_id) ? `, at ${placeName(n.location_id)}` : ''}, ${n.status}${n.met_by_pcs ? ', met' : ''}${n.disposition ? `, toward the party: ${n.disposition}` : ''}) [id:${n.id}]${textFields(n as unknown as Record<string, unknown>, ['description', 'hooks_motivations', 'dm_notes'])}`).join('\n') || '  (none)'}
 
 LOCATIONS (${data.locations.length}):
 ${data.locations.map(l => `  ${l.name} — ${l.location_type ?? '?'} in ${l.region ?? '?'} [id:${l.id}]${textFields(l as unknown as Record<string, unknown>, ['description', 'history', 'dm_notes'])}`).join('\n') || '  (none)'}
 
 FACTIONS (${data.factions.length}):
-${data.factions.map(f => `  ${f.name} (${f.faction_type ?? '?'}) [id:${f.id}]${textFields(f as unknown as Record<string, unknown>, ['overview', 'key_figures', 'agenda', 'dm_notes'])}`).join('\n') || '  (none)'}
+${data.factions.map(f => `  ${f.name} (${f.faction_type ?? '?'})${names(f.key_figure_ids, npcName) ? `; key figures: ${names(f.key_figure_ids, npcName)}` : ''} [id:${f.id}]${textFields(f as unknown as Record<string, unknown>, ['overview', 'key_figures', 'agenda', 'dm_notes'])}`).join('\n') || '  (none)'}
 
 HOOKS & IDEAS (${data.hooks.length}):
 ${data.hooks.map(h => `  [${h.state ?? (h.is_active ? 'active' : 'resolved')}] ${h.title} (${h.category ?? '?'}) [id:${h.id}]${textFields(h as unknown as Record<string, unknown>, ['description', 'dm_only_notes'])}`).join('\n') || '  (none)'}

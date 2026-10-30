@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react';
 import type { Encounter, MonsterStatblock } from '../lib/database.types';
 import {
-  CONDITIONS, CONDITION_COLORS as conditionColors, abilityMod, clamp,
+  CONDITIONS, CONDITION_COLORS as conditionColors, clamp,
   combatantsFromEncounter, combatantsFromParty, newCombatant,
   type Combatant, type Condition, type Fight, type PartyMember,
 } from '../lib/combat';
 import { useFight } from '../hooks/useFight';
+import { useStatBlockPanel } from '../context/StatBlockPanelContext';
+import StatBlockPanel from './StatBlockPanel';
 
 interface InitiativeTrackerProps {
   encounter: Encounter;
@@ -44,7 +46,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
     round: 1,
   }));
   const f = useFight(fight, setFight);
-  const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
+  const { openStatBlock, activeStatBlockId } = useStatBlockPanel();
   const [conditionMenuId, setConditionMenuId] = useState<string | null>(null);
   const [addingCombatant, setAddingCombatant] = useState(false);
   const [newCombatantName, setNewCombatantName] = useState('');
@@ -65,7 +67,8 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
   const currentCombatant = f.current;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg)', color: 'var(--ink)' }}>
+    <div style={{ display: 'flex', height: '100%', backgroundColor: 'var(--bg)', color: 'var(--ink)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
 
       {/* ── Header ── */}
       <div style={{
@@ -155,7 +158,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
             conditionMenuOpen={conditionMenuId === c.id}
             statblock={statblockFor(c)}
             onSetInitiative={f.setInitiative}
-            onViewStatblock={setViewingStatblock}
+            onViewStatblock={sb => openStatBlock(sb.id)}
             onToggleCondition={f.toggleCondition}
             onToggleConditionMenu={() => setConditionMenuId(conditionMenuId === c.id ? null : c.id)}
             onRemove={f.remove}
@@ -218,98 +221,12 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
           )}
         </div>
       </div>
+    </div>
 
-      {/* ── Stat block viewer ── */}
-      {viewingStatblock && (
-        <div style={{
-          flexShrink: 0,
-          overflowY: 'auto',
-          padding: '16px 32px',
-          borderTop: '1px solid var(--rule)',
-          backgroundColor: 'var(--paper)',
-          maxHeight: '38vh',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div>
-              <div style={{ color: 'var(--ink-3)', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: 'var(--mono)', marginBottom: '2px' }}>
-                Stat Sheet
-              </div>
-              <h3 style={{ color: 'var(--gold)', fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--display)', margin: 0 }}>
-                {viewingStatblock.name}
-              </h3>
-            </div>
-            <button onClick={() => setViewingStatblock(null)}
-              style={{ color: 'var(--ink-3)', background: 'none', border: '1px solid var(--rule)', cursor: 'pointer', fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--radius)', fontFamily: 'var(--serif)' }}>
-              Close
-            </button>
-          </div>
-
-          {/* Meta */}
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--ink-3)', marginBottom: '12px', fontFamily: 'var(--mono)' }}>
-            {viewingStatblock.creature_type && <span style={{ textTransform: 'capitalize' }}>{viewingStatblock.creature_type}</span>}
-            {viewingStatblock.challenge_rating && <span>CR {viewingStatblock.challenge_rating}</span>}
-            {viewingStatblock.armor_class != null && <span>AC {viewingStatblock.armor_class}{viewingStatblock.ac_descriptor ? ` (${viewingStatblock.ac_descriptor})` : ''}</span>}
-            {viewingStatblock.hit_points != null && <span>HP {viewingStatblock.hit_points}{viewingStatblock.hit_dice ? ` (${viewingStatblock.hit_dice})` : ''}</span>}
-            {viewingStatblock.speed && <span>Speed {viewingStatblock.speed}</span>}
-          </div>
-
-          {/* Ability scores */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', marginBottom: '12px' }}>
-            {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map(ab => {
-              const val = viewingStatblock[ab];
-              const mod = abilityMod(val);
-              return (
-                <div key={ab} style={{
-                  backgroundColor: 'var(--bg)',
-                  border: '1px solid var(--rule)',
-                  borderRadius: 'var(--radius)',
-                  padding: '6px 4px',
-                  textAlign: 'center',
-                  fontFamily: 'var(--mono)',
-                  fontSize: '0.68rem',
-                }}>
-                  <div style={{ color: 'var(--gold)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>{ab}</div>
-                  <div style={{ color: 'var(--ink)', fontWeight: 600 }}>{val ?? '—'}</div>
-                  <div style={{ color: 'var(--ink-3)' }}>{mod >= 0 ? '+' : ''}{mod}</div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Traits */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '10px' }}>
-            {[
-              ['Saving Throws', viewingStatblock.saving_throws],
-              ['Skills', viewingStatblock.skills],
-              ['Resistances', viewingStatblock.damage_resistances],
-              ['Immunities', viewingStatblock.damage_immunities],
-              ['Cond. Immunities', viewingStatblock.condition_immunities],
-              ['Senses', viewingStatblock.senses],
-              ['Languages', viewingStatblock.languages],
-            ].filter(([, v]) => !!v).map(([label, value]) => (
-              <div key={label as string} style={{ fontSize: '0.72rem' }}>
-                <span style={{ color: 'var(--gold)', fontWeight: 700, fontFamily: 'var(--mono)' }}>{label}: </span>
-                <span style={{ color: 'var(--ink-2)' }}>{value}</span>
-              </div>
-            ))}
-          </div>
-
-          {viewingStatblock.content && (
-            <pre style={{
-              fontSize: '0.72rem',
-              whiteSpace: 'pre-wrap',
-              padding: '10px 12px',
-              borderRadius: 'var(--radius)',
-              backgroundColor: 'var(--bg)',
-              color: 'var(--ink-2)',
-              lineHeight: '1.65',
-              fontFamily: 'var(--mono)',
-              border: '1px solid var(--rule)',
-              margin: 0,
-            }}>
-              {viewingStatblock.content}
-            </pre>
-          )}
+      {/* The stat sheet, docked beside the fight as it is beside the app */}
+      {activeStatBlockId && (
+        <div style={{ width: 340, flexShrink: 0 }}>
+          <StatBlockPanel statblocks={statblocks} />
         </div>
       )}
     </div>

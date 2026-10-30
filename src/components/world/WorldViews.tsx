@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { ListDetail, ListRow, DetailPanel, Pill, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../Modal';
@@ -133,7 +134,7 @@ export function WorldNPCsView() {
 
 // The world's NPCs and factions, in the same editors a campaign uses.
 function WorldNPCDetail({ entity }: { entity: { id: string; kind: 'npc' | 'faction' } }) {
-  const { npcs, factions, worldStatblocks, setSelected, upsertWorldNPC, deleteWorldNPC, upsertWorldFaction, deleteWorldFaction } = useWorld();
+  const { npcs, factions, locations, worldStatblocks, setSelected, setWorldTab, upsertWorldNPC, deleteWorldNPC, upsertWorldFaction, deleteWorldFaction } = useWorld();
   const factionRows = factions.flatMap(f => (f.row ? [f.row] : []));
   const npcRows = npcs.flatMap(n => (n.row ? [n.row] : []));
 
@@ -161,6 +162,8 @@ function WorldNPCDetail({ entity }: { entity: { id: string; kind: 'npc' | 'facti
       npc={row}
       scope="world"
       factions={factionRows}
+      locations={locations.flatMap(l => (l.row ? [l.row] : []))}
+      onOpenLocation={id => { setWorldTab('locations'); setSelected('locations', id); }}
       statblocks={worldStatblocks.map(s => ({ id: s.id, name: s.name }))}
       save={fields => upsertWorldNPC({ id: row.id, ...fields })}
       remove={deleteWorldNPC}
@@ -361,7 +364,7 @@ export function WorldCombatView() {
   // World Combat mirrors the campaign CombatView: a tab per view rather than
   // filter pills over one merged list.
   const [filter, setFilter] = useState<'encounter' | 'random' | 'bestiary'>('encounter');
-  const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
+  const { openStatBlock } = useStatBlockPanel();
 
   // ---- Generate modal state ----
   const [genOpen, setGenOpen] = useState(false);           // creature (stat sheet) generator
@@ -564,7 +567,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           enc={selRawEncounter}
           monsterStatblocks={worldStatblocks}
           onDelete={handleDeleteEncounter}
-          onViewStatblock={setViewingStatblock}
+          onViewStatblock={sb => openStatBlock(sb.id)}
           upsertEncounter={upsertWorldEncounter}
           enableMentions={false}
         />
@@ -578,7 +581,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             onDelete={handleDeleteRandomTable}
             upsertTable={upsertWorldRandomEncounterTable}
             statblocks={worldStatblocks}
-            onViewStatblock={setViewingStatblock}
+            onViewStatblock={sb => openStatBlock(sb.id)}
           />
         )
       : selRawStatblock
@@ -752,44 +755,6 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </div>
       </Modal>
 
-      {/* Statblock sheet viewer modal */}
-      {viewingStatblock && (
-        <Modal isOpen onClose={() => setViewingStatblock(null)} title={viewingStatblock.name} wide>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              {viewingStatblock.creature_type && (
-                <span className="text-xs px-2 py-0.5 rounded border capitalize"
-                  style={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)', borderColor: 'var(--red-line)' }}>
-                  {viewingStatblock.creature_type}
-                </span>
-              )}
-              {viewingStatblock.challenge_rating && (
-                <span className="text-xs px-2 py-0.5 rounded"
-                  style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)', border: '1px solid var(--chip-line)' }}>
-                  CR {viewingStatblock.challenge_rating}
-                </span>
-              )}
-              {viewingStatblock.tags && (
-                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{viewingStatblock.tags}</span>
-              )}
-            </div>
-            {viewingStatblock.content && (
-              <pre className="text-sm whitespace-pre-wrap rounded p-3"
-                style={{ color: 'var(--ink)', lineHeight: '1.7', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-                {viewingStatblock.content}
-              </pre>
-            )}
-            {viewingStatblock.dm_notes && (
-              <div>
-                <div style={{ color: 'var(--gold)', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.5rem' }}>DM Notes</div>
-                <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {viewingStatblock.dm_notes}
-                </p>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
     </>
   );
 }

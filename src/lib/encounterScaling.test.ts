@@ -10,6 +10,10 @@ import {
   synthCreature,
   buildCombat,
   buildSocial,
+  multiplierFor,
+  partyLevels,
+  partyThresholds,
+  rateEncounter,
   type ScaleCreature,
   type EncounterParams,
 } from './encounterScaling';
@@ -132,5 +136,55 @@ describe('buildSocial', () => {
   });
   it('gives 4 checks on deadly', () => {
     expect(buildSocial({ title: 'x', scene: 'y' }, params({ difficulty: 'deadly' })).checks.length).toBe(4);
+  });
+});
+
+describe('rateEncounter', () => {
+  const four5 = [5, 5, 5, 5]; // thresholds 1000 / 2000 / 3000 / 4400
+
+  it('sums the party’s thresholds character by character', () => {
+    expect(partyThresholds(four5)).toEqual([1000, 2000, 3000, 4400]);
+    expect(partyThresholds([1, 3])).toEqual([100, 200, 300, 500]);
+  });
+
+  it('applies the multiplier for how many foes there are', () => {
+    // two CR 3s: 1400 XP × 1.5
+    expect(rateEncounter([{ cr: '3', count: 2 }], four5)).toMatchObject({ xp: 2100, tier: 'medium' });
+    // one CR 5: 1800 XP × 1
+    expect(rateEncounter([{ cr: '5', count: 1 }], four5)).toMatchObject({ xp: 1800, tier: 'easy' });
+  });
+
+  it('calls it trivial below easy, and deadly at the top', () => {
+    expect(rateEncounter([{ cr: '0', count: 1 }], four5)?.tier).toBe('trivial');
+    // four goblins against four level-1s: 200 XP × 2
+    expect(rateEncounter([{ cr: '1/4', count: 4 }], [1, 1, 1, 1])).toMatchObject({ xp: 400, tier: 'deadly' });
+  });
+
+  it('shifts the multiplier for a small or large party', () => {
+    expect(multiplierFor(1, 4)).toBe(1);
+    expect(multiplierFor(1, 2)).toBe(1.5);
+    expect(multiplierFor(1, 6)).toBe(0.5);
+    expect(multiplierFor(15, 2)).toBe(5);
+  });
+
+  it('counts foes without a CR toward the multiplier but not the XP', () => {
+    expect(rateEncounter([{ cr: '1', count: 1 }, { cr: null, count: 1 }], [1, 1, 1, 1]))
+      .toMatchObject({ xp: 300, tier: 'hard', unrated: 1 });
+  });
+
+  it('can’t rate without a party or a foe with a CR', () => {
+    expect(rateEncounter([{ cr: '1', count: 1 }], [])).toBeNull();
+    expect(rateEncounter([{ cr: null, count: 3 }], four5)).toBeNull();
+  });
+});
+
+describe('partyLevels', () => {
+  it('uses the PCs once any has a level, counting the rest at the average', () => {
+    expect(partyLevels([{ name: 'A', level: 4 }, { name: 'B', level: 6 }, { name: 'C', level: null }], '', '')).toEqual([4, 6, 5]);
+  });
+
+  it('falls back to the size and level typed in', () => {
+    expect(partyLevels([{ name: 'A', level: null }], '3', '7')).toEqual([7, 7, 7]);
+    expect(partyLevels(undefined, '2', '')).toEqual([]);
   });
 });

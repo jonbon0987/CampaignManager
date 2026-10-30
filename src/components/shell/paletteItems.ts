@@ -84,7 +84,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
       ...pcs.map(p => ({ key: `pc:${p.id}`, group: 'Player characters', glyph: '❦', label: p.character_name || 'Unnamed character',
         detail: join(p.race, p.class, p.player_name ? `· ${p.player_name}` : null) || undefined, keywords: join(p.player_name, p.background, p.story_hooks), run: () => h.openRecord('cast', p.id) })),
       ...npcs.map(n => ({ key: `npc:${n.id}`, group: 'NPCs', glyph: '❦', label: n.name || 'Unnamed NPC',
-        detail: [n.role, n.affiliation].filter(Boolean).join(' · ') || undefined, keywords: join(n.description, n.hooks_motivations, n.location), run: () => h.openRecord('cast', n.id) })),
+        detail: [n.role, n.faction_ids?.map(id => factions.find(f => f.id === id)?.name).filter(Boolean).join(', ') || n.affiliation].filter(Boolean).join(' · ') || undefined, keywords: join(n.description, n.hooks_motivations, n.location), run: () => h.openRecord('cast', n.id) })),
       ...factions.map(f => ({ key: `f:${f.id}`, group: 'Factions', glyph: '◈', label: f.name || 'Unnamed faction', detail: f.faction_type ?? undefined,
         keywords: join(f.overview, f.key_figures, f.agenda), run: () => h.openRecord('cast', f.id) })),
       ...locations.map(l => ({ key: `l:${l.id}`, group: 'Locations', glyph: '✦', label: l.name || 'Unnamed location',

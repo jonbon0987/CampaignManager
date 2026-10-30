@@ -22,10 +22,10 @@ const COMMON = ['id', 'campaign_id', 'world_id'];
 
 const COLUMNS: Record<string, string[]> = {
   upsertSession: ['session_number', 'session_date', 'summary', 'combats', 'loot_rewards', 'hooks_notes', 'dm_notes'],
-  upsertNPC: ['name', 'role', 'affiliation', 'status', 'disposition', 'description', 'hooks_motivations', 'dm_notes', 'location', 'first_session', 'met_by_pcs', 'faction_ids', 'statblock_id'],
-  upsertPC: ['character_name', 'player_name', 'race', 'class', 'background', 'story_hooks', 'key_npcs', 'dm_notes', 'is_active', 'faction_ids', 'statblock_id'],
+  upsertNPC: ['name', 'role', 'affiliation', 'status', 'disposition', 'description', 'hooks_motivations', 'dm_notes', 'location', 'location_id', 'first_session', 'met_by_pcs', 'faction_ids', 'statblock_id'],
+  upsertPC: ['character_name', 'player_name', 'race', 'class', 'background', 'story_hooks', 'key_npcs', 'key_npc_ids', 'dm_notes', 'is_active', 'faction_ids', 'statblock_id'],
   upsertLocation: ['name', 'region', 'location_type', 'population', 'status', 'history', 'description', 'dm_notes'],
-  upsertFaction: ['name', 'faction_type', 'overview', 'key_figures', 'agenda', 'dm_notes'],
+  upsertFaction: ['name', 'faction_type', 'overview', 'key_figures', 'key_figure_ids', 'agenda', 'dm_notes'],
   upsertHook: ['title', 'category', 'description', 'state', 'last_updated_session', 'is_active', 'dm_only_notes'],
   upsertLore: ['title', 'category', 'content', 'dm_only'],
   upsertModule: ['chapter', 'title', 'synopsis', 'status', 'played_session', 'encounters', 'rewards', 'dm_notes', 'faction_id', 'node_role'],

@@ -148,7 +148,7 @@ function AppInner() {
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
   const openIdFor = (tab: Tab) => (openTarget?.tab === tab ? openTarget.id : null);
-  const { loading, error, selectedCampaign, selectedCampaignId } = useCampaign();
+  const { loading, error, selectedCampaign, selectedCampaignId, monsterStatblocks } = useCampaign();
   const { activeStatBlockId, closeStatBlock } = useStatBlockPanel();
   const chat = useAIChat(useCampaignAssistantBackend());
   const play = usePlay();
@@ -219,7 +219,7 @@ function AppInner() {
   // One docked rail: a stat block when one is open, else the assistant, else
   // the table tools while a session is in play.
   const rail = activeStatBlockId
-    ? <StatBlockPanel />
+    ? <StatBlockPanel statblocks={monsterStatblocks} />
     : chrome.assistantOpen ? <Workbench open onClose={() => chrome.setAssistantOpen(false)} chat={chat} />
     : runMode ? <PlayTools /> : null;
 
@@ -601,9 +601,11 @@ function WorldShell() {
   }), []);
   const paletteItems = useWorldPaletteItems(paletteHandlers);
 
-  const rail = chrome.assistantOpen
-    ? <Workbench open onClose={() => chrome.setAssistantOpen(false)} chat={chat} />
-    : null;
+  // One docked rail: a stat sheet when one is open, else the assistant.
+  const { activeStatBlockId } = useStatBlockPanel();
+  const rail = activeStatBlockId
+    ? <StatBlockPanel statblocks={world.worldStatblocks} />
+    : chrome.assistantOpen ? <Workbench open onClose={() => chrome.setAssistantOpen(false)} chat={chat} /> : null;
 
   return (
     <WorldEntityRefProvider>
@@ -705,7 +707,7 @@ function WorldRoot({ user }: { user: User }) {
     );
   }
 
-  return <WorldShell />;
+  return <StatBlockPanelProvider><WorldShell /></StatBlockPanelProvider>;
 }
 
 export default function App() {

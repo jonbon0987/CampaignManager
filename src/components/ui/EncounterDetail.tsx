@@ -7,6 +7,7 @@ import { OverflowMenu } from './OverflowMenu';
 import { SlashField } from './SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
+import { partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
 // ================================================================
@@ -29,6 +30,7 @@ export const difficultyColors: Record<string, { bg: string; text: string; border
   medium: { bg: 'var(--warn-bg)',    text: 'var(--warn)',    border: 'var(--warn-line)' },
   hard:   { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
   deadly: { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
+  trivial: { bg: 'var(--paper-2)',   text: 'var(--ink-3)',   border: 'var(--rule)' },
 };
 
 export const statusColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -173,6 +175,13 @@ export function CombatantRow({
   );
 }
 
+/** "4 PCs · level 5", or "levels 4–6" when they differ. */
+function partySummary(levels: number[]): string {
+  const lo = Math.min(...levels);
+  const hi = Math.max(...levels);
+  return `${levels.length} ${levels.length === 1 ? 'PC' : 'PCs'} · ${lo === hi ? `level ${lo}` : `levels ${lo}–${hi}`}`;
+}
+
 // ================================================================
 // EncounterDetail — inline autosave editing panel
 // ================================================================
@@ -184,9 +193,12 @@ export function EncounterDetail({
   onRun,
   onViewStatblock,
   upsertEncounter,
+  party,
 }: {
   enc: Encounter;
   monsterStatblocks: MonsterStatblock[];
+  /** The campaign's active PCs. Without them (the world) the party is typed in. */
+  party?: PartyLevel[];
   onDelete: () => void;
   onRun?: () => void;
   onViewStatblock: (sb: MonsterStatblock) => void;
@@ -212,14 +224,17 @@ export function EncounterDetail({
     delay: 800,
     enabled: true,
     onSave: async ({ form: f, combatants: c }) => {
+      const levels = partyLevels(party, f.party_size, f.party_level);
+      const rated = rateEncounter(c.map(x => ({ cr: x.challenge_rating, count: x.count })), levels);
       await upsertEncounter({
         id: enc.id,
         name: f.name.trim() || 'Untitled',
         description: f.description || null,
         environment: f.environment || null,
-        difficulty: f.difficulty || null,
-        party_size: f.party_size ? parseInt(f.party_size, 10) : null,
-        party_level: f.party_level ? parseInt(f.party_level, 10) : null,
+        // Worked out from the party; a stored value stays until it can be.
+        difficulty: rated?.tier ?? (f.difficulty || null),
+        party_size: levels.length > 0 ? levels.length : null,
+        party_level: levels.length > 0 ? Math.round(levels.reduce((s, l) => s + l, 0) / levels.length) : null,
         dm_notes: f.dm_notes || null,
         status: f.status,
         combatants: c.length > 0 ? JSON.stringify(c) : null,
@@ -278,7 +293,12 @@ export function EncounterDetail({
 
   const totalCreatures = combatants.reduce((sum, c) => sum + c.count, 0);
   const canRun = !!onRun && enc.status !== 'completed' && combatants.length > 0;
-  const diffVal = form.difficulty || enc.difficulty;
+  // The party: the campaign's PCs once any has a level, else typed in.
+  const levels = partyLevels(party, form.party_size, form.party_level);
+  const fromPCs = !!party && party.some(p => p.level != null);
+  const rating = rateEncounter(combatants.map(c => ({ cr: c.challenge_rating, count: c.count })), levels);
+  const diffVal = rating?.tier ?? (form.difficulty || enc.difficulty);
+  const unlevelled = fromPCs ? party!.filter(p => p.level == null).length : 0;
 
   return (
     <div style={{ maxWidth: '700px' }}>
@@ -340,6 +360,12 @@ export function EncounterDetail({
             {ENVIRONMENTS.map(env => <option key={env} value={env} />)}
           </datalist>
         </div>
+        {fromPCs ? (
+          <div className="as-mi" title={party!.map(p => p.name).join(', ')}>
+            <div className="as-ml">Party</div>
+            <span className="enc-party">{partySummary(levels)}</span>
+          </div>
+        ) : (<>
         <div className="as-mi">
           <div className="as-ml">Party Size</div>
           <input className="as-input" type="number" min={1} max={10} value={form.party_size}
@@ -352,20 +378,39 @@ export function EncounterDetail({
             onChange={e => setForm(prev => ({ ...prev, party_level: e.target.value }))}
             placeholder="—" style={{ width: '56px' }} />
         </div>
+        </>)}
       </div>
 
-      {/* ── Difficulty pills ── */}
+      {/* ── Difficulty, worked out from the creatures and the party ── */}
       <div className="as-fl" style={{ marginBottom: '24px' }}>
         <div className="as-ll">Difficulty</div>
-        <div className="as-pills">
-          {DIFFICULTIES.map(d => (
-            <button key={d}
-              className={`as-pill-opt${form.difficulty === d ? ' is-active' : ''}`}
-              onClick={() => setForm(prev => ({ ...prev, difficulty: prev.difficulty === d ? '' : d }))}>
-              {d.charAt(0).toUpperCase() + d.slice(1)}
-            </button>
-          ))}
-        </div>
+        {rating ? (
+          <div className="enc-rate">
+            <div className="enc-rate-head">
+              <span className="enc-rate-tier" style={{ color: difficultyColors[rating.tier].text }}>{rating.tier}</span>
+              <span className="enc-rate-xp">{rating.xp.toLocaleString()} adjusted XP</span>
+            </div>
+            <div className="enc-scale">
+              {DIFFICULTIES.map((d, i) => (
+                <span key={d} className={`enc-scale-step${rating.xp >= rating.thresholds[i] ? ' is-reached' : ''}${rating.tier === d ? ' is-tier' : ''}`}>
+                  <span>{d}</span><span>{rating.thresholds[i].toLocaleString()}</span>
+                </span>
+              ))}
+            </div>
+            {(rating.unrated > 0 || unlevelled > 0) && (
+              <p className="as-empty-note">
+                {rating.unrated > 0 && `${rating.unrated} ${rating.unrated === 1 ? 'creature has' : 'creatures have'} no CR and add no XP. `}
+                {unlevelled > 0 && `${unlevelled} ${unlevelled === 1 ? 'PC has' : 'PCs have'} no level in Cast and ${unlevelled === 1 ? 'counts' : 'count'} at the party's average.`}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="as-empty-note">
+            {levels.length === 0
+              ? (party?.length ? "Set your PCs' levels in Cast, or the party size and level here, to rate this." : 'Set the party size and level to rate this.')
+              : 'Add a creature with a CR to rate this.'}
+          </p>
+        )}
       </div>
 
       {/* ── Description ── */}

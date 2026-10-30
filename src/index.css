@@ -2713,6 +2713,35 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .as-fieldset:disabled .as-title, .as-fieldset:disabled .as-sub { color: var(--ink-2); }
 .as-addrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 4px; margin-bottom: 24px; }
 .as-addrow-label { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-right: 4px; }
+/* Links between entries (components/entity/LinkPicker) */
+.lk { display: flex; flex-direction: column; gap: 6px; }
+.lk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lk-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper-2); font-family: var(--serif); font-size: 13px; }
+.lk-chip.is-gone { opacity: .6; font-style: italic; padding-right: 10px; }
+.lk-chip-glyph { color: var(--gold); font-size: 11px; }
+.lk-chip .lk-chip-name { color: var(--ink); text-decoration: none; font-size: 13px; padding: 0; }
+.lk-chip .lk-chip-name:hover { color: var(--gold); }
+.lk-chip-x { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: none; border-radius: 50%; background: transparent; color: var(--ink-3); cursor: pointer; }
+.lk-chip-x:hover { background: var(--paper-3); color: var(--ink); }
+.lk-add { max-width: 320px; }
+.lk-was { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 6px; padding: 6px 10px; border-left: 2px solid var(--rule); background: var(--bg-2); font-family: var(--serif); font-size: 13px; }
+.lk-was-label { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.lk-was-text { flex: 1; min-width: 0; color: var(--ink-2); font-style: italic; }
+/* Encounter difficulty, worked out from the party */
+.enc-party { font-family: var(--serif); font-size: 13px; color: var(--ink-2); }
+.enc-rate { display: flex; flex-direction: column; gap: 8px; }
+.enc-rate-head { display: flex; align-items: baseline; gap: 10px; }
+.enc-rate-tier { font-family: var(--display); font-size: 20px; text-transform: capitalize; }
+.enc-rate-xp { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.enc-scale { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.enc-scale-step {
+  display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px;
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-transform: capitalize;
+}
+.enc-scale-step.is-reached { background: var(--paper-2); color: var(--ink-2); }
+.enc-scale-step.is-tier { border-color: var(--gold-line); color: var(--ink); }
+
 .as-empty-note { margin: 0; font-family: var(--serif); font-size: 13px; font-style: italic; color: var(--ink-3); }
 
 .as-fl {
