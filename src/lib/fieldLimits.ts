@@ -58,9 +58,8 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     loot_rewards: LIMIT.BODY,
     hooks_notes: LIMIT.PROSE,
     dm_notes: LIMIT.BODY,
-  },
-  session_prep: {
-    notes: LIMIT.BODY,
+    title: LIMIT.NAME,
+    prep_notes: LIMIT.BODY,
   },
   player_characters: {
     character_name: LIMIT.NAME,
@@ -249,9 +248,6 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
     year: [-99_999, 99_999],
   },
   sessions: {
-    session_number: [0, 9_999],
-  },
-  session_prep: {
     session_number: [0, 9_999],
   },
   player_characters: {

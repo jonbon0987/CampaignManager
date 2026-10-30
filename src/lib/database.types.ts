@@ -80,20 +80,24 @@ export interface Session {
   loot_rewards: string | null;
   hooks_notes: string | null;
   dm_notes: string | null;           // DM-only — never expose to players
+  title: string | null;
+  status: SessionStatus;
+  prep_notes: string | null;         // DM-only
+  plan: SessionPlan;
   created_at: string;
   updated_at: string;
 }
 
-export interface SessionPrep {
-  id: string;
-  user_id: string;
-  campaign_id: string;
-  session_number: number;
-  prep_date: string | null;
-  notes: string | null;
-  dangled_hook_ids: string[];
-  created_at: string;
-  updated_at: string;
+/** A session moves planned → live → done. */
+export type SessionStatus = 'planned' | 'live' | 'done';
+
+/** What the prep picked for a session, stored as links. Every key is optional. */
+export interface SessionPlan {
+  hook_ids?: string[];
+  encounter_ids?: string[];
+  npc_ids?: string[];
+  scene_ids?: string[];
+  checklist?: Record<string, boolean>;
 }
 
 export interface PlayerCharacter {
@@ -304,8 +308,11 @@ export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_i
 
 // --------------- Insert shapes (omit server-set fields) ---------------
 
-export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type SessionPrepInsert = Omit<SessionPrep, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+// The lifecycle fields have database defaults, so a save that leaves them out
+// (the assistant, post-session capture) keeps what's stored.
+type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan';
+export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
+  & Partial<Pick<Session, SessionLifecycle>>;
 export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 // disposition is optional: it's written by the session-recording review, and an
 // NPC save that omits it (every edit form) leaves the stored value untouched.

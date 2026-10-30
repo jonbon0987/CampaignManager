@@ -2842,42 +2842,36 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .st-date { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-bottom: 5px; }
 .st-title { font-family: var(--display); font-size: 17px; color: var(--ink); line-height: 1.25; }
 .st-summary { font-family: var(--serif); font-size: 13px; color: var(--ink-2); font-style: italic; line-height: 1.55; margin-top: 5px; }
-.st-planned-label { font-family: var(--serif); font-size: 13px; color: var(--ink-3); font-style: italic; }
 
-/* ═══ Session Prep Workflow ═══ */
-.pw { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
-.pw-head { display: flex; align-items: flex-end; justify-content: space-between; padding: 28px 32px 16px; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
-.pw-steps { display: flex; gap: 2px; padding: 8px 32px; border-bottom: 1px solid var(--rule); background: var(--bg-2); flex-shrink: 0; overflow-x: auto; }
-.pw-step { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: transparent; border: none; cursor: pointer; font-family: var(--serif); font-size: 13px; color: var(--ink-3); border-radius: var(--radius); white-space: nowrap; transition: color .12s, background .12s; }
-.pw-step:hover { color: var(--ink); background: var(--paper); }
-.pw-step.is-active { background: var(--paper); color: var(--gold); font-weight: 600; }
-.pw-step.is-done { color: var(--moss); }
-.pw-step-glyph { font-size: 14px; }
-.pw-step.is-done .pw-step-glyph { color: var(--moss); }
-.pw-content { flex: 1; overflow-y: auto; padding: 24px 32px; }
-.pw-section { display: flex; flex-direction: column; gap: 14px; max-width: 700px; }
-.pw-title { font-family: var(--display); font-size: 22px; color: var(--ink); margin: 0 0 4px; font-weight: 500; }
-.pw-card { background: var(--paper-2); border: 1px solid var(--rule); padding: 16px 20px; cursor: pointer; border-radius: var(--radius); transition: border-color .12s; }
-.pw-card:hover { border-color: var(--gold); }
-.pw-card-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
-.pw-card-title { font-family: var(--display); font-size: 18px; color: var(--ink); }
-.pw-card-body { font-family: var(--serif); color: var(--ink-2); margin: 6px 0 0; line-height: 1.5; font-size: 14px; }
-.pw-npc { background: var(--paper-2); border: 1px solid var(--rule); padding: 14px 18px; border-radius: var(--radius); }
-.pw-npc-head { font-family: var(--serif); color: var(--ink); font-size: 15px; }
-.pw-npc-voice { font-family: var(--serif); color: var(--ink-2); font-size: 13px; line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--rule-soft); }
-.pw-voice-tag { font-family: var(--mono); font-size: 10px; color: var(--gold); letter-spacing: 0.1em; text-transform: uppercase; }
-.pw-hook { display: flex; gap: 12px; padding: 10px 14px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); }
-.pw-hook-glyph { color: var(--gold); font-size: 16px; flex-shrink: 0; padding-top: 2px; }
-.pw-hook-title { font-family: var(--serif); color: var(--ink); font-weight: 600; }
-.pw-hook-desc { font-family: var(--serif); color: var(--ink-2); font-size: 13px; margin-top: 2px; }
-.pw-loose-sub { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 13px; }
-.pw-loose { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); font-family: var(--serif); }
-.pw-loose-glyph { color: var(--accent); font-size: 14px; }
-.pw-loose-from { font-style: italic; color: var(--ink-3); font-weight: 400; font-size: 12px; }
-.pw-nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 32px; border-top: 1px solid var(--rule); flex-shrink: 0; }
-.pw-nav-count { font-family: var(--mono); font-size: 12px; color: var(--ink-3); letter-spacing: 0.1em; }
-/* Audit F4 — .pw-action/.pw-action-primary removed; prep-wizard buttons now use <Button>. */
-.pw-empty { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 13px; }
+/* ═══ Session — header, Prep tab ═══ */
+.ss-head { display: flex; flex-direction: column; }
+.ss-meta { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; margin-top: 8px; }
+.ss-live { color: var(--moss); }
+.st-title { background: none; border: none; padding: 0; text-align: inherit; cursor: pointer; }
+.st-title:hover { color: var(--gold); }
+.sp { display: flex; flex-direction: column; gap: 28px; }
+.sp-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); }
+.sp-progress-count { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-right: 4px; }
+.sp-progress-part { font-family: var(--serif); font-size: 13px; color: var(--ink-3); text-decoration: none; }
+.sp-progress-part:hover { color: var(--ink); }
+.sp-progress-part.is-done { color: var(--moss); }
+.sp-part { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 16px; }
+.sp-glyph { color: var(--gold); }
+.sp-hint { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 13px; margin: 0; }
+.sp-empty { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 13px; margin: 0; }
+.sp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sp-item { display: flex; align-items: baseline; gap: 10px; padding: 6px 6px 6px 12px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: var(--radius); }
+.sp-item-name { font-family: var(--serif); font-size: 15px; color: var(--ink); text-align: left; }
+.sp-item .sp-item-name { color: var(--ink); text-decoration: none; }
+.sp-item .sp-item-name:hover { color: var(--gold); text-decoration: underline; }
+.sp-item-detail { font-family: var(--serif); font-size: 12px; font-style: italic; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sp-add { max-width: 320px; }
+.sp-suggest { display: flex; flex-direction: column; gap: 6px; }
+.sp-last { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); }
+.sp-last-head { display: flex; align-items: baseline; gap: 10px; }
+.sp-last-body { font-family: var(--serif); font-size: 14px; line-height: 1.55; color: var(--ink-2); margin: 0; }
+.sp-last-open { border-top: 1px solid var(--rule-soft); padding-top: 8px; }
+.sp-last-label { font-family: var(--mono); font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
 
 /* ═══ Sub-tab bar (underline tabs) ═══ */
 .cm-subtabs { display: flex; gap: 0; border-bottom: 1px solid var(--rule-soft); flex-shrink: 0; }
