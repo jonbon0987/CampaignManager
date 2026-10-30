@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
-import { FormField, inputStyle } from '../FormField';
+import { inputStyle } from '../FormField';
 import { Button } from './Button';
+import { lastPlayed, liveSession, localToday, nextPlanned, nextSessionNumber } from '../../lib/sessionLifecycle';
 
 interface PostSessionCaptureProps {
   onClose: () => void;
@@ -12,13 +13,16 @@ const MOODS = ['quiet', 'tense', 'triumphant', 'tragic', 'chaotic', 'neutral'];
 export function PostSessionCapture({ onClose }: PostSessionCaptureProps) {
   const { sessions, upsertSession, upsertIdea } = useCampaign();
 
-  const nextNumber = sessions.length > 0
-    ? Math.max(...sessions.map(s => s.session_number)) + 1
-    : 1;
+  // The session just played: the live one, else one played today, else the
+  // next planned one, else a new number.
+  const today = localToday();
+  const recent = lastPlayed(sessions);
+  const target = liveSession(sessions) ?? (recent?.session_date === today ? recent : null) ?? nextPlanned(sessions);
+  const nextNumber = target?.session_number ?? nextSessionNumber(sessions);
 
   const [form, setForm] = useState({
     sessionNum: nextNumber,
-    date: new Date().toISOString().split('T')[0],
+    date: today,
     summary: '',
     mood: 'neutral',
     newNames: '',
@@ -52,6 +56,7 @@ export function PostSessionCapture({ onClose }: PostSessionCaptureProps) {
         loot_rewards: existing?.loot_rewards ?? null,
         hooks_notes: existing?.hooks_notes ?? null,
         dm_notes: moodLine ? join(existing?.dm_notes, moodLine) : existing?.dm_notes ?? null,
+        status: 'done',
       });
       // Improvised names go to the Ideas inbox, one each, to flesh out later.
       const names = form.newNames.split(/[,;\n]/).map(n => n.trim()).filter(Boolean);

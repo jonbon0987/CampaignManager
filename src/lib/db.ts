@@ -11,7 +11,6 @@ import type {
   DbWorld, DbWorldInsert,
   Campaign, CampaignInsert, CampaignWithCount,
   Session, SessionInsert,
-  SessionPrep, SessionPrepInsert,
   PlayerCharacter, PlayerCharacterInsert,
   NPC, NPCInsert,
   Location, LocationInsert,
@@ -250,6 +249,19 @@ export const Sessions = {
     return data;
   },
 
+  /** Changes only the columns given, leaving the rest as they are. */
+  async update(id: string, patch: Partial<SessionInsert>): Promise<Session> {
+    validateFieldLimits('sessions', patch);
+    const { data, error } = await supabase
+      .from('sessions')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   async upsert(session: SessionInsert & { id?: string }): Promise<Session> {
     validateFieldLimits('sessions', session);
     const user_id = await getUserId();
@@ -270,45 +282,6 @@ export const Sessions = {
 
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('sessions').delete().eq('id', id);
-    if (error) throw error;
-  },
-};
-
-// ============================================================
-// SESSION PREP
-// ============================================================
-
-export const SessionPreps = {
-  async getAll(campaignId: string): Promise<SessionPrep[]> {
-    const { data, error } = await supabase
-      .from('session_prep')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .order('session_number', { ascending: true });
-    if (error) throw error;
-    return data;
-  },
-
-  async upsert(prep: SessionPrepInsert & { id?: string }): Promise<SessionPrep> {
-    validateFieldLimits('session_prep', prep);
-    const user_id = await getUserId();
-    // An edit (id present) must target its row by id. Upserting on the
-    // (campaign_id, session_number) key with an id attached fails whenever the
-    // number changes: a free number inserts a second row carrying the same
-    // primary key, and a taken one rewrites the other row's id — both are
-    // duplicate-key errors. Id-less saves (assistant, post-session capture)
-    // keep the create-or-merge-by-number behaviour.
-    const { id, ...fields } = prep;
-    const query = id
-      ? supabase.from('session_prep').update({ ...fields, user_id }).eq('id', id)
-      : supabase.from('session_prep').upsert({ ...fields, user_id }, { onConflict: 'campaign_id,session_number' });
-    const { data, error } = await query.select().single();
-    if (error) throw sessionNumberError(error, prep.session_number, 'Prep for session');
-    return data;
-  },
-
-  async delete(id: string): Promise<void> {
-    const { error } = await supabase.from('session_prep').delete().eq('id', id);
     if (error) throw error;
   },
 };

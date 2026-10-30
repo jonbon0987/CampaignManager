@@ -6,6 +6,8 @@ import type { WorldTab } from '../../types/world';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
+import { usePlanNextSession } from '../../hooks/useSessionLifecycle';
+import { blankSession, nextSessionNumber, sessionName, STATUS_LABEL } from '../../lib/sessionLifecycle';
 import type { PaletteItem } from './CommandPalette';
 
 const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' ');
@@ -13,7 +15,6 @@ const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).
 const CAMPAIGN_PLACES: { tab: Tab; label: string; glyph: string; view?: string }[] = [
   { tab: 'overview', label: 'Home', glyph: '❖' },
   { tab: 'sessions', label: 'Sessions', glyph: '❧' },
-  { tab: 'sessions', label: 'Session prep', glyph: '❧', view: 'prep' },
   { tab: 'modules', label: 'Modules', glyph: '◇' },
   { tab: 'threads', label: 'Threads', glyph: '✧' },
   { tab: 'threads', label: 'Ideas inbox', glyph: '✎', view: 'inbox' },
@@ -40,9 +41,10 @@ export interface CampaignPaletteHandlers {
 export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem[] {
   const c = useCampaign();
   const {
-    sessions, sessionPreps, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, encounters,
+    sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, encounters,
     upsertNPC, upsertPC, upsertFaction, upsertLocation, upsertLore, upsertSession,
   } = c;
+  const planNext = usePlanNextSession();
 
   return useMemo(() => {
     // Makes a blank record, marks it a draft (left empty, it's removed) and opens it.
@@ -50,10 +52,14 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
       const rec = await make();
       if (rec?.id) { markDraft(rec.id); h.openRecord(tab, rec.id); }
     };
-    const nextSession = sessions.length ? Math.max(...sessions.map(s => s.session_number)) + 1 : 1;
+    const nextSession = nextSessionNumber(sessions);
 
     const actions: PaletteItem[] = [
       { key: 'a:run', group: 'Actions', glyph: h.runMode ? '■' : '▶', label: h.runMode ? 'End session' : 'Start session', action: true, run: h.toggleRun },
+      { key: 'a:prep', group: 'Actions', glyph: '❧', label: 'Prep the next session', action: true, run: async () => {
+        const s = await planNext();
+        if (s) h.openRecord('sessions', s.id);
+      } },
       { key: 'a:tools', group: 'Actions', glyph: '⚄', label: 'Session tools: initiative and dice', action: true, run: h.openSessionTools },
       { key: 'a:note', group: 'Actions', glyph: '✎', label: 'Quick note', detail: 'Saves to the Ideas inbox · ⌘.', action: true, run: h.openNote },
       { key: 'a:npc', group: 'Create', glyph: '❦', label: 'New NPC', action: true, run: create('cast', () => upsertNPC({ name: '', role: null, affiliation: null, status: 'active', description: null, hooks_motivations: null, dm_notes: null, location: null, first_session: null, met_by_pcs: false, faction_ids: [], statblock_id: null, world_id: null })) },
@@ -62,7 +68,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
       { key: 'a:location', group: 'Create', glyph: '✦', label: 'New location', action: true, run: create('locations', () => upsertLocation({ name: '', location_type: 'landmark', region: null, parent_id: null, description: null, dm_notes: null, history: null, population: null, status: null, world_id: null })) },
       { key: 'a:lore', group: 'Create', glyph: '❡', label: 'New lore entry', action: true, run: create('lore', () => upsertLore({ title: '', category: null, content: null, dm_only: false, world_id: null })) },
       { key: 'a:session', group: 'Create', glyph: '❧', label: `New session (#${nextSession})`, action: true, run: async () => {
-        const s = await upsertSession({ session_number: nextSession, session_date: new Date().toISOString().split('T')[0], summary: null, combats: null, loot_rewards: null, hooks_notes: null, dm_notes: null });
+        const s = await upsertSession(blankSession(nextSession));
         if (s?.id) h.openRecord('sessions', s.id);
       } },
       { key: 'a:capture', group: 'Actions', glyph: '✍', label: 'Post-session quick capture', run: h.openCapture },
@@ -72,10 +78,9 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
     ];
 
     const records: PaletteItem[] = [
-      ...sessions.map(s => ({ key: `s:${s.id}`, group: 'Sessions', glyph: '❧', label: `Session #${s.session_number}`, detail: s.session_date ?? undefined,
-        keywords: join(s.summary, s.combats, s.loot_rewards, s.hooks_notes, s.dm_notes), run: () => h.openRecord('sessions', s.id) })),
-      ...sessionPreps.map(p => ({ key: `sp:${p.id}`, group: 'Session prep', glyph: '❧', label: `Session #${p.session_number} prep`, detail: p.prep_date ?? undefined,
-        keywords: join(p.notes), run: () => h.openView('sessions', 'prep') })),
+      ...sessions.map(s => ({ key: `s:${s.id}`, group: 'Sessions', glyph: '❧', label: sessionName(s),
+        detail: s.status !== 'done' ? STATUS_LABEL[s.status] : s.session_date ?? undefined,
+        keywords: join(s.summary, s.prep_notes, s.combats, s.loot_rewards, s.hooks_notes, s.dm_notes), run: () => h.openRecord('sessions', s.id) })),
       ...pcs.map(p => ({ key: `pc:${p.id}`, group: 'Player characters', glyph: '❦', label: p.character_name || 'Unnamed character',
         detail: join(p.race, p.class, p.player_name ? `· ${p.player_name}` : null) || undefined, keywords: join(p.player_name, p.background, p.story_hooks), run: () => h.openRecord('cast', p.id) })),
       ...npcs.map(n => ({ key: `npc:${n.id}`, group: 'NPCs', glyph: '❦', label: n.name || 'Unnamed NPC',
@@ -96,7 +101,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
         keywords: join(e.description), run: () => h.openRecord('combat', e.id, 'encounter') })),
     ];
     return [...actions, ...records];
-  }, [h, sessions, sessionPreps, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, encounters,
+  }, [h, planNext, sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, encounters,
       upsertNPC, upsertPC, upsertFaction, upsertLocation, upsertLore, upsertSession]);
 }
 

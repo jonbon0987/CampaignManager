@@ -1,27 +1,55 @@
 import { useState, useEffect, useRef } from 'react';
-import { useReportRecord } from '../../context/NavigationContext';
+import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { MarkdownContent } from '../ui/MarkdownContent';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { RecorderPanel } from '../session/RecorderPanel';
-import type { Session } from '../../lib/database.types';
+import { SessionPrep } from '../session/SessionPrep';
+import { blankSession, formatSessionDate, nextSessionNumber, plainText, clip, STATUS_LABEL } from '../../lib/sessionLifecycle';
+import type { Session, SessionPlan, SessionStatus } from '../../lib/database.types';
 
 type SessionForm = {
   session_number: number;
   session_date: string | null;
+  title: string | null;
+  status: SessionStatus;
+  prep_notes: string | null;
+  plan: SessionPlan;
   summary: string | null;
   combats: string | null;
   loot_rewards: string | null;
   hooks_notes: string | null;
   dm_notes: string | null;
 };
+
+const toForm = (s: Session): SessionForm => ({
+  session_number: s.session_number,
+  session_date: s.session_date,
+  title: s.title,
+  status: s.status,
+  prep_notes: s.prep_notes,
+  plan: s.plan ?? {},
+  summary: s.summary,
+  combats: s.combats,
+  loot_rewards: s.loot_rewards,
+  hooks_notes: s.hooks_notes,
+  dm_notes: s.dm_notes,
+});
+
+// The plan is an object, so compare by value.
+const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
+
+type Phase = 'prep' | 'recap';
+const PHASES: { id: Phase; label: string }[] = [
+  { id: 'prep', label: 'Prep' },
+  { id: 'recap', label: 'Recap' },
+];
 
 /* Section label with rule */
 function SectionLabel({ label }: { label: string }) {
@@ -78,57 +106,44 @@ function SessionSection({
   );
 }
 
-/* Detail panel — autosave inline editing */
+/* Detail panel — one session from plan to recap, autosaved */
 function SessionDetail({
   session,
+  sessions,
   onDeleted,
+  onOpenSession,
 }: {
   session: Session;
+  sessions: Session[];
   onDeleted: () => void;
+  onOpenSession: (id: string) => void;
 }) {
   const { upsertSession, deleteSession } = useCampaign();
   const confirm = useConfirm();
 
-  const [form, setForm] = useState<SessionForm>({
-    session_number: session.session_number,
-    session_date: session.session_date,
-    summary: session.summary,
-    combats: session.combats,
-    loot_rewards: session.loot_rewards,
-    hooks_notes: session.hooks_notes,
-    dm_notes: session.dm_notes,
-  });
+  const [form, setForm] = useState<SessionForm>(() => toForm(session));
+  // A session still to play opens on its prep; one played opens on its recap.
+  const [phase, setPhase] = useState<Phase>(session.status === 'done' ? 'recap' : 'prep');
 
   // The session as last seen from the server, to tell outside changes from the DM's edits.
   const lastSaved = useRef(session);
 
-  // Reset form when session changes
-  useEffect(() => {
-    setForm({
-      session_number: session.session_number,
-      session_date: session.session_date,
-      summary: session.summary,
-      combats: session.combats,
-      loot_rewards: session.loot_rewards,
-      hooks_notes: session.hooks_notes,
-      dm_notes: session.dm_notes,
-    });
-    lastSaved.current = session;
-  }, [session.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Take in changes made elsewhere (a recording's write-back, the assistant)
-  // for fields the DM hasn't touched here. Without this the form kept the old
-  // value and autosave would write it back over the new one.
+  // Take in changes made elsewhere (a recording's write-back, the assistant,
+  // starting or ending the session) for fields the DM hasn't touched here.
+  // Without this the form kept the old value and autosave would write it back
+  // over the new one.
   useEffect(() => {
     const prev = lastSaved.current;
     lastSaved.current = session;
     if (prev.id !== session.id) return;
+    const before = toForm(prev);
+    const after = toForm(session);
     setForm(f => {
       let changed = false;
       const next = { ...f };
       for (const k of Object.keys(f) as (keyof SessionForm)[]) {
-        if (session[k] !== prev[k] && f[k] === prev[k]) {
-          (next as Record<string, unknown>)[k] = session[k];
+        if (!same(after[k], before[k]) && same(f[k], before[k])) {
+          (next as Record<string, unknown>)[k] = after[k];
           changed = true;
         }
       }
@@ -143,6 +158,8 @@ function SessionDetail({
     },
     delay: 800,
   });
+
+  const set = <K extends keyof SessionForm>(k: K, v: SessionForm[K]) => setForm(prev => ({ ...prev, [k]: v }));
 
   const handleDelete = async () => {
     if (await confirm('Delete this session?')) {
@@ -163,80 +180,141 @@ function SessionDetail({
       </div>
 
       <div className="cm-detail-body">
-        {/* Header: session number + date */}
-        <div className="as-grid-2" style={{ marginBottom: 16 }}>
-          <div className="as-fl">
-            <label className="as-ll">Session #</label>
-            <input
-              className="as-input"
-              type="number"
-              style={{ width: 80, colorScheme: 'dark' }}
-              value={form.session_number}
-              min={1}
-              max={maxFor('sessions', 'session_number')}
-              onChange={e => setForm(prev => ({ ...prev, session_number: parseInt(e.target.value) || 1 }))}
-            />
+        <header className="ss-head">
+          <div className="cm-detail-eyebrow">
+            Session {form.session_number}
+            {form.status === 'live' && <span className="ss-live"> · ● Live</span>}
           </div>
-          <div className="as-fl">
-            <label className="as-ll">Date</label>
-            <input
-              className="as-input"
-              type="date"
-              style={{ colorScheme: 'dark' }}
-              value={form.session_date ?? ''}
-              onChange={e => setForm(prev => ({ ...prev, session_date: e.target.value || null }))}
-            />
+          <input
+            className="as-title"
+            value={form.title ?? ''}
+            onChange={e => set('title', e.target.value || null)}
+            placeholder="Untitled session"
+            aria-label="Session title"
+            maxLength={limitFor('sessions', 'title')}
+          />
+          <div className="ss-meta">
+            <div className="as-fl">
+              <label className="as-ll" htmlFor={`ss-num-${session.id}`}>Session #</label>
+              <input
+                id={`ss-num-${session.id}`}
+                className="as-input"
+                type="number"
+                style={{ width: 80, colorScheme: 'dark' }}
+                value={form.session_number}
+                min={1}
+                max={maxFor('sessions', 'session_number')}
+                onChange={e => set('session_number', parseInt(e.target.value) || 1)}
+              />
+            </div>
+            <div className="as-fl">
+              <label className="as-ll" htmlFor={`ss-date-${session.id}`}>{form.status === 'done' ? 'Played on' : 'Date'}</label>
+              <input
+                id={`ss-date-${session.id}`}
+                className="as-input"
+                type="date"
+                style={{ colorScheme: 'dark' }}
+                value={form.session_date ?? ''}
+                onChange={e => set('session_date', e.target.value || null)}
+              />
+            </div>
+            <div className="as-fl">
+              <span className="as-ll" id={`ss-status-${session.id}`}>Status</span>
+              <div className="flex gap-1" role="radiogroup" aria-labelledby={`ss-status-${session.id}`}>
+                {(['planned', 'done'] as const).map(st => (
+                  // eslint-disable-next-line no-restricted-syntax -- a status pill, styled by .cm-pill
+                  <button className={`cm-pill is-subtle${form.status === st ? ' is-active' : ''}`}
+                    key={st}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.status === st}
+                    onClick={() => set('status', st)}
+                  >
+                    {STATUS_LABEL[st]}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
+        </header>
+
+        <div className="cm-subtabs" role="tablist" aria-label="Session phase">
+          {PHASES.map(p => (
+            // eslint-disable-next-line no-restricted-syntax -- a phase tab, styled with its strip
+            <button className={`cm-subtab${phase === p.id ? ' is-active' : ''}`}
+              key={p.id}
+              type="button"
+              role="tab"
+              aria-selected={phase === p.id}
+              onClick={() => setPhase(p.id)}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
 
-        <RecorderPanel session={session} />
+        {phase === 'prep' ? (
+          <SessionPrep
+            session={session}
+            sessions={sessions}
+            plan={form.plan}
+            prepNotes={form.prep_notes}
+            onPlan={plan => set('plan', plan)}
+            onPrepNotes={v => set('prep_notes', v)}
+            onOpenSession={onOpenSession}
+          />
+        ) : (
+          <>
+            <RecorderPanel session={session} />
 
-        {/* Recap / Summary */}
-        <div className="cm-section">
-          <SectionLabel label="Recap" />
-          <SlashField
-            value={form.summary ?? ''}
-            onChange={v => setForm(prev => ({ ...prev, summary: v || null }))}
-            placeholder="What happened this session..."
-            maxLength={limitFor('sessions', 'summary')}
-          />
-        </div>
+            {/* Recap / Summary */}
+            <div className="cm-section">
+              <SectionLabel label="Recap" />
+              <SlashField
+                value={form.summary ?? ''}
+                onChange={v => set('summary', v || null)}
+                placeholder="What happened this session..."
+                maxLength={limitFor('sessions', 'summary')}
+              />
+            </div>
 
-        {/* Structured fields */}
-        <div className="flex flex-col gap-2">
-          <SessionSection icon={Swords} label="Combat Summary">
-            <SlashField
-            value={form.combats ?? ''}
-            onChange={v => setForm(prev => ({ ...prev, combats: v || null }))}
-            placeholder="Describe combats that took place…"
-            maxLength={limitFor('sessions', 'combats')}
-          />
-          </SessionSection>
-          <SessionSection icon={Gift} label="Loot & Rewards">
-            <SlashField
-            value={form.loot_rewards ?? ''}
-            onChange={v => setForm(prev => ({ ...prev, loot_rewards: v || null }))}
-            placeholder="Items, gold, or rewards gained…"
-            maxLength={limitFor('sessions', 'loot_rewards')}
-          />
-          </SessionSection>
-          <SessionSection icon={Lightbulb} label="Hook Follow-ups">
-            <SlashField
-            value={form.hooks_notes ?? ''}
-            onChange={v => setForm(prev => ({ ...prev, hooks_notes: v || null }))}
-            placeholder="Which hooks were advanced or introduced…"
-            maxLength={limitFor('sessions', 'hooks_notes')}
-          />
-          </SessionSection>
-          <SessionSection icon={Eye} label="DM Notes" dmOnly>
-            <SlashField
-            value={form.dm_notes ?? ''}
-            onChange={v => setForm(prev => ({ ...prev, dm_notes: v || null }))}
-            placeholder="Private notes, reminders, secrets…"
-            maxLength={limitFor('sessions', 'dm_notes')}
-          />
-          </SessionSection>
-        </div>
+            {/* Structured fields */}
+            <div className="flex flex-col gap-2">
+              <SessionSection icon={Swords} label="Combat Summary">
+                <SlashField
+                value={form.combats ?? ''}
+                onChange={v => set('combats', v || null)}
+                placeholder="Describe combats that took place…"
+                maxLength={limitFor('sessions', 'combats')}
+              />
+              </SessionSection>
+              <SessionSection icon={Gift} label="Loot & Rewards">
+                <SlashField
+                value={form.loot_rewards ?? ''}
+                onChange={v => set('loot_rewards', v || null)}
+                placeholder="Items, gold, or rewards gained…"
+                maxLength={limitFor('sessions', 'loot_rewards')}
+              />
+              </SessionSection>
+              <SessionSection icon={Lightbulb} label="Left open for next time">
+                <SlashField
+                value={form.hooks_notes ?? ''}
+                onChange={v => set('hooks_notes', v || null)}
+                placeholder="Questions and threads to pick up next session. They show in its prep…"
+                maxLength={limitFor('sessions', 'hooks_notes')}
+              />
+              </SessionSection>
+              <SessionSection icon={Eye} label="DM Notes" dmOnly>
+                <SlashField
+                value={form.dm_notes ?? ''}
+                onChange={v => set('dm_notes', v || null)}
+                placeholder="Private notes, reminders, secrets…"
+                maxLength={limitFor('sessions', 'dm_notes')}
+              />
+              </SessionSection>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -264,9 +342,11 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
       if (!search) return true;
       const q = search.toLowerCase();
       return (
+        (s.title ?? '').toLowerCase().includes(q) ||
         (s.summary ?? '').toLowerCase().includes(q) ||
         (s.session_date ?? '').includes(q) ||
         String(s.session_number).includes(q) ||
+        (s.prep_notes ?? '').toLowerCase().includes(q) ||
         (s.combats ?? '').toLowerCase().includes(q) ||
         (s.loot_rewards ?? '').toLowerCase().includes(q) ||
         (s.hooks_notes ?? '').toLowerCase().includes(q) ||
@@ -276,21 +356,11 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
     .sort((a, b) => b.session_number - a.session_number);
 
   const selected = filtered.find(s => s.id === selectedId) ?? filtered[0] ?? null;
+  const played = sessions.filter(s => s.status === 'done').length;
 
+  // A new session is planned: it gets a date when it's played.
   const handleAdd = async () => {
-    const nextNumber = sessions.length > 0
-      ? Math.max(...sessions.map(s => s.session_number)) + 1
-      : 1;
-    const today = new Date().toISOString().split('T')[0];
-    const result = await upsertSession({
-      session_number: nextNumber,
-      session_date: today,
-      summary: null,
-      combats: null,
-      loot_rewards: null,
-      hooks_notes: null,
-      dm_notes: null,
-    });
+    const result = await upsertSession(blankSession(nextSessionNumber(sessions)));
     if (result?.id) setSelectedId(result.id);
   };
 
@@ -301,10 +371,10 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
         {/* List header */}
         <div className="cm-md-list-head">
           <div>
-            <div className="cm-md-eyebrow">{sessions.length} session{sessions.length !== 1 ? 's' : ''}</div>
+            <div className="cm-md-eyebrow">{played} played</div>
             <div className="cm-md-title">Sessions</div>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleAdd} title="New session">
+          <Button variant="secondary" size="sm" onClick={handleAdd} title="Plan the next session">
             <Plus size={13} strokeWidth={1.8} style={{ display: 'inline', verticalAlign: 'middle' }} />
             {' '}New
           </Button>
@@ -327,30 +397,28 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
               {search ? 'No sessions match your search.' : 'No sessions yet.'}
             </div>
           ) : (
-            filtered.map(s => (
-              <button
-                key={s.id}
-                className={`cm-row ${selected?.id === s.id ? 'is-active' : ''}`}
-                onClick={() => setSelectedId(s.id)}
-              >
-                <span className="cm-row-glyph" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
-                  #{s.session_number}
-                </span>
-                <div className="cm-row-body">
-                  <span className="cm-row-title">
-                    {s.session_date
-                      ? new Date(s.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                      : `Session ${s.session_number}`}
+            filtered.map(s => {
+              const date = s.session_date ? formatSessionDate(s.session_date) : null;
+              const sub = [s.title ? date : null, s.summary ? clip(plainText(s.summary), 60) : null].filter(Boolean).join(' · ');
+              return (
+                <button
+                  key={s.id}
+                  className={`cm-row ${selected?.id === s.id ? 'is-active' : ''}`}
+                  onClick={() => setSelectedId(s.id)}
+                >
+                  <span className="cm-row-glyph" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                    #{s.session_number}
                   </span>
-                  {s.summary && (
-                    <span className="cm-row-sub">
-                      {s.summary.replace(/[#*_`]/g, '').slice(0, 60)}{s.summary.length > 60 ? '…' : ''}
-                    </span>
+                  <div className="cm-row-body">
+                    <span className="cm-row-title">{s.title || date || `Session ${s.session_number}`}</span>
+                    {sub && <span className="cm-row-sub">{sub}</span>}
+                  </div>
+                  {s.status !== 'done' && (
+                    <span className={`cm-tag ${s.status === 'live' ? 'cm-tag-active' : 'cm-tag-planned'}`}>{STATUS_LABEL[s.status]}</span>
                   )}
-                </div>
-                <span className="cm-row-meta">{s.session_date ? s.session_date.slice(0, 4) : ''}</span>
-              </button>
-            ))
+                </button>
+              );
+            })
           )}
         </div>
       </div>
@@ -361,7 +429,9 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
           <SessionDetail
             key={selected.id}
             session={selected}
+            sessions={sessions}
             onDeleted={() => setSelectedId(null)}
+            onOpenSession={id => { setSearch(''); setSelectedId(id); }}
           />
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -369,7 +439,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
               <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.4 }}>✧</div>
               <div style={{ fontStyle: 'italic', fontSize: 14 }}>
                 {sessions.length === 0 ? (
-                  <>No sessions yet. <button onClick={handleAdd} style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontFamily: 'var(--serif)', fontSize: 14, textDecoration: 'underline', textDecorationColor: 'var(--rule)' }}>Add your first session.</button></>
+                  <>No sessions yet. <Button variant="link" onClick={handleAdd}>Plan your first session.</Button></>
                 ) : 'Select a session to view its notes.'}
               </div>
             </div>
@@ -384,19 +454,16 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
 
 function SessionTimeline() {
   const { sessions } = useCampaign();
+  const openRecord = useOpenRecord();
   const sorted = [...sessions].sort((a, b) => a.session_number - b.session_number);
-  const nextNum = sorted.length > 0 ? sorted[sorted.length - 1].session_number + 1 : 1;
-
-  const formatDate = (d: string) =>
-    new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  const stripMd = (t: string) => t.replace(/[#*_`[\]]/g, '');
+  const played = sorted.filter(s => s.status === 'done');
+  const ahead = sorted.filter(s => s.status !== 'done');
 
   return (
     <div className="st-wrap">
       <div className="st-head">
         <span className="cm-section-title">Session Timeline</span>
-        <span className="st-meta">{sorted.length} session{sorted.length !== 1 ? 's' : ''}</span>
+        <span className="st-meta">{played.length} played{ahead.length ? ` · ${ahead.length} ahead` : ''}</span>
       </div>
 
       {sorted.length === 0 ? (
@@ -407,23 +474,23 @@ function SessionTimeline() {
         <div className="st-track">
           {sorted.map((s, i) => {
             const isLeft = i % 2 === 0; // even → content on left, odd → content on right
+            const summary = s.summary ? plainText(s.summary) : '';
             const content = (
               <>
-                <span className="st-num">#{s.session_number}</span>
-                {s.session_date && <span className="st-date">{formatDate(s.session_date)}</span>}
-                <span className="st-title">
-                  {s.summary ? stripMd(s.summary).slice(0, 60) + (s.summary.length > 60 ? '…' : '') : `Session ${s.session_number}`}
-                </span>
-                {s.summary && s.summary.length > 60 && (
-                  <span className="st-summary">
-                    {stripMd(s.summary).slice(60, 180)}{s.summary.length > 180 ? '…' : ''}
-                  </span>
+                <span className="st-num">#{s.session_number}{s.status !== 'done' ? ` · ${STATUS_LABEL[s.status]}` : ''}</span>
+                {s.session_date && <span className="st-date">{formatSessionDate(s.session_date)}</span>}
+                {/* eslint-disable-next-line no-restricted-syntax -- the timeline's title, styled by .st-title */}
+                <button type="button" className="st-title" onClick={() => openRecord('sessions', s.id)}>
+                  {s.title || (summary ? clip(summary, 60) : `Session ${s.session_number}`)}
+                </button>
+                {summary && (
+                  <span className="st-summary">{clip(s.title ? summary : summary.slice(60), 140)}</span>
                 )}
               </>
             );
 
             return (
-              <div key={s.id} className="st-row">
+              <div key={s.id} className={`st-row${s.status !== 'done' ? ' is-planned' : ''}`}>
                 <div className={isLeft ? 'st-left' : 'st-empty'}>
                   {isLeft && content}
                 </div>
@@ -436,259 +503,8 @@ function SessionTimeline() {
               </div>
             );
           })}
-
-          {/* Planned next session */}
-          <div className="st-row is-planned">
-            <div className="st-empty" />
-            <div className="st-dot-col">
-              <div className="st-dot" />
-            </div>
-            <div className="st-right">
-              <span className="st-num">#{nextNum}</span>
-              <span className="st-planned-label">Next session — planned</span>
-            </div>
-          </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Session Prep (guided workflow) ──────────────────────────────────────────
-
-const PREP_STEPS = [
-  { id: 'recap',      label: 'Recap',          glyph: '✧' },
-  { id: 'notes',      label: 'Prep Notes',     glyph: '❧' },
-  { id: 'hooks',      label: 'Hooks to Dangle', glyph: '❂' },
-  { id: 'encounters', label: 'Encounters',      glyph: '⚔' },
-  { id: 'loose',      label: 'Loose Threads',   glyph: '⚠' },
-] as const;
-type PrepStep = (typeof PREP_STEPS)[number]['id'];
-
-function SessionPrepView() {
-  const { sessions, hooks, encounters, sessionPreps, upsertSessionPrep } = useCampaign();
-  const [step, setStep] = useState<number>(0);
-  const [done, setDone] = useState<Record<string, boolean>>({});
-
-  // Most recent session for recap; next number for prep
-  const sorted = [...sessions].sort((a, b) => b.session_number - a.session_number);
-  const lastSession = sorted[0] ?? null;
-  const nextNum = lastSession ? lastSession.session_number + 1 : 1;
-
-  // Existing prep note for next session, if any
-  const existingPrep = sessionPreps.find(p => p.session_number === nextNum) ?? null;
-  const [prepText, setPrepText] = useState(existingPrep?.notes ?? '');
-  const [savingPrep, setSavingPrep] = useState(false);
-  const [dangledIds, setDangledIds] = useState<string[]>(existingPrep?.dangled_hook_ids ?? []);
-  const [hookPickerOpen, setHookPickerOpen] = useState(false);
-  const [savingHooks, setSavingHooks] = useState(false);
-
-  const savePrep = async () => {
-    setSavingPrep(true);
-    await upsertSessionPrep({
-      session_number: nextNum,
-      prep_date: new Date().toISOString().split('T')[0],
-      notes: prepText || null,
-      dangled_hook_ids: dangledIds,
-    });
-    setSavingPrep(false);
-  };
-
-  const saveDangledHooks = async (ids: string[]) => {
-    setDangledIds(ids);
-    setSavingHooks(true);
-    await upsertSessionPrep({
-      session_number: nextNum,
-      prep_date: existingPrep?.prep_date ?? new Date().toISOString().split('T')[0],
-      notes: prepText || null,
-      dangled_hook_ids: ids,
-    });
-    setSavingHooks(false);
-  };
-
-  const activeHooks = hooks.filter(h => h.is_active);
-  const availableHooks = activeHooks.filter(h => !dangledIds.includes(h.id));
-  const dangledHooks = dangledIds.map(id => hooks.find(h => h.id === id)).filter((h): h is typeof hooks[number] => !!h && h.is_active);
-  const plannedEncounters = encounters.filter(e => e.status === 'planned');
-
-  return (
-    <div className="pw">
-      {/* Header */}
-      <div className="pw-head">
-        <div>
-          <div className="cm-md-eyebrow">Guided prep</div>
-          <div className="cm-md-title">Session {nextNum} Prep</div>
-        </div>
-      </div>
-
-      {/* Step bar */}
-      <div className="pw-steps">
-        {PREP_STEPS.map((s, i) => (
-          <button
-            key={s.id}
-            className={`pw-step${i === step ? ' is-active' : ''}${i < step ? ' is-done' : ''}`}
-            onClick={() => setStep(i)}
-          >
-            <span className="pw-step-glyph">{i < step ? '✓' : s.glyph}</span>
-            <span className="pw-step-label">{s.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Step content */}
-      <div className="pw-content">
-        {step === 0 && (
-          <div className="pw-section">
-            <h3 className="pw-title">Last time…</h3>
-            {lastSession ? (
-              <>
-                <div className="pw-card" style={{ cursor: 'default', maxHeight: 300, overflowY: 'auto' }}>
-                  <div className="pw-card-eyebrow">Session #{lastSession.session_number} · {lastSession.session_date ?? '—'}</div>
-                  <p className="pw-card-body" style={{ marginTop: 0 }}>
-                    {lastSession.summary
-                      ? lastSession.summary.replace(/[#*_`]/g, '')
-                      : <em style={{ color: 'var(--ink-3)' }}>No summary recorded.</em>}
-                  </p>
-                </div>
-                {lastSession.hooks_notes && (
-                  <div className="pw-card" style={{ cursor: 'default' }}>
-                    <div className="pw-card-eyebrow">Hook follow-ups from last session</div>
-                    <p className="pw-card-body" style={{ marginTop: 0 }}>{lastSession.hooks_notes.replace(/[#*_`]/g, '')}</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="pw-empty">No previous sessions recorded yet.</p>
-            )}
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="pw-section">
-            <h3 className="pw-title">Prep Notes</h3>
-            <SlashField
-              value={prepText}
-              onChange={v => setPrepText(v)}
-              placeholder="Reminders, NPC motivations, plot threads, encounter plans…"
-              minHeight="240px"
-              maxLength={limitFor('session_prep', 'notes')}
-            />
-            <div>
-              <Button variant="primary" onClick={savePrep} disabled={savingPrep}>
-                {savingPrep ? 'Saving…' : 'Save prep notes'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="pw-section">
-            <h3 className="pw-title">Hooks to Dangle</h3>
-            <p style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
-              Pick which hooks you plan to dangle this session.
-            </p>
-
-            {dangledHooks.length > 0 ? dangledHooks.map(h => (
-              <div key={h.id} className="pw-hook">
-                <span className="pw-hook-glyph">❂</span>
-                <div style={{ flex: 1 }}>
-                  <div className="pw-hook-title">{h.title}</div>
-                  {h.description && <div className="pw-hook-desc">{h.description.replace(/[#*_`]/g, '').slice(0, 120)}</div>}
-                </div>
-                <Button
-                  variant="secondary"
-                  style={{ color: 'var(--ink-3)', borderColor: 'var(--rule)', fontSize: 11 }}
-                  onClick={() => saveDangledHooks(dangledIds.filter(id => id !== h.id))}
-                >
-                  ✕ remove
-                </Button>
-              </div>
-            )) : (
-              <p className="pw-empty">No hooks selected yet. Add hooks you want to dangle below.</p>
-            )}
-
-            {hookPickerOpen ? (
-              <div style={{ marginTop: 12, border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: 8, backgroundColor: 'var(--paper)' }}>
-                {availableHooks.length === 0 ? (
-                  <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
-                    {activeHooks.length === 0 ? 'No active hooks. Add some in the Hooks & Ideas tab.' : 'All active hooks already added.'}
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
-                    {availableHooks.map(h => (
-                      <button
-                        key={h.id}
-                        onClick={() => { saveDangledHooks([...dangledIds, h.id]); setHookPickerOpen(false); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 'var(--radius)', border: 'none', background: 'none', color: 'var(--ink)', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}
-                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)')}
-                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <span style={{ color: 'var(--gold)' }}>❂</span>
-                        <span style={{ fontFamily: 'var(--serif)' }}>{h.title}</span>
-                        {h.category && <span style={{ fontSize: 10, color: 'var(--ink-3)', marginLeft: 'auto' }}>{h.category.replace('_', ' ')}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button
-                  onClick={() => setHookPickerOpen(false)}
-                  style={{ fontSize: 11, color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4 }}
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <Button
-                variant="secondary"
-                style={{ marginTop: 12, color: 'var(--gold)', borderColor: 'var(--rule)', borderStyle: 'dashed' }}
-                onClick={() => setHookPickerOpen(true)}
-                disabled={savingHooks}
-              >
-                + Add hook
-              </Button>
-            )}
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="pw-section">
-            <h3 className="pw-title">Encounters Prepped</h3>
-            {plannedEncounters.length === 0 ? (
-              <p className="pw-empty">No planned encounters. Add some in the Encounters tab.</p>
-            ) : plannedEncounters.map(e => (
-              <div key={e.id} className="pw-card" style={{ cursor: 'default' }}>
-                <div className="pw-card-eyebrow">{e.status}</div>
-                <div className="pw-card-title">{e.name}</div>
-                {e.description && <p className="pw-card-body">{e.description.replace(/[#*_`]/g, '').slice(0, 120)}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="pw-section">
-            <h3 className="pw-title">Loose Threads</h3>
-            <p className="pw-loose-sub">Sessions or notes that may need follow-up.</p>
-            {sorted.slice(0, 5).map(s => (
-              <div key={s.id} className="pw-loose">
-                <span className="pw-loose-glyph">✧</span>
-                <div>
-                  <strong>Session #{s.session_number}</strong>
-                  {s.session_date && <span className="pw-loose-from"> · {s.session_date}</span>}
-                  {s.hooks_notes && <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>{s.hooks_notes.replace(/[#*_`]/g, '').slice(0, 80)}</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Nav */}
-      <div className="pw-nav">
-        <Button variant="secondary" disabled={step === 0} onClick={() => setStep(s => s - 1)}>← Previous</Button>
-        <span className="pw-nav-count">{step + 1} / {PREP_STEPS.length}</span>
-        <Button variant="primary" disabled={step === PREP_STEPS.length - 1} onClick={() => setStep(s => s + 1)}>Next →</Button>
-      </div>
     </div>
   );
 }
@@ -698,9 +514,9 @@ function SessionPrepView() {
 export default function SessionNotes({ viewMode = 'log', openId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; openId?: string | null; onOpenConsumed?: () => void }) {
   return (
     <div style={{ height: '100%', overflow: 'hidden' }}>
-      {viewMode === 'log'      && <SessionLog openId={openId} onOpenConsumed={onOpenConsumed} />}
-      {viewMode === 'timeline' && <SessionTimeline />}
-      {viewMode === 'prep'     && <SessionPrepView />}
+      {viewMode === 'timeline'
+        ? <SessionTimeline />
+        : <SessionLog openId={openId} onOpenConsumed={onOpenConsumed} />}
     </div>
   );
 }

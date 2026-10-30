@@ -11,7 +11,6 @@ import {
   CampaignLocations as CampaignLocationsDB,
   CampaignLore as CampaignLoreDB,
   Sessions as SessionsDB,
-  SessionPreps as SessionPrepsDB,
   PlayerCharacters as PlayerCharactersDB,
   NPCs as NPCsDB,
   Locations as LocationsDB,
@@ -33,7 +32,6 @@ import {
 import type {
   Campaign, CampaignInsert,
   Session, SessionInsert,
-  SessionPrep, SessionPrepInsert,
   PlayerCharacter, PlayerCharacterInsert,
   NPC, NPCInsert,
   Location, LocationInsert,
@@ -93,6 +91,8 @@ interface CampaignContextType {
 
   // Sessions
   upsertSession: (s: Omit<SessionInsert, 'campaign_id'> & { id?: string }) => Promise<Session>;
+  /** Changes only the fields given (a status change, say), leaving the rest. */
+  updateSession: (id: string, patch: Partial<Omit<SessionInsert, 'campaign_id'>>) => Promise<Session>;
   deleteSession: (id: string) => Promise<void>;
 
   // Player Characters
@@ -175,11 +175,6 @@ interface CampaignContextType {
   upsertRandomEncounterTable: (t: Omit<RandomEncounterTableInsert, 'campaign_id'> & { id?: string }) => Promise<RandomEncounterTable>;
   deleteRandomEncounterTable: (id: string) => Promise<void>;
 
-  // Session Prep
-  sessionPreps: SessionPrep[];
-  upsertSessionPrep: (p: Omit<SessionPrepInsert, 'campaign_id'> & { id?: string }) => Promise<void>;
-  deleteSessionPrep: (id: string) => Promise<void>;
-
   // Module Dependencies
   moduleDeps: ModuleDependency[];
   loadModuleDeps: (campaignId: string) => Promise<void>;
@@ -233,7 +228,6 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   const [monsterStatblocks, setMonsterStatblocks] = useState<MonsterStatblock[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [randomEncounterTables, setRandomEncounterTables] = useState<RandomEncounterTable[]>([]);
-  const [sessionPreps, setSessionPreps] = useState<SessionPrep[]>([]);
   const [moduleDeps, setModuleDeps] = useState<ModuleDependency[]>([]);
   const [submoduleDeps, setSubmoduleDeps] = useState<SubmoduleDependency[]>([]);
 
@@ -402,11 +396,6 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
         // random_encounter_tables doesn't exist yet — apply migration 0029
       }
       try {
-        setSessionPreps(await SessionPrepsDB.getAll(campaignId));
-      } catch {
-        // table doesn't exist yet — silently ignore until migration is applied
-      }
-      try {
         setModuleDeps(await ModuleDepsDB.getByCampaign(campaignId));
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
@@ -522,6 +511,12 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     setSessions(await SessionsDB.getAll(selectedCampaignId));
     return result;
   }, [selectedCampaignId]);
+
+  const updateSession = useCallback(async (id: string, patch: Partial<Omit<SessionInsert, 'campaign_id'>>) => {
+    const result = await SessionsDB.update(id, patch);
+    setSessions(prev => prev.map(r => (r.id === id ? result : r)));
+    return result;
+  }, []);
 
   const deleteSession = useCallback(async (id: string) => {
     if (!selectedCampaignId) return;
@@ -756,19 +751,6 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     setRandomEncounterTables(prev => prev.filter(t => t.id !== id));
   }, [selectedCampaignId]);
 
-  // ---- Session Prep ----
-  const upsertSessionPrep = useCallback(async (p: Omit<SessionPrepInsert, 'campaign_id'> & { id?: string }) => {
-    if (!selectedCampaignId) return;
-    await SessionPrepsDB.upsert({ ...p, campaign_id: selectedCampaignId });
-    setSessionPreps(await SessionPrepsDB.getAll(selectedCampaignId));
-  }, [selectedCampaignId]);
-
-  const deleteSessionPrep = useCallback(async (id: string) => {
-    if (!selectedCampaignId) return;
-    await SessionPrepsDB.delete(id);
-    setSessionPreps(prev => prev.filter(p => p.id !== id));
-  }, [selectedCampaignId]);
-
   // ---- Module Dependencies ----
   const loadModuleDeps = useCallback(async (campaignId: string) => {
     setModuleDeps(await ModuleDepsDB.getByCampaign(campaignId));
@@ -825,6 +807,7 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
       factions, hooks, ideas, lore, globalLore, linkedLoreIds, modules, relationships,
       loading, error,
       upsertSession: withToast(upsertSession),
+      updateSession: withToast(updateSession),
       deleteSession: withToast(deleteSession, 'Session deleted'),
       upsertPC: withToast(upsertPC),
       deletePC: withToast(deletePC, 'Character deleted'),
@@ -870,9 +853,6 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
       randomEncounterTables,
       upsertRandomEncounterTable: withToast(upsertRandomEncounterTable),
       deleteRandomEncounterTable: withToast(deleteRandomEncounterTable, 'Random encounter table deleted'),
-      sessionPreps,
-      upsertSessionPrep: withToast(upsertSessionPrep),
-      deleteSessionPrep: withToast(deleteSessionPrep, 'Prep notes deleted'),
       moduleDeps, loadModuleDeps,
       upsertModuleDep: withToast(upsertModuleDep),
       deleteModuleDep: withToast(deleteModuleDep),

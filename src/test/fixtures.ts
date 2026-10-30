@@ -60,7 +60,8 @@ export function makeScene(id: string, over: Partial<Scene> = {}): Scene {
 
 export function makeSession(over: Partial<Session> = {}): Session {
   return {
-    id: 's1', session_number: 1, session_date: null, summary: null, ...over,
+    id: 's1', session_number: 1, session_date: null, summary: null,
+    title: null, status: 'done', prep_notes: null, plan: {}, ...over,
   } as unknown as Session;
 }
 

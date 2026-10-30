@@ -25,6 +25,8 @@ interface NavigationContextValue {
   clearHighlight: () => void;
   /** Tells the shell which record a tab is showing, so the URL can name it. */
   reportRecord?: (tab: Tab, id: string | null) => void;
+  /** Switches to a tab and opens a record there. Falls back to just the tab. */
+  openRecord: (tab: Tab, id: string, kind?: string) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -72,8 +74,13 @@ export function NavigationProvider({ children, setActiveTab, openRecord, reportR
     setTimer(t);
   }, [setActiveTab, openRecord, timer]);
 
+  const open = useCallback((tab: Tab, id: string, kind?: string) => {
+    if (openRecord) openRecord(tab, id, kind);
+    else setActiveTab(tab);
+  }, [openRecord, setActiveTab]);
+
   return (
-    <NavigationContext.Provider value={{ navigateToEntity, highlightedEntityId, clearHighlight, reportRecord }}>
+    <NavigationContext.Provider value={{ navigateToEntity, highlightedEntityId, clearHighlight, reportRecord, openRecord: open }}>
       {children}
     </NavigationContext.Provider>
   );
@@ -86,6 +93,14 @@ export function NavigationProvider({ children, setActiveTab, openRecord, reportR
 export function useReportRecord(tab: Tab, id: string | null | undefined) {
   const report = useContext(NavigationContext)?.reportRecord;
   useEffect(() => { report?.(tab, id ?? null); }, [report, tab, id]);
+}
+
+const noOpen = () => {};
+
+/** Opens a record in its tab. Outside the campaign shell, such as in tests, it does nothing. */
+// eslint-disable-next-line react-refresh/only-export-components -- a hook kept beside its provider
+export function useOpenRecord(): (tab: Tab, id: string, kind?: string) => void {
+  return useContext(NavigationContext)?.openRecord ?? noOpen;
 }
 
 export function useNavigation() {

@@ -32,7 +32,7 @@ vi.mock('./supabase', () => {
 
 import { supabase } from './supabase';
 import {
-  Worlds, NPCs, Sessions, SessionPreps,
+  Worlds, NPCs, Sessions,
   RecordingChunks, TranscriptSegments, SpeakerLinks, PlayerConsents, ChronicleProposals,
   SessionAudio, sessionAudioPath, SESSION_AUDIO_BUCKET,
 } from './db';
@@ -115,7 +115,6 @@ describe('Worlds.delete', () => {
 // whether or not the new number was free.
 describe.each([
   ['Sessions', Sessions, 'sessions', 'Session 7 already exists'],
-  ['SessionPreps', SessionPreps, 'session_prep', 'Prep for session 7 already exists'],
 ] as const)('%s.upsert', (_name, Table, table, clashMessage) => {
   it('updates by id when editing, so the session number can change', async () => {
     sb.__set({ data: { id: 's1', session_number: 7 }, error: null });
