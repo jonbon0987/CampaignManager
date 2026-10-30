@@ -9,7 +9,6 @@ import Characters from './components/tabs/Characters';
 import Lore from './components/tabs/Lore';
 import Locations from './components/tabs/Locations';
 import Threads from './components/tabs/Threads';
-import Ideas from './components/tabs/Ideas';
 import Modules from './components/tabs/Modules';
 import CombatView from './components/tabs/CombatView';
 import Workbench from './components/Workbench';
@@ -51,20 +50,19 @@ import { setRecentScope } from './lib/recent';
 import type { Route } from './lib/route';
 import type { WorldTab } from './types/world';
 
-// Tabs in a campaign. Ideas is kept for old links; it now lives in Threads'
-// Inbox view, and Settings opens from the sidebar's footer menu.
+// Tabs in a campaign. Ideas is kept for old links; it is now the Inbox column
+// of the Threads board, and Settings opens from the sidebar's footer menu.
 export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'threads' | 'ideas' | 'modules' | 'sessions' | 'combat' | 'settings';
 
 // View options per tab — what the topbar segment control shows
 const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
-  cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship Web' }],
-  threads:  [{ id: 'board', label: 'Board' }, { id: 'pipeline', label: 'Pipeline' }, { id: 'inbox', label: 'Inbox' }],
+  cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship web' }],
   modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Web' }],
   sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }],
 };
 
 const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
-  cast: 'list', threads: 'board', modules: 'list', sessions: 'log',
+  cast: 'list', modules: 'list', sessions: 'log',
 };
 
 // The view a tab must be in to show a single record.
@@ -83,11 +81,12 @@ const WORLD_TAB_LABELS: Record<WorldTab, string> = {
 };
 
 /**
- * Ideas is Threads' Inbox now, and prep is a tab of each session rather than a
- * view of its own; old links to either land where they went.
+ * Ideas is the Threads board's Inbox now, Threads has one view, and prep is a
+ * tab of each session rather than a view of its own; old links to any of them
+ * land where they went.
  */
 const normalizeTab = (tab: Tab, view?: string): { tab: Tab; view?: string } => {
-  if (tab === 'ideas') return { tab: 'threads', view: 'inbox' };
+  if (tab === 'ideas' || tab === 'threads') return { tab: 'threads' };
   if (tab === 'sessions' && view === 'prep') return { tab };
   return { tab, view };
 };
@@ -103,7 +102,7 @@ function AppInner() {
   });
   const [activeTab, setActiveTabState] = useState<Tab>(initial?.tab ?? 'overview');
   const [viewModes, setViewModes] = useState<Record<string, string>>(() => ({
-    cast: 'list', threads: 'board', modules: 'list', sessions: 'log',
+    cast: 'list', modules: 'list', sessions: 'log',
     ...(initial?.view ? { [initial.tab]: initial.view } : {}),
   }));
   const chrome = useShellChrome({ hasNote: true });
@@ -280,9 +279,7 @@ function AppInner() {
                 {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} openId={openIdFor('cast')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'lore'      && <Lore openId={openIdFor('lore')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('lore'); setImportOpen(true); }} />}
                 {activeTab === 'locations' && <Locations openId={openIdFor('locations')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
-                {activeTab === 'threads'   && (activeViewMode === 'inbox'
-                  ? <Ideas onNavigate={tab => { if (tab === 'threads') setViewModes(p => ({ ...p, threads: 'board' })); setActiveTab(tab); }} />
-                  : <Threads viewMode={activeViewMode} onNavigate={setActiveTab} openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />)}
+                {activeTab === 'threads'   && <Threads openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} openSubmoduleId={openTarget?.tab === 'modules' && openTarget.kind?.startsWith('submodule:') ? openTarget.kind.slice('submodule:'.length) : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} openId={openIdFor('sessions')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'combat'    && <CombatView onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={openTarget?.tab === 'combat' ? openTarget : null} onOpenConsumed={clearOpenTarget} />}
@@ -290,7 +287,7 @@ function AppInner() {
               </>
             )}
           </div>
-          <QuickNote open={chrome.noteOpen} onClose={chrome.closeNote} onOpenInbox={() => openView('threads', 'inbox')}
+          <QuickNote open={chrome.noteOpen} onClose={chrome.closeNote} onOpenInbox={() => openView('threads')}
             onSessionNote={runMode ? play.addNote : undefined} sessionNumber={play.live?.session_number} />
         </div>
 

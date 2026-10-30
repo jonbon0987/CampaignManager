@@ -35,7 +35,7 @@ const GROUPS: { key: ChronicleGroup; label: string; glyph: string; color: string
   { key: 'locations', label: 'Locations', glyph: '✦', color: entityKindColor.location },
   { key: 'lore', label: 'Lore', glyph: '✦', color: entityKindColor.lore },
   { key: 'factions', label: 'Factions', glyph: '◈', color: entityKindColor.faction },
-  { key: 'threads', label: 'Threads & hooks', glyph: '✧', color: entityKindColor.hook },
+  { key: 'threads', label: 'Threads', glyph: '✧', color: entityKindColor.hook },
   { key: 'loot', label: 'Loot & rewards', glyph: '⚔', color: entityKindColor.pc },
 ];
 

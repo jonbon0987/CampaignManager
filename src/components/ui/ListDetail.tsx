@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './Button';
+import { PageHeader } from './PageHeader';
 
 export interface AddOption {
   label: string;
@@ -70,7 +71,7 @@ export function ListDetail({
   search,
   onSearchChange,
   onAdd,
-  addLabel = '+ New',
+  addLabel = '+ Add',
   addOptions,
   onImport,
   importLabel = '⊕ Import',
@@ -83,14 +84,7 @@ export function ListDetail({
   return (
     <div className="cm-md">
       <div className="cm-md-list">
-        <div className="cm-md-list-head">
-          <div>
-            <div className="cm-md-eyebrow">
-              {count} {count === 1 ? 'entry' : 'entries'}
-            </div>
-            <h2 className="cm-md-title">{title}</h2>
-          </div>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <PageHeader className="cm-md-list-head" eyebrow={`${count} ${count === 1 ? 'entry' : 'entries'}`} title={title}>
             {onGenerate && (
               <Button
                 variant="secondary"
@@ -113,8 +107,7 @@ export function ListDetail({
                 {addLabel}
               </Button>
             ) : null}
-          </div>
-        </div>
+        </PageHeader>
         <div className="cm-md-search">
           <span className="cm-md-search-glyph">&#x2315;</span>
           <input

@@ -195,7 +195,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
             })}
             {inbox > 0 && (
               <li className="ov-waiting-item">
-                <Button variant="link" onClick={() => onNavigate('ideas')}>
+                <Button variant="link" onClick={() => onNavigate('threads')}>
                   {inbox} {inbox === 1 ? 'idea' : 'ideas'} in the Inbox ›
                 </Button>
               </li>
