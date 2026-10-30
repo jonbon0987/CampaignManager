@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
-import { InitiativeTracker, type PartyMember } from '../InitiativeTracker';
+import { InitiativeTracker } from '../InitiativeTracker';
+import type { PartyMember } from '../../lib/combat';
 import {
   RandomEncounterDetail,
   type RandomEncounterSaveData,
