@@ -82,19 +82,19 @@ export const entityMeta: Record<ImportActionType, {
   glyph: string;
   nameField: string;
 }> = {
-  upsertSession:      { label: 'Session',      badgeColor: 'blue',   glyph: '◉', nameField: 'session_number' },
-  upsertPC:           { label: 'PC',           badgeColor: 'gold',   glyph: '◈', nameField: 'character_name' },
-  upsertNPC:          { label: 'NPC',          badgeColor: 'orange', glyph: '◇', nameField: 'name' },
-  upsertLocation:     { label: 'Location',     badgeColor: 'green',  glyph: '⬡', nameField: 'name' },
-  upsertFaction:      { label: 'Faction',      badgeColor: 'yellow', glyph: '⚑', nameField: 'name' },
-  upsertHook:         { label: 'Plot Hook',    badgeColor: 'red',    glyph: '↯', nameField: 'title' },
-  upsertLore:         { label: 'Lore',         badgeColor: 'muted',  glyph: '✦', nameField: 'title' },
-  upsertModule:       { label: 'Module',       badgeColor: 'gold',   glyph: '▣', nameField: 'title' },
-  upsertSubmodule:    { label: 'Submodule',    badgeColor: 'muted',  glyph: '▣', nameField: 'title' },
+  upsertSession:      { label: 'Session',      badgeColor: 'blue',   glyph: '❧', nameField: 'session_number' },
+  upsertPC:           { label: 'PC',           badgeColor: 'gold',   glyph: '❖', nameField: 'character_name' },
+  upsertNPC:          { label: 'NPC',          badgeColor: 'orange', glyph: '❦', nameField: 'name' },
+  upsertLocation:     { label: 'Location',     badgeColor: 'green',  glyph: '✦', nameField: 'name' },
+  upsertFaction:      { label: 'Faction',      badgeColor: 'yellow', glyph: '◈', nameField: 'name' },
+  upsertHook:         { label: 'Thread',       badgeColor: 'red',    glyph: '✧', nameField: 'title' },
+  upsertLore:         { label: 'Lore',         badgeColor: 'muted',  glyph: '❡', nameField: 'title' },
+  upsertModule:       { label: 'Module',       badgeColor: 'gold',   glyph: '◇', nameField: 'title' },
+  upsertSubmodule:    { label: 'Submodule',    badgeColor: 'muted',  glyph: '◇', nameField: 'title' },
   upsertScene:        { label: 'Scene',        badgeColor: 'muted',  glyph: '▸', nameField: 'title' },
   upsertRelationship:      { label: 'Relationship', badgeColor: 'muted',  glyph: '⧉', nameField: 'label' },
-  upsertMonsterStatblock:  { label: 'Stat Sheet',   badgeColor: 'blue',   glyph: '☠', nameField: 'name' },
-  upsertTimelineEvent:     { label: 'Timeline Event', badgeColor: 'muted', glyph: '❖', nameField: 'title' },
+  upsertMonsterStatblock:  { label: 'Stat sheet',   badgeColor: 'blue',   glyph: '◆', nameField: 'name' },
+  upsertTimelineEvent:     { label: 'Timeline event', badgeColor: 'muted', glyph: '❂', nameField: 'title' },
 };
 
 // ── Field diffing for the staging tray ────────────────────────────────────

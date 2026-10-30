@@ -23,6 +23,8 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { entityKindColor } from '../../lib/theme';
 import { TranscriptModal } from './TranscriptModal';
+import { ChangeCard, type ChangeState, type ChangeView } from '../review/ChangeCard';
+import { ReviewTally } from '../review/ReviewTally';
 import { PlayerBar } from './PlayerBar';
 
 // --------------- Labels ---------------
@@ -33,7 +35,7 @@ const GROUPS: { key: ChronicleGroup; label: string; glyph: string; color: string
   { key: 'pcs', label: 'Player characters', glyph: '❖', color: entityKindColor.pc },
   { key: 'npcs', label: 'Non-Player Characters', glyph: '❦', color: entityKindColor.npc },
   { key: 'locations', label: 'Locations', glyph: '✦', color: entityKindColor.location },
-  { key: 'lore', label: 'Lore', glyph: '✦', color: entityKindColor.lore },
+  { key: 'lore', label: 'Lore', glyph: '❡', color: entityKindColor.lore },
   { key: 'factions', label: 'Factions', glyph: '◈', color: entityKindColor.faction },
   { key: 'threads', label: 'Threads', glyph: '✧', color: entityKindColor.hook },
   { key: 'loot', label: 'Loot & rewards', glyph: '⚔', color: entityKindColor.pc },
@@ -79,33 +81,35 @@ function useEntityLookup() {
 
 type Lookup = ReturnType<typeof useEntityLookup>;
 
-interface CardView {
-  name: string;
-  badge: { label: string; color: 'blue' | 'gold' | 'orange' | 'muted' };
-  note: string;
-  changes: { label: string; before: string; after: string }[];
-  body: { label: string; text: string } | null;
-  tags: string[];
-  entry: string | null;
-}
+// How each kind of record looks on a card, as it does across the app.
+const KIND: Record<EntityKind, { glyph: string; color: string; label: string }> = {
+  pc: { glyph: '❖', color: entityKindColor.pc, label: 'Player character' },
+  npc: { glyph: '❦', color: entityKindColor.npc, label: 'NPC' },
+  location: { glyph: '✦', color: entityKindColor.location, label: 'Location' },
+  faction: { glyph: '◈', color: entityKindColor.faction, label: 'Faction' },
+  lore: { glyph: '❡', color: entityKindColor.lore, label: 'Lore entry' },
+  hook: { glyph: '✧', color: entityKindColor.hook, label: 'Thread' },
+};
 
 /**
  * How a card reads. An applied change is described against the row as it was
  * before the write (from the applied log); otherwise the campaign already
  * holds the new values and there'd be nothing to compare.
  */
-function describe(a: ChronicleAction, lookup: Lookup, before?: Record<string, unknown> | null): CardView {
+function describe(a: ChronicleAction, lookup: Lookup, before?: Record<string, unknown> | null): ChangeView {
   if (a.kind === 'session') {
     const session = lookup.session(a.session_id);
     const current = ((before ?? session)?.[a.field] as string | null | undefined)?.trim();
     const label = SESSION_FIELD[a.field] ?? a.field;
     return {
+      glyph: '❧', color: entityKindColor.session, kindLabel: 'Session record',
       name: `Session ${session?.session_number ?? '?'} — ${label}`,
-      badge: current ? { label: 'Add note', color: 'gold' } : { label: 'Update', color: 'blue' },
+      tone: current ? 'note' : 'update',
       note: current ? `Adds to the current ${label.toLowerCase()}` : `Fills in the ${label.toLowerCase()}`,
-      changes: [], body: { label, text: a.value }, tags: [], entry: null,
+      changes: [], body: { label, text: a.value },
     };
   }
+  const kind = KIND[a.entity_type];
   const found = lookup.get(a.entity_type, a.matched_id);
   const existing = found && before ? { ...found, row: before } : found;
   const main = MAIN_TEXT[a.entity_type];
@@ -113,10 +117,10 @@ function describe(a: ChronicleAction, lookup: Lookup, before?: Record<string, un
     const tags = ['role', 'location_type', 'faction_type', 'category', 'state', 'disposition']
       .map(f => a.set[f]).filter((v): v is string => typeof v === 'string' && !!v);
     return {
-      name: a.name, badge: { label: 'New entry', color: 'orange' }, note: `New ${NOUN[a.entity_type]}`,
+      glyph: kind.glyph, color: kind.color, kindLabel: kind.label, name: a.name, tone: 'new',
       changes: [], tags,
       body: main && typeof a.set[main] === 'string' && a.set[main] ? { label: 'Description', text: String(a.set[main]) } : null,
-      entry: a.entry,
+      history: a.entry,
     };
   }
   const changes = Object.entries(a.set)
@@ -125,13 +129,14 @@ function describe(a: ChronicleAction, lookup: Lookup, before?: Record<string, un
   const appendField = Object.keys(a.append).find(f => a.append[f]);
   const tags = a.set.met_by_pcs === true && existing?.row.met_by_pcs === false ? ['Marks as met'] : [];
   return {
+    glyph: kind.glyph, color: kind.color, kindLabel: kind.label,
     name: existing?.label ?? a.name,
-    badge: changes.length ? { label: 'Update', color: 'blue' } : { label: 'Add note', color: 'gold' },
+    tone: changes.length ? 'update' : 'note',
     note: existing ? (appendField ? `Adds to ${MAIN_LABEL[appendField] ?? appendField}` : 'Adds to Session History') : 'This entry no longer exists',
     changes,
     body: appendField ? { label: `Adds to ${MAIN_LABEL[appendField] ?? appendField}`, text: a.append[appendField] } : null,
     tags,
-    entry: a.entry,
+    history: a.entry,
   };
 }
 
@@ -372,13 +377,13 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
     skipped: all.filter(p => p.status === 'skipped').length,
     pending: all.filter(p => p.status === 'pending').length,
     applied: all.filter(p => p.status === 'applied').length,
-    edited: all.filter(p => p.edits).length,
   };
   // Nothing left to accept or apply: every change is applied or skipped.
   const settled = proposals !== null && counts.pending === 0 && counts.accepted === 0;
   const live = applied.filter(r => !r.undone_at);
   const beforeOf = (proposalId: string) =>
     live.find(r => r.proposal_id === proposalId && r.entity_table !== 'entity_session_entries')?.before as Record<string, unknown> | null | undefined;
+  const viewOf = (p: ChronicleProposal) => describe(effectiveAction(p), lookup, p.status === 'applied' ? beforeOf(p.id) : undefined);
   const nameOf = (p: ChronicleProposal) => describe(effectiveAction(p), lookup).name;
 
   const apply = async () => {
@@ -458,9 +463,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="cm-kbd" style={{ color: 'var(--ink-2)' }}>
-            <span style={{ color: 'var(--success)' }}>{counts.accepted} accepted</span> · {counts.edited} edited · {counts.skipped} skipped · <span style={{ color: 'var(--gold)' }}>{counts.pending} to review</span>{counts.applied ? ` · ${counts.applied} applied` : ''}
-          </span>
+          <ReviewTally items={all.map(p => ({ state: p.status as ChangeState, tone: viewOf(p).tone }))} />
           {live.length > 0 && <Button variant="danger" onClick={() => void undo()} disabled={!!busy}><Undo2 size={12} /> {busy === 'undo' ? `Undoing${progress ? ` ${progress.done + 1} of ${progress.total}` : ''}…` : 'Undo write-back'}</Button>}
           {/* Once every change is applied or skipped there's nothing left to accept or apply. */}
           {!settled && (
@@ -515,42 +518,47 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                   <div className="cm-section-rule" />
                   {pending.length > 1 && <Button variant="link" onClick={() => void setStatus(pending.map(p => p.id), 'accepted')}>Accept all {pending.length}</Button>}
                 </div>
+                <div className="rv-list">
                 {g.items.map(p => {
                   const isEditing = editing?.id === p.id;
-                  const view = describe(isEditing ? editing.draft : effectiveAction(p), lookup, p.status === 'applied' ? beforeOf(p.id) : undefined);
-                  const isSel = selected === p.id;
-                  const border = isEditing ? 'var(--gold-line)' : p.status === 'accepted' ? 'var(--success-line)' : p.status === 'applied' ? 'var(--rule-soft)' : 'var(--rule)';
+                  const view = isEditing ? describe(editing.draft, lookup) : viewOf(p);
                   return (
-                    <article
+                    <ChangeCard
                       key={p.id}
-                      onClick={() => setSelected(p.id)}
-                      style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-lg)', background: isSel ? 'var(--paper-2)' : 'var(--paper)', border: `1px solid ${border}`, boxShadow: isSel ? 'inset 2px 0 0 var(--gold)' : undefined, opacity: p.status === 'skipped' && !isEditing ? 0.55 : 1 }}
+                      view={view}
+                      state={p.status as ChangeState}
+                      edited={!!p.edits}
+                      selected={selected === p.id}
+                      onSelect={() => setSelected(p.id)}
+                      actions={isEditing ? undefined : p.status === 'pending' ? (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => void setStatus([p.id], 'skipped')}>Skip</Button>
+                          <Button size="sm" onClick={() => { setSelected(p.id); setEditing({ id: p.id, draft: effectiveAction(p) }); }}><Pencil size={11} /> Edit</Button>
+                          <Button size="sm" variant="primary" onClick={() => void setStatus([p.id], 'accepted')}>Accept</Button>
+                        </>
+                      ) : p.status === 'accepted' || p.status === 'skipped' ? (
+                        <>
+                          <Badge color={p.status === 'accepted' ? 'green' : 'muted'}>{p.status === 'accepted' ? <span style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={10} /> Accepted</span> : 'Skipped'}</Badge>
+                          {p.status === 'accepted' && <Button variant="link" onClick={() => setEditing({ id: p.id, draft: effectiveAction(p) })}>Edit</Button>}
+                          <Button variant="link" onClick={() => void setStatus([p.id], 'pending')}>Undo</Button>
+                        </>
+                      ) : undefined}
+                      source={p.source_quote ? (
+                        <div className="rv-source">
+                          {p.source_ms != null && (
+                            <Button
+                              size="xs"
+                              aria-label={`Play source at ${clock(p.source_ms)}`}
+                              onClick={e => { e.stopPropagation(); playFrom(p); }}
+                              style={{ flex: '0 0 auto', background: 'var(--paper-3)', color: 'var(--gold)', fontFamily: 'var(--mono)', fontStyle: 'normal' }}
+                            >
+                              ▶ {clock(p.source_ms)}
+                            </Button>
+                          )}
+                          <span>“{p.source_quote}” <span className="rv-source-who">— {p.source_speaker}</span></span>
+                        </div>
+                      ) : undefined}
                     >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span aria-hidden="true" style={{ fontSize: 16, color: g.color }}>{g.glyph}</span>
-                        <span style={{ fontWeight: 500, fontSize: 16, color: g.color }}>{view.name}</span>
-                        <Badge color={view.badge.color}>{view.badge.label}</Badge>
-                        {p.edits && <Badge color="muted">✎ Edited</Badge>}
-                        {view.tags.map(t => <span key={t} className="cm-tag">{t}</span>)}
-                        <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{view.note}</span>
-                        <span style={{ flex: 1 }} />
-                        {p.status === 'applied' && <Badge color="green">Applied</Badge>}
-                        {!isEditing && p.status === 'pending' && (
-                          <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                            <Button size="sm" variant="ghost" onClick={() => void setStatus([p.id], 'skipped')}>Skip</Button>
-                            <Button size="sm" onClick={() => { setSelected(p.id); setEditing({ id: p.id, draft: effectiveAction(p) }); }}><Pencil size={11} /> Edit</Button>
-                            <Button size="sm" variant="primary" onClick={() => void setStatus([p.id], 'accepted')}>Accept</Button>
-                          </div>
-                        )}
-                        {!isEditing && (p.status === 'accepted' || p.status === 'skipped') && (
-                          <div className="flex gap-2 items-center" onClick={e => e.stopPropagation()}>
-                            <Badge color={p.status === 'accepted' ? 'green' : 'muted'}>{p.status === 'accepted' ? <span style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={10} /> Accepted</span> : 'Skipped'}</Badge>
-                            {p.status === 'accepted' && <Button variant="link" onClick={() => setEditing({ id: p.id, draft: effectiveAction(p) })}>Edit</Button>}
-                            <Button variant="link" onClick={() => void setStatus([p.id], 'pending')}>Undo</Button>
-                          </div>
-                        )}
-                      </div>
-
                       {isEditing ? (
                         <div onClick={e => e.stopPropagation()}>
                           <EditForm
@@ -562,45 +570,11 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                             saving={busy === 'save'}
                           />
                         </div>
-                      ) : (
-                        <>
-                          {view.changes.map(c => (
-                            <div key={c.label} className="flex flex-wrap items-center gap-2 text-sm">
-                              <span className="text-xs" style={{ color: 'var(--ink-3)', minWidth: 160 }}>{c.label}</span>
-                              <span style={{ color: 'var(--ink-3)', textDecoration: 'line-through' }}>{c.before}</span>
-                              <span aria-hidden="true" style={{ color: 'var(--gold)' }}>→</span>
-                              <span style={{ fontWeight: 500 }}>{c.after}</span>
-                            </div>
-                          ))}
-                          {view.body && <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{view.body.text}</p>}
-                          {view.entry && (
-                            <p className="text-sm" style={{ margin: 0, color: 'var(--ink-2)' }}>
-                              <span className="cm-section-title" style={{ marginRight: 8 }}>History</span>{view.entry}
-                            </p>
-                          )}
-                        </>
-                      )}
-
-                      {p.source_quote && (
-                        <div className="flex gap-2 items-baseline" style={{ borderTop: '1px solid var(--rule-soft)', paddingTop: 10 }}>
-                          {p.source_ms != null && (
-                            <Button
-                              size="xs"
-                              aria-label={`Play source at ${clock(p.source_ms)}`}
-                              onClick={e => { e.stopPropagation(); playFrom(p); }}
-                              style={{ flex: '0 0 auto', background: 'var(--paper-3)', color: 'var(--gold)', fontFamily: 'var(--mono)' }}
-                            >
-                              ▶ {clock(p.source_ms)}
-                            </Button>
-                          )}
-                          <span className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
-                            “{p.source_quote}” <span style={{ fontStyle: 'normal', color: 'var(--ink-3)' }}>— {p.source_speaker}</span>
-                          </span>
-                        </div>
-                      )}
-                    </article>
+                      ) : undefined}
+                    </ChangeCard>
                   );
                 })}
+                </div>
               </section>
             );
           })}

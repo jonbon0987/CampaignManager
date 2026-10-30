@@ -1,8 +1,8 @@
 // The Assistant Workbench — the single AI surface.
 //
-// Two panes: conversation on the left, staging tray on the right. Everything
-// the assistant proposes (from chat or from a document import) accumulates in
-// the tray as a curatable card. Nothing reaches the database until Commit.
+// Two panes: conversation and staged changes. Everything the assistant
+// proposes (from chat or from a document import) collects as a card you can
+// include or leave out. Nothing reaches the database until Apply.
 
 import { useEffect, useRef, useState } from 'react';
 import { entityMeta } from '../lib/documentImport';
@@ -11,6 +11,9 @@ import type { ChatMessage, IngestState, PlanState, StagedChange } from '../hooks
 import DocumentUploadButton from './DocumentUploadButton';
 import { MarkdownContent } from './ui/MarkdownContent';
 import { Button } from './ui/Button';
+import { ChangeCard, type ChangeState, type ChangeTone, type ChangeView } from './review/ChangeCard';
+import { ReviewTally } from './review/ReviewTally';
+import { entityKindColor } from '../lib/theme';
 
 type Chat = ReturnType<typeof useAIChat>;
 
@@ -150,92 +153,36 @@ function Message({ m, loading }: { m: ChatMessage; loading: boolean }) {
 }
 
 // ── Staging tray ───────────────────────────────────────────────────────────
+//
+// Staged changes show on the same card as a recording's chronicle review.
 
-function StageCard({
-  change,
-  onToggle,
-  onOpen,
-}: {
-  change: StagedChange;
-  onToggle: (id: string) => void;
-  onOpen: (id: string) => void;
-}) {
-  const meta = entityMeta[change.kind];
-  const checked = change.on || change.committed;
+const KIND_COLOR: Partial<Record<StagedChange['kind'], string>> = {
+  upsertSession: entityKindColor.session, upsertPC: entityKindColor.pc, upsertNPC: entityKindColor.npc,
+  upsertLocation: entityKindColor.location, upsertFaction: entityKindColor.faction, upsertLore: entityKindColor.lore,
+  upsertHook: entityKindColor.hook,
+};
 
-  return (
-    <div className={[
-      'scard',
-      change.on || change.committed ? '' : 'off',
-      change.open ? 'open' : '',
-      change.committed ? 'committed' : '',
-      change.failed ? 'failed' : '',
-    ].filter(Boolean).join(' ')}>
-      <div className="scard-top" onClick={() => onOpen(change.id)}>
-        <span
-          className={`scard-check ${checked ? 'on' : ''}`}
-          role="checkbox"
-          aria-checked={checked}
-          aria-label={`Include ${change.name}`}
-          onClick={e => { e.stopPropagation(); if (!change.committed) onToggle(change.id); }}
-        >
-          {checked ? '✓' : ''}
-        </span>
-        <span className="scard-main">
-          <span className="scard-row1">
-            <span className={`rverb ${change.verb}`}>{change.verb.toUpperCase()}</span>
-            <span className="scard-name">{change.name}</span>
-          </span>
-          <span className="scard-kind">
-            <span className="g">{meta.glyph}</span>
-            {meta.label}
-            {change.committed ? ' · committed' : change.failed ? ' · failed' : ''}
-          </span>
-        </span>
-        <ConfBar value={change.confidence} />
-        <span className="scard-chev">▸</span>
-      </div>
+const stateOf = (c: StagedChange): ChangeState =>
+  c.committed ? 'applied' : c.failed ? 'failed' : c.on ? 'accepted' : 'skipped';
 
-      {change.open && (
-        <div className="scard-body">
-          {change.why && <div className="scard-why"><span className="g">✦</span>{change.why}</div>}
-          {change.verb === 'delete' ? (
-            <div className="fld-new box" style={{ color: 'var(--red)' }}>
-              This record will be permanently deleted.
-            </div>
-          ) : change.fields.length === 0 ? (
-            <div className="scard-why" style={{ fontStyle: 'italic' }}>
-              No field changes — this record already matches what the assistant proposed.
-            </div>
-          ) : (
-            <div className="scard-fields">
-              {change.fields.map((f, i) => (
-                <div key={i}>
-                  <div className="fld-label">{f.label}</div>
-                  {f.old && <div className="fld-old">{f.old}</div>}
-                  <div className={`fld-new box ${f.add ? 'fld-add' : ''}`}>{f.value}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+const toneOf = (c: StagedChange): ChangeTone => (c.verb === 'create' ? 'new' : c.verb === 'delete' ? 'delete' : 'update');
+
+function viewOf(c: StagedChange): ChangeView {
+  const meta = entityMeta[c.kind];
+  return {
+    glyph: meta.glyph, color: KIND_COLOR[c.kind] ?? 'var(--gold)', kindLabel: meta.label, name: c.name, tone: toneOf(c),
+    changes: c.fields.map(f => ({ label: f.label, before: f.old, after: f.value, added: f.add })),
+  };
 }
 
 function StagingTray({ chat }: { chat: Chat }) {
   const { stage, pendingStaged, selectedStaged } = chat;
 
-  const newCount = selectedStaged.filter(s => s.verb === 'create').length;
-  const updateCount = selectedStaged.filter(s => s.verb === 'update').length;
-  const deleteCount = selectedStaged.filter(s => s.verb === 'delete').length;
-
   return (
     <div className="wb-stage">
       <div className="stage-head">
         <span style={{ color: 'var(--gold)' }}>❑</span>
-        <span className="ttl">Staging Tray</span>
+        <span className="ttl">Staged changes</span>
         {stage.length > 0 && <span className="cnt">{pendingStaged.length} pending</span>}
       </div>
 
@@ -243,17 +190,37 @@ function StagingTray({ chat }: { chat: Chat }) {
         {stage.length === 0 ? (
           <div className="stage-empty">
             <span className="g">❑</span>
-            Changes the Assistant drafts will collect here. Nothing touches your {chat.scopeNoun} until you commit.
+            Changes the Assistant drafts will collect here. Nothing touches your {chat.scopeNoun} until you apply them.
           </div>
         ) : (
-          stage.map(s => (
-            <StageCard
-              key={s.id}
-              change={s}
-              onToggle={chat.toggleStagedOn}
-              onOpen={chat.toggleStagedOpen}
-            />
-          ))
+          stage.map(c => {
+            const state = stateOf(c);
+            const included = c.on || c.committed;
+            return (
+              <ChangeCard
+                key={c.id}
+                view={viewOf(c)}
+                state={state}
+                why={c.why}
+                open={c.open}
+                onToggleOpen={() => chat.toggleStagedOpen(c.id)}
+                meta={<ConfBar value={c.confidence} />}
+                actions={(
+                  <span
+                    className={`rv-check${included ? ' is-on' : ''}`}
+                    role="checkbox"
+                    aria-checked={included}
+                    aria-label={`Include ${c.name}`}
+                    tabIndex={c.committed ? -1 : 0}
+                    onClick={() => { if (!c.committed) chat.toggleStagedOn(c.id); }}
+                    onKeyDown={e => { if ((e.key === ' ' || e.key === 'Enter') && !c.committed) { e.preventDefault(); chat.toggleStagedOn(c.id); } }}
+                  >
+                    {included ? '✓' : ''}
+                  </span>
+                )}
+              />
+            );
+          })
         )}
       </div>
 
@@ -261,13 +228,7 @@ function StagingTray({ chat }: { chat: Chat }) {
         <div className="stage-foot">
           {pendingStaged.length > 0 ? (
             <>
-              <div className="meta">
-                <span>{selectedStaged.length} of {pendingStaged.length} selected</span>
-                <span className="risk">
-                  ✓ {newCount} new · {updateCount} update{updateCount === 1 ? '' : 's'}
-                  {deleteCount > 0 && <span style={{ color: 'var(--red)' }}> · {deleteCount} delete{deleteCount === 1 ? '' : 's'}</span>}
-                </span>
-              </div>
+              <ReviewTally items={stage.map(c => ({ state: stateOf(c), tone: toneOf(c) }))} />
               <div className="row">
                 <Button size="sm" onClick={chat.discardStaged} disabled={chat.committing} style={{ flex: 1 }}>
                   Discard
@@ -279,13 +240,13 @@ function StagingTray({ chat }: { chat: Chat }) {
                   disabled={selectedStaged.length === 0 || chat.committing}
                   style={{ flex: 1 }}
                 >
-                  {chat.committing ? 'Committing…' : `Commit ${selectedStaged.length}`}
+                  {chat.committing ? 'Applying…' : `Apply ${selectedStaged.length}`}
                 </Button>
               </div>
             </>
           ) : (
             <div className="commit-done">
-              <span>✓ All changes committed to your {chat.scopeNoun}</span>
+              <span>✓ All changes applied to your {chat.scopeNoun}</span>
               <Button size="sm" onClick={chat.discardStaged} disabled={chat.committing} style={{ marginLeft: 'auto' }}>
                 Clear
               </Button>
@@ -371,7 +332,7 @@ export default function Workbench({
                 <div className="mk">✦</div>
                 <div className="t">What are we building tonight?</div>
                 <div className="s">
-                  Ask in plain language. Drafts collect under Staged; nothing changes until you commit.
+                  Ask in plain language. Drafts collect under Staged; nothing changes until you apply them.
                 </div>
                 <div className="wb-samples">
                   {chat.samples.map((s, i) => (
@@ -395,7 +356,7 @@ export default function Workbench({
           {pending > 0 && (
             // eslint-disable-next-line no-restricted-syntax -- inline notice link
             <button className="wb-staged-note" onClick={() => setPane('stage')}>
-              ❑ {pending} change{pending === 1 ? '' : 's'} staged — review and commit ›
+              ❑ {pending} change{pending === 1 ? '' : 's'} staged · review and apply ›
             </button>
           )}
 
