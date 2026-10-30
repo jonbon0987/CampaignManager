@@ -9,7 +9,6 @@ import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../../lib/recent';
 import CharacterWeb from './CharacterWeb';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
-import { ListRowWithHover } from '../HoverPreview';
 import { NPCEditor } from '../entity/NPCEditor';
 import { FactionEditor } from '../entity/FactionEditor';
 import { PCEditor } from '../entity/PCEditor';
@@ -181,12 +180,8 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
           <div className="cm-empty is-inline">No entries match your filters</div>
         ) : (
           all.map(item => (
-            <ListRowWithHover
-              key={item.id}
-              entity={item.raw as NPC | PlayerCharacter | Faction}
-              kind={item.kind}
-            >
-              <ListRow
+            <ListRow
+                key={item.id}
                 active={selected?.id === item.id}
                 onClick={() => handleSelect(item)}
                 glyph={item.glyph}
@@ -202,7 +197,6 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
                   ) : undefined
                 }
               />
-            </ListRowWithHover>
           ))
         )
       }

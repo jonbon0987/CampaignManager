@@ -7,7 +7,6 @@ import { Badge } from '../ui/Badge';
 import type { Origin } from '../ui/OriginBand';
 import { pushRecent } from '../../lib/recent';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
-import { ListRowWithHover } from '../HoverPreview';
 import type { LoreEntry } from '../../lib/database.types';
 import { LoreEditor, type LoreFields } from '../entity/LoreEditor';
 
@@ -82,8 +81,8 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
   };
 
   const renderRow = (item: LoreItem) => (
-    <ListRowWithHover key={item.id} entity={item.raw} kind="lore">
-      <ListRow
+    <ListRow
+        key={item.id}
         active={selected?.id === item.id}
         onClick={() => handleSelect(item)}
         glyph={GLYPH}
@@ -101,7 +100,6 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
           </>
         }
       />
-    </ListRowWithHover>
   );
 
   return (
