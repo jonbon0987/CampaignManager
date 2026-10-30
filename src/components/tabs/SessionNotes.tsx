@@ -12,6 +12,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { RecorderPanel } from '../session/RecorderPanel';
 import { SessionPrep } from '../session/SessionPrep';
 import { blankSession, formatSessionDate, nextSessionNumber, plainText, clip, STATUS_LABEL } from '../../lib/sessionLifecycle';
+import { noteStamp } from '../../lib/playTime';
 import type { Session, SessionPlan, SessionStatus } from '../../lib/database.types';
 
 type SessionForm = {
@@ -122,8 +123,16 @@ function SessionDetail({
   const confirm = useConfirm();
 
   const [form, setForm] = useState<SessionForm>(() => toForm(session));
-  // A session still to play opens on its prep; one played opens on its recap.
+  // A session still to play opens on its prep; one played opens on its recap,
+  // and so does one the moment it's ended.
   const [phase, setPhase] = useState<Phase>(session.status === 'done' ? 'recap' : 'prep');
+  const lastStatus = useRef(session.status);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- following the session's end
+    if (lastStatus.current === 'live' && session.status === 'done') setPhase('recap');
+    lastStatus.current = session.status;
+  }, [session.status]);
+  const tableNotes = session.play?.notes ?? [];
 
   // The session as last seen from the server, to tell outside changes from the DM's edits.
   const lastSaved = useRef(session);
@@ -266,6 +275,20 @@ function SessionDetail({
         ) : (
           <>
             <RecorderPanel session={session} />
+
+            {tableNotes.length > 0 && (
+              <div className="cm-section">
+                <SectionLabel label="Noted at the table" />
+                <ul className="ss-notes">
+                  {tableNotes.map(n => (
+                    <li key={n.id} className="ss-note">
+                      <span className="pt-stamp">{noteStamp(n.at, session.play?.started_at)}</span>
+                      <span>{n.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Recap / Summary */}
             <div className="cm-section">

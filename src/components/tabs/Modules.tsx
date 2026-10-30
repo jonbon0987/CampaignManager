@@ -214,16 +214,21 @@ function ModuleCreatePanel({
 
 // ─── shell ────────────────────────────────────────────────────────────────────
 
-export default function Modules({ viewMode = 'list', setViewMode, openId: requestedId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; openId?: string | null; onOpenConsumed?: () => void }) {
+export default function Modules({ viewMode = 'list', setViewMode, openId: requestedId, openSubmoduleId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; openId?: string | null; openSubmoduleId?: string | null; onOpenConsumed?: () => void }) {
   const { modules } = useCampaign();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [focusSub, setFocusSub] = useState<string | null>(null);
   useReportRecord('modules', openId);
 
-  // Open a module requested from outside the tab (search, Recent).
+  // Open a module requested from outside the tab (search, Recent), or one of
+  // its submodules (a scene picked from Play's agenda).
   useEffect(() => {
+    if (!requestedId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (requestedId) { setOpenId(requestedId); onOpenConsumed?.(); }
-  }, [requestedId, onOpenConsumed]);
+    setOpenId(requestedId);
+    setFocusSub(openSubmoduleId ?? null);
+    onOpenConsumed?.();
+  }, [requestedId, openSubmoduleId, onOpenConsumed]);
   const openModule = openId ? modules.find(m => m.id === openId) ?? null : null;
 
   // Opening a module from the web jumps to the full editor — leave the web view
@@ -236,7 +241,9 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
   if (openModule && viewMode !== 'web') {
     return (
       <ModuleDetail
+        key={`${openModule.id}:${focusSub ?? ''}`}
         module={openModule}
+        initialSubmoduleId={focusSub}
         onBack={() => setOpenId(null)}
         onModuleDeleted={() => setOpenId(null)}
       />

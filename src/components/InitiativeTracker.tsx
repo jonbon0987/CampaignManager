@@ -1,86 +1,17 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
-import type { Encounter, EncounterCombatant, MonsterStatblock } from '../lib/database.types';
-
-// ─── D&D 5e conditions ───────────────────────────────────────────────────────
-const CONDITIONS = [
-  'blinded', 'charmed', 'deafened', 'frightened', 'grappled',
-  'incapacitated', 'invisible', 'paralyzed', 'petrified', 'poisoned',
-  'prone', 'restrained', 'stunned', 'unconscious', 'concentrating',
-] as const;
-// Death-state conditions ('dying' | 'stable' | 'dead') are managed
-// programmatically by the HP zone (not shown in the condition picker), but are
-// still rendered as pills and are undoable.
-type Condition = (typeof CONDITIONS)[number] | 'dying' | 'stable' | 'dead';
-
-const conditionColors: Record<string, string> = {
-  blinded: 'var(--ink-3)', charmed: 'var(--arcane)', deafened: 'var(--ink-3)',
-  frightened: 'var(--gold)', grappled: 'var(--cr)', incapacitated: 'var(--ink-3)',
-  invisible: 'var(--info)', paralyzed: 'var(--red)', petrified: 'var(--ink-3)',
-  poisoned: 'var(--success)', prone: 'var(--accent)', restrained: 'var(--cr)',
-  stunned: 'var(--diff-hard)', unconscious: 'var(--red)', concentrating: 'var(--info)',
-  dying: 'var(--red)', stable: 'var(--moss)', dead: 'var(--ink-3)',
-};
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface DeathSaves {
-  s: number; // successes (0–3)
-  f: number; // failures (0–3)
-}
-
-interface Combatant {
-  id: string;
-  name: string;
-  initiative: number | null;
-  dexMod: number;
-  maxHp: number;
-  currentHp: number;
-  temp: number;
-  deathSaves: DeathSaves;
-  ac: number | null;
-  conditions: Set<Condition>;
-  isPC: boolean;
-  statblock: MonsterStatblock | null;
-  notes: string | null;
-}
-
-// Snapshot pushed onto the undo stack before any HP-mutating action.
-interface HpSnapshot {
-  id: string;
-  currentHp: number;
-  maxHp: number;
-  temp: number;
-  conditions: Condition[];
-  deathSaves: DeathSaves;
-}
-
-/** A player character joining the fight, with what the Cast tab knows of them. */
-export interface PartyMember {
-  name: string;
-  maxHp: number | null;
-  ac: number | null;
-}
+import { useState, useRef } from 'react';
+import type { Encounter, MonsterStatblock } from '../lib/database.types';
+import {
+  CONDITIONS, CONDITION_COLORS as conditionColors, abilityMod, clamp,
+  combatantsFromEncounter, combatantsFromParty, newCombatant,
+  type Combatant, type Condition, type Fight, type PartyMember,
+} from '../lib/combat';
+import { useFight } from '../hooks/useFight';
 
 interface InitiativeTrackerProps {
   encounter: Encounter;
   statblocks: MonsterStatblock[];
   party?: PartyMember[];
   onClose: () => void;
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function abilityMod(score: number | null): number {
-  if (score == null) return 0;
-  return Math.floor((score - 10) / 2);
-}
-
-function rollD20(): number {
-  return Math.floor(Math.random() * 20) + 1;
-}
-
-function parseCombatants(raw: string | null): EncounterCombatant[] {
-  if (!raw) return [];
-  try { return JSON.parse(raw) as EncounterCombatant[]; }
-  catch { return []; }
 }
 
 // Kind glyph mapping
@@ -95,8 +26,6 @@ function hpBarColor(pct: number): string {
   return 'linear-gradient(to right, var(--red), var(--accent))';
 }
 
-const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
-
 // Big-number readout color: red when down, orange when bloodied, ink when healthy.
 // A combatant with no max (unconfigured PC HP) reads as neutral, never "down".
 function hpColor(hp: number, max: number): string {
@@ -105,289 +34,35 @@ function hpColor(hp: number, max: number): string {
   return hp <= max / 2 ? 'var(--orange)' : 'var(--ink)';
 }
 
-const DEATH_STATE = ['unconscious', 'dying', 'stable', 'dead'] as const;
-
 // ─── Component ───────────────────────────────────────────────────────────────
+// The full-screen runner for an encounter. Its rules live in lib/combat, shared
+// with Play's docked tracker.
 export function InitiativeTracker({ encounter, statblocks, party = [], onClose }: InitiativeTrackerProps) {
-  const initialCombatants = useMemo(() => {
-    const result: Combatant[] = [];
-    const encounterCombatants = parseCombatants(encounter.combatants);
-
-    for (const ec of encounterCombatants) {
-      const sb = ec.statblock_id ? statblocks.find(m => m.id === ec.statblock_id) : null;
-      const dexMod = sb ? abilityMod(sb.dex) : 0;
-      const maxHp = sb?.hit_points ?? 10;
-      const ac = sb?.armor_class ?? null;
-
-      for (let i = 0; i < ec.count; i++) {
-        const label = ec.count > 1 ? ` ${String.fromCharCode(65 + i)}` : '';
-        result.push({
-          id: crypto.randomUUID(),
-          name: `${ec.name}${label}`,
-          initiative: null,
-          dexMod,
-          maxHp,
-          currentHp: maxHp,
-          temp: 0,
-          deathSaves: { s: 0, f: 0 },
-          ac,
-          conditions: new Set(),
-          isPC: false,
-          statblock: sb ?? null,
-          notes: ec.notes,
-        });
-      }
-    }
-
-    for (const pc of party) {
-      // A PC without Max HP in Cast starts at 0, which reads as "not set", not "down".
-      const pcHp = pc.maxHp ?? 0;
-      result.push({
-        id: crypto.randomUUID(),
-        name: pc.name,
-        initiative: null,
-        dexMod: 0,
-        maxHp: pcHp,
-        currentHp: pcHp,
-        temp: 0,
-        deathSaves: { s: 0, f: 0 },
-        ac: pc.ac,
-        conditions: new Set(),
-        isPC: true,
-        statblock: null,
-        notes: null,
-      });
-    }
-
-    return result;
-  }, [encounter.combatants, statblocks, party]);
-
-  const [combatants, setCombatants] = useState<Combatant[]>(initialCombatants);
-  const [currentTurn, setCurrentTurn] = useState<number>(-1);
-  const [round, setRound] = useState(1);
+  const [fight, setFight] = useState<Fight>(() => ({
+    combatants: [...combatantsFromEncounter(encounter, statblocks), ...combatantsFromParty(party)],
+    turn: -1,
+    round: 1,
+  }));
+  const f = useFight(fight, setFight);
   const [viewingStatblock, setViewingStatblock] = useState<MonsterStatblock | null>(null);
   const [conditionMenuId, setConditionMenuId] = useState<string | null>(null);
   const [addingCombatant, setAddingCombatant] = useState(false);
-
-  // Undo stack for HP-mutating actions. Kept in a ref (source of truth); its
-  // length is mirrored into state so the header Undo button re-renders.
-  const historyRef = useRef<HpSnapshot[]>([]);
-  const [historyLen, setHistoryLen] = useState(0);
   const [newCombatantName, setNewCombatantName] = useState('');
 
-  const started = currentTurn >= 0;
-
-  const sorted = useMemo(() => {
-    return [...combatants].sort((a, b) => {
-      const ai = a.initiative ?? -999;
-      const bi = b.initiative ?? -999;
-      if (bi !== ai) return bi - ai;
-      return b.dexMod - a.dexMod;
-    });
-  }, [combatants]);
-
-  const rollAllInitiatives = useCallback(() => {
-    setCombatants(prev => prev.map(c => ({
-      ...c,
-      initiative: rollD20() + c.dexMod,
-    })));
-  }, []);
-
-  const rollNPCInitiatives = useCallback(() => {
-    setCombatants(prev => prev.map(c => ({
-      ...c,
-      initiative: c.isPC ? c.initiative : rollD20() + c.dexMod,
-    })));
-  }, []);
-
-  const setInitiative = useCallback((id: string, value: number | null) => {
-    setCombatants(prev => prev.map(c => c.id === id ? { ...c, initiative: value } : c));
-  }, []);
-
-  const startCombat = () => {
-    setCurrentTurn(0);
-    setRound(1);
-  };
-
-  const nextTurn = () => {
-    const nextIdx = currentTurn + 1;
-    if (nextIdx >= sorted.length) {
-      setCurrentTurn(0);
-      setRound(r => r + 1);
-    } else {
-      setCurrentTurn(nextIdx);
-    }
-  };
-
-  const resetCombat = () => {
-    setCurrentTurn(-1);
-    setRound(1);
-  };
-
-  // Push the current state of a combatant onto the undo stack, then apply a
-  // producer. All temp-first / revive / death-state rules live in the producers
-  // below so they stay consistent across typed values, nudges, and death saves.
-  const mutate = (id: string, producer: (c: Combatant) => Combatant) => {
-    const c = combatants.find(x => x.id === id);
-    if (c) {
-      historyRef.current.push({
-        id,
-        currentHp: c.currentHp,
-        maxHp: c.maxHp,
-        temp: c.temp,
-        conditions: [...c.conditions],
-        deathSaves: { ...c.deathSaves },
-      });
-      setHistoryLen(historyRef.current.length);
-    }
-    setCombatants(prev => prev.map(x => x.id === id ? producer(x) : x));
-  };
-
-  // clamp to [0, maxHp] when a max is configured, else just floor at 0 (PCs
-  // whose max HP is unknown are tracked as a running current-HP counter).
-  const clampHp = (hp: number, maxHp: number) =>
-    maxHp > 0 ? clamp(hp, 0, maxHp) : Math.max(0, hp);
-
-  const damage = (id: string, n: number) => {
-    if (!(n > 0)) return;
-    mutate(id, c => {
-      let dmg = n;
-      let temp = c.temp;
-      if (temp > 0) { const absorbed = Math.min(temp, dmg); temp -= absorbed; dmg -= absorbed; }
-      const newHp = clampHp(c.currentHp - dmg, c.maxHp);
-      const conditions = new Set(c.conditions);
-      DEATH_STATE.forEach(s => conditions.delete(s));
-      let deathSaves = c.deathSaves;
-      // Only a combatant with a known max can be "down" — this keeps freshly
-      // added PCs (0/0, HP not yet entered) from triggering death saves.
-      if (newHp === 0 && c.maxHp > 0) {
-        if (c.isPC) { conditions.add('dying'); deathSaves = { s: 0, f: 0 }; }
-        else conditions.add('unconscious');
-      } else if (newHp === 0 && !c.isPC) {
-        conditions.add('unconscious'); // preserve monster auto-unconscious
-      }
-      return { ...c, currentHp: newHp, temp, conditions, deathSaves };
-    });
-  };
-
-  const heal = (id: string, n: number) => {
-    if (!(n > 0)) return;
-    mutate(id, c => {
-      const conditions = new Set(c.conditions);
-      DEATH_STATE.forEach(s => conditions.delete(s));
-      // From 0 or below, healing revives to exactly n; otherwise it adds on.
-      const raw = c.currentHp <= 0 ? n : c.currentHp + n;
-      return { ...c, currentHp: clampHp(raw, c.maxHp), conditions, deathSaves: { s: 0, f: 0 } };
-    });
-  };
-
-  // Temp HP does not stack (5e): a new source keeps the higher value.
-  const addTemp = (id: string, n: number) => {
-    if (!(n > 0)) return;
-    mutate(id, c => ({ ...c, temp: Math.max(c.temp, n) }));
-  };
-
-  // Manually set current HP to an exact value (clamped to [0, max]). Mirrors the
-  // damage/heal death-state rules so a direct edit down to 0 (or back up) leaves
-  // conditions consistent.
-  const setCurrentHp = (id: string, value: number) => {
-    if (!(value >= 0)) return;
-    mutate(id, c => {
-      const newHp = clampHp(value, c.maxHp);
-      const conditions = new Set(c.conditions);
-      DEATH_STATE.forEach(s => conditions.delete(s));
-      let deathSaves = c.deathSaves;
-      if (newHp <= 0 && c.maxHp > 0) {
-        if (c.isPC) { conditions.add('dying'); deathSaves = { s: 0, f: 0 }; }
-        else conditions.add('unconscious');
-      } else {
-        deathSaves = { s: 0, f: 0 };
-      }
-      return { ...c, currentHp: newHp, conditions, deathSaves };
-    });
-  };
-
-  // Override a combatant's max HP for this combat (e.g. a buffed boss, or a PC
-  // whose HP wasn't configured). Current HP is re-clamped to the new max;
-  // configuring a max for the first time defaults current to full.
-  const setMaxHp = (id: string, value: number) => {
-    if (!(value >= 0)) return;
-    mutate(id, c => {
-      const newMax = Math.max(0, Math.floor(value));
-      let newHp = c.currentHp;
-      if (newMax > 0 && c.maxHp === 0 && c.currentHp === 0) newHp = newMax; // first-time config → full
-      else if (newMax > 0) newHp = Math.min(c.currentHp, newMax);
-      return { ...c, maxHp: newMax, currentHp: newHp };
-    });
-  };
-
-  const setDeathSave = (id: string, key: 's' | 'f', val: number) => {
-    mutate(id, c => {
-      const deathSaves: DeathSaves = { ...c.deathSaves, [key]: val };
-      const conditions = new Set(c.conditions);
-      (['dying', 'stable', 'dead'] as const).forEach(s => conditions.delete(s));
-      if (deathSaves.f >= 3) conditions.add('dead');
-      else if (deathSaves.s >= 3) { conditions.add('stable'); deathSaves.s = 3; deathSaves.f = 0; }
-      else conditions.add('dying');
-      return { ...c, deathSaves, conditions };
-    });
-  };
-
-  const undo = () => {
-    const snap = historyRef.current.pop();
-    if (!snap) return;
-    setHistoryLen(historyRef.current.length);
-    setCombatants(prev => prev.map(c => c.id === snap.id
-      ? { ...c, currentHp: snap.currentHp, maxHp: snap.maxHp, temp: snap.temp, conditions: new Set(snap.conditions), deathSaves: snap.deathSaves }
-      : c));
-  };
-
-  const toggleCondition = (id: string, condition: Condition) => {
-    setCombatants(prev => prev.map(c => {
-      if (c.id !== id) return c;
-      const next = new Set(c.conditions);
-      if (next.has(condition)) next.delete(condition);
-      else next.add(condition);
-      return { ...c, conditions: next };
-    }));
-  };
-
-  const removeCombatant = (id: string) => {
-    setCombatants(prev => prev.filter(c => c.id !== id));
-    if (started) {
-      const idx = sorted.findIndex(c => c.id === id);
-      if (idx >= 0 && idx < currentTurn) {
-        setCurrentTurn(t => t - 1);
-      } else if (idx === currentTurn && currentTurn >= sorted.length - 1) {
-        setCurrentTurn(0);
-        setRound(r => r + 1);
-      }
-    }
-  };
+  const { started, order: sorted, historyLen, undo } = f;
+  const currentTurn = fight.turn;
+  const round = fight.round;
+  const statblockFor = (c: Combatant) => (c.statblockId ? statblocks.find(s => s.id === c.statblockId) ?? null : null);
 
   const addNewCombatant = () => {
     if (!newCombatantName.trim()) return;
-    setCombatants(prev => [...prev, {
-      id: crypto.randomUUID(),
-      name: newCombatantName.trim(),
-      initiative: started ? rollD20() : null,
-      dexMod: 0,
-      maxHp: 10,
-      currentHp: 10,
-      temp: 0,
-      deathSaves: { s: 0, f: 0 },
-      ac: null,
-      conditions: new Set(),
-      isPC: false,
-      statblock: null,
-      notes: null,
-    }]);
+    f.add([newCombatant(newCombatantName.trim())]);
     setNewCombatantName('');
     setAddingCombatant(false);
   };
 
-  const allHaveInitiative = combatants.every(c => c.initiative !== null);
-  const currentCombatant = started ? sorted[currentTurn] ?? null : null;
+  const allHaveInitiative = fight.combatants.every(c => c.initiative !== null);
+  const currentCombatant = f.current;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg)', color: 'var(--ink)' }}>
@@ -445,10 +120,10 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
           </button>
           {!started ? (
             <>
-              <button onClick={rollNPCInitiatives} style={ghostBtn}>Roll NPCs</button>
-              <button onClick={rollAllInitiatives} style={ghostBtn}>Roll All</button>
+              <button onClick={f.rollNPCs} style={ghostBtn}>Roll NPCs</button>
+              <button onClick={f.rollAll} style={ghostBtn}>Roll All</button>
               <button
-                onClick={startCombat}
+                onClick={f.start}
                 disabled={!allHaveInitiative}
                 style={{ ...primaryBtn, opacity: allHaveInitiative ? 1 : 0.4 }}
               >
@@ -457,8 +132,8 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
             </>
           ) : (
             <>
-              <button onClick={resetCombat} style={ghostBtn}>Reset</button>
-              <button onClick={nextTurn} style={primaryBtn}>Next turn ▶</button>
+              <button onClick={f.reset} style={ghostBtn}>Reset</button>
+              <button onClick={f.next} style={primaryBtn}>Next turn ▶</button>
             </>
           )}
           <button onClick={onClose} style={exitBtn}>✕ End</button>
@@ -478,17 +153,18 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
             isCurrent={started && idx === currentTurn}
             started={started}
             conditionMenuOpen={conditionMenuId === c.id}
-            onSetInitiative={setInitiative}
+            statblock={statblockFor(c)}
+            onSetInitiative={f.setInitiative}
             onViewStatblock={setViewingStatblock}
-            onToggleCondition={toggleCondition}
+            onToggleCondition={f.toggleCondition}
             onToggleConditionMenu={() => setConditionMenuId(conditionMenuId === c.id ? null : c.id)}
-            onRemove={removeCombatant}
-            onDamage={damage}
-            onHeal={heal}
-            onTemp={addTemp}
-            onSetHp={setCurrentHp}
-            onSetMax={setMaxHp}
-            onDeathSave={setDeathSave}
+            onRemove={f.remove}
+            onDamage={f.damage}
+            onHeal={f.heal}
+            onTemp={f.addTemp}
+            onSetHp={f.setHp}
+            onSetMax={f.setMax}
+            onDeathSave={f.deathSave}
           />
         ))}
 
@@ -680,6 +356,7 @@ const exitBtn: React.CSSProperties = {
 // ─── Combatant row ────────────────────────────────────────────────────────────
 interface CombatantRowProps {
   c: Combatant;
+  statblock: MonsterStatblock | null;
   isCurrent: boolean;
   started: boolean;
   conditionMenuOpen: boolean;
@@ -697,7 +374,7 @@ interface CombatantRowProps {
 }
 
 function CombatantRow({
-  c, isCurrent, started, conditionMenuOpen,
+  c, statblock, isCurrent, started, conditionMenuOpen,
   onSetInitiative, onViewStatblock, onToggleCondition, onToggleConditionMenu,
   onRemove, onDamage, onHeal, onTemp, onSetHp, onSetMax, onDeathSave,
 }: CombatantRowProps) {
@@ -727,8 +404,8 @@ function CombatantRow({
   const bloodied = hasMax && c.currentHp > 0 && c.currentHp <= c.maxHp / 2;
   const pct = hasMax ? clamp((c.currentHp / c.maxHp) * 100, 0, 100) : 0;
   const showTemp = c.temp > 0;
-  const dead = c.conditions.has('dead');
-  const stable = c.conditions.has('stable');
+  const dead = c.conditions.includes('dead');
+  const stable = c.conditions.includes('stable');
 
   const apply = (isHeal: boolean) => {
     const n = parseInt(val, 10);
@@ -806,12 +483,12 @@ function CombatantRow({
                 fontSize: '0.95rem',
                 fontWeight: 600,
                 fontFamily: 'var(--display)',
-                cursor: c.statblock ? 'pointer' : 'default',
-                textDecoration: c.statblock ? 'underline dotted' : 'none',
+                cursor: statblock ? 'pointer' : 'default',
+                textDecoration: statblock ? 'underline dotted' : 'none',
                 textUnderlineOffset: '3px',
                 textDecorationColor: 'var(--rule-hover)',
               }}
-              onClick={() => c.statblock && onViewStatblock(c.statblock)}
+              onClick={() => statblock && onViewStatblock(statblock)}
             >
               {c.name}
             </span>
@@ -820,7 +497,7 @@ function CombatantRow({
             <span>{c.isPC ? 'Player' : 'Monster'}</span>
             {c.ac != null && <span>AC {c.ac}</span>}
           </div>
-          {c.conditions.size > 0 && (
+          {c.conditions.length > 0 && (
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '7px' }}>
               {[...c.conditions].map(cond => (
                 <span
@@ -974,7 +651,7 @@ function CombatantRow({
             onClick={onToggleConditionMenu}
             title="Conditions"
             style={{
-              color: c.conditions.size > 0 ? 'var(--gold)' : 'var(--ink-4)',
+              color: c.conditions.length > 0 ? 'var(--gold)' : 'var(--ink-4)',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -1014,7 +691,7 @@ function CombatantRow({
           borderBottom: '1px solid var(--rule-soft)',
         }}>
           {CONDITIONS.map(cond => {
-            const active = c.conditions.has(cond);
+            const active = c.conditions.includes(cond);
             return (
               <button
                 key={cond}

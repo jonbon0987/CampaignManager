@@ -27,19 +27,21 @@ interface ModuleDetailProps {
   module: Module;
   onBack: () => void;
   onModuleDeleted: () => void;
+  /** Opens on this submodule instead of the overview (a scene picked from Play's agenda). */
+  initialSubmoduleId?: string | null;
 }
 
 const OVERVIEW = '__overview';
 
-export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: ModuleDetailProps) {
+export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, initialSubmoduleId }: ModuleDetailProps) {
   const {
     submodules, loadSubmodules, upsertSubmodule,
     scenes, loadScenes,
     submoduleDeps, loadSubmoduleDeps,
   } = useCampaign();
 
-  const [selectedId, setSelectedId] = useState<string>(OVERVIEW);
-  const [openIds, setOpenIds] = useState<Record<string, boolean>>({});
+  const [selectedId, setSelectedId] = useState<string>(initialSubmoduleId ?? OVERVIEW);
+  const [openIds, setOpenIds] = useState<Record<string, boolean>>(() => (initialSubmoduleId ? { [initialSubmoduleId]: true } : {}));
 
   useEffect(() => {
     loadSubmodules(mod.id);
@@ -51,9 +53,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted }: M
     [submodules, mod.id],
   );
 
-  // keep selection valid
+  // keep selection valid (once the submodules have loaded)
   useEffect(() => {
-    if (selectedId !== OVERVIEW && !modSubs.find(s => s.id === selectedId)) setSelectedId(OVERVIEW);
+    if (selectedId !== OVERVIEW && modSubs.length > 0 && !modSubs.find(s => s.id === selectedId)) setSelectedId(OVERVIEW);
   }, [modSubs, selectedId]);
 
   // load scenes for expanded rows so the tree can show them

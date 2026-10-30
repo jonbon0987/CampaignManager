@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
@@ -17,7 +17,6 @@ import { useAIChat } from './hooks/useAIChat';
 import { useCampaignAssistantBackend, useWorldAssistantBackend } from './hooks/assistantBackend';
 import StatBlockPanel from './components/StatBlockPanel';
 import ShortcutsOverlay from './components/ShortcutsOverlay';
-import SessionBar from './components/SessionBar';
 import { PostSessionCapture } from './components/ui/PostSessionCapture';
 import SettingsView from './components/tabs/SettingsView';
 import { StatBlockPanelProvider, useStatBlockPanel } from './context/StatBlockPanelContext';
@@ -34,7 +33,12 @@ import WorldCreationGate from './components/world/WorldCreationGate';
 import CampaignCreationGate from './components/world/CampaignCreationGate';
 import CanvasLoading from './components/ui/CanvasLoading';
 import { RecordingProvider } from './context/RecordingContext';
-import { RecordingIndicator } from './components/session/RecorderPanel';
+import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
+import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
+import { PlayStrip } from './components/play/PlayStrip';
+import { PlayTools } from './components/play/PlayTools';
+import { StartSessionDialog } from './components/play/StartSessionDialog';
+import { useEndSession } from './components/play/useEndSession';
 import AppSidebar from './components/shell/AppSidebar';
 import AppTopbar from './components/shell/AppTopbar';
 import CommandPalette from './components/shell/CommandPalette';
@@ -44,8 +48,6 @@ import { useCampaignPaletteItems, useWorldPaletteItems } from './components/shel
 import { useShellChrome, shellClass } from './components/shell/useShellChrome';
 import { useRouteSync, currentRoute } from './hooks/useRouteSync';
 import { setRecentScope } from './lib/recent';
-import { liveSession } from './lib/sessionLifecycle';
-import { useSessionRunStatus } from './hooks/useSessionLifecycle';
 import type { Route } from './lib/route';
 import type { WorldTab } from './types/world';
 
@@ -92,7 +94,7 @@ const normalizeTab = (tab: Tab, view?: string): { tab: Tab; view?: string } => {
 
 const RAIL_OVERLAY_CLASS = 'cm-rail';
 
-function AppInner({ user }: { user: User }) {
+function AppInner() {
   const world = useWorld();
   // Where the URL says to start (a deep link or a refresh).
   const [initial] = useState(() => {
@@ -105,8 +107,6 @@ function AppInner({ user }: { user: User }) {
     ...(initial?.view ? { [initial.tab]: initial.view } : {}),
   }));
   const chrome = useShellChrome({ hasNote: true });
-  const [sessionBarOpen, setSessionBarOpen] = useState(false);
-  const [runMode, setRunMode] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState('all');
@@ -149,10 +149,13 @@ function AppInner({ user }: { user: User }) {
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
   const openIdFor = (tab: Tab) => (openTarget?.tab === tab ? openTarget.id : null);
-  const { loading, error, pcs, sessions, selectedCampaign, selectedCampaignId } = useCampaign();
-  const { activeStatBlockId } = useStatBlockPanel();
+  const { loading, error, selectedCampaign, selectedCampaignId } = useCampaign();
+  const { activeStatBlockId, closeStatBlock } = useStatBlockPanel();
   const chat = useAIChat(useCampaignAssistantBackend());
-  const pcNames = pcs.map(p => p.character_name).filter(Boolean);
+  const play = usePlay();
+  // A session is in play while one is live; it survives a reload because the
+  // status lives on the session.
+  const runMode = !!play.live;
 
   useMigrateScratchpad();
   useEffect(() => { setRecentScope(selectedCampaignId); }, [selectedCampaignId]);
@@ -181,51 +184,50 @@ function AppInner({ user }: { user: User }) {
     if (r.recordId) setOpenTarget({ tab: n.tab, id: r.recordId });
   });
 
-  // Starting a session opens the session tools and makes the next planned
-  // session live; ending it closes them and marks that session played.
-  const setRunStatus = useSessionRunStatus();
+  // Start session asks which session and whether to record; End checks, then
+  // opens the session on its recap.
+  const endSession = useEndSession(openRecord);
+  const { openStart } = play;
   const toggleRun = useCallback(() => {
-    const next = !runMode;
-    setRunMode(next);
-    setSessionBarOpen(next);
-    // A failed status change has already shown its toast.
-    void setRunStatus(next).catch(() => {});
-  }, [runMode, setRunStatus]);
+    if (runMode) void endSession();
+    else openStart();
+  }, [runMode, endSession, openStart]);
 
-  // A session still live when the campaign loads (the page reloaded mid-game)
-  // picks up in run mode.
-  const resumedFor = useRef<string | null>(null);
-  useEffect(() => {
-    if (loading || !selectedCampaignId || resumedFor.current === selectedCampaignId) return;
-    if (sessions.some(s => s.campaign_id !== selectedCampaignId)) return;
-    resumedFor.current = selectedCampaignId;
-    if (liveSession(sessions)) setRunMode(true);
-  }, [loading, selectedCampaignId, sessions]);
+  // Brings a table tool into the rail, in front of the assistant or a stat sheet.
+  const { setTab: setPlayTab } = play;
+  const showTool = useCallback((tab: PlayTab) => {
+    setPlayTab(tab);
+    chrome.setAssistantOpen(false);
+    closeStatBlock();
+  // chrome's setters are stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setPlayTab, closeStatBlock]);
 
   const paletteHandlers = useMemo(() => ({
     openRecord,
     openView,
     runMode,
     toggleRun,
-    openSessionTools: () => setSessionBarOpen(true),
+    openSessionTools: () => showTool('initiative'),
     openNote: chrome.openNote,
     openCapture: () => setCaptureOpen(true),
     openShortcuts: chrome.toggleShortcuts,
     backToWorld: world.backToWorld,
   // chrome's openers are stable callbacks or plain setters
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [openRecord, openView, runMode, toggleRun, world.backToWorld]);
+  }), [openRecord, openView, runMode, toggleRun, showTool, world.backToWorld]);
   const paletteItems = useCampaignPaletteItems(paletteHandlers);
 
-  // One docked rail: a stat block when one is open, else the assistant.
+  // One docked rail: a stat block when one is open, else the assistant, else
+  // the table tools while a session is in play.
   const rail = activeStatBlockId
     ? <StatBlockPanel />
-    : chrome.assistantOpen ? <Workbench open onClose={() => chrome.setAssistantOpen(false)} chat={chat} /> : null;
+    : chrome.assistantOpen ? <Workbench open onClose={() => chrome.setAssistantOpen(false)} chat={chat} />
+    : runMode ? <PlayTools /> : null;
 
   return (
     <NavigationProvider setActiveTab={setActiveTab} openRecord={openRecord} reportRecord={reportRecord}>
       <CampaignEntityRefProvider>
-      <RecordingProvider userId={user.id}>
       <div className={shellClass({ collapsed: chrome.sidebarCollapsed, rail: !!rail, isMobile: chrome.isMobile, extra: runMode ? 'cm-run' : '' })}>
         <AppSidebar
           scope="campaign"
@@ -256,13 +258,15 @@ function AppInner({ user }: { user: User }) {
             viewMode={activeViewMode}
             setViewMode={setViewMode}
             viewOptions={TAB_VIEW_OPTIONS[activeTab]}
-            status={<RecordingIndicator onOpen={sessionId => openRecord('sessions', sessionId)} />}
+            status={<RecordingIndicator onOpen={sessionId => (sessionId === play.live?.id ? showTool('record') : openRecord('sessions', sessionId))} />}
             onOpenPalette={chrome.openPalette}
             onToggleNote={chrome.toggleNote}
             noteOpen={chrome.noteOpen}
             onToggleAssistant={chrome.toggleAssistant}
             assistantOpen={chrome.assistantOpen}
           />
+
+          <PlayStrip onShowTool={showTool} />
 
           <div className="cm-canvas">
             {error && (
@@ -281,14 +285,15 @@ function AppInner({ user }: { user: User }) {
                 {activeTab === 'threads'   && (activeViewMode === 'inbox'
                   ? <Ideas onNavigate={tab => { if (tab === 'threads') setViewModes(p => ({ ...p, threads: 'board' })); setActiveTab(tab); }} />
                   : <Threads viewMode={activeViewMode} onNavigate={setActiveTab} openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />)}
-                {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} openSubmoduleId={openTarget?.tab === 'modules' && openTarget.kind?.startsWith('submodule:') ? openTarget.kind.slice('submodule:'.length) : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} openId={openIdFor('sessions')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'combat'    && <CombatView onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={openTarget?.tab === 'combat' ? openTarget : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'settings'  && <SettingsView />}
               </>
             )}
           </div>
-          <QuickNote open={chrome.noteOpen} onClose={chrome.closeNote} onOpenInbox={() => openView('threads', 'inbox')} />
+          <QuickNote open={chrome.noteOpen} onClose={chrome.closeNote} onOpenInbox={() => openView('threads', 'inbox')}
+            onSessionNote={runMode ? play.addNote : undefined} sessionNumber={play.live?.session_number} />
         </div>
 
         {rail && <div className={RAIL_OVERLAY_CLASS}>{rail}</div>}
@@ -298,16 +303,11 @@ function AppInner({ user }: { user: User }) {
           onClose={chrome.closePalette}
           items={paletteItems}
           onAsk={q => { chrome.setAssistantOpen(true); void chat.sendMessage(q); }}
+          onRolled={runMode ? play.logRoll : undefined}
           placeholder="Search the campaign, jump to a tab, create, roll 2d6, or ask…"
         />
-        <SessionBar
-          open={sessionBarOpen}
-          onClose={() => setSessionBarOpen(false)}
-          runMode={runMode}
-          onToggleRun={toggleRun}
-          onOpenRecord={openRecord}
-          pcNames={pcNames}
-        />
+        {play.startOpen && <StartSessionDialog />}
+        {play.recordFor && <StartRecordingModal session={play.recordFor} onClose={() => { play.clearRecordFor(); showTool('record'); }} />}
         {captureOpen && (
           <PostSessionCapture onClose={() => setCaptureOpen(false)} />
         )}
@@ -318,7 +318,6 @@ function AppInner({ user }: { user: User }) {
           entityType={importType}
         />
       </div>
-      </RecordingProvider>
       </CampaignEntityRefProvider>
     </NavigationProvider>
   );
@@ -699,7 +698,11 @@ function WorldRoot({ user }: { user: User }) {
     return (
       <CampaignProvider campaignId={activeCampaignId} worldId={activeWorldId || undefined}>
         <StatBlockPanelProvider>
-          <AppInner user={user} />
+          <RecordingProvider userId={user.id}>
+            <PlayProvider>
+              <AppInner />
+            </PlayProvider>
+          </RecordingProvider>
         </StatBlockPanelProvider>
       </CampaignProvider>
     );

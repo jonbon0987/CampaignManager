@@ -1,14 +1,22 @@
-// ⌘. — jot a note into the campaign's Ideas inbox without leaving the page.
-// Replaces the Scratchpad, which kept notes in this browser only and shared
-// them across every campaign. Its notes move into Ideas the first time a
-// campaign opens.
+// ⌘. — jot a note without leaving the page. While a session is in play it
+// goes in that session's table notes (and its recap); otherwise into the
+// campaign's Ideas inbox. Replaces the Scratchpad, which kept notes in this
+// browser only and shared them across every campaign. Its notes move into
+// Ideas the first time a campaign opens.
 
 import { useEffect, useRef, useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useToast } from '../../context/ToastContext';
 import { Button } from '../ui/Button';
 
-export default function QuickNote({ open, onClose, onOpenInbox }: { open: boolean; onClose: () => void; onOpenInbox: () => void }) {
+export default function QuickNote({ open, onClose, onOpenInbox, onSessionNote, sessionNumber }: {
+  open: boolean;
+  onClose: () => void;
+  onOpenInbox: () => void;
+  /** Set while a session is in play: the note goes to its table notes. */
+  onSessionNote?: (text: string) => void;
+  sessionNumber?: number;
+}) {
   const { upsertIdea } = useCampaign();
   const toast = useToast();
   const [text, setText] = useState('');
@@ -24,6 +32,17 @@ export default function QuickNote({ open, onClose, onOpenInbox }: { open: boolea
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const toSession = !!onSessionNote;
+
+  const saveToSession = () => {
+    const body = text.trim();
+    if (!body || !onSessionNote) return;
+    onSessionNote(body);
+    setText('');
+    toast(`Noted for Session ${sessionNumber}`, 'success');
+    onClose();
+  };
 
   const save = async () => {
     const body = text.trim();
@@ -42,7 +61,7 @@ export default function QuickNote({ open, onClose, onOpenInbox }: { open: boolea
   return (
     <div className="cm-note" role="dialog" aria-label="Quick note">
       <div className="cm-note-head">
-        <span className="cm-note-title">✎ Quick note</span>
+        <span className="cm-note-title">✎ {toSession ? `Note for Session ${sessionNumber}` : 'Quick note'}</span>
         {/* eslint-disable-next-line no-restricted-syntax -- inline text link */}
         <button className="cm-note-link" onClick={() => { onOpenInbox(); onClose(); }}>Ideas inbox ›</button>
       </div>
@@ -51,14 +70,17 @@ export default function QuickNote({ open, onClose, onOpenInbox }: { open: boolea
         className="cm-note-input"
         value={text}
         onChange={e => setText(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save(); } }}
-        placeholder="A spark, a twist, a name…"
+        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (toSession) saveToSession(); else void save(); } }}
+        placeholder={toSession ? 'What just happened at the table…' : 'A spark, a twist, a name…'}
         rows={3}
         aria-label="Note"
       />
       <div className="cm-note-foot">
         <span className="cm-note-hint"><kbd className="cm-kbd">⌘↵</kbd> save · <kbd className="cm-kbd">Esc</kbd> close</span>
-        <Button variant="primary" size="sm" onClick={() => void save()} disabled={!text.trim() || saving}>{saving ? 'Saving…' : 'Save to Ideas'}</Button>
+        {toSession && <Button variant="ghost" size="sm" onClick={() => void save()} disabled={!text.trim() || saving}>To Ideas</Button>}
+        {toSession
+          ? <Button variant="primary" size="sm" onClick={saveToSession} disabled={!text.trim()}>Add to session</Button>
+          : <Button variant="primary" size="sm" onClick={() => void save()} disabled={!text.trim() || saving}>{saving ? 'Saving…' : 'Save to Ideas'}</Button>}
       </div>
     </div>
   );
