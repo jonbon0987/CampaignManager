@@ -153,7 +153,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       search={search}
       onSearchChange={setSearch}
       onAdd={handleAdd}
-      addLabel={filter === 'faction' ? '+ Faction' : filter === 'npc' ? '+ NPC' : filter === 'pc' ? '+ PC' : '+ New'}
+      addLabel={filter === 'faction' ? '+ Add faction' : filter === 'npc' ? '+ Add NPC' : filter === 'pc' ? '+ Add PC' : '+ Add'}
       addOptions={filter === 'all' ? [
         { label: 'PC', onClick: addPC },
         { label: 'NPC', onClick: addNPC },

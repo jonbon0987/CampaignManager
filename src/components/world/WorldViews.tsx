@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
-import { ListDetail, ListRow, DetailPanel, Pill, EmptyDetail } from '../ui/ListDetail';
+import { StatSheetEditor } from '../entity/StatSheetEditor';
+import { ListDetail, ListRow, Pill, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../Modal';
 import { EncounterDetail } from '../ui/EncounterDetail';
@@ -19,12 +20,7 @@ import {
   useSelectedContextEntities,
   type ContextRef,
 } from '../ui/EntityContextPicker';
-import { StatBlockBody, emptyMonsterForm, CREATURE_TYPES, ABILITY_KEYS, AbilityInput } from '../tabs/CreatureStatblocks';
-import type { MonsterForm } from '../tabs/CreatureStatblocks';
-import { SlashField } from '../ui/SlashField';
-import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
-import type { MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
 import type { WorldLocation } from '../../types/world';
 import { NPCEditor } from '../entity/NPCEditor';
 import { LocationEditor } from '../entity/LocationEditor';
@@ -49,10 +45,6 @@ function Tag({ children, kind }: { children: ReactNode; kind?: string }) {
 
 function SubtleTag({ children }: { children: ReactNode }) {
   return <Badge color="muted">{children}</Badge>;
-}
-
-function WorldBadge() {
-  return <span className="w-inherited">⊕ World-scoped</span>;
 }
 
 // ═══════════════════════════════════════════
@@ -94,15 +86,15 @@ export function WorldNPCsView() {
       search={search}
       onSearchChange={setSearch}
       onAdd={filter === 'faction' ? addFaction : addCharacter}
-      addLabel={filter === 'faction' ? '+ Faction' : filter === 'npc' ? '+ Character' : '+ New'}
+      addLabel={filter === 'faction' ? '+ Add faction' : filter === 'npc' ? '+ Add NPC' : '+ Add'}
       addOptions={filter === 'all' ? [
-        { label: 'Character', onClick: addCharacter },
+        { label: 'NPC', onClick: addCharacter },
         { label: 'Faction', onClick: addFaction },
       ] : undefined}
       filters={
         <>
           <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
-          <Pill active={filter === 'npc'} onClick={() => setFilter('npc')}>Characters</Pill>
+          <Pill active={filter === 'npc'} onClick={() => setFilter('npc')}>NPCs</Pill>
           <Pill active={filter === 'faction'} onClick={() => setFilter('faction')}>Factions</Pill>
         </>
       }
@@ -261,6 +253,7 @@ export function WorldLocationsView() {
       search={search}
       onSearchChange={setSearch}
       onAdd={async () => { const id = await createLocation(); if (id) { markDraft(id); setSelected('locations', id); } }}
+      addLabel="+ Add location"
       list={
         locations.length === 0 ? (
           <div className="cm-empty is-inline">No locations yet — add one to start the map</div>
@@ -312,6 +305,7 @@ export function WorldLoreView() {
       search={search}
       onSearchChange={setSearch}
       onAdd={async () => { const id = await createLoreEntry(); if (id) { markDraft(id); setSelected('lore', id); } }}
+      addLabel="+ Add lore"
       list={
         <div>
           {items.map(x => (
@@ -344,7 +338,10 @@ export function WorldLoreView() {
 // WORLD COMBAT VIEW (Bestiary + Encounters)
 // ═══════════════════════════════════════════
 
-export function WorldCombatView() {
+/** The world's Encounters views, switched from the topbar like the campaign's. */
+export type WorldCombatSubView = 'encounter' | 'random' | 'bestiary';
+
+export function WorldCombatView({ view: filter, setView: setFilter }: { view: WorldCombatSubView; setView: (v: WorldCombatSubView) => void }) {
   const {
     bestiary, encounters,
     worldStatblocks, worldEncounters,
@@ -361,9 +358,6 @@ export function WorldCombatView() {
   const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
-  // World Combat mirrors the campaign CombatView: a tab per view rather than
-  // filter pills over one merged list.
-  const [filter, setFilter] = useState<'encounter' | 'random' | 'bestiary'>('encounter');
   const { openStatBlock } = useStatBlockPanel();
 
   // ---- Generate modal state ----
@@ -585,56 +579,27 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           />
         )
       : selRawStatblock
-        ? <WorldBestiaryDetail
+        ? <StatSheetEditor
             key={selRawStatblock.id}
             statblock={selRawStatblock}
-            upsertWorldStatblock={upsertWorldStatblock}
+            scope="world"
+            save={fields => upsertWorldStatblock({ id: selRawStatblock.id, ...fields, sort_order: selRawStatblock.sort_order })}
+            remove={deleteBestiaryEntry}
             onDeleted={() => setSelected('combat', '')}
+            onView={() => openStatBlock(selRawStatblock.id)}
           />
         : <EmptyDetail>Select an entry.</EmptyDetail>;
 
-  const combatTabs = [
-    { id: 'encounter', label: 'Encounters' },
-    { id: 'random', label: 'Random Tables' },
-    { id: 'bestiary', label: 'Stat Sheets' },
-  ] as const;
-
   return (
     <>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        {/* Sub-tab bar — mirrors the campaign CombatView */}
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: '4px',
-            padding: '10px 22px 0', borderBottom: '1px solid var(--rule)', flexShrink: 0,
-          }}
-        >
-          {combatTabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id)}
-              style={{
-                padding: '6px 14px', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'var(--serif)',
-                cursor: 'pointer', border: 'none', backgroundColor: 'transparent', marginBottom: '-1px',
-                borderBottom: filter === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
-                color: filter === tab.id ? 'var(--gold)' : 'var(--ink-3)', transition: 'color 0.15s',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ flex: 1, minHeight: 0 }}>
       <ListDetail
-        title={filter === 'encounter' ? 'Encounters' : filter === 'random' ? 'Random Tables' : 'Stat Sheets'}
+        title={filter === 'encounter' ? 'Encounters' : filter === 'random' ? 'Random tables' : 'Stat sheets'}
         count={items.length}
         search={search}
         onSearchChange={setSearch}
         onAdd={filter === 'encounter' ? handleAddEncounter : filter === 'random' ? handleAddRandomTable : handleAddCreature}
-        addLabel="+ New"
+        addLabel={filter === 'encounter' ? '+ Add encounter' : filter === 'random' ? '+ Add table' : '+ Add stat sheet'}
         onGenerate={filter === 'bestiary' ? openGenModal : filter === 'encounter' ? () => setGenEncOpen(true) : filter === 'random' ? () => setGenTableOpen(true) : undefined}
-        generateLabel="✦"
         list={
           <div>
             {items.map(x => (
@@ -662,8 +627,6 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         }
         detail={detail}
       />
-        </div>
-      </div>
 
       {/* ── Generate full encounter (AI) ── */}
       <GenerateWorldEncounterModal
@@ -755,221 +718,6 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         </div>
       </Modal>
 
-    </>
-  );
-}
-
-function WorldBestiaryDetail({
-  statblock,
-  upsertWorldStatblock,
-  onDeleted,
-}: {
-  statblock: MonsterStatblock;
-  upsertWorldStatblock: (data: Omit<MonsterStatblockInsert, 'world_id' | 'campaign_id'> & { id?: string }) => Promise<MonsterStatblock>;
-  onDeleted: () => void;
-}) {
-  const { deleteBestiaryEntry } = useWorld();
-  const confirm = useConfirm();
-  const [editOpen, setEditOpen] = useState(false);
-  const [form, setForm] = useState<MonsterForm>(emptyMonsterForm());
-
-  const field = (key: keyof MonsterForm) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm(prev => ({ ...prev, [key]: e.target.value }));
-
-  const openEdit = () => {
-    const m = statblock;
-    setForm({
-      name: m.name,
-      creature_type: m.creature_type ?? 'monstrosity',
-      challenge_rating: m.challenge_rating ?? '',
-      armor_class: m.armor_class != null ? String(m.armor_class) : '',
-      ac_descriptor: m.ac_descriptor ?? '',
-      hit_points: m.hit_points != null ? String(m.hit_points) : '',
-      hit_dice: m.hit_dice ?? '',
-      speed: m.speed ?? '',
-      str: m.str != null ? String(m.str) : '',
-      dex: m.dex != null ? String(m.dex) : '',
-      con: m.con != null ? String(m.con) : '',
-      int: m.int != null ? String(m.int) : '',
-      wis: m.wis != null ? String(m.wis) : '',
-      cha: m.cha != null ? String(m.cha) : '',
-      saving_throws: m.saving_throws ?? '',
-      skills: m.skills ?? '',
-      damage_immunities: m.damage_immunities ?? '',
-      damage_resistances: m.damage_resistances ?? '',
-      condition_immunities: m.condition_immunities ?? '',
-      senses: m.senses ?? '',
-      languages: m.languages ?? '',
-      content: m.content ?? '',
-      dm_notes: m.dm_notes ?? '',
-      tags: m.tags ?? '',
-    });
-    setEditOpen(true);
-  };
-
-  const toIntOrNull = (s: string): number | null => {
-    const n = parseInt(s.trim(), 10);
-    return isNaN(n) ? null : n;
-  };
-
-  const handleSave = async () => {
-    await upsertWorldStatblock({
-      id: statblock.id,
-      name: form.name,
-      creature_type: form.creature_type || null,
-      challenge_rating: form.challenge_rating || null,
-      armor_class: toIntOrNull(form.armor_class),
-      ac_descriptor: form.ac_descriptor || null,
-      hit_points: toIntOrNull(form.hit_points),
-      hit_dice: form.hit_dice || null,
-      speed: form.speed || null,
-      str: toIntOrNull(form.str),
-      dex: toIntOrNull(form.dex),
-      con: toIntOrNull(form.con),
-      int: toIntOrNull(form.int),
-      wis: toIntOrNull(form.wis),
-      cha: toIntOrNull(form.cha),
-      saving_throws: form.saving_throws || null,
-      skills: form.skills || null,
-      damage_immunities: form.damage_immunities || null,
-      damage_resistances: form.damage_resistances || null,
-      condition_immunities: form.condition_immunities || null,
-      senses: form.senses || null,
-      languages: form.languages || null,
-      content: form.content || null,
-      dm_notes: form.dm_notes || null,
-      tags: form.tags || null,
-      sort_order: statblock.sort_order,
-    });
-    setEditOpen(false);
-  };
-
-  const handleDelete = async () => {
-    const ok = await confirm({
-      title: 'Delete creature',
-      message: `Delete "${statblock.name}" from the world bestiary? This cannot be undone.`,
-      confirmLabel: 'Delete',
-      danger: true,
-    });
-    if (ok) { await deleteBestiaryEntry(statblock.id); onDeleted(); }
-  };
-
-  return (
-    <>
-      <DetailPanel
-        eyebrow={`World Bestiary · ${statblock.creature_type ?? 'creature'}`}
-        title={statblock.name}
-        subtitle={statblock.challenge_rating ? `Challenge Rating ${statblock.challenge_rating}` : undefined}
-      >
-        <WorldBadge />
-
-        {/* Tags */}
-        {statblock.tags && (
-          <div style={{ marginBottom: 12 }}>
-            {statblock.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-              <span key={t} className="cm-tag is-subtle" style={{ marginRight: 4 }}>{t}</span>
-            ))}
-          </div>
-        )}
-
-        {/* Full stat block */}
-        <StatBlockBody m={statblock} />
-
-        {/* Actions */}
-        <div style={{ marginTop: 'auto', paddingTop: 20, borderTop: '1px solid var(--rule)', display: 'flex', gap: 8 }}>
-          <button onClick={openEdit}
-            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '6px 14px', color: 'var(--ink-2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
-            Edit
-          </button>
-          <button onClick={handleDelete}
-            style={{ background: 'none', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '6px 12px', color: 'var(--red)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--serif)' }}>
-            ✕ Delete
-          </button>
-        </div>
-      </DetailPanel>
-
-      {/* Edit modal */}
-      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title={`Edit: ${statblock.name}`} onSave={handleSave} wide>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Creature Type">
-            <select value={form.creature_type} onChange={field('creature_type')} style={inputStyle}>
-              {CREATURE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Challenge Rating">
-            <input type="text" value={form.challenge_rating} onChange={field('challenge_rating')} placeholder="e.g., 1/4, 5, 17" maxLength={limitFor('monster_statblocks', 'challenge_rating')} style={inputStyle} />
-          </FormField>
-        </div>
-        <FormField label="Name">
-          <input type="text" value={form.name} onChange={field('name')} placeholder="e.g., Cave Troll, Shadow Drake" maxLength={limitFor('monster_statblocks', 'name')} style={inputStyle} />
-        </FormField>
-        <FormField label="Tags">
-          <input type="text" value={form.tags} onChange={field('tags')} placeholder="Comma-separated: boss, undead, ranged..." maxLength={limitFor('monster_statblocks', 'tags')} style={inputStyle} />
-        </FormField>
-        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <FormField label="Armor Class">
-              <input type="number" min={1} max={30} value={form.armor_class} onChange={field('armor_class')} placeholder="e.g. 15" style={inputStyle} />
-            </FormField>
-            <input type="text" value={form.ac_descriptor} onChange={field('ac_descriptor')} placeholder="e.g. natural armor"
-              maxLength={limitFor('monster_statblocks', 'ac_descriptor')} style={{ ...inputStyle, marginTop: '4px', fontSize: '0.75rem' }} />
-          </div>
-          <div>
-            <FormField label="Hit Points">
-              <input type="number" min={1} max={maxFor('monster_statblocks', 'hit_points')} value={form.hit_points} onChange={field('hit_points')} placeholder="e.g. 45" style={inputStyle} />
-            </FormField>
-            <input type="text" value={form.hit_dice} onChange={field('hit_dice')} placeholder="e.g. 6d10+12"
-              maxLength={limitFor('monster_statblocks', 'hit_dice')} style={{ ...inputStyle, marginTop: '4px', fontSize: '0.75rem' }} />
-          </div>
-          <FormField label="Speed">
-            <input type="text" value={form.speed} onChange={field('speed')} placeholder="e.g. 30 ft., fly 60 ft." maxLength={limitFor('monster_statblocks', 'speed')} style={inputStyle} />
-          </FormField>
-        </div>
-        <div>
-          <div style={{ color: 'var(--gold)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem', marginTop: '4px' }}>Ability Scores</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
-            {ABILITY_KEYS.map(({ key, label }) => <AbilityInput key={key} label={label} value={form[key] as string} onChange={field(key)} />)}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Saving Throws">
-            <input type="text" value={form.saving_throws} onChange={field('saving_throws')} placeholder="e.g. Dex +4, Con +6" maxLength={limitFor('monster_statblocks', 'saving_throws')} style={inputStyle} />
-          </FormField>
-          <FormField label="Skills">
-            <input type="text" value={form.skills} onChange={field('skills')} placeholder="e.g. Perception +5, Stealth +4" maxLength={limitFor('monster_statblocks', 'skills')} style={inputStyle} />
-          </FormField>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <FormField label="Damage Resistances">
-            <input type="text" value={form.damage_resistances} onChange={field('damage_resistances')} placeholder="e.g. fire, cold" maxLength={limitFor('monster_statblocks', 'damage_resistances')} style={inputStyle} />
-          </FormField>
-          <FormField label="Damage Immunities">
-            <input type="text" value={form.damage_immunities} onChange={field('damage_immunities')} placeholder="e.g. poison, psychic" maxLength={limitFor('monster_statblocks', 'damage_immunities')} style={inputStyle} />
-          </FormField>
-          <FormField label="Condition Immunities">
-            <input type="text" value={form.condition_immunities} onChange={field('condition_immunities')} placeholder="e.g. charmed, frightened" maxLength={limitFor('monster_statblocks', 'condition_immunities')} style={inputStyle} />
-          </FormField>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Senses">
-            <input type="text" value={form.senses} onChange={field('senses')} placeholder="e.g. darkvision 60 ft., passive Perception 15" maxLength={limitFor('monster_statblocks', 'senses')} style={inputStyle} />
-          </FormField>
-          <FormField label="Languages">
-            <input type="text" value={form.languages} onChange={field('languages')} placeholder="e.g. Common, Draconic" maxLength={limitFor('monster_statblocks', 'languages')} style={inputStyle} />
-          </FormField>
-        </div>
-        <div style={{ borderTop: '1px solid var(--rule)', margin: '4px 0' }} />
-        <FormField label="Actions & Traits">
-          <SlashField value={form.content} onChange={v => setForm(prev => ({ ...prev, content: v }))}
-            placeholder="Actions, bonus actions, reactions, legendary actions..." minHeight="280px" maxLength={limitFor('monster_statblocks', 'content')} />
-        </FormField>
-        <FormField label="DM Notes">
-          <SlashField value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))}
-            placeholder="Tactics, encounter context, flavor notes..." minHeight="60px" maxLength={limitFor('monster_statblocks', 'dm_notes')} />
-        </FormField>
-      </Modal>
     </>
   );
 }

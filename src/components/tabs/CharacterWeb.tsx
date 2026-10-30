@@ -3,6 +3,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle } from '../FormField';
+import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
 import type { RelationshipType, CharacterKind } from '../../lib/database.types';
 
@@ -175,11 +176,7 @@ export default function CharacterWeb() {
   return (
     <div className="cw">
       {/* Header */}
-      <div className="cw-head">
-        <div>
-          <div className="cm-md-eyebrow">Relationships</div>
-          <h2 className="cm-md-title">Character Web</h2>
-        </div>
+      <PageHeader className="cw-head" eyebrow="Cast" title="Relationship web">
         <div className="cw-toolbar">
           <button
             className={`cw-legend ${metOnly ? '' : 'is-off'}`}
@@ -206,10 +203,10 @@ export default function CharacterWeb() {
           )}
           <span className="cm-filter-sep" />
           <Button variant="secondary" size="xs" onClick={openAdd}>
-            + Add Relationship
+            + Add relationship
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Body: canvas + side panel */}
       <div className="cw-body">

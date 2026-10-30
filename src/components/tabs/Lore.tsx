@@ -111,9 +111,9 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
       search={search}
       onSearchChange={setSearch}
       onAdd={handleAdd}
-      addLabel="+ Lore"
+      addLabel="+ Add lore"
       onImport={onImportFromWorld}
-      importLabel="⊕ Import Lore"
+      importLabel="⊕ Import lore"
       list={
         <>
           {all.length === 0 ? (

@@ -5,6 +5,8 @@ import { Button } from '../ui/Button';
 import type { WorldTimelineEvent, TimelineEventType } from '../../types/world';
 import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
 import { CharCounter } from '../ui/CharCounter';
+import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { useAutoSave } from '../../hooks/useAutoSave';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -47,10 +49,6 @@ export default function WorldTimeline() {
     setAddOpen(false);
   };
 
-  const handleSaveEdit = async (data: Partial<WorldTimelineEvent> & { id: string }) => {
-    await upsertTimelineEvent(data);
-    setEditingId(null);
-  };
 
   const handleDelete = async (id: string) => {
     await deleteTimelineEvent(id);
@@ -65,7 +63,7 @@ export default function WorldTimeline() {
           <div className="tl-eyebrow">{filtered.length} events · {activeWorld?.calendar ?? ''}</div>
           <h2 className="tl-title">World Timeline</h2>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>+ New Event</Button>
+        <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>+ Add event</Button>
       </div>
 
       <div className="tl-filters">
@@ -112,7 +110,7 @@ export default function WorldTimeline() {
                   editing={isEditing}
                   onToggle={() => setExpanded(isExpanded ? null : ev.id)}
                   onEdit={() => { setExpanded(ev.id); setEditingId(ev.id); }}
-                  onSaveEdit={handleSaveEdit}
+                  onSaveEdit={upsertTimelineEvent}
                   onCancelEdit={() => setEditingId(null)}
                   onDelete={() => handleDelete(ev.id)}
                   calendar={activeWorld?.calendar ?? ''}
@@ -140,6 +138,80 @@ export default function WorldTimeline() {
   );
 }
 
+/**
+ * An event's fields, open for editing. They save as you type (a blank title
+ * isn't saved); Done closes the editor once the last edit is in.
+ */
+function TimelineEventEditor({ event, types, calendar, eras, save, onDone, onDelete }: {
+  event: WorldTimelineEvent;
+  types: TimelineEventType[];
+  calendar: string;
+  eras: string[];
+  save: (data: Partial<WorldTimelineEvent> & { id: string }) => Promise<unknown>;
+  onDone: () => void;
+  onDelete: () => void;
+}) {
+  const { timelineTypeConfig } = useWorld();
+  const [form, setForm] = useState({ title: event.title, year: String(event.year), date: event.date, desc: event.desc, type: event.type, era: event.era });
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm(f => ({ ...f, [key]: value }));
+  const { status, saveNow } = useAutoSave({
+    data: form,
+    delay: 800,
+    onSave: async f => {
+      if (!f.title.trim()) return;
+      await save({ id: event.id, title: f.title.trim(), year: parseInt(f.year) || 0, date: f.date.trim(), desc: f.desc.trim(), type: f.type, era: f.era });
+    },
+  });
+
+  return (
+    <div className="tl-edit-form">
+      <div className="ne-field">
+        <label>Title</label>
+        <input value={form.title} onChange={e => set('title', e.target.value)} autoFocus maxLength={limitFor('timeline_events', 'title')} />
+      </div>
+      <div className="ne-row">
+        <div className="ne-field">
+          <label>Year ({calendar})</label>
+          <input type="number" value={form.year} onChange={e => set('year', e.target.value)} min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
+        </div>
+        <div className="ne-field">
+          <label>Display Date</label>
+          <input value={form.date} onChange={e => set('date', e.target.value)} maxLength={limitFor('timeline_events', 'display_date')} />
+        </div>
+      </div>
+      <div className="ne-row">
+        <div className="ne-field">
+          <label>Type</label>
+          <select value={form.type} onChange={e => set('type', e.target.value as TimelineEventType)}>
+            {types.map(t => {
+              const cfg = timelineTypeConfig[t];
+              return <option key={t} value={t}>{cfg.glyph} {cap(t)}</option>;
+            })}
+          </select>
+        </div>
+        <div className="ne-field">
+          <label>Era</label>
+          <select value={form.era} onChange={e => set('era', e.target.value)}>
+            {eras.map(e => <option key={e} value={e}>{e}</option>)}
+            <option value={form.era}>{form.era}</option>
+          </select>
+        </div>
+      </div>
+      <div className="ne-field">
+        <label>Description</label>
+        <textarea value={form.desc} onChange={e => set('desc', e.target.value)} rows={3} />
+        <CharCounter value={form.desc} limit={limitFor('timeline_events', 'description')} />
+      </div>
+      <div className="tl-edit-actions">
+        <Button variant="danger" onClick={onDelete}>Delete</Button>
+        <div style={{ flex: 1 }} />
+        <SaveStatusIndicator status={status} onRetry={saveNow} />
+        <Button variant="primary" onClick={() => void saveNow().then(onDone)}>Done</Button>
+      </div>
+    </div>
+  );
+}
+
 function TimelineEventCard({
   event, config, expanded, editing, onToggle, onEdit, onSaveEdit, onCancelEdit, onDelete, calendar, eras,
 }: {
@@ -149,7 +221,7 @@ function TimelineEventCard({
   editing: boolean;
   onToggle: () => void;
   onEdit: () => void;
-  onSaveEdit: (data: Partial<WorldTimelineEvent> & { id: string }) => void;
+  onSaveEdit: (data: Partial<WorldTimelineEvent> & { id: string }) => Promise<unknown>;
   onCancelEdit: () => void;
   onDelete: () => void;
   calendar: string;
@@ -158,95 +230,16 @@ function TimelineEventCard({
   const { timelineTypeConfig } = useWorld();
   const isCampaign = event.type === 'campaign';
 
-  const [title, setTitle] = useState(event.title);
-  const [year, setYear] = useState(String(event.year));
-  const [date, setDate] = useState(event.date);
-  const [desc, setDesc] = useState(event.desc);
-  const [type, setType] = useState<TimelineEventType>(event.type);
-  const [era, setEra] = useState(event.era);
-
   const types = Object.keys(timelineTypeConfig) as TimelineEventType[];
-
-  const resetForm = () => {
-    setTitle(event.title);
-    setYear(String(event.year));
-    setDate(event.date);
-    setDesc(event.desc);
-    setType(event.type);
-    setEra(event.era);
-  };
-
-  const handleSave = () => {
-    onSaveEdit({
-      id: event.id,
-      title: title.trim(),
-      year: parseInt(year) || 0,
-      date: date.trim(),
-      desc: desc.trim(),
-      type,
-      era,
-    });
-  };
-
-  const handleCancel = () => {
-    resetForm();
-    onCancelEdit();
-  };
 
   if (editing) {
     return (
       <div className="tl-event tl-event-editing" style={{ cursor: 'default' }}>
-        <div
-          className="tl-event-dot"
-          style={{ borderColor: config.color, color: config.color }}
-        >
+        <div className="tl-event-dot" style={{ borderColor: config.color, color: config.color }}>
           {config.glyph}
         </div>
-        <div className="tl-edit-form">
-          <div className="ne-field">
-            <label>Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} autoFocus maxLength={limitFor('timeline_events', 'title')} />
-          </div>
-          <div className="ne-row">
-            <div className="ne-field">
-              <label>Year ({calendar})</label>
-              <input type="number" value={year} onChange={e => setYear(e.target.value)} min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
-            </div>
-            <div className="ne-field">
-              <label>Display Date</label>
-              <input value={date} onChange={e => setDate(e.target.value)} maxLength={limitFor('timeline_events', 'display_date')} />
-            </div>
-          </div>
-          <div className="ne-row">
-            <div className="ne-field">
-              <label>Type</label>
-              <select value={type} onChange={e => setType(e.target.value as TimelineEventType)}>
-                {types.map(t => {
-                  const cfg = timelineTypeConfig[t];
-                  return <option key={t} value={t}>{cfg.glyph} {cap(t)}</option>;
-                })}
-              </select>
-            </div>
-            <div className="ne-field">
-              <label>Era</label>
-              <select value={era} onChange={e => setEra(e.target.value)}>
-                {eras.map(e => <option key={e} value={e}>{e}</option>)}
-                <option value={era}>{era}</option>
-              </select>
-            </div>
-          </div>
-          <div className="ne-field">
-            <label>Description</label>
-            <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} />
-            <CharCounter value={desc} limit={limitFor('timeline_events', 'description')} />
-          </div>
-          <div className="tl-edit-actions">
-            <Button variant="danger" onClick={onDelete}>Delete</Button>
-            <div style={{ flex: 1 }} />
-            <Button variant="secondary" onClick={handleCancel}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} disabled={!title.trim()}>Save</Button>
-          </div>
-        </div>
+        <TimelineEventEditor event={event} types={types} calendar={calendar} eras={eras}
+          save={onSaveEdit} onDone={onCancelEdit} onDelete={onDelete} />
       </div>
     );
   }
@@ -344,7 +337,7 @@ function NewEventModal({
     <div className="ne-overlay" onClick={onClose}>
       <div className="ne-modal" onClick={e => e.stopPropagation()}>
         <div className="ne-head">
-          <div className="ne-title">New Timeline Event</div>
+          <div className="ne-title">New timeline event</div>
           <button className="ne-close" onClick={onClose}>✕</button>
         </div>
         <div className="ne-body">
@@ -385,7 +378,7 @@ function NewEventModal({
         </div>
         <div className="ne-foot">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSave} disabled={!title.trim()}>Add Event</Button>
+          <Button variant="primary" onClick={handleSave} disabled={!title.trim()}>Add event</Button>
         </div>
       </div>
     </div>

@@ -63,7 +63,7 @@ describe('Characters (cast list)', () => {
     h.campaign.value = makeCampaignContext({ upsertPC: vi.fn().mockResolvedValue({ id: 'new-pc' }) });
     render(<Characters viewMode="list" />);
     fireEvent.click(screen.getByRole('button', { name: 'PCs' }));
-    fireEvent.click(screen.getByRole('button', { name: '+ PC' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add PC' }));
     expect(cc().upsertPC).toHaveBeenCalledWith({ character_name: '', is_active: true, faction_ids: [] });
   });
 

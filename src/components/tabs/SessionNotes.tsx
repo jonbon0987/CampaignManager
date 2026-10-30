@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
-import { Swords, Gift, Lightbulb, Eye, Plus, Search } from 'lucide-react';
+import { Swords, Gift, Lightbulb, Eye, Search } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
+import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { RecorderPanel } from '../session/RecorderPanel';
@@ -401,16 +402,9 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
       {/* Left: list */}
       <div className="cm-md-list">
         {/* List header */}
-        <div className="cm-md-list-head">
-          <div>
-            <div className="cm-md-eyebrow">{played} played</div>
-            <div className="cm-md-title">Sessions</div>
-          </div>
-          <Button variant="secondary" size="sm" onClick={handleAdd} title="Plan the next session">
-            <Plus size={13} strokeWidth={1.8} style={{ display: 'inline', verticalAlign: 'middle' }} />
-            {' '}New
-          </Button>
-        </div>
+        <PageHeader className="cm-md-list-head" eyebrow={`${played} played`} title="Sessions">
+          <Button variant="secondary" size="sm" onClick={handleAdd} title="Plan the next session">+ Add session</Button>
+        </PageHeader>
 
         {/* Search */}
         <div className="cm-md-search">

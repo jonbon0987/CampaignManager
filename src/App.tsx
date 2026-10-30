@@ -24,7 +24,7 @@ import { signInWithEmail, onAuthStateChange, resetPasswordForEmail, updatePasswo
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ToastProvider } from './context/ToastContext';
 import WorldOverview from './components/world/WorldOverview';
-import { WorldNPCsView, WorldLocationsView, WorldLoreView, WorldCombatView } from './components/world/WorldViews';
+import { WorldNPCsView, WorldLocationsView, WorldLoreView, WorldCombatView, type WorldCombatSubView } from './components/world/WorldViews';
 import WorldTimeline from './components/world/WorldTimeline';
 import WorldImportDrawer from './components/world/WorldImportDrawer';
 import WorldCreationGate from './components/world/WorldCreationGate';
@@ -58,11 +58,12 @@ export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'threads' | 'idea
 const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
   cast:     [{ id: 'list', label: 'Cast' }, { id: 'web', label: 'Relationship web' }],
   modules:  [{ id: 'list', label: 'List' }, { id: 'web', label: 'Web' }],
+  combat:   [{ id: 'encounters', label: 'Encounters' }, { id: 'random', label: 'Random tables' }, { id: 'statblocks', label: 'Stat sheets' }],
   sessions: [{ id: 'log', label: 'Log' }, { id: 'timeline', label: 'Timeline' }],
 };
 
 const TAB_DEFAULT_VIEW: Partial<Record<Tab, string>> = {
-  cast: 'list', modules: 'list', sessions: 'log',
+  cast: 'list', modules: 'list', sessions: 'log', combat: 'encounters',
 };
 
 // The view a tab must be in to show a single record.
@@ -132,6 +133,7 @@ function AppInner() {
     setOpenTarget({ tab, id, kind });
   }, []);
   const clearOpenTarget = useCallback(() => setOpenTarget(null), []);
+  const setCombatView = useCallback((v: string) => setViewModes(prev => ({ ...prev, combat: v })), []);
   const openView = useCallback((tab: Tab, view?: string) => {
     setActiveTabState(tab);
     if (view) setViewModes(prev => ({ ...prev, [tab]: view }));
@@ -282,7 +284,7 @@ function AppInner() {
                 {activeTab === 'threads'   && <Threads openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} openSubmoduleId={openTarget?.tab === 'modules' && openTarget.kind?.startsWith('submodule:') ? openTarget.kind.slice('submodule:'.length) : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} openId={openIdFor('sessions')} onOpenConsumed={clearOpenTarget} />}
-                {activeTab === 'combat'    && <CombatView onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={openTarget?.tab === 'combat' ? openTarget : null} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'combat'    && <CombatView view={viewModes.combat ?? 'encounters'} setView={setCombatView} onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={openTarget?.tab === 'combat' ? openTarget : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'settings'  && <SettingsView />}
               </>
             )}
@@ -553,7 +555,11 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-function WorldContent() {
+const WORLD_COMBAT_VIEWS: { id: WorldCombatSubView; label: string }[] = [
+  { id: 'encounter', label: 'Encounters' }, { id: 'random', label: 'Random tables' }, { id: 'bestiary', label: 'Stat sheets' },
+];
+
+function WorldContent({ combatView, setCombatView }: { combatView: WorldCombatSubView; setCombatView: (v: WorldCombatSubView) => void }) {
   const { worldTab, entitiesLoading, activeWorldId } = useWorld();
 
   // Hold the view behind a loader while this world's entities are still fetching,
@@ -567,7 +573,7 @@ function WorldContent() {
     case 'npcs': return <WorldNPCsView />;
     case 'locations': return <WorldLocationsView />;
     case 'lore': return <WorldLoreView />;
-    case 'combat': return <WorldCombatView />;
+    case 'combat': return <WorldCombatView view={combatView} setView={setCombatView} />;
     case 'timeline': return <WorldTimeline />;
     default: return <WorldOverview />;
   }
@@ -578,6 +584,7 @@ function WorldShell() {
   const chrome = useShellChrome({ hasNote: false });
   const chat = useAIChat(useWorldAssistantBackend());
   const [newCampaignOpen, setNewCampaignOpen] = useState(false);
+  const [combatView, setCombatView] = useState<WorldCombatSubView>('encounter');
 
   // Keep the URL on this world, tab and record, and follow Back.
   const recordId = world.selected[world.worldTab];
@@ -626,9 +633,12 @@ function WorldShell() {
           onOpenPalette={chrome.openPalette}
           onToggleAssistant={chrome.toggleAssistant}
           assistantOpen={chrome.assistantOpen}
+          viewOptions={world.worldTab === 'combat' ? WORLD_COMBAT_VIEWS : undefined}
+          viewMode={combatView}
+          setViewMode={v => setCombatView(v as WorldCombatSubView)}
         />
         <div className="cm-canvas">
-          <WorldContent />
+          <WorldContent combatView={combatView} setCombatView={setCombatView} />
         </div>
       </div>
       {rail && <div className={RAIL_OVERLAY_CLASS}>{rail}</div>}

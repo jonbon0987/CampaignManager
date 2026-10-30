@@ -501,6 +501,7 @@ input:focus, textarea:focus, select:focus {
   cursor: pointer;
   border-radius: var(--radius);
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 .cm-vm-btn.is-active {
   background: var(--gold);
@@ -2704,7 +2705,11 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .lk-was { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 6px; padding: 6px 10px; border-left: 2px solid var(--rule); background: var(--bg-2); font-family: var(--serif); font-size: 13px; }
 .lk-was-label { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
 .lk-was-text { flex: 1; min-width: 0; color: var(--ink-2); font-style: italic; }
+/* A stat sheet's six ability scores */
+.sb-abilities { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+
 /* Encounter difficulty, worked out from the party */
+.enc-badge { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; border: 1px solid; border-radius: var(--radius); padding: 1px 5px; }
 .enc-party { font-family: var(--serif); font-size: 13px; color: var(--ink-2); }
 .enc-rate { display: flex; flex-direction: column; gap: 8px; }
 .enc-rate-head { display: flex; align-items: baseline; gap: 10px; }
@@ -3413,21 +3418,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .md-add-block { width: 100%; justify-content: center; padding: 11px 14px; }
 
 /* ── Manual save bar (pinned at the bottom of an editor) ── */
-.md-savebar {
-  display: flex; align-items: center; gap: 12px;
-  margin-top: 28px; padding-top: 16px;
-  border-top: 1px solid var(--rule-soft);
-}
-.md-savebar .as-spacer { flex: 1; }
-/* Audit F4 — .md-savebtn removed; now uses <Button variant="primary">. */
-
-/* Compact variant used inside a scene's expanded body */
-.md-savebar-inline {
-  display: flex; align-items: center; gap: 10px;
-  margin-top: 14px; justify-content: flex-end;
-}
-/* Audit F4 — .md-savebtn-sm removed; now uses <Button variant="primary" size="sm">. */
-
 /* ── Editor pane shared ── */
 .md-editor { max-width: 760px; }
 .md-eyebrow {
