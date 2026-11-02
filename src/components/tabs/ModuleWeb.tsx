@@ -14,7 +14,7 @@
    straight onto cached SVG elements — React re-renders only when the
    graph's *shape* changes (expansion, filters, records, selection).
    ════════════════════════════════════════════════════════════════ */
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Submodules as SubmodulesDB, Scenes as ScenesDB, SubmoduleDeps as SubmoduleDepsDB } from '../../lib/db';
 import { wouldCreateModuleCycle, wouldCreateSubmoduleCycle } from '../../lib/moduleUtils';
@@ -260,7 +260,10 @@ export default function ModuleWeb({ onOpen, initialModuleId }: {
 
   useEffect(() => { simRef.current!.gravity = gravity; simRef.current!.reheat(0.6); }, [gravity]);
 
-  useEffect(() => {
+  // A layout effect, so the sim learns a body in the same commit that draws it.
+  // As a passive effect, a body that arrived from a load could be on screen for
+  // a frame before the sim knew it — drawn in the wrong place, deaf to clicks.
+  useLayoutEffect(() => {
     const sim = simRef.current!;
     sim.setGraph(graph.nodes, graph.links);
     sim.nodes.forEach(n => { n.pinned = pinned.has(n.id); });
