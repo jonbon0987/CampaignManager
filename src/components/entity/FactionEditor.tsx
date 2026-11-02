@@ -61,7 +61,7 @@ export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, o
   const members = npcs.filter(n => n.faction_ids?.includes(faction.id));
 
   const handleDelete = async () => {
-    if (await confirm({ title: 'Delete this faction?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true })) {
+    if (await confirm({ title: 'Delete this faction?', message: 'You can undo this from its toast or Recently deleted.', confirmLabel: 'Delete', danger: true })) {
       await remove(faction.id);
       onDeleted?.();
     }

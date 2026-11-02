@@ -77,7 +77,7 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
   const parentOptions = allLocations.filter(l => !forbidden.has(l.id)).sort((a, b) => a.name.localeCompare(b.name));
 
   const handleDelete = async () => {
-    if (await confirm({ title: 'Delete this place?', message: 'Any places within it move to the top level. This cannot be undone.', confirmLabel: 'Delete', danger: true })) {
+    if (await confirm({ title: 'Delete this place?', message: 'Any places within it move to the top level. You can undo this from its toast or Recently deleted.', confirmLabel: 'Delete', danger: true })) {
       await remove(location.id);
       onDeleted?.();
     }

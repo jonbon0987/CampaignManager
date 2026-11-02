@@ -532,7 +532,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     if (!selRawEncounter) return;
     const ok = await confirm({
       title: 'Delete encounter',
-      message: `Delete "${selRawEncounter.name}"? This cannot be undone.`,
+      message: `Delete "${selRawEncounter.name}"? You can undo this from its toast or Recently deleted.`,
       confirmLabel: 'Delete',
       danger: true,
     });
@@ -547,7 +547,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     if (!selRawRandomTable) return;
     const ok = await confirm({
       title: 'Delete random table',
-      message: `Delete "${selRawRandomTable.name}"? This cannot be undone.`,
+      message: `Delete "${selRawRandomTable.name}"? You can undo this from its toast or Recently deleted.`,
       confirmLabel: 'Delete',
       danger: true,
     });

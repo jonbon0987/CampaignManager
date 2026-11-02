@@ -102,7 +102,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
   const handleDelete = async () => {
     const message = canon?.origin === 'imported'
       ? 'This is world canon: deleting it removes it from the world and every campaign. To drop it from this campaign only, detach it instead.'
-      : 'This cannot be undone.';
+      : 'You can undo this from its toast or Recently deleted.';
     if (await confirm({ title: 'Delete this NPC?', message, confirmLabel: 'Delete', danger: true })) {
       await remove(npc.id);
       onDeleted?.();

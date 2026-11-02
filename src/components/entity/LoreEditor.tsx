@@ -41,7 +41,7 @@ export function LoreEditor({ entry, scope, save, remove, onDeleted, canon }: {
   const set = <K extends keyof LoreFields>(key: K, val: LoreFields[K]) => setForm(f => ({ ...f, [key]: val }));
 
   const handleDelete = async () => {
-    if (await confirm({ title: 'Delete this lore entry?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true })) {
+    if (await confirm({ title: 'Delete this lore entry?', message: 'You can undo this from its toast or Recently deleted.', confirmLabel: 'Delete', danger: true })) {
       await remove(entry.id);
       onDeleted?.();
     }

@@ -38,7 +38,7 @@ export function ThreadEditor({ thread, save, remove, onDeleted, onPromote, onClo
   const set = <K extends keyof ThreadFields>(key: K, val: ThreadFields[K]) => setForm(f => ({ ...f, [key]: val }));
 
   const handleDelete = async () => {
-    if (await confirm({ title: 'Delete this thread?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true })) {
+    if (await confirm({ title: 'Delete this thread?', message: 'You can undo this from its toast or Recently deleted.', confirmLabel: 'Delete', danger: true })) {
       await remove(thread.id);
       onDeleted?.();
     }
