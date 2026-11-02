@@ -46,7 +46,7 @@ interface PlayContextValue {
 const PlayContext = createContext<PlayContextValue | null>(null);
 
 export function PlayProvider({ children }: { children: ReactNode }) {
-  const { sessions, pcs, upsertSession, updateSession } = useCampaign();
+  const { sessions, pcs, upsertSession, updateSession, selectedCampaign } = useCampaign();
   const recording = useRecording();
   const live = liveSession(sessions);
   const liveId = live?.id ?? null;
@@ -102,6 +102,8 @@ export function PlayProvider({ children }: { children: ReactNode }) {
     const saved = await update.current(target.id, {
       status: 'live',
       session_date: target.session_date ?? localToday(),
+      // Where the campaign stands in its world's time as the session begins.
+      ...(target.world_start == null && selectedCampaign?.world_date != null ? { world_start: selectedCampaign.world_date } : {}),
       play: {
         ...(target.play ?? {}),
         started_at: target.play?.started_at ?? new Date().toISOString(),
@@ -112,7 +114,7 @@ export function PlayProvider({ children }: { children: ReactNode }) {
     setStartOpen(false);
     if (record) setRecordFor(saved);
     return saved;
-  }, [sessions, pcs, upsertSession]);
+  }, [sessions, pcs, upsertSession, selectedCampaign]);
 
   const end = useCallback(async () => {
     if (!live) return null;
@@ -123,9 +125,11 @@ export function PlayProvider({ children }: { children: ReactNode }) {
     return update.current(live.id, {
       status: 'done',
       session_date: live.session_date ?? localToday(),
+      // …and where it stands as it ends, after time moved on in play.
+      ...(selectedCampaign?.world_date != null ? { world_end: selectedCampaign.world_date } : {}),
       play: { ...play, ended_at: new Date().toISOString() },
     });
-  }, [live, play]);
+  }, [live, play, selectedCampaign]);
 
   const setFight = useCallback<Dispatch<SetStateAction<Fight>>>(action => {
     change(p => {

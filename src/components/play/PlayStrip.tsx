@@ -2,6 +2,7 @@
 // it's run, the agenda from Prep (scenes in order, then encounters), and End.
 
 import { useEffect, useState } from 'react';
+import { PlayDate } from '../calendar/CampaignDate';
 import { useCampaign } from '../../context/CampaignContext';
 import { useOpenRecord } from '../../context/NavigationContext';
 import { usePlay, type PlayTab } from '../../context/PlayContext';
@@ -96,6 +97,8 @@ export function PlayStrip({ onShowTool }: { onShowTool: (tab: PlayTab) => void }
           <span className="ps-empty">No agenda. Pick scenes and encounters in the session’s Prep.</span>
         )}
       </div>
+
+      <PlayDate />
 
       <Button variant="secondary" size="sm" onClick={() => void finish()} disabled={ending} className="ps-end">
         {ending ? 'Ending…' : '■ End session'}

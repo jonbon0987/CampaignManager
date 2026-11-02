@@ -96,6 +96,23 @@ describe('field-limit validation runs before any auth/DB work', () => {
   });
 });
 
+describe('Worlds.update', () => {
+  it('updates only the patched fields, by id, rather than upserting', async () => {
+    sb.__set({ data: { id: 'w1', calendar: 'DR' }, error: null });
+    const out = await Worlds.update('w1', { calendar: 'DR', year: 1492 });
+    expect(sb.from).toHaveBeenCalledWith('worlds');
+    expect(sb.__q.update).toHaveBeenCalledWith({ calendar: 'DR', year: 1492 });
+    expect(sb.__q.upsert).not.toHaveBeenCalled();
+    expect(sb.__q.eq).toHaveBeenCalledWith('id', 'w1');
+    expect(out).toEqual({ id: 'w1', calendar: 'DR' });
+  });
+
+  it('throws when the update errors', async () => {
+    sb.__set({ data: null, error: new Error('nope') });
+    await expect(Worlds.update('w1', { tagline: 't' })).rejects.toThrow('nope');
+  });
+});
+
 describe('Worlds.delete', () => {
   it('deletes the row by id', async () => {
     await Worlds.delete('w1');

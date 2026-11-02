@@ -28,7 +28,7 @@ export default function WorldTimeline() {
     let list = [...timeline];
     if (typeFilter !== 'all') list = list.filter(e => e.type === typeFilter);
     if (eraFilter !== 'all') list = list.filter(e => e.era === eraFilter);
-    return list.sort((a, b) => a.year - b.year);
+    return list.sort((a, b) => a.year - b.year || (a.order ?? a.year) - (b.order ?? b.year));
   }, [timeline, typeFilter, eraFilter]);
 
   const grouped = useMemo(() => {

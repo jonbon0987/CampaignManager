@@ -15,6 +15,7 @@
 // -----------------------------------------------------------
 
 import { vi } from 'vitest';
+import { DEFAULT_MONTHS } from '../lib/calendar';
 
 const fn = () => vi.fn().mockResolvedValue(undefined);
 
@@ -47,7 +48,7 @@ export function makeCampaignContext(over: Record<string, unknown> = {}) {
 /** A WorldContext value with empty collections and no-op async mutations. */
 export function makeWorldContext(over: Record<string, unknown> = {}) {
   return {
-    activeWorld: { id: 'w1', name: 'Test World', calendar: 'CR', tagline: '', era: '', year: 0 },
+    activeWorld: { id: 'w1', name: 'Test World', calendar: 'CR', tagline: '', era: '', year: 0, calendarMonths: DEFAULT_MONTHS },
     activeWorldId: 'w1',
     worlds: [], campaigns: [], timeline: [], factions: [], lore: [], locations: [], npcs: [],
     createCampaign: fn(), openCampaign: vi.fn(),

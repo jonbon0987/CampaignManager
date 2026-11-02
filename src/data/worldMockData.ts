@@ -3,6 +3,7 @@ import type {
   WorldLoreEntry, WorldBestiaryEntry, WorldEncounter, WorldTimelineEvent,
   TimelineTypeConfig, EraConfig,
 } from '../types/world';
+import { DEFAULT_MONTHS } from '../lib/calendar';
 
 export const WORLDS: World[] = [
   {
@@ -12,6 +13,7 @@ export const WORLDS: World[] = [
     era: 'The Fourth Silence',
     calendar: 'Crown Reckoning (CR)',
     year: 1247,
+    calendarMonths: DEFAULT_MONTHS,
     campaignIds: ['c1', 'c2'],
   },
   {
@@ -21,6 +23,7 @@ export const WORLDS: World[] = [
     era: 'The Tidal Age',
     calendar: 'Drift Years (DY)',
     year: 88,
+    calendarMonths: DEFAULT_MONTHS,
     campaignIds: ['c3'],
   },
 ];

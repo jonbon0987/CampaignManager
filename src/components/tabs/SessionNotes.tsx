@@ -8,6 +8,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { ShareToggle } from '../ui/ShareToggle';
 import { SessionLoot } from '../items/ItemPlaces';
+import { SessionWorldDates } from '../calendar/SessionWorldDates';
 import { useItems } from '../../context/items';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { PageHeader } from '../ui/PageHeader';
@@ -256,6 +257,7 @@ function SessionDetail({
               </div>
             </div>
           </div>
+          <SessionWorldDates session={session} />
         </header>
 
         <div className="cm-subtabs" role="tablist" aria-label="Session phase">
