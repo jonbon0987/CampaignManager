@@ -40,6 +40,7 @@ export function PlayStrip({ onShowTool }: { onShowTool: (tab: PlayTab) => void }
   const currentIdx = sceneIds.indexOf(play.scene_id ?? '');
   const openScene = (id: string) => {
     setScene(id);
+    onShowTool('scene');
     const sub = submodules.find(s => s.id === scenes.find(sc => sc.id === id)?.submodule_id);
     const mod = sub ? modules.find(m => m.id === sub.module_id) : undefined;
     if (mod && sub) openRecord('modules', mod.id, `submodule:${sub.id}`);

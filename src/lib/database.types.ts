@@ -180,6 +180,7 @@ export interface Location {
   history: string | null;
   description: string | null;
   dm_notes: string | null;
+  read_aloud: string | null;         // boxed text the DM reads as the party arrives
   created_at: string;
   updated_at: string;
 }
@@ -341,7 +342,7 @@ export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'cr
 // disposition is optional: it's written by the session-recording review, and an
 // NPC save that omits it (every edit form) leaves the stored value untouched.
 export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id'> & { disposition?: string | null; location_id?: string | null };
-export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud'> & { read_aloud?: string | null };
 export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'> & { key_figure_ids?: string[] };
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
@@ -406,6 +407,7 @@ export interface Scene {
   summary: string | null;
   content: string | null;
   dm_notes: string | null;
+  read_aloud: string | null;          // boxed text the DM reads to the players, shown large in Play
   sort_order: number;
   linked_monster_ids: string | null;  // JSON array of MonsterStatblock UUIDs
   created_at: string;
@@ -737,7 +739,7 @@ export type ChronicleAppliedInsert = Omit<ChronicleApplied, 'id' | 'user_id' | '
 export type EntitySessionEntryInsert = Omit<EntitySessionEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type DiscordPostInsert = Omit<DiscordPost, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'error' | 'sent_at'>;
 export type SubmoduleInsert = Omit<Submodule, "id" | "user_id" | "created_at" | "updated_at">;
-export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at">;
+export type SceneInsert = Omit<Scene, "id" | "user_id" | "created_at" | "updated_at" | "read_aloud"> & { read_aloud?: string | null };
 export type ModuleSheetInsert = Omit<ModuleSheet, "id" | "user_id" | "created_at" | "updated_at">;
 
 // --------------- Supabase Database type (used by createClient<Database>) ---------------
