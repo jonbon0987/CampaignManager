@@ -54,49 +54,49 @@ export function ChangeCard({
 }) {
   const empty = !view.changes.length && !view.body && !view.history && view.tone !== 'delete';
   return (
-    <article className={`rv-card is-${state}${selected ? ' is-selected' : ''}${open ? '' : ' is-closed'}`} onClick={onSelect}>
-      <div className={`rv-head${onToggleOpen ? ' is-toggle' : ''}`} onClick={onToggleOpen}>
-        <span className="rv-glyph" style={{ color: view.color }} aria-hidden>{view.glyph}</span>
-        <span className="rv-title">
-          <span className="rv-name" style={{ color: view.color }}>{view.name}</span>
-          <span className="rv-sub">
-            <span className={`rv-tone is-${view.tone}`}>{TONE_LABEL[view.tone]}</span>
+    <article className={`chg-card is-${state}${selected ? ' is-selected' : ''}${open ? '' : ' is-closed'}`} onClick={onSelect}>
+      <div className={`chg-head${onToggleOpen ? ' is-toggle' : ''}`} onClick={onToggleOpen}>
+        <span className="chg-glyph" style={{ color: view.color }} aria-hidden>{view.glyph}</span>
+        <span className="chg-title">
+          <span className="chg-name" style={{ color: view.color }}>{view.name}</span>
+          <span className="chg-sub">
+            <span className={`chg-tone is-${view.tone}`}>{TONE_LABEL[view.tone]}</span>
             {view.kindLabel}{view.note ? ` · ${view.note}` : ''}
-            {edited && <span className="rv-flag">✎ Edited</span>}
-            {state === 'applied' && <span className="rv-flag is-applied">✓ Applied</span>}
-            {state === 'failed' && <span className="rv-flag is-failed">Failed</span>}
+            {edited && <span className="chg-flag">✎ Edited</span>}
+            {state === 'applied' && <span className="chg-flag is-applied">✓ Applied</span>}
+            {state === 'failed' && <span className="chg-flag is-failed">Failed</span>}
           </span>
         </span>
         {meta}
-        {actions && <span className="rv-actions" onClick={e => e.stopPropagation()}>{actions}</span>}
-        {onToggleOpen && <span className="rv-chev" aria-hidden>▸</span>}
+        {actions && <span className="chg-actions" onClick={e => e.stopPropagation()}>{actions}</span>}
+        {onToggleOpen && <span className="chg-chev" aria-hidden>▸</span>}
       </div>
 
       {open && (
-        <div className="rv-body">
+        <div className="chg-body">
           {children ?? (
             <>
-              {why && <p className="rv-why"><span aria-hidden>✦</span>{why}</p>}
-              {view.tone === 'delete' && <p className="rv-delete">This record will be deleted.</p>}
+              {why && <p className="chg-why"><span aria-hidden>✦</span>{why}</p>}
+              {view.tone === 'delete' && <p className="chg-delete">This record will be deleted.</p>}
               {view.changes.map((c, i) => (
-                <div key={i} className="rv-field">
-                  <span className="rv-label">{c.label}</span>
-                  <span className="rv-diff">
-                    {c.before && <span className="rv-before">{c.before}</span>}
-                    {c.before && <span className="rv-arrow" aria-hidden>→</span>}
-                    <span className={`rv-after${c.added ? ' is-added' : ''}`}>{c.after}</span>
+                <div key={i} className="chg-field">
+                  <span className="chg-label">{c.label}</span>
+                  <span className="chg-diff">
+                    {c.before && <span className="chg-before">{c.before}</span>}
+                    {c.before && <span className="chg-arrow" aria-hidden>→</span>}
+                    <span className={`chg-after${c.added ? ' is-added' : ''}`}>{c.after}</span>
                   </span>
                 </div>
               ))}
               {view.body && (
-                <div className="rv-field">
-                  <span className="rv-label">{view.body.label}</span>
-                  <p className="rv-text">{view.body.text}</p>
+                <div className="chg-field">
+                  <span className="chg-label">{view.body.label}</span>
+                  <p className="chg-text">{view.body.text}</p>
                 </div>
               )}
-              {!!view.tags?.length && <div className="rv-tags">{view.tags.map(t => <span key={t} className="cm-tag">{t}</span>)}</div>}
-              {view.history && <p className="rv-history"><span className="rv-label">History</span>{view.history}</p>}
-              {empty && <p className="rv-empty">No field changes: the record already matches.</p>}
+              {!!view.tags?.length && <div className="chg-tags">{view.tags.map(t => <span key={t} className="cm-tag">{t}</span>)}</div>}
+              {view.history && <p className="chg-history"><span className="chg-label">History</span>{view.history}</p>}
+              {empty && <p className="chg-empty">No field changes: the record already matches.</p>}
             </>
           )}
           {source}
