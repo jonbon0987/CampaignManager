@@ -457,7 +457,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     if (calendar !== undefined) dbPatch.calendar = calendar;
     if (year !== undefined) dbPatch.year = year;
     if (Object.keys(dbPatch).length) {
-      await WorldsDB.upsert({ id, ...dbPatch } as DbWorld);
+      await WorldsDB.update(id, dbPatch);
     }
   }, []);
 

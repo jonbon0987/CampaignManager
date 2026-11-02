@@ -91,6 +91,14 @@ export const Worlds = {
     return data;
   },
 
+  /** Changes some of a world's fields. (An upsert can't: its insert half needs every required field.) */
+  async update(id: string, patch: Partial<DbWorldInsert>): Promise<DbWorld> {
+    validateFieldLimits('worlds', patch);
+    const { data, error } = await supabase.from('worlds').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('worlds').delete().eq('id', id);
     if (error) throw error;

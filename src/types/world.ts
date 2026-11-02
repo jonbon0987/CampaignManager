@@ -88,7 +88,7 @@ export interface WorldEncounter {
   notes: string;
 }
 
-export type TimelineEventType = 'Cataclysm' | 'Founding' | 'Treaty' | 'War' | 'Political' | 'Magical' | 'Campaign' | 'Custom';
+export type TimelineEventType = 'cataclysm' | 'founding' | 'treaty' | 'war' | 'political' | 'magical' | 'campaign' | 'custom';
 
 export interface WorldTimelineEvent {
   id: string;
