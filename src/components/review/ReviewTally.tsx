@@ -27,7 +27,7 @@ export function ReviewTally({ items }: { items: { state: ChangeState; tone: Chan
   if (n('failed')) parts.push({ text: `${n('failed')} failed`, className: 'is-failed' });
 
   return (
-    <span className="rv-tally">
+    <span className="chg-tally">
       {parts.map((p, i) => (
         <span key={i}>{i > 0 && ' · '}<span className={p.className}>{p.text}</span></span>
       ))}

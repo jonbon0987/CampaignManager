@@ -9,6 +9,7 @@ import { useOpenRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { IconButton } from '../ui/IconButton';
+import { ReadAloud } from '../ui/ReadAloudBlock';
 import { Button } from '../ui/Button';
 import { limitFor } from '../../lib/fieldLimits';
 import { clip, formatSessionDate, lastPlayed, planIds, plainText, prepDone, withPlanIds, PREP_PARTS, sessionName, type PrepPart } from '../../lib/sessionLifecycle';
@@ -97,6 +98,8 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
     return where;
   }, [scenes, submodules, modules]);
 
+  // Read-aloud text from the agenda's scenes, in agenda order.
+  const readAlouds = ids('agenda').flatMap(id => scenes.filter(sc => sc.id === id && sc.read_aloud?.trim()));
   const pickedScenes: Linked[] = ids('agenda').flatMap(id => {
     const sc = scenes.find(s => s.id === id);
     if (!sc) return [];
@@ -180,6 +183,22 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
       <PlanList id="agenda" glyph="◇" title="Agenda" hint="The scenes you expect to run, in order."
         items={pickedScenes} options={sceneOptions} addLabel="+ Add a scene" onAdd={add('agenda')} onRemove={remove('agenda')}
         empty={scenes.length ? 'No scenes picked yet.' : 'No scenes yet. Add some to a module first.'} />
+
+      {readAlouds.length > 0 && (
+        <section className="sp-part">
+          <div className="cm-section-head">
+            <span className="cm-section-title"><span className="sp-glyph">📜</span> Read aloud</span>
+            <div className="cm-section-rule" />
+          </div>
+          <p className="sp-hint">From the agenda’s scenes. Play shows each one large when you reach it.</p>
+          {readAlouds.map(sc => (
+            <details key={sc.id} className="sp-ra">
+              <summary>{sc.title || 'Untitled scene'}</summary>
+              <ReadAloud text={sc.read_aloud ?? ''} />
+            </details>
+          ))}
+        </section>
+      )}
 
       <PlanList id="threads" glyph="❂" title="Threads to dangle"
         items={pickedThreads} options={threadOptions} addLabel="+ Add a thread" onAdd={add('threads')} onRemove={remove('threads')}

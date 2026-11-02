@@ -207,7 +207,7 @@ function StagingTray({ chat }: { chat: Chat }) {
                 meta={<ConfBar value={c.confidence} />}
                 actions={(
                   <span
-                    className={`rv-check${included ? ' is-on' : ''}`}
+                    className={`chg-check${included ? ' is-on' : ''}`}
                     role="checkbox"
                     aria-checked={included}
                     aria-label={`Include ${c.name}`}

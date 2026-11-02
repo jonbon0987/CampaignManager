@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import type { Encounter, MonsterStatblock } from '../lib/database.types';
 import {
-  CONDITIONS, CONDITION_COLORS as conditionColors, clamp,
+  CONDITIONS, CONDITION_COLORS as conditionColors, CONDITION_RULES, clamp, conditionTitle,
   combatantsFromEncounter, combatantsFromParty, newCombatant,
   type Combatant, type Condition, type Fight, type PartyMember,
 } from '../lib/combat';
@@ -109,6 +109,11 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
               {currentCombatant.name}'s turn
             </div>
           )}
+          {!!fight.expired?.length && (
+            <div role="status" style={{ color: 'var(--gold)', fontSize: '0.78rem', marginTop: '2px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
+              {fight.expired.map(e => `${e.name} is no longer ${e.conditions.join(' or ')}`).join(' · ')}
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -160,6 +165,8 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
             onSetInitiative={f.setInitiative}
             onViewStatblock={sb => openStatBlock(sb.id)}
             onToggleCondition={f.toggleCondition}
+            onSetConditionRounds={f.setConditionRounds}
+            onResolveConcentration={f.resolveConcentration}
             onToggleConditionMenu={() => setConditionMenuId(conditionMenuId === c.id ? null : c.id)}
             onRemove={f.remove}
             onDamage={f.damage}
@@ -280,6 +287,8 @@ interface CombatantRowProps {
   onSetInitiative: (id: string, value: number | null) => void;
   onViewStatblock: (sb: MonsterStatblock) => void;
   onToggleCondition: (id: string, cond: Condition) => void;
+  onSetConditionRounds: (id: string, cond: Condition, rounds: number | null) => void;
+  onResolveConcentration: (id: string, held: boolean) => void;
   onToggleConditionMenu: () => void;
   onRemove: (id: string) => void;
   onDamage: (id: string, n: number) => void;
@@ -292,10 +301,11 @@ interface CombatantRowProps {
 
 function CombatantRow({
   c, statblock, isCurrent, started, conditionMenuOpen,
-  onSetInitiative, onViewStatblock, onToggleCondition, onToggleConditionMenu,
+  onSetInitiative, onViewStatblock, onToggleCondition, onSetConditionRounds, onResolveConcentration, onToggleConditionMenu,
   onRemove, onDamage, onHeal, onTemp, onSetHp, onSetMax, onDeathSave,
 }: CombatantRowProps) {
   const [val, setVal] = useState('');
+  const [rounds, setRounds] = useState('');
   const [tempOpen, setTempOpen] = useState(false);
   const [tempVal, setTempVal] = useState('');
 
@@ -433,11 +443,18 @@ function CombatantRow({
                     cursor: 'pointer',
                     fontFamily: 'var(--mono)',
                   }}
-                  title={`Remove ${cond}`}
+                  title={`${conditionTitle(c, cond)}\n\nClick to remove.`}
                 >
-                  {cond}
+                  {cond}{c.rounds?.[cond] ? ` · ${c.rounds[cond]}` : ''}
                 </span>
               ))}
+            </div>
+          )}
+          {c.conCheck != null && (
+            <div className="itk-con" role="alert">
+              ◎ Concentration: Con save, DC {c.conCheck}
+              <button onClick={() => onResolveConcentration(c.id, true)}>Held</button>
+              <button onClick={() => onResolveConcentration(c.id, false)}>Lost</button>
             </div>
           )}
         </div>
@@ -607,12 +624,17 @@ function CombatantRow({
           gap: '4px',
           borderBottom: '1px solid var(--rule-soft)',
         }}>
+          <label className="itk-rounds" title="Rounds a new condition lasts; leave empty for until cleared">
+            for <input type="number" min={1} max={100} value={rounds} onChange={e => setRounds(e.target.value)} placeholder="∞" aria-label="Rounds" /> rounds
+          </label>
           {CONDITIONS.map(cond => {
             const active = c.conditions.includes(cond);
+            const n = parseInt(rounds, 10);
             return (
               <button
                 key={cond}
-                onClick={() => onToggleCondition(c.id, cond)}
+                title={CONDITION_RULES[cond]}
+                onClick={() => { if (!active && n > 0) onSetConditionRounds(c.id, cond, n); else onToggleCondition(c.id, cond); }}
                 style={{
                   fontSize: '0.62rem',
                   fontWeight: 700,
@@ -640,6 +662,11 @@ function CombatantRow({
 
 // ─── HP zone scoped styles (ported from the design prototype) ─────────────────
 const HP_ZONE_CSS = `
+.itk-rounds{display:inline-flex;align-items:center;gap:5px;margin-right:6px;font-family:var(--mono);font-size:.62rem;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.itk-rounds input{width:48px;font-family:var(--mono);font-size:.7rem;color:var(--ink);background:var(--bg-2);border:1px solid var(--rule);border-radius:3px;padding:2px 4px;color-scheme:dark}
+.itk-con{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px;padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:.66rem;color:var(--info);background:var(--info-bg);border:1px solid var(--info-line)}
+.itk-con button{font-family:var(--mono);font-size:.62rem;color:var(--ink-2);background:transparent;border:1px solid var(--rule);border-radius:3px;padding:1px 7px;cursor:pointer}
+.itk-con button:hover{color:var(--ink);border-color:var(--rule-hover)}
 .itk-hp{flex-shrink:0;width:334px}
 .itk-hp-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
 .itk-hp-read{display:flex;align-items:baseline;gap:2px}

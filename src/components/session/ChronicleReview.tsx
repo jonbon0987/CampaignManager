@@ -518,7 +518,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                   <div className="cm-section-rule" />
                   {pending.length > 1 && <Button variant="link" onClick={() => void setStatus(pending.map(p => p.id), 'accepted')}>Accept all {pending.length}</Button>}
                 </div>
-                <div className="rv-list">
+                <div className="chg-list">
                 {g.items.map(p => {
                   const isEditing = editing?.id === p.id;
                   const view = isEditing ? describe(editing.draft, lookup) : viewOf(p);
@@ -544,7 +544,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                         </>
                       ) : undefined}
                       source={p.source_quote ? (
-                        <div className="rv-source">
+                        <div className="chg-source">
                           {p.source_ms != null && (
                             <Button
                               size="xs"
@@ -555,7 +555,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                               ▶ {clock(p.source_ms)}
                             </Button>
                           )}
-                          <span>“{p.source_quote}” <span className="rv-source-who">— {p.source_speaker}</span></span>
+                          <span>“{p.source_quote}” <span className="chg-source-who">— {p.source_speaker}</span></span>
                         </div>
                       ) : undefined}
                     >

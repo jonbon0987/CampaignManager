@@ -14,8 +14,8 @@ describe('ChangeCard', () => {
     render(<ChangeCard view={view({ body: { label: 'Adds to description', text: 'Drowned at the docks.' }, history: 'Found at the docks.' })} state="pending" />);
     expect(screen.getByText('Brenna Coldwater')).toBeTruthy();
     expect(screen.getByText('Update')).toBeTruthy();
-    expect(screen.getByText('active').className).toContain('rv-before');
-    expect(screen.getByText('deceased').className).toContain('rv-after');
+    expect(screen.getByText('active').className).toContain('chg-before');
+    expect(screen.getByText('deceased').className).toContain('chg-after');
     expect(screen.getByText('Drowned at the docks.')).toBeTruthy();
     expect(screen.getByText('Found at the docks.')).toBeTruthy();
   });

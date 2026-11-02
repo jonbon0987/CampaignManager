@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
+import { ReadAloudField } from '../../ui/ReadAloudBlock';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
@@ -22,7 +23,7 @@ import { difficultyColors as diffColor } from '../../../lib/theme';
 
 /* ───────────────────────── scene row ───────────────────────── */
 
-interface SceneForm { title: string; scene_type: string; summary: string; content: string; dm_notes: string; }
+interface SceneForm { title: string; scene_type: string; summary: string; content: string; dm_notes: string; read_aloud: string; }
 
 function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dragging }: {
   scene: Scene;
@@ -52,6 +53,7 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
         summary: d.summary || null,
         content: d.content || null,
         dm_notes: d.dm_notes || null,
+        read_aloud: d.read_aloud || null,
         sort_order: sceneRef.current.sort_order,
         linked_monster_ids: sceneRef.current.linked_monster_ids,
       });
@@ -93,8 +95,11 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
       </div>
       {open && (
         <div className="md-scene-body">
+          <div style={{ marginBottom: 12 }}>
+            <ReadAloudField value={form.read_aloud} onChange={v => set('read_aloud', v)} maxLength={limitFor('scenes', 'read_aloud')} />
+          </div>
           <SlashField value={form.content} onChange={v => set('content', v)}
-            placeholder="Scene detail — read-aloud text, tactics, outcomes…" minHeight="120px" maxLength={limitFor('scenes', 'content')} />
+            placeholder="Scene detail: tactics, outcomes, what changes…" minHeight="120px" maxLength={limitFor('scenes', 'content')} />
           <div style={{ marginTop: 12 }}>
             <div className="md-eyebrow" style={{ marginBottom: 6 }}>Stat Sheets</div>
             <div className="md-chips">
@@ -122,7 +127,7 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
   );
 
   function toForm(s: Scene): SceneForm {
-    return { title: s.title, scene_type: s.scene_type ?? 'encounter', summary: s.summary ?? '', content: s.content ?? '', dm_notes: s.dm_notes ?? '' };
+    return { title: s.title, scene_type: s.scene_type ?? 'encounter', summary: s.summary ?? '', content: s.content ?? '', dm_notes: s.dm_notes ?? '', read_aloud: s.read_aloud ?? '' };
   }
 }
 

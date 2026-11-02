@@ -90,6 +90,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     history: LIMIT.PROSE,
     description: LIMIT.PROSE,
     dm_notes: LIMIT.PROSE,
+    read_aloud: LIMIT.PROSE,
   },
   factions: {
     name: LIMIT.NAME,
@@ -146,6 +147,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     summary: LIMIT.PROSE,
     content: LIMIT.BODY,
     dm_notes: LIMIT.BODY,
+    read_aloud: LIMIT.PROSE,
   },
   module_sheets: {
     title: LIMIT.NAME,

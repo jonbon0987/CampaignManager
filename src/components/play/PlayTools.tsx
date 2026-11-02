@@ -1,5 +1,6 @@
-// The table tools docked in the rail while a session is live: initiative,
-// dice, timestamped notes and the recorder. Everything saves on the session.
+// The table tools docked in the rail while a session is live: the scene in
+// play, initiative, dice, timestamped notes, the improv kit and the recorder.
+// Everything saves on the session.
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
@@ -9,13 +10,17 @@ import { RecorderPanel } from '../session/RecorderPanel';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { PlayInitiative } from './PlayInitiative';
+import { PlayImprov } from './PlayImprov';
+import { PlayScene } from './PlayScene';
 import { d20Natural, parseDice, roll } from '../../lib/dice';
 import { noteStamp } from '../../lib/playTime';
 
 const TABS: { id: PlayTab; label: string; glyph: string }[] = [
+  { id: 'scene', label: 'Scene', glyph: '▸' },
   { id: 'initiative', label: 'Initiative', glyph: '⚔' },
   { id: 'dice', label: 'Dice', glyph: '⚄' },
   { id: 'notes', label: 'Notes', glyph: '✎' },
+  { id: 'improv', label: 'Improv', glyph: '✶' },
   { id: 'record', label: 'Record', glyph: '●' },
 ];
 
@@ -110,9 +115,11 @@ export function PlayTools() {
       </div>
       {/* Every tool stays mounted, so undo history and half-typed input survive a tab switch. */}
       <div className="pt-body">
+        <div hidden={tab !== 'scene'}><PlayScene /></div>
         <div hidden={tab !== 'initiative'}><PlayInitiative /></div>
         <div hidden={tab !== 'dice'}><DiceTray /></div>
         <div hidden={tab !== 'notes'}><TableNotes /></div>
+        <div hidden={tab !== 'improv'}><PlayImprov /></div>
         <div hidden={tab !== 'record'} className="pt-pane"><RecorderPanel session={live} /></div>
       </div>
     </aside>

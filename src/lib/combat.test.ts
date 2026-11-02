@@ -3,6 +3,7 @@ import {
   addCombatants, addTemp, combatantsFromEncounter, combatantsFromParty, currentCombatant, damage, heal,
   newCombatant, nextTurn, removeCombatant, setCurrentHp, setDeathSave, setInitiative, setMaxHp,
   startFight, toggleCondition, turnOrder, type Combatant, type Fight,
+  CONDITIONS, CONDITION_RULES, concentrationDC, resolveConcentration, setConditionRounds,
 } from './combat';
 import type { MonsterStatblock } from './database.types';
 
@@ -129,5 +130,70 @@ describe('death saves and conditions', () => {
     const prone = toggleCondition(c('A'), 'prone');
     expect(prone.conditions).toEqual(['prone']);
     expect(toggleCondition(prone, 'prone').conditions).toEqual([]);
+  });
+});
+
+describe('timed conditions', () => {
+  // A before B in the order (higher initiative).
+  const a = c('A', { initiative: 20 });
+  const b = c('B', { initiative: 10 });
+
+  it('gives a condition rounds to run, adding it if need be', () => {
+    const held = setConditionRounds(a, 'frightened', 2);
+    expect(held).toMatchObject({ conditions: ['frightened'], rounds: { frightened: 2 } });
+    expect(setConditionRounds(held, 'frightened', null).rounds).toEqual({});
+  });
+
+  it('counts down at the end of the combatant’s own turn, and ends at 0', () => {
+    let f = startFight(fight([setConditionRounds(a, 'frightened', 2), b]));
+    f = nextTurn(f); // A's turn ends: 1 left
+    expect(f.combatants.find(x => x.id === 'A')).toMatchObject({ conditions: ['frightened'], rounds: { frightened: 1 } });
+    expect(f.expired).toEqual([]);
+    f = nextTurn(f); // B's turn ends: A's untouched
+    expect(f.combatants.find(x => x.id === 'A')?.rounds).toEqual({ frightened: 1 });
+    f = nextTurn(f); // A's turn ends again: it runs out
+    expect(f.combatants.find(x => x.id === 'A')?.conditions).toEqual([]);
+    expect(f.expired).toEqual([{ name: 'A', conditions: ['frightened'] }]);
+  });
+
+  it('leaves open-ended conditions alone', () => {
+    const f = nextTurn(startFight(fight([toggleCondition(a, 'prone'), b])));
+    expect(f.combatants.find(x => x.id === 'A')?.conditions).toEqual(['prone']);
+  });
+
+  it('forgets a condition’s rounds when it’s cleared', () => {
+    const timed = setConditionRounds(a, 'poisoned', 3);
+    expect(toggleCondition(timed, 'poisoned')).toMatchObject({ conditions: [], rounds: {} });
+  });
+
+  it('has the rules for every condition a DM can pick', () => {
+    for (const cond of CONDITIONS) expect(CONDITION_RULES[cond].length).toBeGreaterThan(10);
+  });
+});
+
+describe('concentration', () => {
+  const caster = toggleCondition(c('Mage', { maxHp: 30, currentHp: 30 }), 'concentrating');
+
+  it('calls for a save after damage: DC 10, or half the damage if higher', () => {
+    expect(concentrationDC(7)).toBe(10);
+    expect(concentrationDC(26)).toBe(13);
+    expect(damage(caster, 7).conCheck).toBe(10);
+    expect(damage(caster, 26).conCheck).toBe(13);
+  });
+
+  it('keeps the spell when the save is held, and ends it when it’s lost', () => {
+    const hit = damage(caster, 12);
+    expect(resolveConcentration(hit, true)).toMatchObject({ conCheck: null, conditions: ['concentrating'] });
+    expect(resolveConcentration(hit, false)).toMatchObject({ conCheck: null, conditions: [] });
+  });
+
+  it('ends when the caster drops to 0 HP', () => {
+    const down = damage(caster, 30);
+    expect(down.conditions).not.toContain('concentrating');
+    expect(down.conCheck).toBeNull();
+  });
+
+  it('isn’t tested by damage that doesn’t touch it', () => {
+    expect(damage(c('Fighter', { maxHp: 30, currentHp: 30 }), 12).conCheck).toBeNull();
   });
 });

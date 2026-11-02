@@ -11,7 +11,7 @@ import { useFight, type FightControls } from '../../hooks/useFight';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import {
-  CONDITIONS, CONDITION_COLORS, combatantsFromParty, isDown, newCombatant, partyFrom,
+  CONDITIONS, CONDITION_COLORS, CONDITION_RULES, combatantsFromParty, conditionTitle, isDown, newCombatant, partyFrom,
   type Combatant, type Condition,
 } from '../../lib/combat';
 
@@ -31,6 +31,7 @@ function Pips({ label, value, onSet, tone }: { label: string; value: number; onS
 function Row({ c, current, started, f }: { c: Combatant; current: boolean; started: boolean; f: FightControls }) {
   const { openStatBlock } = useStatBlockPanel();
   const [amount, setAmount] = useState('');
+  const [rounds, setRounds] = useState('');
   const n = parseInt(amount, 10);
   const valid = n > 0;
   const apply = (fn: (id: string, n: number) => void) => { if (valid) { fn(c.id, n); setAmount(''); } };
@@ -77,19 +78,38 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
         </div>
       )}
 
+      {c.conCheck != null && (
+        <div className="pi-con" role="alert">
+          <span className="pi-con-text">◎ Concentration: Con save, DC {c.conCheck}</span>
+          <Button size="xs" variant="secondary" onClick={() => f.resolveConcentration(c.id, true)}>Held</Button>
+          <Button size="xs" variant="ghost" onClick={() => f.resolveConcentration(c.id, false)}>Lost</Button>
+        </div>
+      )}
+
       <div className="pi-conds">
-        {c.conditions.map(cond => (
-          // eslint-disable-next-line no-restricted-syntax -- a condition pill; clicking clears it
-          <button key={cond} type="button" className="pi-cond" style={{ color: CONDITION_COLORS[cond], borderColor: CONDITION_COLORS[cond] }}
-            onClick={() => f.toggleCondition(c.id, cond)} title={`Clear ${cond}`}>
-            {cond} ×
-          </button>
-        ))}
+        {c.conditions.map(cond => {
+          const left = c.rounds?.[cond];
+          return (
+            // eslint-disable-next-line no-restricted-syntax -- a condition pill; clicking clears it
+            <button key={cond} type="button" className="pi-cond" style={{ color: CONDITION_COLORS[cond], borderColor: CONDITION_COLORS[cond] }}
+              onClick={() => f.toggleCondition(c.id, cond)} title={`${conditionTitle(c, cond)}\n\nClick to clear.`} aria-label={`Clear ${cond}`}>
+              {cond}{left ? <span className="pi-cond-left"> · {left}</span> : null} ×
+            </button>
+          );
+        })}
         <select className="pi-cond-add" aria-label={`Add a condition to ${c.name}`} value=""
-          onChange={e => { if (e.target.value) f.toggleCondition(c.id, e.target.value as Condition); }}>
+          onChange={e => {
+            const cond = e.target.value as Condition;
+            if (!cond) return;
+            const n = parseInt(rounds, 10);
+            if (n > 0) f.setConditionRounds(c.id, cond, n); else f.toggleCondition(c.id, cond);
+            setRounds('');
+          }}>
           <option value="">+ condition</option>
-          {CONDITIONS.filter(x => !c.conditions.includes(x)).map(x => <option key={x} value={x}>{x}</option>)}
+          {CONDITIONS.filter(x => !c.conditions.includes(x)).map(x => <option key={x} value={x} title={CONDITION_RULES[x]}>{x}</option>)}
         </select>
+        <input className="pi-cond-rounds" type="number" min={1} max={100} value={rounds} onChange={e => setRounds(e.target.value)}
+          placeholder="rds" aria-label={`Rounds for the next condition on ${c.name}`} title="Rounds it lasts (leave empty for until cleared)" />
       </div>
     </li>
   );
@@ -116,6 +136,11 @@ export function PlayInitiative() {
       <div className="pi-head">
         <div className="pi-status">
           {f.started ? <>Round {fight.round}<span className="pi-status-sub"> · {f.current?.name}’s turn</span></> : 'Not started'}
+          {!!fight.expired?.length && (
+            <div className="pi-expired" role="status">
+              {fight.expired.map(e => `${e.name} is no longer ${e.conditions.join(' or ')}`).join(' · ')}
+            </div>
+          )}
         </div>
         <div className="pi-controls">
           {f.historyLen > 0 && <Button size="xs" variant="ghost" onClick={f.undo} title="Undo the last HP change">↺ Undo</Button>}
