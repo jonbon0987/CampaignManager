@@ -430,6 +430,40 @@ export interface Handout {
 }
 export type HandoutInsert = Omit<Handout, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+// --------------- Player pages (migrations/0040_player_pages.sql) ---------------
+
+/** What a campaign can show its players, one switch per item. */
+export type ShareKind = 'npc' | 'location' | 'lore' | 'handout' | 'session';
+
+/** A campaign's player page: the link players open, which can be turned off or replaced. */
+export interface PlayerPageLink {
+  campaign_id: string;
+  user_id: string;
+  token: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlayerShare {
+  campaign_id: string;
+  user_id: string;
+  kind: ShareKind;
+  item_id: string;
+  created_at: string;
+}
+
+/** What player_page(token) returns: the shared items' player-facing fields only. */
+export interface PlayerPageData {
+  campaign: { name: string; title: string | null };
+  party: { id: string; name: string; player: string | null; race: string | null; class: string | null; level: number | null; portrait: string | null }[];
+  recaps: { id: string; number: number; title: string | null; date: string | null; summary: string | null; loot: string | null }[];
+  handouts: { id: string; title: string; image: string }[];
+  people: { id: string; name: string; role: string | null; status: NPC['status']; description: string | null; portrait: string | null }[];
+  places: { id: string; name: string; type: string | null; region: string | null; description: string | null; map: string | null }[];
+  lore: { id: string; title: string; category: string | null; content: string | null }[];
+}
+
 export interface ModuleSheet {
   id: string;
   user_id: string;
@@ -948,6 +982,18 @@ export interface Database {
         Row: Handout;
         Insert: HandoutInsert & { id?: string; user_id: string };
         Update: Partial<Omit<Handout, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      player_pages: {
+        Row: PlayerPageLink;
+        Insert: Omit<PlayerPageLink, 'created_at' | 'updated_at' | 'enabled'> & { enabled?: boolean };
+        Update: Partial<Pick<PlayerPageLink, 'token' | 'enabled'>>;
+        Relationships: [];
+      };
+      player_shares: {
+        Row: PlayerShare;
+        Insert: Omit<PlayerShare, 'created_at'>;
+        Update: never;
         Relationships: [];
       };
       discord_bot_presence: {

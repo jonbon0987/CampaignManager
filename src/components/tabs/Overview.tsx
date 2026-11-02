@@ -9,6 +9,7 @@ import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContex
 import { STAGE_LABEL } from '../../lib/recording/pipeline';
 import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
+import { PlayerPageCard } from '../player/PlayerPageCard';
 import { getHookCategoryStyle } from '../../lib/theme';
 import {
   clip, formatSessionDate, lastPlayed, liveSession, nextPlanned, nextSessionNumber, planIds, plainText,
@@ -330,6 +331,8 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
           </div>
         </div>
       </div>
+
+      <PlayerPageCard />
 
       {/* Collapsible Campaign Info */}
       <div

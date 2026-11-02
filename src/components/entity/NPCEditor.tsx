@@ -9,6 +9,7 @@ import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { limitFor, maxFor, minFor } from '../../lib/fieldLimits';
 import { OriginBand } from '../ui/OriginBand';
 import { OverflowMenu } from '../ui/OverflowMenu';
+import { ShareToggle } from '../ui/ShareToggle';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { SlashField } from '../ui/SlashField';
 import { FactionPillSelector } from '../ui/FactionPillSelector';
@@ -118,6 +119,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
         <div className="as-spacer" />
+        {scope === 'campaign' && <ShareToggle kind="npc" id={npc.id} />}
         <OverflowMenu items={[{ label: 'Delete NPC', danger: true, onClick: handleDelete }]} />
       </div>
 

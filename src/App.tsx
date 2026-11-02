@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
@@ -33,6 +33,8 @@ import CanvasLoading from './components/ui/CanvasLoading';
 import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
 import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
+import { PlayerShareProvider } from './context/PlayerShareContext';
+import { playerPageToken } from './lib/playerPage';
 import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
 import { PlayStrip } from './components/play/PlayStrip';
 import { PlayTools } from './components/play/PlayTools';
@@ -705,7 +707,9 @@ function WorldRoot({ user }: { user: User }) {
           <RecordingProvider userId={user.id}>
             <PlayProvider>
               <ChroniclePipelineProvider>
-                <AppInner />
+                <PlayerShareProvider campaignId={activeCampaignId}>
+                  <AppInner />
+                </PlayerShareProvider>
               </ChroniclePipelineProvider>
             </PlayProvider>
           </RecordingProvider>
@@ -717,7 +721,23 @@ function WorldRoot({ user }: { user: User }) {
   return <StatBlockPanelProvider><WorldShell /></StatBlockPanelProvider>;
 }
 
+// The players' read-only page (/p/<token>) needs no sign-in, and renders in
+// place of the DM's app. Its code is fetched only when a player link is opened.
+const PlayerPage = lazy(() => import('./components/player/PlayerPage'));
+
 export default function App() {
+  const token = playerPageToken(window.location.pathname);
+  if (token) {
+    return (
+      <Suspense fallback={<div className="pp-status">Opening…</div>}>
+        <PlayerPage token={token} />
+      </Suspense>
+    );
+  }
+  return <DmApp />;
+}
+
+function DmApp() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
