@@ -31,6 +31,7 @@ import { defaultRandomEntry } from '../lib/randomEncounter';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useDeletedToast } from '../hooks/useDeletedToast';
 import { RESTORED_EVENT } from '../lib/trash';
+import { monthsOf } from '../lib/calendar';
 
 // --------------- Mappers: DB → World types ---------------
 
@@ -42,6 +43,7 @@ function dbToWorld(w: DbWorld, campaignIds: string[]): World {
     era: w.era,
     calendar: w.calendar,
     year: w.year,
+    calendarMonths: monthsOf(w.calendar_months),
     campaignIds,
   };
 }
@@ -155,6 +157,7 @@ function dbToWorldTimelineEvent(e: DBTimelineEvent): WorldTimelineEvent {
     year: e.year,
     type: e.event_type as WorldTimelineEvent['type'],
     era: e.era,
+    order: e.sort_order,
   };
 }
 
@@ -449,8 +452,9 @@ export function WorldProvider({ children }: { children: ReactNode }) {
 
   const updateWorld = useCallback(async (id: string, changes: Partial<World>) => {
     setWorlds(prev => prev.map(w => w.id === id ? { ...w, ...changes } : w));
-    const { name, tagline, era, calendar, year } = changes;
+    const { name, tagline, era, calendar, year, calendarMonths } = changes;
     const dbPatch: Partial<DbWorld> = {};
+    if (calendarMonths !== undefined) dbPatch.calendar_months = calendarMonths;
     if (name !== undefined) dbPatch.name = name;
     if (tagline !== undefined) dbPatch.tagline = tagline;
     if (era !== undefined) dbPatch.era = era;
@@ -832,7 +836,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       display_date: data.date,
       event_type: data.type,
       era: data.era,
-      sort_order: data.year,
+      sort_order: data.order ?? data.year,
     });
     setTimeline(prev => [...prev, dbToWorldTimelineEvent(dbEntry)]);
     return dbEntry.id;
@@ -846,6 +850,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     if (data.date !== undefined) dbData.display_date = data.date;
     if (data.type !== undefined) dbData.event_type = data.type;
     if (data.era !== undefined) dbData.era = data.era;
+    if (data.order !== undefined) dbData.sort_order = data.order;
     const dbEntry = await TimelineEventsDB.upsert({
       world_id: activeWorldId,
       title: dbData.title ?? '',
@@ -854,7 +859,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       display_date: dbData.display_date ?? '',
       event_type: dbData.event_type ?? 'custom',
       era: dbData.era ?? '',
-      sort_order: dbData.year ?? 0,
+      sort_order: dbData.sort_order ?? dbData.year ?? 0,
       id: data.id,
     });
     setTimeline(prev => prev.map(e => e.id === dbEntry.id ? dbToWorldTimelineEvent(dbEntry) : e));

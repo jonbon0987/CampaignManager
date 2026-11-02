@@ -1,12 +1,16 @@
 import type { Faction, Location, LoreEntry, NPC } from '../lib/database.types';
+import type { Month } from '../lib/calendar';
 
 export interface World {
   id: string;
   name: string;
   tagline: string;
   era: string;
+  /** The year's suffix, "DR". */
   calendar: string;
   year: number;
+  /** The world's months, in order (the default calendar when none are set). */
+  calendarMonths: Month[];
   campaignIds: string[];
 }
 
@@ -99,6 +103,8 @@ export interface WorldTimelineEvent {
   desc: string;
   type: TimelineEventType;
   era: string;
+  /** Order within its year: a campaign event's day of the year. */
+  order?: number;
 }
 
 export interface TimelineTypeConfig {

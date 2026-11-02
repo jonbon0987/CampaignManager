@@ -22,14 +22,15 @@ export type DbWorld = {
   name: string;
   tagline: string;
   era: string;
-  calendar: string;
+  calendar: string;                  // the year's suffix, "DR"
   year: number;
+  calendar_months: Json | null;      // [{ name, days }], read with lib/calendar monthsOf()
   sort_order: number;
   created_at: string;
   updated_at: string;
 };
 
-export type DbWorldInsert = Omit<DbWorld, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type DbWorldInsert = Omit<DbWorld, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'calendar_months'> & { calendar_months?: Json | null };
 
 // --------------- Campaign ---------------
 
@@ -49,11 +50,12 @@ export type Campaign = {
   status: 'active' | 'paused' | 'completed';
   last_played: string;
   sort_order: number;
+  world_date: Json | null;           // where the campaign is in the world's time, { year, day }
   created_at: string;
   updated_at: string;
 };
 
-export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date'> & { world_date?: Json | null };
 
 // Campaigns fetched with an embedded session count (via PostgREST select)
 export type CampaignWithCount = Campaign & { session_count: number };
@@ -98,6 +100,9 @@ export type Session = {
   prep_notes: string | null;         // DM-only
   plan: SessionPlan;
   play: SessionPlay;
+  world_start: Json | null;          // in-world date it began, { year, day }
+  world_end: Json | null;
+  timeline_event_id: string | null;  // the world Timeline event it was posted as
   created_at: string;
   updated_at: string;
 };
@@ -348,7 +353,7 @@ export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_i
 
 // The lifecycle fields have database defaults, so a save that leaves them out
 // (the assistant, post-session capture) keeps what's stored.
-type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play';
+type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play' | 'world_start' | 'world_end' | 'timeline_event_id';
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
   & Partial<Pick<Session, SessionLifecycle>>;
 // Link columns have database defaults, so a save that leaves them out keeps what's stored.
@@ -865,13 +870,13 @@ export interface Database {
     Tables: {
       worlds: {
         Row: DbWorld;
-        Insert: Omit<DbWorld, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: Omit<DbWorld, 'id' | 'created_at' | 'updated_at' | 'calendar_months'> & { id?: string; calendar_months?: Json | null };
         Update: Partial<Omit<DbWorld, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       campaigns: {
         Row: Campaign;
-        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date'> & { id?: string; world_date?: Json | null };
         Update: Partial<Omit<Campaign, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
