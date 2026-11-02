@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseToHTML, serialize, indentListItem, outdentListItem,
   normalizeKind, serializeRef, refRegex, hasRefs, parseSegments,
-  esc, pillHTML, mdToPlain,
+  esc, pillHTML, mdToPlain, refsToNames,
 } from './slashMarkdown';
 
 const NEW = '@[Kutter](npc:abc-123)';
@@ -245,5 +245,16 @@ describe('mdToPlain', () => {
   });
   it('collapses whitespace and drops divider lines', () => {
     expect(mdToPlain('one\n---\ntwo')).toBe('one two');
+  });
+});
+
+describe('refsToNames', () => {
+  it('writes each reference as its plain name and keeps the markdown', () => {
+    expect(refsToNames(`**Met** ${NEW} at the docks.`)).toBe('**Met** Kutter at the docks.');
+    expect(refsToNames(`Ask ${LEGACY}.`)).toBe('Ask Kutter.');
+  });
+
+  it('drops a legacy reference that has no name', () => {
+    expect(refsToNames('See [[npc:12345678-1234-1234-1234-123456789012]] later.')).toBe('See  later.');
   });
 });

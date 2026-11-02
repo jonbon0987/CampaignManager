@@ -40,6 +40,7 @@ import type {
   ChronicleProposal, ChronicleProposalInsert,
   ChronicleApplied, ChronicleAppliedInsert,
   Handout, HandoutInsert,
+  PlayerPageLink, PlayerShare, PlayerPageData, ShareKind,
   EntitySessionEntry, EntitySessionEntryInsert, SessionEntryEntityType,
 } from './database.types';
 
@@ -1714,5 +1715,65 @@ export const Handouts = {
     const { error } = await supabase.from('handouts').delete().eq('id', handout.id);
     if (error) throw error;
     await EntityImages.remove([handout.image_path]).catch(() => {});
+  },
+};
+
+// ─── Player pages ────────────────────────────────────────────────────────────
+// A campaign's read-only page for its players, and the items shown on it
+// (migrations/0040_player_pages.sql). Players read it through player_page(),
+// which returns only player-facing fields; they never touch these tables.
+
+export const PlayerPages = {
+  async get(campaignId: string): Promise<PlayerPageLink | null> {
+    const { data, error } = await supabase.from('player_pages').select('*').eq('campaign_id', campaignId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  /** Makes the campaign's page, or gives it a new link (the old one stops working). */
+  async issue(campaignId: string, token: string): Promise<PlayerPageLink> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('player_pages')
+      .upsert({ campaign_id: campaignId, user_id, token, enabled: true })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async setEnabled(campaignId: string, enabled: boolean): Promise<PlayerPageLink> {
+    const { data, error } = await supabase.from('player_pages').update({ enabled }).eq('campaign_id', campaignId).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  /** What players see at a link: null when it's wrong or turned off. Needs no sign-in. */
+  async load(token: string): Promise<PlayerPageData | null> {
+    const { data, error } = await supabase.rpc('player_page', { p_token: token });
+    if (error) throw error;
+    return data ?? null;
+  },
+};
+
+export const PlayerShares = {
+  async getByCampaign(campaignId: string): Promise<PlayerShare[]> {
+    const { data, error } = await supabase.from('player_shares').select('*').eq('campaign_id', campaignId);
+    if (error) throw error;
+    return data;
+  },
+
+  /** Shows an item to the campaign's players, or hides it again. */
+  async set(campaignId: string, kind: ShareKind, itemId: string, shared: boolean): Promise<void> {
+    if (shared) {
+      const user_id = await getUserId();
+      const { error } = await supabase
+        .from('player_shares')
+        .upsert({ campaign_id: campaignId, user_id, kind, item_id: itemId }, { onConflict: 'campaign_id,kind,item_id', ignoreDuplicates: true });
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('player_shares').delete().eq('campaign_id', campaignId).eq('kind', kind).eq('item_id', itemId);
+      if (error) throw error;
+    }
   },
 };

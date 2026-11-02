@@ -7,6 +7,7 @@ import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { limitFor } from '../../lib/fieldLimits';
 import { OriginBand } from '../ui/OriginBand';
 import { OverflowMenu } from '../ui/OverflowMenu';
+import { ShareToggle } from '../ui/ShareToggle';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { SlashField } from '../ui/SlashField';
 import { SessionHistory } from '../session/SessionHistory';
@@ -56,6 +57,7 @@ export function LoreEditor({ entry, scope, save, remove, onDeleted, canon }: {
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
         <div className="as-spacer" />
+        {scope === 'campaign' && <ShareToggle kind="lore" id={entry.id} unavailable={form.dm_only ? 'Marked DM only, so it stays off the player page.' : undefined} />}
         <OverflowMenu items={[{ label: 'Delete entry', danger: true, onClick: handleDelete }]} />
       </div>
 
@@ -74,11 +76,11 @@ export function LoreEditor({ entry, scope, save, remove, onDeleted, canon }: {
             </select>
           </div>
           <div className="as-mi">
-            <span className="as-ml">Players</span>
+            <span className="as-ml">Secret</span>
             <div className="as-pills">
               {/* eslint-disable-next-line no-restricted-syntax -- an on/off option, styled with its pill group */}
               <button type="button" className={`as-pill-opt${form.dm_only ? ' is-active' : ''}`} onClick={() => set('dm_only', !form.dm_only)}>
-                {form.dm_only ? 'Hidden from players' : 'Visible to players'}
+                {form.dm_only ? 'DM only' : 'Not secret'}
               </button>
             </div>
           </div>

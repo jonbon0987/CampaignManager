@@ -1,7 +1,8 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Faction, Location, MonsterStatblock, NPC, PlayerCharacter } from '../../lib/database.types';
+import type { Faction, Location, LoreEntry, MonsterStatblock, NPC, PlayerCharacter } from '../../lib/database.types';
+import { PlayerSharesContext, type PlayerSharesValue } from '../../context/playerShares';
 
 const h = vi.hoisted(() => ({ confirm: vi.fn() }));
 vi.mock('../../context/ConfirmContext', () => ({ useConfirm: () => h.confirm }));
@@ -18,6 +19,7 @@ import { FactionEditor } from './FactionEditor';
 import { LocationEditor } from './LocationEditor';
 import { PCEditor } from './PCEditor';
 import { StatSheetEditor } from './StatSheetEditor';
+import { LoreEditor } from './LoreEditor';
 
 const npc = (over: Partial<NPC> = {}) => ({
   id: 'n1', name: 'Brenna', role: 'Harbormaster', affiliation: null, status: 'active', disposition: null, description: 'Tall.',
@@ -189,5 +191,46 @@ describe('StatSheetEditor', () => {
     fireEvent.click(screen.getByText('Delete stat sheet'));
     await waitFor(() => expect(remove).toHaveBeenCalledWith('s1'));
     expect(onDeleted).toHaveBeenCalled();
+  });
+});
+
+describe('the player page switch', () => {
+  const shares = (): PlayerSharesValue => ({
+    campaignId: 'c1', page: null, loaded: true, isShared: () => false, setShared: vi.fn().mockResolvedValue(undefined),
+    sharedIds: () => [], issueLink: vi.fn(), setEnabled: vi.fn(),
+  });
+  const lore = (over: Partial<LoreEntry> = {}) => ({ id: 'e1', title: 'The Drowned King', category: 'history', content: null, dm_only: false, ...over }) as LoreEntry;
+
+  it('shows in a campaign, and shares the record', () => {
+    const value = shares();
+    render(
+      <PlayerSharesContext.Provider value={value}>
+        <NPCEditor npc={npc()} scope="campaign" factions={[]} locations={[]} statblocks={[]} save={vi.fn()} remove={vi.fn()} />
+      </PlayerSharesContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Hidden from players' }));
+    expect(value.setShared).toHaveBeenCalledWith('npc', 'n1', true);
+  });
+
+  it('stays out of world canon', () => {
+    render(
+      <PlayerSharesContext.Provider value={shares()}>
+        <LocationEditor location={place('Duskward')} scope="world" allLocations={[]} save={vi.fn()} remove={vi.fn()} />
+      </PlayerSharesContext.Provider>,
+    );
+    expect(screen.queryByRole('button', { name: 'Hidden from players' })).toBeNull();
+  });
+
+  it('can’t share lore marked DM only', () => {
+    render(
+      <PlayerSharesContext.Provider value={shares()}>
+        <LoreEditor entry={lore()} scope="campaign" save={vi.fn()} remove={vi.fn()} />
+      </PlayerSharesContext.Provider>,
+    );
+    const share = () => screen.getByRole('button', { name: 'Hidden from players' }) as HTMLButtonElement;
+    expect(share().disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Not secret' }));
+    expect(screen.getByRole('button', { name: 'DM only' })).toBeTruthy();
+    expect(share().disabled).toBe(true);
   });
 });

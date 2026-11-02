@@ -3802,3 +3802,66 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ho-title-text { flex: 1; min-width: 0; font-family: var(--serif); font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .psc-handouts { display: flex; flex-direction: column; gap: 6px; }
 .psc-label { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ═══ Player pages ═══ */
+/* The "Players can see" switch (components/ui/ShareToggle) */
+.share-tog {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  padding: 3px 9px; border-radius: 999px; cursor: pointer;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-3); background: transparent; border: 1px solid var(--rule);
+}
+.share-tog:hover:not(:disabled) { border-color: var(--rule-hover); color: var(--ink-2); }
+.share-tog.is-on { color: var(--gold); border-color: var(--gold-line); background: var(--gold-dim); }
+.share-tog:disabled { cursor: default; opacity: .55; }
+.share-tog.is-compact { padding: 3px 5px; }
+
+/* Home's "Player page" card (components/player/PlayerPageCard) */
+.ov-share { margin-top: 24px; padding: 14px 18px 16px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
+.ov-share-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ov-share-state { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule); border-radius: 999px; padding: 1px 7px; }
+.ov-share-state.is-on { color: var(--gold); border-color: var(--gold-line); }
+.ov-share .ov-card-sub { margin: 6px 0 0; max-width: 680px; line-height: 1.5; }
+.ov-share-link { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.ov-share-link .as-input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; }
+.ov-share-open { font-size: 13px; color: var(--gold); white-space: nowrap; text-decoration: none; }
+.ov-share-open:hover { text-decoration: underline; }
+.ov-share-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+/* The players' page itself (components/player/PlayerPage) */
+.pp { max-width: 820px; margin: 0 auto; padding: 48px 24px 96px; }
+.pp-status { max-width: 520px; margin: 0 auto; padding: 96px 24px; color: var(--ink-2); }
+.pp-status p { margin: 8px 0 16px; }
+.pp-head { margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--rule); }
+.pp-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+.pp-title { margin: 6px 0 0; font-family: var(--display); font-size: 40px; font-weight: 500; line-height: 1.1; color: var(--ink); }
+.pp-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.pp-nav-link { font-size: 13px; color: var(--ink-2); text-decoration: none; border: 1px solid var(--rule); border-radius: 999px; padding: 3px 12px; }
+.pp-nav-link:hover { color: var(--gold); border-color: var(--gold-line); }
+.pp-sec { margin-top: 40px; scroll-margin-top: 16px; }
+.pp-h2 { margin: 0 0 14px; font-family: var(--display); font-size: 24px; font-weight: 500; color: var(--ink); }
+.pp-h3 { margin: 2px 0 0; font-family: var(--display); font-size: 19px; font-weight: 500; color: var(--ink); }
+.pp-sub { font-size: 14px; color: var(--ink-3); margin-top: 2px; }
+.pp-label { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.pp-empty { margin-top: 32px; font-style: italic; color: var(--ink-3); }
+.pp-item { padding: 16px 0; border-top: 1px solid var(--rule-soft); scroll-margin-top: 16px; }
+.pp-item:first-of-type { border-top: none; padding-top: 0; }
+.pp-prose { margin-top: 8px; color: var(--ink-2); font-size: 16px; line-height: 1.65; }
+.pp-loot { margin-top: 12px; padding: 10px 14px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
+.pp-loot .pp-prose { margin-top: 4px; font-size: 15px; }
+.pp-party { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pp-pc { display: flex; align-items: center; gap: 12px; }
+.pp-pc-name { font-family: var(--display); font-size: 17px; color: var(--ink); }
+.pp-portrait { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid var(--rule); }
+.pp-portrait.is-empty { display: grid; place-items: center; background: var(--paper-2); color: var(--ink-3); font-family: var(--display); font-size: 22px; }
+.pp-person { display: flex; gap: 16px; align-items: flex-start; }
+.pp-person .pp-portrait { width: 72px; height: 72px; }
+.pp-person-text { flex: 1; min-width: 0; }
+.pp .ho-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.pp-map { display: block; width: 100%; margin-top: 10px; padding: 0; overflow: hidden; cursor: zoom-in; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); }
+.pp-map img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+@media (max-width: 640px) {
+  .pp { padding: 28px 16px 64px; }
+  .pp-title { font-size: 30px; }
+  .pp-person .pp-portrait { width: 56px; height: 56px; }
+}
