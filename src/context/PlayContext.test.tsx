@@ -19,9 +19,10 @@ const upsertSession = vi.fn();
 const endRecording = vi.fn();
 const markMoment = vi.fn();
 
-function setup(sessions: ReturnType<typeof makeSession>[], recordingSessionId: string | null = null) {
+function setup(sessions: ReturnType<typeof makeSession>[], recordingSessionId: string | null = null, worldDate: object | null = null) {
   h.campaign.value = makeCampaignContext({
     sessions,
+    selectedCampaign: { id: 'c1', world_date: worldDate },
     pcs: [makePC({ character_name: 'Sam', is_active: true, max_hp: 24, armor_class: 15 } as never)],
     updateSession,
     upsertSession,
@@ -62,6 +63,22 @@ describe('starting a session', () => {
     expect(upsertSession).toHaveBeenCalledWith(expect.objectContaining({ session_number: 7, status: 'planned' }));
     expect(updateSession.mock.calls[0][0]).toBe('new');
     expect(result.current.recordFor?.id).toBe('new');
+  });
+
+  it('notes the campaign’s in-world date as the session’s start', async () => {
+    const { result } = setup([makeSession({ id: 's6', status: 'planned' })], null, { year: 1492, day: 136 });
+    await act(async () => { await result.current.start({ sessionId: 's6', record: false }); });
+    expect(updateSession.mock.calls[0][1].world_start).toEqual({ year: 1492, day: 136 });
+  });
+
+  it('keeps a start date the session already has, and adds none without a campaign date', async () => {
+    const dated = setup([makeSession({ id: 's6', status: 'planned', world_start: { year: 1, day: 3 } } as never)], null, { year: 1492, day: 136 });
+    await act(async () => { await dated.result.current.start({ sessionId: 's6', record: false }); });
+    expect(updateSession.mock.calls[0][1]).not.toHaveProperty('world_start');
+    updateSession.mockClear();
+    const undated = setup([makeSession({ id: 's6', status: 'planned' })]);
+    await act(async () => { await undated.result.current.start({ sessionId: 's6', record: false }); });
+    expect(updateSession.mock.calls[0][1]).not.toHaveProperty('world_start');
   });
 });
 
@@ -116,5 +133,11 @@ describe('ending a session', () => {
     const { result } = setup([makeSession({ id: 's6', status: 'live' })], 'other');
     await act(async () => { await result.current.end(); });
     expect(endRecording).not.toHaveBeenCalled();
+  });
+
+  it('notes the campaign’s in-world date, after time moved on, as the session’s end', async () => {
+    const { result } = setup([makeSession({ id: 's6', status: 'live', world_start: { year: 1492, day: 136 } } as never)], null, { year: 1492, day: 138 });
+    await act(async () => { await result.current.end(); });
+    expect(updateSession.mock.calls.at(-1)![1].world_end).toEqual({ year: 1492, day: 138 });
   });
 });

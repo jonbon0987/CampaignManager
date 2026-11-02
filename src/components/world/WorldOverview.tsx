@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { limitFor } from '../../lib/fieldLimits';
+import { WorldCalendar } from './WorldCalendar';
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -167,6 +168,8 @@ export default function WorldOverview() {
           ))}
         </Card>
       </div>
+
+      <WorldCalendar key={activeWorld.id} />
     </div>
   );
 }
