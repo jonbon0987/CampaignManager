@@ -32,6 +32,7 @@ const CAMPAIGN_NAV: NavGroup[] = [
     { id: 'cast', label: 'Cast', glyph: '❦' },
     { id: 'locations', label: 'Locations', glyph: '✦' },
     { id: 'lore', label: 'Lore', glyph: '❡' },
+    { id: 'items', label: 'Items', glyph: '✠' },
   ] },
 ];
 

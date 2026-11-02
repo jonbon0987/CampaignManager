@@ -12,7 +12,7 @@ import type { Tab } from '../App';
 import type { WorldTab } from '../types/world';
 
 export const CAMPAIGN_TABS: readonly Tab[] = [
-  'overview', 'cast', 'lore', 'locations', 'threads', 'ideas',
+  'overview', 'cast', 'lore', 'locations', 'items', 'threads', 'ideas',
   'modules', 'sessions', 'combat', 'settings',
 ];
 export const WORLD_TABS: readonly WorldTab[] = ['overview', 'lore', 'locations', 'npcs', 'combat', 'timeline'];

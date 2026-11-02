@@ -17,6 +17,7 @@ import { ImageSlot } from '../ui/ImageSlot';
 import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import { LinkList, WasText } from './LinkPicker';
+import { PCInventory } from '../items/ItemPlaces';
 import type { Faction, NPC, PlayerCharacter } from '../../lib/database.types';
 
 export type PCFields = Pick<PlayerCharacter,
@@ -142,6 +143,8 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
         <label className="as-ll">Factions</label>
         <FactionPillSelector selectedIds={form.faction_ids} onChange={ids => set('faction_ids', ids)} factions={factions} />
       </div>
+
+      <PCInventory pcId={pc.id} />
 
       {sections.shown('hooks') && (
         <div className="as-fl">

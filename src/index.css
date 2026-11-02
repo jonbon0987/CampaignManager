@@ -3888,3 +3888,21 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   .rd-row { flex-direction: column; align-items: stretch; }
   .rd-actions { justify-content: flex-end; }
 }
+
+/* ═══ Items and loot (components/items) ═══ */
+.inv-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; }
+.inv-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--rule-soft); }
+.inv-row:last-child { border-bottom: none; }
+.inv-item { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.inv-name { align-self: flex-start; max-width: 100%; font-family: var(--serif); font-size: 15px; color: var(--ink); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-line { font-size: 12px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-holder { min-width: 0; max-width: 180px; }
+.inv-qty { width: 64px; flex-shrink: 0; }
+.inv-attune { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 12px; color: var(--ink-2); }
+.inv-when { flex-shrink: 0; font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--ink-3); }
+.inv-give { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.inv-give-name { flex: 1 1 200px; min-width: 0; }
+.inv-error { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--red); }
+.inv-session { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--rule-soft); }
+.inv-label { margin-bottom: 4px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.item-attune-note { margin-top: 6px; max-width: 220px; }
