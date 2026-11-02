@@ -12,6 +12,7 @@ import { SlashField } from '../ui/SlashField';
 import { SessionHistory } from '../session/SessionHistory';
 import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import { useCanonLock } from './useCanonLock';
+import { ImageSlot } from '../ui/ImageSlot';
 import { ReadAloudField } from '../ui/ReadAloudBlock';
 import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
@@ -19,11 +20,12 @@ import type { EntityCanon, EntityScope } from './types';
 import type { Location } from '../../lib/database.types';
 
 export type LocationFields = Pick<Location,
-  'name' | 'region' | 'location_type' | 'parent_id' | 'population' | 'status' | 'description' | 'history' | 'dm_notes' | 'read_aloud'>;
+  'name' | 'region' | 'location_type' | 'parent_id' | 'population' | 'status' | 'description' | 'history' | 'dm_notes' | 'read_aloud' | 'map_path'>;
 
 const toFields = (l: Location): LocationFields => ({
   name: l.name, region: l.region, location_type: l.location_type, parent_id: l.parent_id, population: l.population,
   status: l.status, description: l.description, history: l.history, dm_notes: l.dm_notes, read_aloud: l.read_aloud ?? null,
+  map_path: l.map_path ?? null,
 });
 
 const LOCATION_TYPES = ['continent', 'city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
@@ -44,8 +46,8 @@ function insideOf(id: string, all: Pick<Location, 'id' | 'parent_id'>[]): Set<st
   return bad;
 }
 
-type Optional = 'read' | 'history' | 'notes';
-const OPTIONAL_LABEL: Record<Optional, string> = { read: 'Read aloud', history: 'History', notes: 'DM notes' };
+type Optional = 'map' | 'read' | 'history' | 'notes';
+const OPTIONAL_LABEL: Record<Optional, string> = { map: 'Map', read: 'Read aloud', history: 'History', notes: 'DM notes' };
 
 export function LocationEditor({ location, scope, allLocations, save, remove, onDeleted, canon }: {
   location: Location;
@@ -67,7 +69,7 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
   useDiscardBlankDraft(location.id, isEmpty(form.name) && isEmpty(form.region) && isEmpty(form.population) && isEmpty(form.description)
     && isEmpty(form.history) && isEmpty(form.dm_notes) && isEmpty(form.read_aloud) && !allLocations.some(l => l.parent_id === location.id), remove);
 
-  const sections = useOptionalSections<Optional>({ read: !isEmpty(form.read_aloud), history: !isEmpty(form.history), notes: !isEmpty(form.dm_notes) });
+  const sections = useOptionalSections<Optional>({ map: !!form.map_path, read: !isEmpty(form.read_aloud), history: !isEmpty(form.history), notes: !isEmpty(form.dm_notes) });
   const set = <K extends keyof LocationFields>(key: K, val: LocationFields[K]) => setForm(f => ({ ...f, [key]: val }));
 
   const forbidden = useMemo(() => insideOf(location.id, allLocations), [location.id, allLocations]);
@@ -133,6 +135,13 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
           <label className="as-ll">Description</label>
           <SlashField value={form.description ?? ''} onChange={v => set('description', v || null)} placeholder="Describe this place…" minHeight="96px" maxLength={limitFor('locations', 'description')} readOnly={locked} />
         </div>
+
+        {sections.shown('map') && (
+          <div className="as-fl">
+            <span className="as-ll">Map</span>
+            <ImageSlot path={form.map_path} onChange={p => set('map_path', p)} label="Map" shape="wide" disabled={locked} />
+          </div>
+        )}
 
         {sections.shown('read') && (
           <div className="as-fl">

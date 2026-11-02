@@ -13,6 +13,7 @@ import { FactionPillSelector } from '../ui/FactionPillSelector';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { SessionHistory } from '../session/SessionHistory';
 import { SessionUpdateBand } from '../session/SessionUpdateBand';
+import { ImageSlot } from '../ui/ImageSlot';
 import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import { LinkList, WasText } from './LinkPicker';
@@ -20,13 +21,13 @@ import type { Faction, NPC, PlayerCharacter } from '../../lib/database.types';
 
 export type PCFields = Pick<PlayerCharacter,
   'character_name' | 'player_name' | 'race' | 'class' | 'background' | 'story_hooks' | 'key_npcs' | 'key_npc_ids'
-  | 'dm_notes' | 'is_active' | 'faction_ids' | 'statblock_id' | 'level' | 'max_hp' | 'armor_class'>;
+  | 'dm_notes' | 'is_active' | 'faction_ids' | 'statblock_id' | 'level' | 'max_hp' | 'armor_class' | 'portrait_path'>;
 
 const toFields = (pc: PlayerCharacter): PCFields => ({
   character_name: pc.character_name, player_name: pc.player_name, race: pc.race, class: pc.class,
   background: pc.background, story_hooks: pc.story_hooks, key_npcs: pc.key_npcs, key_npc_ids: pc.key_npc_ids ?? [],
   dm_notes: pc.dm_notes, is_active: pc.is_active, faction_ids: pc.faction_ids ?? [], statblock_id: pc.statblock_id,
-  level: pc.level, max_hp: pc.max_hp, armor_class: pc.armor_class,
+  level: pc.level, max_hp: pc.max_hp, armor_class: pc.armor_class, portrait_path: pc.portrait_path ?? null,
 });
 
 const isEmpty = (v: string | null | undefined) => !v?.trim();
@@ -78,10 +79,14 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
 
       <SessionUpdateBand entityType="pc" entityId={pc.id} />
 
-      <div className="cm-eyebrow">Player character</div>
-
-      <input className="as-title" value={form.character_name} onChange={e => set('character_name', e.target.value)} placeholder="Character name…" maxLength={limitFor('player_characters', 'character_name')} aria-label="Name" />
-      <input className="as-sub" value={form.player_name ?? ''} onChange={e => set('player_name', e.target.value || null)} placeholder="Player name…" maxLength={limitFor('player_characters', 'player_name')} aria-label="Player" />
+      <div className="ent-head">
+        <div className="ent-head-text">
+          <div className="cm-eyebrow">Player character</div>
+          <input className="as-title" value={form.character_name} onChange={e => set('character_name', e.target.value)} placeholder="Character name…" maxLength={limitFor('player_characters', 'character_name')} aria-label="Name" />
+          <input className="as-sub" value={form.player_name ?? ''} onChange={e => set('player_name', e.target.value || null)} placeholder="Player name…" maxLength={limitFor('player_characters', 'player_name')} aria-label="Player" />
+        </div>
+        <ImageSlot path={form.portrait_path} onChange={p => set('portrait_path', p)} label="Portrait" />
+      </div>
 
       <div className="as-meta">
         <div className="as-mi">

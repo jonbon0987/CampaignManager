@@ -17,6 +17,7 @@ import { Button } from '../ui/Button';
 import { SessionHistory } from '../session/SessionHistory';
 import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import { useCanonLock } from './useCanonLock';
+import { ImageSlot } from '../ui/ImageSlot';
 import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import type { EntityCanon, EntityScope } from './types';
@@ -26,7 +27,7 @@ import { SingleLink, WasText } from './LinkPicker';
 /** What the editor writes back: every field it shows. */
 export type NPCFields = Pick<NPC,
   'name' | 'role' | 'affiliation' | 'status' | 'disposition' | 'description' | 'hooks_motivations'
-  | 'dm_notes' | 'location' | 'location_id' | 'first_session' | 'met_by_pcs' | 'faction_ids' | 'statblock_id'>;
+  | 'dm_notes' | 'location' | 'location_id' | 'first_session' | 'met_by_pcs' | 'faction_ids' | 'statblock_id' | 'portrait_path'>;
 
 const toFields = (npc: NPC): NPCFields => ({
   name: npc.name,
@@ -43,6 +44,7 @@ const toFields = (npc: NPC): NPCFields => ({
   met_by_pcs: npc.met_by_pcs,
   faction_ids: npc.faction_ids ?? [],
   statblock_id: npc.statblock_id,
+  portrait_path: npc.portrait_path ?? null,
 });
 
 // ── Voice, kept in this browser by NPC id ────────────────────────────────────
@@ -121,11 +123,18 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
 
       {scope === 'campaign' && <SessionUpdateBand entityType="npc" entityId={npc.id} />}
 
-      <div className="cm-eyebrow">{scope === 'world' ? 'World NPC' : 'Non-Player Character'}</div>
+      <div className="ent-head">
+        <div className="ent-head-text">
+          <div className="cm-eyebrow">{scope === 'world' ? 'World NPC' : 'Non-Player Character'}</div>
+          <fieldset className="as-fieldset" disabled={locked}>
+            <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Character name…" maxLength={limitFor('npcs', 'name')} aria-label="Name" />
+            <input className="as-sub" value={form.role ?? ''} onChange={e => set('role', e.target.value || null)} placeholder="Role or title…" maxLength={limitFor('npcs', 'role')} aria-label="Role" />
+          </fieldset>
+        </div>
+        <ImageSlot path={form.portrait_path} onChange={p => set('portrait_path', p)} label="Portrait" disabled={locked} />
+      </div>
 
       <fieldset className="as-fieldset" disabled={locked}>
-        <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Character name…" maxLength={limitFor('npcs', 'name')} aria-label="Name" />
-        <input className="as-sub" value={form.role ?? ''} onChange={e => set('role', e.target.value || null)} placeholder="Role or title…" maxLength={limitFor('npcs', 'role')} aria-label="Role" />
 
         <div className="as-meta">
           <div className="as-mi">

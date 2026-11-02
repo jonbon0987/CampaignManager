@@ -132,6 +132,8 @@ interface ListRowProps {
   subtitle?: string;
   meta?: ReactNode;
   badges?: ReactNode;
+  /** A picture in place of the glyph, e.g. a portrait (ImageThumb). */
+  thumb?: ReactNode;
 }
 
 export function ListRow({
@@ -142,13 +144,14 @@ export function ListRow({
   subtitle,
   meta,
   badges,
+  thumb,
 }: ListRowProps) {
   return (
     <button
       className={`cm-row ${active ? 'is-active' : ''}`}
       onClick={onClick}
     >
-      {glyph && <span className="cm-row-glyph">{glyph}</span>}
+      {thumb ?? (glyph && <span className="cm-row-glyph">{glyph}</span>)}
       <span className="cm-row-body">
         <span className="cm-row-title">{title}</span>
         {subtitle && <span className="cm-row-sub">{subtitle}</span>}

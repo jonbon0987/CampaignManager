@@ -9,6 +9,7 @@ import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../../lib/recent';
 import CharacterWeb from './CharacterWeb';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
+import { ImageThumb } from '../ui/ImageThumb';
 import { NPCEditor } from '../entity/NPCEditor';
 import { FactionEditor } from '../entity/FactionEditor';
 import { PCEditor } from '../entity/PCEditor';
@@ -185,6 +186,8 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
                 active={selected?.id === item.id}
                 onClick={() => handleSelect(item)}
                 glyph={item.glyph}
+                thumb={item.kind !== 'faction' && (item.raw as NPC | PlayerCharacter).portrait_path
+                  ? <ImageThumb path={(item.raw as NPC | PlayerCharacter).portrait_path} glyph={item.glyph} /> : undefined}
                 title={item.name}
                 subtitle={item.subtitle}
                 meta={item.meta}

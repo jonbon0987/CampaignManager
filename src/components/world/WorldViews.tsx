@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
+import { ImageThumb } from '../ui/ImageThumb';
 import { StatSheetEditor } from '../entity/StatSheetEditor';
 import { ListDetail, ListRow, Pill, EmptyDetail } from '../ui/ListDetail';
 import { Badge } from '../ui/Badge';
@@ -59,11 +60,11 @@ export function WorldNPCsView() {
   const addCharacter = async () => { const id = await createNPC(); if (id) { markDraft(id); setSelected('npcs', id); } };
   const addFaction = async () => { const id = await createFaction(); if (id) { markDraft(id); setSelected('npcs', id); } };
 
-  type ListItem = { id: string; name: string; kind: 'npc' | 'faction'; role?: string; type?: string; status?: string; era?: string; desc?: string; factions?: string[]; location?: string | null; tags?: string[]; tone?: string; };
+  type ListItem = { id: string; name: string; kind: 'npc' | 'faction'; role?: string; type?: string; status?: string; era?: string; desc?: string; factions?: string[]; location?: string | null; tags?: string[]; tone?: string; portrait?: string | null };
 
   const items = useMemo(() => {
     const all: ListItem[] = [
-      ...npcs.map(x => ({ ...x, kind: 'npc' as const })),
+      ...npcs.map(x => ({ ...x, kind: 'npc' as const, portrait: x.row?.portrait_path ?? null })),
       ...factions.map(x => ({ ...x, kind: 'faction' as const })),
     ];
     return all.filter(x => {
@@ -106,6 +107,7 @@ export function WorldNPCsView() {
               active={sel?.id === x.id}
               onClick={() => setSelected('npcs', x.id)}
               glyph={x.kind === 'faction' ? '❖' : '◇'}
+              thumb={x.portrait ? <ImageThumb path={x.portrait} glyph="◇" /> : undefined}
               title={x.name}
               subtitle={x.kind === 'npc' ? x.role : formatType(x.type)}
               badges={
