@@ -7,6 +7,8 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { ShareToggle } from '../ui/ShareToggle';
+import { SessionLoot } from '../items/ItemPlaces';
+import { useItems } from '../../context/items';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
@@ -133,6 +135,7 @@ function SessionDetail({
   // A session still to play opens on its prep; one played opens on its recap,
   // and so does one the moment it's ended.
   const [phase, setPhase] = useState<Phase>(session.status === 'done' ? 'recap' : 'prep');
+  const handedOut = useItems()?.holdings.filter(h => h.session_id === session.id).length ?? 0;
   const lastStatus = useRef(session.status);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- following the session's end
@@ -322,13 +325,14 @@ function SessionDetail({
                 maxLength={limitFor('sessions', 'combats')}
               />
               </SessionSection>
-              <SessionSection icon={Gift} label="Loot & Rewards" filled={!!form.loot_rewards}>
+              <SessionSection icon={Gift} label="Loot & Rewards" filled={!!form.loot_rewards || handedOut > 0}>
                 <SlashField
                 value={form.loot_rewards ?? ''}
                 onChange={v => set('loot_rewards', v || null)}
                 placeholder="Items, gold, or rewards gained…"
                 maxLength={limitFor('sessions', 'loot_rewards')}
               />
+                <SessionLoot sessionId={session.id} />
               </SessionSection>
               <SessionSection icon={Lightbulb} label="Left open for next time" filled={!!form.hooks_notes}>
                 <SlashField

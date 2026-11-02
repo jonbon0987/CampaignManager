@@ -32,6 +32,7 @@ const CAMPAIGN_NAV: NavGroup[] = [
     { id: 'cast', label: 'Cast', glyph: '❦' },
     { id: 'locations', label: 'Locations', glyph: '✦' },
     { id: 'lore', label: 'Lore', glyph: '❡' },
+    { id: 'items', label: 'Items', glyph: '✠' },
   ] },
 ];
 
@@ -208,7 +209,7 @@ function WorldCampaigns() {
   const others = campaigns.filter(c => c.id !== hero?.id);
 
   const remove = async (c: WorldCampaign) => {
-    if (await confirm({ title: 'Delete campaign', message: `Delete "${c.name}"? This cannot be undone.`, confirmLabel: 'Delete', danger: true })) {
+    if (await confirm({ title: 'Delete campaign', message: `Delete "${c.name}"? You can undo this from its toast or Recently deleted.`, confirmLabel: 'Delete', danger: true })) {
       await deleteCampaign(c.id);
     }
   };

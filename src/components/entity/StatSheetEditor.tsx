@@ -67,7 +67,7 @@ export function StatSheetEditor({ statblock, scope, save, remove, onDeleted, onV
   };
 
   const handleDelete = async () => {
-    if (await confirm({ title: 'Delete this stat sheet?', message: 'Encounters and NPCs that use it will lose it. This cannot be undone.', confirmLabel: 'Delete', danger: true })) {
+    if (await confirm({ title: 'Delete this stat sheet?', message: 'Encounters and NPCs that use it will lose it. You can undo this from its toast or Recently deleted.', confirmLabel: 'Delete', danger: true })) {
       await remove(statblock.id);
       onDeleted?.();
     }

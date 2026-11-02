@@ -8,6 +8,7 @@ import SessionNotes from './components/tabs/SessionNotes';
 import Characters from './components/tabs/Characters';
 import Lore from './components/tabs/Lore';
 import Locations from './components/tabs/Locations';
+import Items from './components/tabs/Items';
 import Threads from './components/tabs/Threads';
 import Modules from './components/tabs/Modules';
 import CombatView from './components/tabs/CombatView';
@@ -34,6 +35,7 @@ import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
 import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayerShareProvider } from './context/PlayerShareContext';
+import { ItemsProvider } from './context/ItemsContext';
 import { playerPageToken } from './lib/playerPage';
 import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
 import { PlayStrip } from './components/play/PlayStrip';
@@ -54,7 +56,7 @@ import type { WorldTab } from './types/world';
 
 // Tabs in a campaign. Ideas is kept for old links; it is now the Inbox column
 // of the Threads board, and Settings opens from the sidebar's footer menu.
-export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'threads' | 'ideas' | 'modules' | 'sessions' | 'combat' | 'settings';
+export type Tab = 'overview' | 'cast' | 'lore' | 'locations' | 'items' | 'threads' | 'ideas' | 'modules' | 'sessions' | 'combat' | 'settings';
 
 // View options per tab — what the topbar segment control shows
 const TAB_VIEW_OPTIONS: Partial<Record<Tab, { id: string; label: string }[]>> = {
@@ -74,7 +76,7 @@ const LIST_VIEW: Partial<Record<Tab, string>> = {
 };
 
 const TAB_LABELS: Record<Tab, string> = {
-  overview: 'Home', cast: 'Cast', lore: 'Lore', locations: 'Locations',
+  overview: 'Home', cast: 'Cast', lore: 'Lore', locations: 'Locations', items: 'Items',
   threads: 'Threads', ideas: 'Ideas', modules: 'Modules', sessions: 'Sessions',
   combat: 'Encounters', settings: 'Settings',
 };
@@ -282,6 +284,7 @@ function AppInner() {
                 {activeTab === 'overview'  && <Overview onNavigate={setActiveTab} runMode={runMode} onToggleRun={toggleRun} />}
                 {activeTab === 'cast'      && <Characters viewMode={viewModes.cast ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, cast: v }))} onImportFromWorld={() => { setImportType('npc'); setImportOpen(true); }} openId={openIdFor('cast')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'lore'      && <Lore openId={openIdFor('lore')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('lore'); setImportOpen(true); }} />}
+                {activeTab === 'items'     && <Items openId={openIdFor('items')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'locations' && <Locations openId={openIdFor('locations')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
                 {activeTab === 'threads'   && <Threads openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} openSubmoduleId={openTarget?.tab === 'modules' && openTarget.kind?.startsWith('submodule:') ? openTarget.kind.slice('submodule:'.length) : null} onOpenConsumed={clearOpenTarget} />}
@@ -708,7 +711,9 @@ function WorldRoot({ user }: { user: User }) {
             <PlayProvider>
               <ChroniclePipelineProvider>
                 <PlayerShareProvider campaignId={activeCampaignId}>
-                  <AppInner />
+                  <ItemsProvider campaignId={activeCampaignId}>
+                    <AppInner />
+                  </ItemsProvider>
                 </PlayerShareProvider>
               </ChroniclePipelineProvider>
             </PlayProvider>

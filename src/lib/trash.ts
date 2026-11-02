@@ -33,6 +33,7 @@ const KINDS: Record<string, { noun: string; label: (d: Row) => string }> = {
   submodules: { noun: 'Submodule', label: named },
   scenes: { noun: 'Scene', label: named },
   handouts: { noun: 'Handout', label: named },
+  items: { noun: 'Item', label: named },
   monster_statblocks: { noun: 'Stat sheet', label: named },
   encounters: { noun: 'Encounter', label: named },
   random_encounter_tables: { noun: 'Random table', label: named },

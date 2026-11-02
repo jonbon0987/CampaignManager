@@ -54,8 +54,8 @@ export default function ScopeSwitcher({ collapsed, onExpand }: { collapsed: bool
     const ok = await confirm({
       title: 'Delete world',
       message: isLast
-        ? `Delete "${name}" and all its campaigns, lore, locations, and cast? This cannot be undone. It's your only world, so you'll be returned to world creation.`
-        : `Delete "${name}" and all its campaigns, lore, locations, and cast? This cannot be undone.`,
+        ? `Delete "${name}" and all its campaigns, lore, locations, and cast? You can undo this from its toast or Recently deleted. It's your only world, so you'll be returned to world creation.`
+        : `Delete "${name}" and all its campaigns, lore, locations, and cast? You can undo this from its toast or Recently deleted.`,
       confirmLabel: 'Delete world',
       danger: true,
     });
