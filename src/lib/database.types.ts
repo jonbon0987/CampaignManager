@@ -441,6 +441,23 @@ export type Handout = {
 };
 export type HandoutInsert = Omit<Handout, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+// --------------- Recently deleted (migrations/0042_recently_deleted.sql) ---------------
+
+/** A deleted record, kept for 30 days. `batch` groups it with what its delete took along. */
+export type TrashRow = {
+  id: number;
+  user_id: string;
+  batch: number;
+  table_name: string;
+  record_id: string | null;
+  data: { [key: string]: Json };
+  relinks: Json;
+  deleted_at: string;
+};
+
+/** One delete, as the "Recently deleted" list shows it: the record deleted, and how many others went with it. */
+export type DeletedItem = Pick<TrashRow, 'batch' | 'table_name' | 'record_id' | 'data' | 'deleted_at'> & { extra: number };
+
 // --------------- Player pages (migrations/0040_player_pages.sql) ---------------
 
 /** What a campaign can show its players, one switch per item. */
@@ -1031,6 +1048,12 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      trash: {
+        Row: TrashRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       discord_bot_presence: {
         Row: DiscordBotPresence;
         Insert: Omit<DiscordBotPresence, 'id' | 'created_at' | 'updated_at'> & { id?: string };
@@ -1050,6 +1073,10 @@ export interface Database {
         Args: { p_token: string };
         Returns: PlayerPageData | null;
       };
+      restore_deleted: { Args: { p_batch: number }; Returns: number };
+      restore_record: { Args: { p_table: string; p_id: string }; Returns: number };
+      deleted_items: { Args: Record<PropertyKey, never>; Returns: DeletedItem[] };
+      purge_deleted: { Args: { p_batch?: number }; Returns: { bucket: string; path: string }[] };
     };
     Enums: { [_ in never]: never };
   };
