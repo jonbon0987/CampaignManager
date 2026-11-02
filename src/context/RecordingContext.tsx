@@ -13,7 +13,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  SessionRecordings, RecordingTracks, RecordingChunks, RecordingMoments, SessionAudio, sessionAudioPath,
+  SessionRecordings, RecordingTracks, RecordingChunks, RecordingMoments, SessionAudio, sessionAudioPath, Trash,
   DiscordBotPresenceRows, DISCORD_BOT_STALE_MS,
 } from '../lib/db';
 import type { DiscordTarget, RecordingMoment, SessionRecording } from '../lib/database.types';
@@ -356,6 +356,8 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
       await store.removeRecording(recordingId);
       await SessionAudio.remove(paths);
       await SessionRecordings.delete(recordingId);
+      // Deleting a recording erases it, transcript and all: keep no copy to undo.
+      await Trash.forgetRecord('session_recordings', recordingId).catch(() => {});
     } finally {
       setBusy(false);
       bump();

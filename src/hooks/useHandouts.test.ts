@@ -83,6 +83,7 @@ describe('useHandouts', () => {
     await act(() => result.current.remove(letter));
     expect(h.confirm).toHaveBeenCalledWith(expect.stringMatching(/Remove “Letter”\?/));
     expect(h.del).toHaveBeenCalledWith(letter);
+    expect(h.toast).toHaveBeenCalledWith('Handout removed', 'success', expect.objectContaining({ label: 'Undo' }));
     expect(result.current.handouts).toEqual([]);
 
     h.getByScenes.mockResolvedValue([letter]);

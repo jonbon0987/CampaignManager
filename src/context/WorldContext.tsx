@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type {
   World, WorldCampaign, WorldTab,
@@ -29,6 +29,8 @@ import type {
 import type { EncounterSaveData } from '../components/ui/EncounterDetail';
 import { defaultRandomEntry } from '../lib/randomEncounter';
 import useLocalStorage from '../hooks/useLocalStorage';
+import { useDeletedToast } from '../hooks/useDeletedToast';
+import { RESTORED_EVENT } from '../lib/trash';
 
 // --------------- Mappers: DB → World types ---------------
 
@@ -41,6 +43,14 @@ function dbToWorld(w: DbWorld, campaignIds: string[]): World {
     calendar: w.calendar,
     year: w.year,
     campaignIds,
+  };
+}
+
+/** Worlds (each knowing its campaigns) and campaigns, from their rows. */
+function toWorldsAndCampaigns(dbWorlds: DbWorld[], dbCampaigns: (CampaignWithCount | Campaign)[]) {
+  return {
+    worlds: dbWorlds.map(w => dbToWorld(w, dbCampaigns.filter(c => c.world_id === w.id).map(c => c.id))),
+    campaigns: dbCampaigns.map(dbToWorldCampaign),
   };
 }
 
@@ -280,6 +290,8 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   // Bumped by reloadWorldEntities() to force a re-fetch of the active world's
   // entities — used after the first-world gate seeds a freshly-created world.
   const [entityReloadKey, setEntityReloadKey] = useState(0);
+  // Set just before a reload that shouldn't show the loader (after a restore).
+  const quietReload = useRef(false);
   // True while the active world's entities are being fetched — start true so the
   // world view shows a loader on mount rather than a flash of empty content.
   const [entitiesLoading, setEntitiesLoading] = useState(true);
@@ -295,12 +307,9 @@ export function WorldProvider({ children }: { children: ReactNode }) {
         ]);
         if (cancelled) return;
 
-        const mapped: World[] = dbWorlds.map(w => dbToWorld(
-          w,
-          dbCampaigns.filter(c => c.world_id === w.id).map(c => c.id),
-        ));
+        const { worlds: mapped, campaigns: loaded } = toWorldsAndCampaigns(dbWorlds, dbCampaigns);
         setWorlds(mapped);
-        setAllCampaigns(dbCampaigns.map(dbToWorldCampaign));
+        setAllCampaigns(loaded);
 
         setActiveWorldId(prev =>
           mapped.length === 0 ? '' :
@@ -325,7 +334,9 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       return;
     }
     let cancelled = false;
-    setEntitiesLoading(true);
+    // A reload after a restore keeps what's on screen instead of showing the loader.
+    if (!quietReload.current) setEntitiesLoading(true);
+    quietReload.current = false;
     async function loadEntities() {
       try {
         const [dbNpcs, dbFactions, dbLocations, dbLore, dbBestiary, dbEncounters, dbTimeline] = await Promise.all([
@@ -369,6 +380,25 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   }, [activeWorldId, activeCampaignId, entityReloadKey]);
 
   const reloadWorldEntities = useCallback(() => setEntityReloadKey(k => k + 1), []);
+
+  // Deleted records came back (Undo, or Recently deleted): reload worlds,
+  // campaigns and the active world's canon, quietly.
+  useEffect(() => {
+    const onRestored = () => {
+      Promise.all([WorldsDB.getAll(), CampaignsDB.getAll()])
+        .then(([dbWorlds, dbCampaigns]) => {
+          const { worlds: mapped, campaigns: loaded } = toWorldsAndCampaigns(dbWorlds, dbCampaigns);
+          setWorlds(mapped);
+          setAllCampaigns(loaded);
+          setActiveWorldId(prev => (mapped.some(w => w.id === prev) ? prev : mapped[0]?.id ?? ''));
+          quietReload.current = true;
+          setEntityReloadKey(k => k + 1);
+        })
+        .catch(e => console.error('WorldContext: failed to reload after a restore', e));
+    };
+    window.addEventListener(RESTORED_EVENT, onRestored);
+    return () => window.removeEventListener(RESTORED_EVENT, onRestored);
+  }, [setActiveWorldId]);
 
   const activeWorld = useMemo(
     () => worlds.find(w => w.id === activeWorldId) ?? null,
@@ -835,6 +865,26 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     setTimeline(prev => prev.filter(e => e.id !== id));
   }, []);
 
+  // Each delete's toast offers Undo.
+  const deletedToast = useDeletedToast();
+  const undoable = useMemo(() => {
+    const wrap = <T extends [string, ...unknown[]]>(fn: (...args: T) => Promise<void>, table: string, message: string) =>
+      async (...args: T) => { await fn(...args); deletedToast(message, table, args[0]); };
+    return {
+      deleteWorld: wrap(deleteWorld, 'worlds', 'World deleted'),
+      deleteCampaign: wrap(deleteCampaign, 'campaigns', 'Campaign deleted'),
+      deleteWorldLore: wrap(deleteWorldLore, 'lore_entries', 'Lore deleted'),
+      deleteWorldLocation: wrap(deleteWorldLocation, 'locations', 'Location deleted'),
+      deleteWorldNPC: wrap(deleteWorldNPC, 'npcs', 'NPC deleted'),
+      deleteWorldFaction: wrap(deleteWorldFaction, 'factions', 'Faction deleted'),
+      deleteBestiaryEntry: wrap(deleteBestiaryEntry, 'monster_statblocks', 'Stat sheet deleted'),
+      deleteEncounter: wrap(deleteEncounter, 'encounters', 'Encounter deleted'),
+      deleteRandomEncounterTable: wrap(deleteRandomEncounterTable, 'random_encounter_tables', 'Random encounter table deleted'),
+      deleteTimelineEvent: wrap(deleteTimelineEvent, 'timeline_events', 'Timeline event deleted'),
+    };
+  }, [deletedToast, deleteWorld, deleteCampaign, deleteWorldLore, deleteWorldLocation, deleteWorldNPC, deleteWorldFaction,
+    deleteBestiaryEntry, deleteEncounter, deleteRandomEncounterTable, deleteTimelineEvent]);
+
   const value = useMemo<WorldContextType>(() => ({
     worlds,
     activeWorldId,
@@ -844,12 +894,10 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     entitiesLoading,
     createWorld,
     updateWorld,
-    deleteWorld,
     reloadWorldEntities,
     campaigns,
     createCampaign,
     updateCampaign,
-    deleteCampaign,
     activeCampaignId,
     activeCampaign,
     openCampaign,
@@ -867,29 +915,21 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     timeline,
     createTimelineEvent,
     upsertTimelineEvent,
-    deleteTimelineEvent,
     createLoreEntry,
     upsertWorldLore,
-    deleteWorldLore,
     createLocation,
     upsertWorldLocation,
-    deleteWorldLocation,
     createNPC,
     upsertWorldNPC,
-    deleteWorldNPC,
     createFaction,
     upsertWorldFaction,
-    deleteWorldFaction,
     createBestiaryEntry,
     upsertWorldStatblock,
-    deleteBestiaryEntry,
     createEncounter,
-    deleteEncounter,
     upsertWorldEncounter,
     worldRandomEncounterTables: rawRandomTables,
     createRandomEncounterTable,
     upsertWorldRandomEncounterTable,
-    deleteRandomEncounterTable,
     timelineTypeConfig: TIMELINE_TYPE_CONFIG,
     eraConfig: ERA_CONFIG,
     npcById,
@@ -899,21 +939,23 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     sbById,
     selected,
     setSelected,
+    ...undoable,
   }), [
+    undoable,
     worlds, activeWorldId, setActiveWorldId, activeWorld, loading, entitiesLoading,
-    createWorld, updateWorld, deleteWorld, reloadWorldEntities,
-    campaigns, createCampaign, updateCampaign, deleteCampaign,
+    createWorld, updateWorld, reloadWorldEntities,
+    campaigns, createCampaign, updateCampaign,
     activeCampaignId, activeCampaign, openCampaign, backToWorld,
     worldTab, handleSetWorldTab,
     npcs, factions, locations, lore, bestiary, encounters,
     rawStatblocks, rawEncounters, rawRandomTables, timeline,
-    createTimelineEvent, upsertTimelineEvent, deleteTimelineEvent,
-    createLoreEntry, upsertWorldLore, deleteWorldLore,
-    createLocation, upsertWorldLocation, deleteWorldLocation,
-    createNPC, upsertWorldNPC, deleteWorldNPC,
-    createFaction, upsertWorldFaction, deleteWorldFaction,
-    createBestiaryEntry, upsertWorldStatblock, deleteBestiaryEntry, createEncounter, deleteEncounter, upsertWorldEncounter,
-    createRandomEncounterTable, upsertWorldRandomEncounterTable, deleteRandomEncounterTable,
+    createTimelineEvent, upsertTimelineEvent,
+    createLoreEntry, upsertWorldLore,
+    createLocation, upsertWorldLocation,
+    createNPC, upsertWorldNPC,
+    createFaction, upsertWorldFaction,
+    createBestiaryEntry, upsertWorldStatblock, createEncounter, upsertWorldEncounter,
+    createRandomEncounterTable, upsertWorldRandomEncounterTable,
     npcById, locById, loreById, facById, sbById,
     selected, setSelected,
   ]);
