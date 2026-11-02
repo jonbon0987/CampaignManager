@@ -1924,6 +1924,11 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .pi-conds { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .pi-cond { font-family: var(--mono); font-size: 10px; padding: 1px 7px; border: 1px solid; border-radius: 999px; background: transparent; cursor: pointer; }
 .pi-cond-add { font-family: var(--mono); font-size: 10px; color: var(--ink-3); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; cursor: pointer; color-scheme: dark; }
+.pi-cond-left { opacity: .8; }
+.pi-cond-rounds { width: 46px; font-family: var(--mono); font-size: 10px; color: var(--ink-2); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; color-scheme: dark; }
+.pi-con { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 8px; border-radius: var(--radius); background: var(--info-bg, rgba(127,168,208,.12)); border: 1px solid var(--info-line); }
+.pi-con-text { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11px; color: var(--info); }
+.pi-expired { margin-top: 3px; font-family: var(--serif); font-size: 12px; font-style: italic; color: var(--gold); white-space: normal; }
 .pi-empty { margin: 0; padding: 14px; font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-3); }
 .pi-add { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px; }
 .pi-add .as-input { flex: 1 1 100%; }

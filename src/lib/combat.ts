@@ -26,6 +26,31 @@ export const CONDITION_COLORS: Record<string, string> = {
 
 const DEATH_STATE: readonly Condition[] = ['unconscious', 'dying', 'stable', 'dead'];
 
+/** What each condition does, in brief, for the pill's hover text. */
+export const CONDITION_RULES: Record<Condition, string> = {
+  blinded: 'Can’t see, and fails any check that needs sight. Attacks against it have advantage; its own attacks have disadvantage.',
+  charmed: 'Can’t attack the charmer or target it with harmful effects. The charmer has advantage on social checks against it.',
+  deafened: 'Can’t hear, and fails any check that needs hearing.',
+  frightened: 'Disadvantage on checks and attacks while the source of its fear is in sight, and it can’t willingly move closer to it.',
+  grappled: 'Speed 0. Ends if the grappler is incapacitated or it’s moved out of the grappler’s reach.',
+  incapacitated: 'Can’t take actions or reactions.',
+  invisible: 'Can’t be seen without magic or a special sense. Attacks against it have disadvantage; its own attacks have advantage.',
+  paralyzed: 'Incapacitated; can’t move or speak. Fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 feet are critical.',
+  petrified: 'Turned to stone: incapacitated and unaware. Resists all damage; immune to poison and disease. Fails Strength and Dexterity saves.',
+  poisoned: 'Disadvantage on attack rolls and ability checks.',
+  prone: 'Can only crawl, and has disadvantage on attacks. Attacks from within 5 feet have advantage, from farther away disadvantage. Standing up costs half its speed.',
+  restrained: 'Speed 0. Disadvantage on attacks and Dexterity saves; attacks against it have advantage.',
+  stunned: 'Incapacitated; can’t move and speaks only falteringly. Fails Strength and Dexterity saves. Attacks against it have advantage.',
+  unconscious: 'Incapacitated, can’t move or speak, unaware, drops what it holds and falls prone. Fails Strength and Dexterity saves. Attacks have advantage, and hits from within 5 feet are critical.',
+  concentrating: 'Holding a spell. Taking damage calls for a Constitution save, DC 10 or half the damage, whichever is higher. Failing it, or dropping to 0 HP, ends the spell.',
+  dying: 'At 0 HP: makes a death save at the start of each turn. Three successes and it’s stable; three failures and it dies.',
+  stable: 'At 0 HP but no longer making death saves. Regains 1 HP after 1d4 hours.',
+  dead: 'Dead.',
+};
+
+/** The Constitution save to keep concentrating after taking `damage`. */
+export const concentrationDC = (damage: number) => Math.max(10, Math.floor(damage / 2));
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface DeathSaves {
   s: number; // successes (0–3)
@@ -43,6 +68,10 @@ export interface Combatant {
   deathSaves: DeathSaves;
   ac: number | null;
   conditions: Condition[];
+  /** Rounds left on a timed condition; it ends at the end of the combatant's turn when this reaches 0. */
+  rounds?: Partial<Record<Condition, number>>;
+  /** A concentration save waiting to be rolled after damage: its DC. */
+  conCheck?: number | null;
   isPC: boolean;
   statblockId: string | null;
   notes: string | null;
@@ -55,6 +84,8 @@ export interface Fight {
   /** Index into the turn order; -1 until the fight starts. */
   turn: number;
   round: number;
+  /** Conditions that ran out at the end of the last turn, to say so at the table. */
+  expired?: { name: string; conditions: Condition[] }[];
 }
 
 export const EMPTY_FIGHT: Fight = { combatants: [], turn: -1, round: 1 };
@@ -163,10 +194,37 @@ export function currentCombatant(f: Fight): Combatant | null {
 export const startFight = (f: Fight): Fight => ({ ...f, turn: 0, round: 1 });
 export const resetFight = (f: Fight): Fight => ({ ...f, turn: -1, round: 1 });
 
+/** Counts down a combatant's timed conditions at the end of its turn; those at 0 end. */
+export function tickConditions(c: Combatant): { combatant: Combatant; ended: Condition[] } {
+  const timed = Object.entries(c.rounds ?? {}) as [Condition, number][];
+  if (!timed.length) return { combatant: c, ended: [] };
+  const rounds: Partial<Record<Condition, number>> = {};
+  const ended: Condition[] = [];
+  for (const [cond, left] of timed) {
+    if (!c.conditions.includes(cond)) continue;
+    if (left - 1 <= 0) ended.push(cond);
+    else rounds[cond] = left - 1;
+  }
+  let combatant: Combatant = { ...c, rounds, conditions: c.conditions.filter(x => !ended.includes(x)) };
+  if (ended.includes('concentrating')) combatant = { ...combatant, conCheck: null };
+  return { combatant, ended };
+}
+
 export function nextTurn(f: Fight): Fight {
   if (!isStarted(f) || f.combatants.length === 0) return f;
+  // The turn that's ending: its timed conditions count down.
+  const ending = currentCombatant(f);
+  let combatants = f.combatants;
+  const expired: Fight['expired'] = [];
+  if (ending) {
+    const { combatant, ended } = tickConditions(ending);
+    if (combatant !== ending) combatants = combatants.map(c => (c.id === ending.id ? combatant : c));
+    if (ended.length) expired.push({ name: ending.name, conditions: ended });
+  }
   const next = f.turn + 1;
-  return next >= f.combatants.length ? { ...f, turn: 0, round: f.round + 1 } : { ...f, turn: next };
+  return next >= f.combatants.length
+    ? { ...f, combatants, expired, turn: 0, round: f.round + 1 }
+    : { ...f, combatants, expired, turn: next };
 }
 
 export function rollInitiatives(f: Fight, who: 'all' | 'npcs'): Fight {
@@ -222,6 +280,7 @@ export function damage(c: Combatant, n: number): Combatant {
   const currentHp = clampHp(c.currentHp - dmg, c.maxHp);
   let conditions = without(c.conditions, DEATH_STATE);
   let deathSaves = c.deathSaves;
+  let conCheck = c.conCheck ?? null;
   // Only a combatant with a known max can be "down"; this keeps a PC whose HP
   // isn't entered yet (0/0) from triggering death saves.
   if (currentHp === 0 && c.maxHp > 0) {
@@ -230,7 +289,21 @@ export function damage(c: Combatant, n: number): Combatant {
   } else if (currentHp === 0 && !c.isPC) {
     conditions = [...conditions, 'unconscious'];
   }
-  return { ...c, currentHp, temp, conditions, deathSaves };
+  // Damage tests concentration; going down ends it.
+  if (conditions.includes('concentrating')) {
+    if (currentHp === 0 && (c.maxHp > 0 || !c.isPC)) { conditions = without(conditions, ['concentrating']); conCheck = null; }
+    else conCheck = Math.max(conCheck ?? 0, concentrationDC(n));
+  }
+  return { ...c, currentHp, temp, conditions, deathSaves, conCheck };
+}
+
+/** The concentration save is rolled: held keeps the spell, lost ends it. */
+export function resolveConcentration(c: Combatant, held: boolean): Combatant {
+  if (c.conCheck == null) return c;
+  if (held) return { ...c, conCheck: null };
+  const rounds = { ...c.rounds };
+  delete rounds.concentrating;
+  return { ...c, conCheck: null, rounds, conditions: without(c.conditions, ['concentrating']) };
 }
 
 export function heal(c: Combatant, n: number): Combatant {
@@ -284,9 +357,32 @@ export function setDeathSave(c: Combatant, key: 's' | 'f', val: number): Combata
 }
 
 export function toggleCondition(c: Combatant, condition: Condition): Combatant {
-  return c.conditions.includes(condition)
-    ? { ...c, conditions: c.conditions.filter(x => x !== condition) }
-    : { ...c, conditions: [...c.conditions, condition] };
+  if (!c.conditions.includes(condition)) return { ...c, conditions: [...c.conditions, condition] };
+  const rounds = { ...c.rounds };
+  delete rounds[condition];
+  return {
+    ...c, rounds,
+    conditions: c.conditions.filter(x => x !== condition),
+    ...(condition === 'concentrating' ? { conCheck: null } : {}),
+  };
+}
+
+/**
+ * Gives a condition (adding it if need be) a number of rounds to run, or makes
+ * it open-ended again with null.
+ */
+export function setConditionRounds(c: Combatant, condition: Condition, rounds: number | null): Combatant {
+  const next = { ...c.rounds };
+  if (rounds != null && rounds > 0) next[condition] = Math.floor(rounds);
+  else delete next[condition];
+  const conditions = c.conditions.includes(condition) ? c.conditions : [...c.conditions, condition];
+  return { ...c, conditions, rounds: next };
+}
+
+/** A condition's hover text: what it does, and how long it has left. */
+export function conditionTitle(c: Combatant, cond: Condition): string {
+  const left = c.rounds?.[cond];
+  return `${CONDITION_RULES[cond]}${left ? `\n${left} round${left === 1 ? '' : 's'} left; counts down at the end of ${c.name}’s turn.` : ''}`;
 }
 
 /** True when a combatant has a max HP and has dropped to 0. */
