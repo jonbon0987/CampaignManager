@@ -15,7 +15,7 @@ const SAVE_DELAY = 600;
 const MAX_ROLLS = 50;
 
 /** The table tools docked in the rail during play. */
-export type PlayTab = 'initiative' | 'dice' | 'notes' | 'record';
+export type PlayTab = 'initiative' | 'dice' | 'notes' | 'improv' | 'record';
 
 interface PlayContextValue {
   /** The session being played, if one is live. */

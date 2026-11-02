@@ -1,5 +1,6 @@
 // The table tools docked in the rail while a session is live: initiative,
-// dice, timestamped notes and the recorder. Everything saves on the session.
+// dice, timestamped notes, the improv kit and the recorder. Everything saves
+// on the session.
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
@@ -9,6 +10,7 @@ import { RecorderPanel } from '../session/RecorderPanel';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { PlayInitiative } from './PlayInitiative';
+import { PlayImprov } from './PlayImprov';
 import { d20Natural, parseDice, roll } from '../../lib/dice';
 import { noteStamp } from '../../lib/playTime';
 
@@ -16,6 +18,7 @@ const TABS: { id: PlayTab; label: string; glyph: string }[] = [
   { id: 'initiative', label: 'Initiative', glyph: '⚔' },
   { id: 'dice', label: 'Dice', glyph: '⚄' },
   { id: 'notes', label: 'Notes', glyph: '✎' },
+  { id: 'improv', label: 'Improv', glyph: '✶' },
   { id: 'record', label: 'Record', glyph: '●' },
 ];
 
@@ -113,6 +116,7 @@ export function PlayTools() {
         <div hidden={tab !== 'initiative'}><PlayInitiative /></div>
         <div hidden={tab !== 'dice'}><DiceTray /></div>
         <div hidden={tab !== 'notes'}><TableNotes /></div>
+        <div hidden={tab !== 'improv'}><PlayImprov /></div>
         <div hidden={tab !== 'record'} className="pt-pane"><RecorderPanel session={live} /></div>
       </div>
     </aside>
