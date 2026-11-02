@@ -13,6 +13,7 @@ import { getRecents, type RecentEntry } from '../../lib/recent';
 import { OverflowMenu, type OverflowMenuEntry } from '../ui/OverflowMenu';
 import ScopeSwitcher from './ScopeSwitcher';
 import CampaignCreationGate from '../world/CampaignCreationGate';
+import { RecentlyDeleted } from '../trash/RecentlyDeleted';
 
 interface NavItem { id: string; label: string; glyph: string; count?: number }
 interface NavGroup { label: string; items: NavItem[] }
@@ -76,6 +77,7 @@ export default function AppSidebar({
 }: AppSidebarProps) {
   const world = useWorld();
   const confirm = useConfirm();
+  const [deletedOpen, setDeletedOpen] = useState(false);
   // On a phone the sidebar is a drawer, always full width when it's open.
   const collapsed = collapsedProp && !isMobile;
 
@@ -109,6 +111,7 @@ export default function AppSidebar({
   };
   const footMenu: OverflowMenuEntry[] = [
     ...(scope === 'campaign' ? [{ label: 'Campaign settings', onClick: () => go('settings') }] : []),
+    { label: 'Recently deleted', onClick: () => setDeletedOpen(true) },
     { label: 'Keyboard shortcuts', onClick: onOpenShortcuts },
     { sep: true },
     { label: 'Log out', onClick: () => void logOut() },
@@ -189,6 +192,7 @@ export default function AppSidebar({
           </div>
         </div>
       </aside>
+      {deletedOpen && <RecentlyDeleted onClose={() => setDeletedOpen(false)} />}
     </>
   );
 }
