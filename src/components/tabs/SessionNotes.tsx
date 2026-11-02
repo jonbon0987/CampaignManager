@@ -6,6 +6,7 @@ import { Swords, Gift, Lightbulb, Eye, Search } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { OverflowMenu } from '../ui/OverflowMenu';
+import { ShareToggle } from '../ui/ShareToggle';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
@@ -189,6 +190,7 @@ function SessionDetail({
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
         <div className="as-spacer" />
+        <ShareToggle kind="session" id={session.id} what="the recap" />
         <OverflowMenu items={[
           { label: 'Delete session', onClick: handleDelete, danger: true },
         ]} />

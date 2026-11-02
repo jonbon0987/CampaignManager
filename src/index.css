@@ -3802,3 +3802,28 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ho-title-text { flex: 1; min-width: 0; font-family: var(--serif); font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .psc-handouts { display: flex; flex-direction: column; gap: 6px; }
 .psc-label { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ═══ Player pages ═══ */
+/* The "Players can see" switch (components/ui/ShareToggle) */
+.share-tog {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  padding: 3px 9px; border-radius: 999px; cursor: pointer;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-3); background: transparent; border: 1px solid var(--rule);
+}
+.share-tog:hover:not(:disabled) { border-color: var(--rule-hover); color: var(--ink-2); }
+.share-tog.is-on { color: var(--gold); border-color: var(--gold-line); background: var(--gold-dim); }
+.share-tog:disabled { cursor: default; opacity: .55; }
+.share-tog.is-compact { padding: 3px 5px; }
+
+/* Home's "Player page" card (components/player/PlayerPageCard) */
+.ov-share { margin-top: 24px; padding: 14px 18px 16px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
+.ov-share-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ov-share-state { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule); border-radius: 999px; padding: 1px 7px; }
+.ov-share-state.is-on { color: var(--gold); border-color: var(--gold-line); }
+.ov-share .ov-card-sub { margin: 6px 0 0; max-width: 680px; line-height: 1.5; }
+.ov-share-link { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.ov-share-link .as-input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; }
+.ov-share-open { font-size: 13px; color: var(--gold); white-space: nowrap; text-decoration: none; }
+.ov-share-open:hover { text-decoration: underline; }
+.ov-share-actions { display: flex; gap: 6px; margin-top: 10px; }

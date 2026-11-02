@@ -1,5 +1,6 @@
 // Handouts as thumbnails: click one to show it full-screen to the table.
-// Editable on a scene (add, rename, remove); read-only in Play and Prep.
+// Editable on a scene (add, rename, remove, show to players); read-only in
+// Play and Prep.
 
 import { useRef, useState } from 'react';
 import { X } from 'lucide-react';
@@ -8,10 +9,12 @@ import { IMAGE_ACCEPT } from '../../lib/images';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { Lightbox } from '../ui/Lightbox';
+import { ShareToggle } from '../ui/ShareToggle';
 import type { Handout } from '../../lib/database.types';
 
-function HandoutCard({ h, onShow, onRename, onRemove }: {
+function HandoutCard({ h, onShow, onRename, onRemove, sharable }: {
   h: Handout;
+  sharable?: boolean;
   onShow: (url: string) => void;
   onRename?: (title: string) => void;
   onRemove?: () => void;
@@ -29,6 +32,7 @@ function HandoutCard({ h, onShow, onRename, onRemove }: {
           ? <input className="ho-title" value={title} onChange={e => setTitle(e.target.value)} onBlur={() => onRename(title.trim())}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} placeholder="Untitled handout" maxLength={120} aria-label="Handout title" />
           : <span className="ho-title-text">{h.title || 'Untitled handout'}</span>}
+        {sharable && <ShareToggle kind="handout" id={h.id} what={h.title || 'this handout'} compact />}
         {onRemove && (
           <IconButton onClick={onRemove} aria-label={`Remove ${h.title || 'the handout'}`} title="Remove" style={{ width: 22, height: 22 }}>
             <X size={12} />
@@ -39,13 +43,15 @@ function HandoutCard({ h, onShow, onRename, onRemove }: {
   );
 }
 
-export function HandoutGallery({ handouts, onAdd, adding, onRename, onRemove, empty }: {
+export function HandoutGallery({ handouts, onAdd, adding, onRename, onRemove, sharable, empty }: {
   handouts: Handout[] | null;
   /** Given, the gallery offers "+ Add handout" (several files at once). */
   onAdd?: (files: File[]) => void;
   adding?: boolean;
   onRename?: (h: Handout, title: string) => void;
   onRemove?: (h: Handout) => void;
+  /** Each handout gets the eye that shows it on the player page. */
+  sharable?: boolean;
   /** What to say when there are none (omit to show nothing). */
   empty?: string;
 }) {
@@ -58,7 +64,7 @@ export function HandoutGallery({ handouts, onAdd, adding, onRename, onRemove, em
       {handouts.length > 0 && (
         <div className="ho-grid">
           {handouts.map(h => (
-            <HandoutCard key={h.id} h={h} onShow={url => setShowing({ url, title: h.title })}
+            <HandoutCard key={h.id} h={h} sharable={sharable} onShow={url => setShowing({ url, title: h.title })}
               onRename={onRename && (t => onRename(h, t))} onRemove={onRemove && (() => onRemove(h))} />
           ))}
         </div>

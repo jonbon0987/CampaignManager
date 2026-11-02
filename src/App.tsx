@@ -33,6 +33,7 @@ import CanvasLoading from './components/ui/CanvasLoading';
 import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
 import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
+import { PlayerShareProvider } from './context/PlayerShareContext';
 import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
 import { PlayStrip } from './components/play/PlayStrip';
 import { PlayTools } from './components/play/PlayTools';
@@ -705,7 +706,9 @@ function WorldRoot({ user }: { user: User }) {
           <RecordingProvider userId={user.id}>
             <PlayProvider>
               <ChroniclePipelineProvider>
-                <AppInner />
+                <PlayerShareProvider campaignId={activeCampaignId}>
+                  <AppInner />
+                </PlayerShareProvider>
               </ChroniclePipelineProvider>
             </PlayProvider>
           </RecordingProvider>

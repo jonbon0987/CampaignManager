@@ -7,6 +7,7 @@ import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
 import { limitFor } from '../../lib/fieldLimits';
 import { OriginBand } from '../ui/OriginBand';
 import { OverflowMenu } from '../ui/OverflowMenu';
+import { ShareToggle } from '../ui/ShareToggle';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { SlashField } from '../ui/SlashField';
 import { SessionHistory } from '../session/SessionHistory';
@@ -94,6 +95,7 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
         <div className="as-spacer" />
+        {scope === 'campaign' && <ShareToggle kind="location" id={location.id} />}
         <OverflowMenu items={[{ label: 'Delete place', danger: true, onClick: handleDelete }]} />
       </div>
 

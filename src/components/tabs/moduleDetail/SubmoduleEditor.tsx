@@ -32,7 +32,7 @@ function SceneHandouts({ sceneId }: { sceneId: string }) {
   const { handouts, adding, add, rename, remove } = useHandouts([sceneId]);
   return (
     <HandoutGallery handouts={handouts} adding={adding} onAdd={files => void add(sceneId, files)}
-      onRename={(h, t) => void rename(h, t)} onRemove={h => void remove(h)} />
+      onRename={(h, t) => void rename(h, t)} onRemove={h => void remove(h)} sharable />
   );
 }
 
