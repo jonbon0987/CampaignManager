@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 
 interface ConfirmOptions {
   title?: string;
@@ -41,6 +41,20 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     resolveRef.current = null;
     setState(null);
   };
+
+  // Esc cancels, and goes no further: a dialog underneath (the one that asked) stays open.
+  useEffect(() => {
+    if (!state) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      resolveRef.current?.(false);
+      resolveRef.current = null;
+      setState(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [state]);
 
   return (
     <ConfirmContext.Provider value={{ confirm }}>

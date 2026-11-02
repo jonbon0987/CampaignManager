@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase';
 import { validateFieldLimits } from './fieldLimits';
+import { restoreErrorMessage } from './trash';
 import type {
   DbWorld, DbWorldInsert,
   Campaign, CampaignInsert, CampaignWithCount,
@@ -41,6 +42,7 @@ import type {
   ChronicleApplied, ChronicleAppliedInsert,
   Handout, HandoutInsert,
   PlayerPageLink, PlayerShare, PlayerPageData, ShareKind,
+  DeletedItem,
   EntitySessionEntry, EntitySessionEntryInsert, SessionEntryEntityType,
 } from './database.types';
 
@@ -1710,11 +1712,10 @@ export const Handouts = {
     return data;
   },
 
-  /** Deletes a handout and its image. */
-  async delete(handout: Pick<Handout, 'id' | 'image_path'>): Promise<void> {
+  /** Deletes a handout. Its image stays until Recently deleted forgets it, so an undo gets it back. */
+  async delete(handout: Pick<Handout, 'id'>): Promise<void> {
     const { error } = await supabase.from('handouts').delete().eq('id', handout.id);
     if (error) throw error;
-    await EntityImages.remove([handout.image_path]).catch(() => {});
   },
 };
 
@@ -1775,5 +1776,56 @@ export const PlayerShares = {
       const { error } = await supabase.from('player_shares').delete().eq('campaign_id', campaignId).eq('kind', kind).eq('item_id', itemId);
       if (error) throw error;
     }
+  },
+};
+
+// ─── Recently deleted ────────────────────────────────────────────────────────
+// Every delete keeps a copy for 30 days (migrations/0042_recently_deleted.sql),
+// grouped with what its cascades took along. Restoring puts the group back;
+// forgetting it also removes the stored files nothing uses any more.
+
+const restoreError = (error: { message: string }) => new Error(restoreErrorMessage(error.message));
+
+export const Trash = {
+  /** One row per delete in the last 30 days (internal clean-ups included; the list filters them). */
+  async list(): Promise<DeletedItem[]> {
+    const { data, error } = await supabase.rpc('deleted_items');
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async restore(batch: number): Promise<void> {
+    const { error } = await supabase.rpc('restore_deleted', { p_batch: batch });
+    if (error) throw restoreError(error);
+  },
+
+  /** Undoes the latest delete of one record, with everything it took along. */
+  async restoreRecord(table: string, id: string): Promise<void> {
+    const { error } = await supabase.rpc('restore_record', { p_table: table, p_id: id });
+    if (error) throw restoreError(error);
+  },
+
+  /** Forgets one delete for good (or, with no batch, everything past 30 days) and removes its unused files. */
+  async purge(batch?: number): Promise<void> {
+    const { data, error } = await supabase.rpc('purge_deleted', batch === undefined ? {} : { p_batch: batch });
+    if (error) throw error;
+    const files = data ?? [];
+    for (const bucket of new Set(files.map(f => f.bucket))) {
+      await supabase.storage.from(bucket).remove(files.filter(f => f.bucket === bucket).map(f => f.path));
+    }
+  },
+
+  /** Forgets the latest delete of one record at once: a recording deleted with its audio isn't kept. */
+  async forgetRecord(table: string, id: string): Promise<void> {
+    const { data, error } = await supabase
+      .from('trash')
+      .select('batch')
+      .eq('table_name', table)
+      .eq('record_id', id)
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) await Trash.purge(data.batch);
   },
 };

@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useLinkableGlobals } from '../hooks/useLinkableGlobals';
 import { useToast } from './ToastContext';
+import { useDeletedToast } from '../hooks/useDeletedToast';
+import { RESTORED_EVENT } from '../lib/trash';
 import type { CampaignOverview } from '../types';
 import { errorMessage } from '../lib/errors';
 import {
@@ -210,6 +212,25 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     };
   }, [toast]);
 
+  /** Like withToast for a delete (id first): the toast offers Undo. */
+  const deletedToast = useDeletedToast();
+  const withUndo = useCallback(<T extends [string, ...unknown[]], R>(
+    fn: (...args: T) => Promise<R>,
+    table: string,
+    successMsg: string,
+  ) => {
+    return async (...args: T): Promise<R> => {
+      try {
+        const result = await fn(...args);
+        deletedToast(successMsg, table, args[0]);
+        return result;
+      } catch (err) {
+        toast(errorMessage(err), 'error');
+        throw err;
+      }
+    };
+  }, [toast, deletedToast]);
+
   // Campaign list + selected campaign (persisted in localStorage)
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useLocalStorage<string | null>('dnd-selected-campaign-id', null);
@@ -349,8 +370,9 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   }, [setSelectedCampaignId]);
 
   // Phase 2: load all campaign-scoped data
-  const loadAll = useCallback(async (campaignId: string) => {
-    setLoading(true);
+  /** Loads the campaign's data. Quietly (no loading screen) when reloading what's already shown. */
+  const loadAll = useCallback(async (campaignId: string, quiet = false) => {
+    if (!quiet) setLoading(true);
     setError(null);
     try {
       const [s, p, , , f, h, m, r] = await Promise.all([
@@ -403,7 +425,7 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [refreshNPCStore, refreshLocationStore, refreshLoreStore]);
 
@@ -711,6 +733,14 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     setScenes(await ScenesDB.getBySubmodules(subs.map(s => s.id)));
   }, [selectedCampaignId]);
 
+  // Deleted records came back (Undo, or Recently deleted): reload what's shown.
+  useEffect(() => {
+    if (!selectedCampaignId) return;
+    const reload = () => { void loadAll(selectedCampaignId, true); void loadModuleTree(); };
+    window.addEventListener(RESTORED_EVENT, reload);
+    return () => window.removeEventListener(RESTORED_EVENT, reload);
+  }, [selectedCampaignId, loadAll, loadModuleTree]);
+
   // ---- Module Sheets ----
   const loadModuleSheets = useCallback(async (moduleId: string) => {
     setModuleSheets(await ModuleSheetsDB.getByModule(moduleId));
@@ -811,51 +841,51 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
       loading, error,
       upsertSession: withToast(upsertSession),
       updateSession: withToast(updateSession),
-      deleteSession: withToast(deleteSession, 'Session deleted'),
+      deleteSession: withUndo(deleteSession, 'sessions', 'Session deleted'),
       upsertPC: withToast(upsertPC),
-      deletePC: withToast(deletePC, 'Character deleted'),
+      deletePC: withUndo(deletePC, 'player_characters', 'Character deleted'),
       upsertNPC: withToast(upsertNPC),
-      deleteNPC: withToast(deleteNPC, 'NPC deleted'),
+      deleteNPC: withUndo(deleteNPC, 'npcs', 'NPC deleted'),
       linkNPCToCampaign: withToast(linkNPCToCampaign),
       unlinkNPCFromCampaign: withToast(unlinkNPCFromCampaign),
       upsertLocation: withToast(upsertLocation),
-      deleteLocation: withToast(deleteLocation, 'Location deleted'),
+      deleteLocation: withUndo(deleteLocation, 'locations', 'Location deleted'),
       linkLocationToCampaign: withToast(linkLocationToCampaign),
       unlinkLocationFromCampaign: withToast(unlinkLocationFromCampaign),
       upsertFaction: withToast(upsertFaction),
-      deleteFaction: withToast(deleteFaction, 'Faction deleted'),
+      deleteFaction: withUndo(deleteFaction, 'factions', 'Faction deleted'),
       upsertHook: withToast(upsertHook),
-      deleteHook: withToast(deleteHook, 'Thread deleted'),
+      deleteHook: withUndo(deleteHook, 'hooks', 'Thread deleted'),
       upsertIdea: withToast(upsertIdea),
-      deleteIdea: withToast(deleteIdea, 'Idea dismissed'),
+      deleteIdea: withUndo(deleteIdea, 'ideas', 'Idea dismissed'),
       promoteIdea: withToast(promoteIdea, 'Promoted to a Thread'),
       upsertLore: withToast(upsertLore),
-      deleteLore: withToast(deleteLore, 'Lore deleted'),
+      deleteLore: withUndo(deleteLore, 'lore_entries', 'Lore deleted'),
       linkLoreToCampaign: withToast(linkLoreToCampaign),
       unlinkLoreFromCampaign: withToast(unlinkLoreFromCampaign),
       upsertModule: withToast(upsertModule),
-      deleteModule: withToast(deleteModule, 'Module deleted'),
+      deleteModule: withUndo(deleteModule, 'modules', 'Module deleted'),
       upsertRelationship: withToast(upsertRelationship),
-      deleteRelationship: withToast(deleteRelationship),
+      deleteRelationship: withUndo(deleteRelationship, 'character_relationships', 'Relationship removed'),
       submodules, loadSubmodules,
       upsertSubmodule: withToast(upsertSubmodule),
-      deleteSubmodule: withToast(deleteSubmodule, 'Submodule deleted'),
+      deleteSubmodule: withUndo(deleteSubmodule, 'submodules', 'Submodule deleted'),
       scenes, loadScenes,
       upsertScene: withToast(upsertScene),
-      deleteScene: withToast(deleteScene, 'Scene deleted'),
+      deleteScene: withUndo(deleteScene, 'scenes', 'Scene deleted'),
       loadModuleTree,
       moduleSheets, loadModuleSheets,
       upsertModuleSheet: withToast(upsertModuleSheet),
       deleteModuleSheet: withToast(deleteModuleSheet),
       monsterStatblocks,
       upsertMonsterStatblock: withToast(upsertMonsterStatblock),
-      deleteMonsterStatblock: withToast(deleteMonsterStatblock, 'Stat sheet deleted'),
+      deleteMonsterStatblock: withUndo(deleteMonsterStatblock, 'monster_statblocks', 'Stat sheet deleted'),
       encounters,
       upsertEncounter: withToast(upsertEncounter),
-      deleteEncounter: withToast(deleteEncounter, 'Encounter deleted'),
+      deleteEncounter: withUndo(deleteEncounter, 'encounters', 'Encounter deleted'),
       randomEncounterTables,
       upsertRandomEncounterTable: withToast(upsertRandomEncounterTable),
-      deleteRandomEncounterTable: withToast(deleteRandomEncounterTable, 'Random encounter table deleted'),
+      deleteRandomEncounterTable: withUndo(deleteRandomEncounterTable, 'random_encounter_tables', 'Random encounter table deleted'),
       moduleDeps, loadModuleDeps,
       upsertModuleDep: withToast(upsertModuleDep),
       deleteModuleDep: withToast(deleteModuleDep),

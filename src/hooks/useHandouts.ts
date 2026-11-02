@@ -1,10 +1,12 @@
 // The handouts kept on a set of scenes: loaded together, and added to,
-// renamed or removed in place.
+// renamed or removed in place. A removal can be undone from its toast.
 
 import { useCallback, useEffect, useState } from 'react';
 import { useCampaign } from '../context/CampaignContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useToast } from '../context/ToastContext';
+import { useDeletedToast } from './useDeletedToast';
+import { RESTORED_EVENT } from '../lib/trash';
 import { Handouts } from '../lib/db';
 import { uploadImage } from '../lib/images';
 import type { Handout } from '../lib/database.types';
@@ -16,9 +18,11 @@ export function useHandouts(sceneIds: string[]) {
   const { selectedCampaignId } = useCampaign();
   const toast = useToast();
   const confirm = useConfirm();
+  const deletedToast = useDeletedToast();
   const key = sceneIds.join(',');
   const [handouts, setHandouts] = useState<Handout[] | null>(null);
   const [adding, setAdding] = useState(false);
+  const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -26,7 +30,14 @@ export function useHandouts(sceneIds: string[]) {
       .then(h => { if (live) setHandouts(h); })
       .catch(() => { if (live) setHandouts([]); });
     return () => { live = false; };
-  }, [key]);
+  }, [key, reloads]);
+
+  // A handout restored by Undo or from Recently deleted shows up again.
+  useEffect(() => {
+    const reload = () => setReloads(n => n + 1);
+    window.addEventListener(RESTORED_EVENT, reload);
+    return () => window.removeEventListener(RESTORED_EVENT, reload);
+  }, []);
 
   const add = useCallback(async (sceneId: string, files: File[]) => {
     if (!selectedCampaignId || files.length === 0) return;
@@ -55,15 +66,16 @@ export function useHandouts(sceneIds: string[]) {
   }, [toast]);
 
   const remove = useCallback(async (h: Handout) => {
-    if (!(await confirm(`Remove “${h.title || 'this handout'}”? The picture is deleted.`))) return;
+    if (!(await confirm(`Remove “${h.title || 'this handout'}”?`))) return;
     setHandouts(prev => prev?.filter(x => x.id !== h.id) ?? prev);
     try {
       await Handouts.delete(h);
+      deletedToast('Handout removed', 'handouts', h.id);
     } catch (e) {
       toast(errorMessage(e), 'error');
       setHandouts(prev => [...(prev ?? []), h]);
     }
-  }, [confirm, toast]);
+  }, [confirm, toast, deletedToast]);
 
   return { handouts, adding, add, rename, remove };
 }

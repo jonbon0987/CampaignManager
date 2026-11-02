@@ -2,15 +2,29 @@ import { createContext, useContext, useState, useCallback, useRef } from 'react'
 
 type ToastType = 'success' | 'error';
 
+/** A button on the toast, such as Undo. A toast with one stays up longer. */
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Toast {
   id: number;
   message: string;
   type: ToastType;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, action?: ToastAction) => void;
 }
+
+const SHOW_MS = 3000;
+const SHOW_WITH_ACTION_MS = 8000;
+const ACTION_STYLE = {
+  marginLeft: '12px', padding: 0, border: 'none', background: 'none', cursor: 'pointer',
+  font: 'inherit', fontWeight: 600, color: 'inherit', textDecoration: 'underline',
+} as const;
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
@@ -24,12 +38,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(0);
 
-  const toast = useCallback((message: string, type: ToastType = 'success') => {
+  const toast = useCallback((message: string, type: ToastType = 'success', action?: ToastAction) => {
     const id = nextId.current++;
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts(prev => [...prev, { id, message, type, action }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
+    }, action ? SHOW_WITH_ACTION_MS : SHOW_MS);
   }, []);
 
   const dismiss = (id: number) => {
@@ -72,6 +86,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               }}
             >
               {t.type === 'error' ? '✕ ' : '✓ '}{t.message}
+              {t.action && (
+                // eslint-disable-next-line no-restricted-syntax -- a link-like action inside the toast, styled with it
+                <button type="button" style={ACTION_STYLE} onClick={e => { e.stopPropagation(); dismiss(t.id); t.action?.onClick(); }}>
+                  {t.action.label}
+                </button>
+              )}
             </div>
           ))}
         </div>
