@@ -3827,3 +3827,41 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ov-share-open { font-size: 13px; color: var(--gold); white-space: nowrap; text-decoration: none; }
 .ov-share-open:hover { text-decoration: underline; }
 .ov-share-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+/* The players' page itself (components/player/PlayerPage) */
+.pp { max-width: 820px; margin: 0 auto; padding: 48px 24px 96px; }
+.pp-status { max-width: 520px; margin: 0 auto; padding: 96px 24px; color: var(--ink-2); }
+.pp-status p { margin: 8px 0 16px; }
+.pp-head { margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--rule); }
+.pp-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+.pp-title { margin: 6px 0 0; font-family: var(--display); font-size: 40px; font-weight: 500; line-height: 1.1; color: var(--ink); }
+.pp-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.pp-nav-link { font-size: 13px; color: var(--ink-2); text-decoration: none; border: 1px solid var(--rule); border-radius: 999px; padding: 3px 12px; }
+.pp-nav-link:hover { color: var(--gold); border-color: var(--gold-line); }
+.pp-sec { margin-top: 40px; scroll-margin-top: 16px; }
+.pp-h2 { margin: 0 0 14px; font-family: var(--display); font-size: 24px; font-weight: 500; color: var(--ink); }
+.pp-h3 { margin: 2px 0 0; font-family: var(--display); font-size: 19px; font-weight: 500; color: var(--ink); }
+.pp-sub { font-size: 14px; color: var(--ink-3); margin-top: 2px; }
+.pp-label { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.pp-empty { margin-top: 32px; font-style: italic; color: var(--ink-3); }
+.pp-item { padding: 16px 0; border-top: 1px solid var(--rule-soft); scroll-margin-top: 16px; }
+.pp-item:first-of-type { border-top: none; padding-top: 0; }
+.pp-prose { margin-top: 8px; color: var(--ink-2); font-size: 16px; line-height: 1.65; }
+.pp-loot { margin-top: 12px; padding: 10px 14px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
+.pp-loot .pp-prose { margin-top: 4px; font-size: 15px; }
+.pp-party { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pp-pc { display: flex; align-items: center; gap: 12px; }
+.pp-pc-name { font-family: var(--display); font-size: 17px; color: var(--ink); }
+.pp-portrait { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid var(--rule); }
+.pp-portrait.is-empty { display: grid; place-items: center; background: var(--paper-2); color: var(--ink-3); font-family: var(--display); font-size: 22px; }
+.pp-person { display: flex; gap: 16px; align-items: flex-start; }
+.pp-person .pp-portrait { width: 72px; height: 72px; }
+.pp-person-text { flex: 1; min-width: 0; }
+.pp .ho-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.pp-map { display: block; width: 100%; margin-top: 10px; padding: 0; overflow: hidden; cursor: zoom-in; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); }
+.pp-map img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+@media (max-width: 640px) {
+  .pp { padding: 28px 16px 64px; }
+  .pp-title { font-size: 30px; }
+  .pp-person .pp-portrait { width: 56px; height: 56px; }
+}

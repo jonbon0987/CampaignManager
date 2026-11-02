@@ -299,6 +299,15 @@ export function parseToHTML(md: string): string {
   return html;
 }
 
+/* ───────────────── references as plain names ───────────────── */
+
+/** The markdown with each reference written as its plain name, for readers outside the app. */
+export function refsToNames(md: string): string {
+  return md
+    .replace(new RegExp(NEW_REF, 'gi'), '$1')
+    .replace(new RegExp(LEGACY_REF, 'gi'), (_m, _kind, _id, name: string | undefined) => name ?? '');
+}
+
 /* ───────────────── strip markdown to one clean line ───────────────── */
 
 export function mdToPlain(md: string | null | undefined): string {
