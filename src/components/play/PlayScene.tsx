@@ -1,6 +1,7 @@
 // The scene in play, docked with the table tools: where it sits in the
 // agenda, its read-aloud text large enough to read straight off the screen,
-// and the creatures it brings. Steps through the agenda from Prep.
+// its handouts to show the table, and the creatures it brings. Steps through
+// the agenda from Prep.
 
 import { useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
@@ -11,6 +12,8 @@ import { planIds } from '../../lib/sessionLifecycle';
 import { parseLinkedIds } from '../tabs/moduleDetail/pickers';
 import { ReadAloud } from '../ui/ReadAloudBlock';
 import { Button } from '../ui/Button';
+import { HandoutGallery } from '../handouts/HandoutGallery';
+import { useHandouts } from '../../hooks/useHandouts';
 
 export function PlayScene() {
   const { scenes, submodules, modules, monsterStatblocks, loadModuleTree } = useCampaign();
@@ -28,6 +31,7 @@ export function PlayScene() {
   const sub = scene ? submodules.find(s => s.id === scene.submodule_id) : undefined;
   const mod = sub ? modules.find(m => m.id === sub.module_id) : undefined;
   const creatures = scene ? parseLinkedIds(scene.linked_monster_ids).flatMap(id => monsterStatblocks.filter(m => m.id === id)) : [];
+  const { handouts } = useHandouts(scene ? [scene.id] : []);
 
   const go = (id: string) => setScene(id);
 
@@ -62,6 +66,13 @@ export function PlayScene() {
       {scene.read_aloud?.trim()
         ? <ReadAloud text={scene.read_aloud} large />
         : <p className="pt-empty">No read-aloud text for this scene. Add it on the scene, under its module.</p>}
+
+      {!!handouts?.length && (
+        <div className="psc-handouts">
+          <span className="psc-label">Handouts · click one to show the table</span>
+          <HandoutGallery handouts={handouts} />
+        </div>
+      )}
 
       {creatures.length > 0 && (
         <div className="psc-creatures">

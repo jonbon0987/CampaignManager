@@ -8,6 +8,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
+import { HandoutGallery } from '../../handouts/HandoutGallery';
+import { useHandouts } from '../../../hooks/useHandouts';
 import { ReadAloudField } from '../../ui/ReadAloudBlock';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
@@ -24,6 +26,15 @@ import { difficultyColors as diffColor } from '../../../lib/theme';
 /* ───────────────────────── scene row ───────────────────────── */
 
 interface SceneForm { title: string; scene_type: string; summary: string; content: string; dm_notes: string; read_aloud: string; }
+
+/** A scene's handouts, loaded when the scene is opened. */
+function SceneHandouts({ sceneId }: { sceneId: string }) {
+  const { handouts, adding, add, rename, remove } = useHandouts([sceneId]);
+  return (
+    <HandoutGallery handouts={handouts} adding={adding} onAdd={files => void add(sceneId, files)}
+      onRename={(h, t) => void rename(h, t)} onRemove={h => void remove(h)} />
+  );
+}
 
 function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dragging }: {
   scene: Scene;
@@ -120,6 +131,10 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
                 }))}
                 onPick={linkCreature} />
             </div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <div className="md-eyebrow" style={{ marginBottom: 6 }}>Handouts</div>
+            <SceneHandouts sceneId={scene.id} />
           </div>
         </div>
       )}

@@ -135,6 +135,7 @@ export interface PlayerCharacter {
   story_hooks: string | null;
   key_npcs: string | null;          // text from before key NPCs were links (shown beside them)
   key_npc_ids: string[];
+  portrait_path: string | null;      // an image in the entity-images bucket
   dm_notes: string | null;           // DM-only secrets
   is_active: boolean;
   faction_ids: string[];
@@ -157,6 +158,7 @@ export interface NPC {
   dm_notes: string | null;
   location: string | null;          // text from before the place was a link (shown beside it)
   location_id: string | null;
+  portrait_path: string | null;      // an image in the entity-images bucket
   disposition: string | null;        // attitude toward the party, e.g. "Wary", "Fearful ally"
   first_session: number | null;
   met_by_pcs: boolean;
@@ -181,6 +183,7 @@ export interface Location {
   description: string | null;
   dm_notes: string | null;
   read_aloud: string | null;         // boxed text the DM reads as the party arrives
+  map_path: string | null;           // a map, in the entity-images bucket
   created_at: string;
   updated_at: string;
 }
@@ -338,11 +341,11 @@ type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play';
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
   & Partial<Pick<Session, SessionLifecycle>>;
 // Link columns have database defaults, so a save that leaves them out keeps what's stored.
-export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_npc_ids'> & { key_npc_ids?: string[] };
+export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_npc_ids' | 'portrait_path'> & { key_npc_ids?: string[]; portrait_path?: string | null };
 // disposition is optional: it's written by the session-recording review, and an
 // NPC save that omits it (every edit form) leaves the stored value untouched.
-export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id'> & { disposition?: string | null; location_id?: string | null };
-export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud'> & { read_aloud?: string | null };
+export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id' | 'portrait_path'> & { disposition?: string | null; location_id?: string | null; portrait_path?: string | null };
+export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud' | 'map_path'> & { read_aloud?: string | null; map_path?: string | null };
 export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'> & { key_figure_ids?: string[] };
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
@@ -413,6 +416,20 @@ export interface Scene {
   created_at: string;
   updated_at: string;
 }
+/** A picture to show the players, kept on a scene. */
+export interface Handout {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  scene_id: string | null;
+  title: string;
+  image_path: string;                 // an image in the entity-images bucket
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+export type HandoutInsert = Omit<Handout, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 export interface ModuleSheet {
   id: string;
   user_id: string;
@@ -925,6 +942,12 @@ export interface Database {
         Row: EntitySessionEntry;
         Insert: EntitySessionEntryInsert & { id?: string; user_id: string };
         Update: Partial<Omit<EntitySessionEntry, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      handouts: {
+        Row: Handout;
+        Insert: HandoutInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<Handout, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       discord_bot_presence: {

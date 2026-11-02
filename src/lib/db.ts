@@ -39,6 +39,7 @@ import type {
   PlayerConsent, PlayerConsentInsert,
   ChronicleProposal, ChronicleProposalInsert,
   ChronicleApplied, ChronicleAppliedInsert,
+  Handout, HandoutInsert,
   EntitySessionEntry, EntitySessionEntryInsert, SessionEntryEntityType,
 } from './database.types';
 
@@ -1643,5 +1644,75 @@ export const SessionAudio = {
     if (paths.length === 0) return;
     const { error } = await supabase.storage.from(SESSION_AUDIO_BUCKET).remove(paths);
     if (error) throw error;
+  },
+};
+
+// ============================================================
+// IMAGES — portraits, maps and handouts
+// ============================================================
+// The entity-images bucket is private and its policies only allow a user's
+// own `<user_id>/` folder, so every path starts with it. Images are shown
+// through short-lived signed URLs (see hooks/useImageUrl).
+
+export const ENTITY_IMAGES_BUCKET = 'entity-images';
+
+const IMAGE_EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+
+export const EntityImages = {
+  /** Uploads an image under a fresh name in the user's folder, and returns its path. */
+  async upload(image: Blob): Promise<string> {
+    const ext = IMAGE_EXT[image.type];
+    if (!ext) throw new Error('That isn’t an image the app can keep. Use a PNG, JPEG, WebP or GIF.');
+    const path = `${await getUserId()}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from(ENTITY_IMAGES_BUCKET).upload(path, image, { contentType: image.type });
+    if (error) throw error;
+    return path;
+  },
+
+  /** Short-lived links for several images at once, keyed by path. */
+  async signedUrls(paths: string[], expiresInSeconds = 3600): Promise<Map<string, string>> {
+    if (paths.length === 0) return new Map();
+    const { data, error } = await supabase.storage.from(ENTITY_IMAGES_BUCKET).createSignedUrls(paths, expiresInSeconds);
+    if (error) throw error;
+    return new Map((data ?? []).flatMap(d => (d.path && d.signedUrl ? [[d.path, d.signedUrl] as [string, string]] : [])));
+  },
+
+  async remove(paths: string[]): Promise<void> {
+    if (paths.length === 0) return;
+    const { error } = await supabase.storage.from(ENTITY_IMAGES_BUCKET).remove(paths);
+    if (error) throw error;
+  },
+};
+
+export const Handouts = {
+  async getByScenes(sceneIds: string[]): Promise<Handout[]> {
+    if (sceneIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('handouts')
+      .select('*')
+      .in('scene_id', sceneIds)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(handout: HandoutInsert & { id?: string }): Promise<Handout> {
+    validateFieldLimits('handouts', handout);
+    const user_id = await getUserId();
+    const { data, error } = await supabase
+      .from('handouts')
+      .upsert({ ...handout, user_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  /** Deletes a handout and its image. */
+  async delete(handout: Pick<Handout, 'id' | 'image_path'>): Promise<void> {
+    const { error } = await supabase.from('handouts').delete().eq('id', handout.id);
+    if (error) throw error;
+    await EntityImages.remove([handout.image_path]).catch(() => {});
   },
 };

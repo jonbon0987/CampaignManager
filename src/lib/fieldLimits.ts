@@ -70,6 +70,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     story_hooks: LIMIT.PROSE,
     key_npcs: LIMIT.PROSE,
     dm_notes: LIMIT.PROSE,
+    portrait_path: LIMIT.STATLINE,
   },
   npcs: {
     name: LIMIT.NAME,
@@ -80,6 +81,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     dm_notes: LIMIT.PROSE,
     location: LIMIT.NAME,
     disposition: LIMIT.NAME,
+    portrait_path: LIMIT.STATLINE,
   },
   locations: {
     name: LIMIT.NAME,
@@ -91,6 +93,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     description: LIMIT.PROSE,
     dm_notes: LIMIT.PROSE,
     read_aloud: LIMIT.PROSE,
+    map_path: LIMIT.STATLINE,
   },
   factions: {
     name: LIMIT.NAME,
@@ -215,6 +218,10 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
   },
   recording_chunks: {
     storage_path: LIMIT.STATLINE,
+  },
+  handouts: {
+    title: LIMIT.NAME,
+    image_path: LIMIT.STATLINE,
   },
   transcript_segments: {
     speaker_label: LIMIT.NAME,

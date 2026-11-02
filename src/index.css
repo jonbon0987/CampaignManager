@@ -1046,6 +1046,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border-color: var(--rule);
   box-shadow: inset 2px 0 0 var(--gold);
 }
+.cm-row-thumb { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid var(--rule); }
 .cm-row-glyph {
   font-family: var(--display);
   font-size: 16px;
@@ -3756,3 +3757,48 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .tr-text { font-family: var(--serif); font-size: 14px; line-height: 1.5; color: var(--ink); }
 .tr-hit { background: var(--gold-dim); color: var(--gold); border-radius: 2px; padding: 0 1px; }
 @media (max-width: 640px) { .tr-line { grid-template-columns: 1fr; gap: 2px; } }
+
+/* ═══ Images: portraits, maps, handouts ═══ */
+/* An entity's head: name and subtitle, with its portrait beside them */
+.ent-head { display: flex; align-items: flex-start; gap: 18px; }
+.ent-head-text { flex: 1; min-width: 0; }
+.img-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+.img-slot-frame {
+  display: grid; place-items: center; overflow: hidden; padding: 0; cursor: pointer;
+  background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius-lg);
+}
+.img-slot.is-portrait .img-slot-frame { width: 112px; height: 140px; }
+.img-slot.is-wide { align-items: stretch; width: 100%; }
+.img-slot.is-wide .img-slot-frame { width: 100%; min-height: 120px; max-height: 420px; }
+.img-slot-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.img-slot.is-wide .img-slot-frame img { object-fit: contain; max-height: 420px; }
+.img-slot-frame.is-empty { border-style: dashed; }
+.img-slot-frame.is-empty:hover:not(:disabled) { border-color: var(--gold-line); }
+.img-slot-frame:disabled { cursor: default; }
+.img-slot-note { font-family: var(--serif); font-size: 13px; font-style: italic; color: var(--ink-3); padding: 8px; text-align: center; }
+.img-slot-actions { display: flex; gap: 2px; justify-content: center; }
+.img-slot-error { margin: 0; max-width: 220px; font-family: var(--serif); font-size: 12px; color: var(--red); }
+
+/* A picture filling the screen (components/ui/Lightbox) */
+.lbx {
+  position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 24px; background: rgba(8, 6, 4, .94); cursor: zoom-out;
+}
+.lbx-img { max-width: 100%; max-height: calc(100vh - 96px); object-fit: contain; border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.lbx-title { font-family: var(--display); font-size: 20px; color: var(--ink); }
+.lbx-hint { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+
+/* Handouts (components/handouts/HandoutGallery) */
+.ho { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.ho-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; width: 100%; }
+.ho-card { margin: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ho-thumb { display: grid; place-items: center; aspect-ratio: 4 / 3; width: 100%; padding: 0; overflow: hidden; cursor: zoom-in; background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); }
+.ho-thumb:hover { border-color: var(--gold-line); }
+.ho-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ho-loading { color: var(--ink-3); }
+.ho-cap { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.ho-title { flex: 1; min-width: 0; font-family: var(--serif); font-size: 13px; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: var(--radius); padding: 1px 4px; outline: none; }
+.ho-title:focus, .ho-title:hover { border-color: var(--rule); }
+.ho-title-text { flex: 1; min-width: 0; font-family: var(--serif); font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.psc-handouts { display: flex; flex-direction: column; gap: 6px; }
+.psc-label { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }

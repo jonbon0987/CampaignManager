@@ -11,6 +11,8 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock('../../context/CampaignContext', () => ({ useCampaign: () => h.campaign.value }));
 vi.mock('../../context/NavigationContext', () => ({ useOpenRecord: () => h.open }));
+// Handouts load from the database; Prep's tests are about the plan.
+vi.mock('../../hooks/useHandouts', () => ({ useHandouts: () => ({ handouts: [], adding: false, add: vi.fn(), rename: vi.fn(), remove: vi.fn() }) }));
 vi.mock('../ui/SlashField', () => ({
   SlashField: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
     <textarea aria-label="Prep notes" value={value ?? ''} onChange={e => onChange(e.target.value)} />
