@@ -4,6 +4,10 @@
 // You can replace this with auto-generated types from the
 // Supabase CLI once your project is set up:
 //   npx supabase gen types typescript --project-id <id> > src/lib/database.types.ts
+//
+// Table row shapes are `type` aliases, not interfaces: supabase-js needs every
+// Row/Insert/Update to fit Record<string, unknown>, which an interface doesn't
+// (no implicit index signature). One table that fails turns them all to `never`.
 // -----------------------------------------------------------
 
 import type { Fight } from './combat';
@@ -12,7 +16,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 
 // --------------- World ---------------
 
-export interface DbWorld {
+export type DbWorld = {
   id: string;
   user_id: string;
   name: string;
@@ -23,13 +27,13 @@ export interface DbWorld {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type DbWorldInsert = Omit<DbWorld, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
 // --------------- Campaign ---------------
 
-export interface Campaign {
+export type Campaign = {
   id: string;
   user_id: string;
   world_id: string | null;       // FK to worlds — null for campaigns not yet linked
@@ -47,7 +51,7 @@ export interface Campaign {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
@@ -55,23 +59,30 @@ export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'u
 export type CampaignWithCount = Campaign & { session_count: number };
 
 // Join tables for linking global NPCs/Locations to campaigns
-export interface CampaignNPC {
+export type CampaignNPC = {
   campaign_id: string;
   npc_id: string;
   user_id: string;
   added_at: string;
-}
+};
 
-export interface CampaignLocation {
+export type CampaignLocation = {
   campaign_id: string;
   location_id: string;
   user_id: string;
   added_at: string;
-}
+};
+
+export type CampaignLoreLink = {
+  campaign_id: string;
+  lore_id: string;
+  user_id: string;
+  added_at: string;
+};
 
 // --------------- Row shapes (what comes back from SELECT) ---------------
 
-export interface Session {
+export type Session = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -89,7 +100,7 @@ export interface Session {
   play: SessionPlay;
   created_at: string;
   updated_at: string;
-}
+};
 
 /** A dice roll made during a session, newest first in its log. */
 export interface PlayRoll { at: string; expr: string; total: number; rolls: number[] }
@@ -120,7 +131,7 @@ export interface SessionPlan {
   checklist?: Record<string, boolean>;
 }
 
-export interface PlayerCharacter {
+export type PlayerCharacter = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -142,9 +153,9 @@ export interface PlayerCharacter {
   statblock_id: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface NPC {
+export type NPC = {
   id: string;
   user_id: string;
   campaign_id: string | null;        // Optional FK to campaign — independent of world_id
@@ -166,9 +177,9 @@ export interface NPC {
   statblock_id: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Location {
+export type Location = {
   id: string;
   user_id: string;
   campaign_id: string | null;        // Optional FK to campaign — independent of world_id
@@ -186,9 +197,9 @@ export interface Location {
   map_path: string | null;           // a map, in the entity-images bucket
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Faction {
+export type Faction = {
   id: string;
   user_id: string;
   campaign_id: string | null;        // Optional FK to campaign — independent of world_id
@@ -202,9 +213,9 @@ export interface Faction {
   dm_notes: string | null;           // hidden agendas / secrets
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Hook {
+export type Hook = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -217,9 +228,9 @@ export interface Hook {
   dm_only_notes: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Idea {
+export type Idea = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -228,11 +239,11 @@ export interface Idea {
   promoted_hook_id: string | null;   // set when promoted into a Thread (hook)
   created_at: string;
   updated_at: string;
-}
+};
 
 export type IdeaInsert = Omit<Idea, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
-export interface LoreEntry {
+export type LoreEntry = {
   id: string;
   user_id: string;
   world_id: string | null;           // Optional FK to world — independent of campaign_id
@@ -243,9 +254,9 @@ export interface LoreEntry {
   dm_only: boolean;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface TimelineEvent {
+export type TimelineEvent = {
   id: string;
   user_id: string;
   world_id: string | null;
@@ -258,11 +269,11 @@ export interface TimelineEvent {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type TimelineEventInsert = Omit<TimelineEvent, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
-export interface Module {
+export type Module = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -278,12 +289,12 @@ export interface Module {
   node_role: 'start' | 'boss' | null;   // start = opening mission, boss = final encounter
   created_at: string;
   updated_at: string;
-}
+};
 
 export type RelationshipType = 'ally' | 'rival' | 'foe' | 'neutral';
 export type CharacterKind = 'pc' | 'npc';
 
-export interface CharacterRelationship {
+export type CharacterRelationship = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -295,7 +306,7 @@ export interface CharacterRelationship {
   label: string | null;                // optional short description on the edge
   created_at: string;
   updated_at: string;
-}
+};
 
 export type CharacterRelationshipInsert = Omit<CharacterRelationship, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
@@ -303,7 +314,7 @@ export type CharacterRelationshipInsert = Omit<CharacterRelationship, 'id' | 'us
 
 export type DependencyType = 'required' | 'optional';
 
-export interface ModuleDependency {
+export type ModuleDependency = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -315,11 +326,11 @@ export interface ModuleDependency {
   threshold: number | null; // for OR groups: require at least N prereqs completed (null/1 = any 1)
   created_at: string;
   updated_at: string;
-}
+};
 
 export type ModuleDependencyInsert = Omit<ModuleDependency, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
-export interface SubmoduleDependency {
+export type SubmoduleDependency = {
   id: string;
   user_id: string;
   dependent_id: string;
@@ -329,7 +340,7 @@ export interface SubmoduleDependency {
   label: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
@@ -352,7 +363,7 @@ export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 
 export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
 
-export interface MonsterStatblock {
+export type MonsterStatblock = {
   id: string;
   user_id: string;
   campaign_id: string | null;        // NULL = world bestiary, non-null = campaign-specific
@@ -384,9 +395,9 @@ export interface MonsterStatblock {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Submodule {
+export type Submodule = {
   id: string;
   user_id: string;
   module_id: string;
@@ -400,8 +411,8 @@ export interface Submodule {
   linked_encounter_ids: string | null;  // JSON array of Encounter UUIDs
   created_at: string;
   updated_at: string;
-}
-export interface Scene {
+};
+export type Scene = {
   id: string;
   user_id: string;
   submodule_id: string;
@@ -415,9 +426,9 @@ export interface Scene {
   linked_monster_ids: string | null;  // JSON array of MonsterStatblock UUIDs
   created_at: string;
   updated_at: string;
-}
+};
 /** A picture to show the players, kept on a scene. */
-export interface Handout {
+export type Handout = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -427,7 +438,7 @@ export interface Handout {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 export type HandoutInsert = Omit<Handout, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
 // --------------- Player pages (migrations/0040_player_pages.sql) ---------------
@@ -436,22 +447,22 @@ export type HandoutInsert = Omit<Handout, 'id' | 'user_id' | 'created_at' | 'upd
 export type ShareKind = 'npc' | 'location' | 'lore' | 'handout' | 'session';
 
 /** A campaign's player page: the link players open, which can be turned off or replaced. */
-export interface PlayerPageLink {
+export type PlayerPageLink = {
   campaign_id: string;
   user_id: string;
   token: string;
   enabled: boolean;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface PlayerShare {
+export type PlayerShare = {
   campaign_id: string;
   user_id: string;
   kind: ShareKind;
   item_id: string;
   created_at: string;
-}
+};
 
 /** What player_page(token) returns: the shared items' player-facing fields only. */
 export interface PlayerPageData {
@@ -464,7 +475,7 @@ export interface PlayerPageData {
   lore: { id: string; title: string; category: string | null; content: string | null }[];
 }
 
-export interface ModuleSheet {
+export type ModuleSheet = {
   id: string;
   user_id: string;
   module_id: string;
@@ -475,7 +486,7 @@ export interface ModuleSheet {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 export type MonsterStatblockInsert = Omit<MonsterStatblock, "id" | "user_id" | "created_at" | "updated_at">;
 
 // --------------- Encounter Builder ---------------
@@ -491,7 +502,7 @@ export interface EncounterCombatant {
   notes: string | null;
 }
 
-export interface Encounter {
+export type Encounter = {
   id: string;
   user_id: string;
   campaign_id: string | null;   // Optional FK — null for world-level encounter templates
@@ -508,7 +519,7 @@ export interface Encounter {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type EncounterInsert = Omit<Encounter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
@@ -540,7 +551,7 @@ export interface RandomEncounterEntry {
 // A random table's kind determines its glyph and (eventually) its roll output.
 export type RandomTableKind = 'encounter' | 'treasure' | 'magic' | 'wild' | 'custom';
 
-export interface RandomEncounterTable {
+export type RandomEncounterTable = {
   id: string;
   user_id: string;
   campaign_id: string | null;   // set for campaign-level tables
@@ -556,7 +567,7 @@ export interface RandomEncounterTable {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type RandomEncounterTableInsert = Omit<RandomEncounterTable, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
@@ -596,7 +607,7 @@ export interface DiscordVoiceChannel { id: string; name: string; members: Discor
 export interface DiscordTextChannel { id: string; name: string }
 export interface DiscordGuild { id: string; name: string; voice: DiscordVoiceChannel[]; text: DiscordTextChannel[] }
 
-export interface DiscordBotPresence {
+export type DiscordBotPresence = {
   id: string;
   user_id: string;
   bot_tag: string | null;
@@ -604,9 +615,9 @@ export interface DiscordBotPresence {
   guilds: DiscordGuild[];
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface DiscordPost {
+export type DiscordPost = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -618,9 +629,9 @@ export interface DiscordPost {
   sent_at: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface SessionRecording {
+export type SessionRecording = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -637,12 +648,12 @@ export interface SessionRecording {
   discord_detail: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type TrackSource = 'table' | 'discord' | 'upload';
 export type TranscriptionStatus = 'pending' | 'submitted' | 'done' | 'failed';
 
-export interface RecordingTrack {
+export type RecordingTrack = {
   id: string;
   user_id: string;
   recording_id: string;
@@ -658,9 +669,9 @@ export interface RecordingTrack {
   transcription_job_id: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface RecordingChunk {
+export type RecordingChunk = {
   id: string;
   user_id: string;
   track_id: string;
@@ -671,9 +682,9 @@ export interface RecordingChunk {
   byte_size: number | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface TranscriptSegment {
+export type TranscriptSegment = {
   id: string;
   user_id: string;
   recording_id: string;
@@ -687,9 +698,9 @@ export interface TranscriptSegment {
   dropped_as_echo: boolean;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface RecordingMoment {
+export type RecordingMoment = {
   id: string;
   user_id: string;
   recording_id: string;
@@ -697,9 +708,9 @@ export interface RecordingMoment {
   label: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface SpeakerLink {
+export type SpeakerLink = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -709,9 +720,9 @@ export interface SpeakerLink {
   is_dm: boolean;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface PlayerConsent {
+export type PlayerConsent = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -721,11 +732,11 @@ export interface PlayerConsent {
   revoked_at: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type ProposalStatus = 'pending' | 'accepted' | 'skipped' | 'applied';
 
-export interface ChronicleProposal {
+export type ChronicleProposal = {
   id: string;
   user_id: string;
   recording_id: string;
@@ -740,9 +751,9 @@ export interface ChronicleProposal {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface ChronicleApplied {
+export type ChronicleApplied = {
   id: string;
   user_id: string;
   recording_id: string;
@@ -755,11 +766,11 @@ export interface ChronicleApplied {
   undone_at: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type SessionEntryEntityType = 'pc' | 'npc' | 'location' | 'faction' | 'lore' | 'hook';
 
-export interface EntitySessionEntry {
+export type EntitySessionEntry = {
   id: string;
   user_id: string;
   campaign_id: string;
@@ -772,7 +783,7 @@ export interface EntitySessionEntry {
   source_quote: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type SessionRecordingInsert = Omit<SessionRecording, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'started_at' | 'settings' | 'paused_at' | 'discord_state' | 'discord_detail'>
   & Partial<Pick<SessionRecording, 'status' | 'started_at' | 'settings' | 'paused_at' | 'discord_state' | 'discord_detail'>>;
@@ -822,33 +833,39 @@ export interface Database {
         Update: Partial<CampaignLocation>;
         Relationships: [];
       };
+      campaign_lore: {
+        Row: CampaignLoreLink;
+        Insert: Omit<CampaignLoreLink, 'added_at'> & { added_at?: string };
+        Update: Partial<CampaignLoreLink>;
+        Relationships: [];
+      };
       sessions: {
         Row: Session;
-        Insert: Omit<Session, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: SessionInsert & { id?: string; user_id: string };
         Update: Partial<Omit<Session, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       player_characters: {
         Row: PlayerCharacter;
-        Insert: Omit<PlayerCharacter, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: PlayerCharacterInsert & { id?: string; user_id: string };
         Update: Partial<Omit<PlayerCharacter, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       npcs: {
         Row: NPC;
-        Insert: Omit<NPC, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: NPCInsert & { id?: string; user_id: string };
         Update: Partial<Omit<NPC, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       locations: {
         Row: Location;
-        Insert: Omit<Location, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: LocationInsert & { id?: string; user_id: string };
         Update: Partial<Omit<Location, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       factions: {
         Row: Faction;
-        Insert: Omit<Faction, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: FactionInsert & { id?: string; user_id: string };
         Update: Partial<Omit<Faction, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
@@ -870,10 +887,28 @@ export interface Database {
         Update: Partial<Omit<LoreEntry, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
+      timeline_events: {
+        Row: TimelineEvent;
+        Insert: Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
       modules: {
         Row: Module;
         Insert: Omit<Module, 'id' | 'created_at' | 'updated_at'> & { id?: string };
         Update: Partial<Omit<Module, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      module_dependencies: {
+        Row: ModuleDependency;
+        Insert: Omit<ModuleDependency, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<ModuleDependency, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      submodule_dependencies: {
+        Row: SubmoduleDependency;
+        Insert: Omit<SubmoduleDependency, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<SubmoduleDependency, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       character_relationships: {
@@ -890,7 +925,7 @@ export interface Database {
       };
       scenes: {
         Row: Scene;
-        Insert: Omit<Scene, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: SceneInsert & { id?: string; user_id: string };
         Update: Partial<Omit<Scene, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
@@ -1009,5 +1044,13 @@ export interface Database {
         Relationships: [];
       };
     };
+    Views: { [_ in never]: never };
+    Functions: {
+      player_page: {
+        Args: { p_token: string };
+        Returns: PlayerPageData | null;
+      };
+    };
+    Enums: { [_ in never]: never };
   };
 }

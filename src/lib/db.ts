@@ -1752,7 +1752,7 @@ export const PlayerPages = {
   async load(token: string): Promise<PlayerPageData | null> {
     const { data, error } = await supabase.rpc('player_page', { p_token: token });
     if (error) throw error;
-    return (data as PlayerPageData | null) ?? null;
+    return data ?? null;
   },
 };
 
