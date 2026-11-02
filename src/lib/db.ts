@@ -43,6 +43,7 @@ import type {
   Handout, HandoutInsert,
   PlayerPageLink, PlayerShare, PlayerPageData, ShareKind,
   DeletedItem,
+  Item, ItemInsert, ItemHolding, ItemHoldingInsert,
   EntitySessionEntry, EntitySessionEntryInsert, SessionEntryEntityType,
 } from './database.types';
 
@@ -1827,5 +1828,51 @@ export const Trash = {
       .maybeSingle();
     if (error) throw error;
     if (data) await Trash.purge(data.batch);
+  },
+};
+
+// ─── Items and loot ──────────────────────────────────────────────────────────
+// A campaign's item compendium, and who holds what (migrations/0043_items.sql).
+
+export const Items = {
+  async getByCampaign(campaignId: string): Promise<Item[]> {
+    const { data, error } = await supabase.from('items').select('*').eq('campaign_id', campaignId).order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(item: ItemInsert & { id?: string }): Promise<Item> {
+    validateFieldLimits('items', item);
+    const user_id = await getUserId();
+    const { data, error } = await supabase.from('items').upsert({ ...item, user_id }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  /** Deletes an item and every holding of it. Its picture stays until Recently deleted forgets it. */
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('items').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+export const ItemHoldings = {
+  async getByCampaign(campaignId: string): Promise<ItemHolding[]> {
+    const { data, error } = await supabase.from('item_holdings').select('*').eq('campaign_id', campaignId).order('created_at');
+    if (error) throw error;
+    return data;
+  },
+
+  async upsert(holding: ItemHoldingInsert & { id?: string }): Promise<ItemHolding> {
+    validateFieldLimits('item_holdings', holding);
+    const user_id = await getUserId();
+    const { data, error } = await supabase.from('item_holdings').upsert({ ...holding, user_id }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('item_holdings').delete().eq('id', id);
+    if (error) throw error;
   },
 };

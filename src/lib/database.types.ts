@@ -441,6 +441,43 @@ export type Handout = {
 };
 export type HandoutInsert = Omit<Handout, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+// --------------- Items and loot (migrations/0043_items.sql) ---------------
+
+/** An item in a campaign's compendium: magic, treasure or gear. */
+export type Item = {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  name: string;
+  item_type: string | null;          // weapon | armor | potion | scroll | ring | rod | staff | wand | wondrous | gear | treasure | other
+  rarity: string | null;             // common … artifact; null for something that isn't magic
+  attunement: boolean;
+  attunement_note: string | null;    // "by a wizard"
+  value: string | null;              // "50 gp"
+  description: string | null;        // what the players learn
+  dm_notes: string | null;
+  image_path: string | null;         // in the entity-images bucket
+  created_at: string;
+  updated_at: string;
+};
+export type ItemInsert = Omit<Item, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
+/** Who has an item: a PC, or the party's stash (pc_id null), and since which session. */
+export type ItemHolding = {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  item_id: string;
+  pc_id: string | null;
+  quantity: number;
+  attuned: boolean;
+  session_id: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type ItemHoldingInsert = Omit<ItemHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 // --------------- Recently deleted (migrations/0042_recently_deleted.sql) ---------------
 
 /** A deleted record, kept for 30 days. `batch` groups it with what its delete took along. */
@@ -1046,6 +1083,18 @@ export interface Database {
         Row: PlayerShare;
         Insert: Omit<PlayerShare, 'created_at'>;
         Update: never;
+        Relationships: [];
+      };
+      items: {
+        Row: Item;
+        Insert: ItemInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<Item, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      item_holdings: {
+        Row: ItemHolding;
+        Insert: ItemHoldingInsert & { id?: string; user_id: string };
+        Update: Partial<Omit<ItemHolding, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
       trash: {

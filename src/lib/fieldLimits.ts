@@ -61,6 +61,19 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     title: LIMIT.NAME,
     prep_notes: LIMIT.BODY,
   },
+  items: {
+    name: LIMIT.NAME,
+    item_type: LIMIT.TAG,
+    rarity: LIMIT.TAG,
+    attunement_note: LIMIT.NAME,
+    value: LIMIT.NAME,
+    description: LIMIT.PROSE,
+    dm_notes: LIMIT.PROSE,
+    image_path: LIMIT.STATLINE,
+  },
+  item_holdings: {
+    note: LIMIT.TAGLINE,
+  },
   player_characters: {
     character_name: LIMIT.NAME,
     player_name: LIMIT.NAME,
@@ -266,6 +279,9 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
   },
   npcs: {
     first_session: [0, 9_999],
+  },
+  item_holdings: {
+    quantity: [1, 9_999],
   },
   hooks: {
     last_updated_session: [0, 9_999],
