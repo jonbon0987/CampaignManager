@@ -9,6 +9,8 @@ import { useOpenRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { IconButton } from '../ui/IconButton';
+import { HandoutGallery } from '../handouts/HandoutGallery';
+import { useHandouts } from '../../hooks/useHandouts';
 import { ReadAloud } from '../ui/ReadAloudBlock';
 import { Button } from '../ui/Button';
 import { limitFor } from '../../lib/fieldLimits';
@@ -98,8 +100,10 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
     return where;
   }, [scenes, submodules, modules]);
 
-  // Read-aloud text from the agenda's scenes, in agenda order.
-  const readAlouds = ids('agenda').flatMap(id => scenes.filter(sc => sc.id === id && sc.read_aloud?.trim()));
+  // Read-aloud text and handouts from the agenda's scenes, in agenda order.
+  const agendaIds = ids('agenda');
+  const { handouts } = useHandouts(agendaIds);
+  const readAlouds = agendaIds.flatMap(id => scenes.filter(sc => sc.id === id && (sc.read_aloud?.trim() || handouts?.some(h => h.scene_id === id))));
   const pickedScenes: Linked[] = ids('agenda').flatMap(id => {
     const sc = scenes.find(s => s.id === id);
     if (!sc) return [];
@@ -187,16 +191,20 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
       {readAlouds.length > 0 && (
         <section className="sp-part">
           <div className="cm-section-head">
-            <span className="cm-section-title"><span className="sp-glyph">📜</span> Read aloud</span>
+            <span className="cm-section-title"><span className="sp-glyph">📜</span> Read aloud and handouts</span>
             <div className="cm-section-rule" />
           </div>
-          <p className="sp-hint">From the agenda’s scenes. Play shows each one large when you reach it.</p>
-          {readAlouds.map(sc => (
-            <details key={sc.id} className="sp-ra">
-              <summary>{sc.title || 'Untitled scene'}</summary>
-              <ReadAloud text={sc.read_aloud ?? ''} />
-            </details>
-          ))}
+          <p className="sp-hint">From the agenda’s scenes. Play shows them when you reach each scene.</p>
+          {readAlouds.map(sc => {
+            const own = handouts?.filter(h => h.scene_id === sc.id) ?? [];
+            return (
+              <details key={sc.id} className="sp-ra">
+                <summary>{sc.title || 'Untitled scene'}{own.length > 0 && <span className="sp-item-detail"> · {own.length} handout{own.length === 1 ? '' : 's'}</span>}</summary>
+                {sc.read_aloud?.trim() && <ReadAloud text={sc.read_aloud} />}
+                {own.length > 0 && <HandoutGallery handouts={own} />}
+              </details>
+            );
+          })}
         </section>
       )}
 
