@@ -15,6 +15,7 @@ import {
   parseCombatants,
   type EncounterSaveData,
 } from '../ui/EncounterDetail';
+import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd';
 import { isUnratable, partyLevels, rateEncounter, RATING_LABEL, type PartyLevel, type Rating } from '../../lib/encounterScaling';
 
 // ================================================================
@@ -22,7 +23,7 @@ import { isUnratable, partyLevels, rateEncounter, RATING_LABEL, type PartyLevel,
 // ================================================================
 
 export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void } = {}) {
-  const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, pcs, selectedCampaign } = useCampaign();
+  const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, upsertMonsterStatblock, pcs, selectedCampaign } = useCampaign();
   // The campaign's rules rate its encounters (unset reads as 2014).
   const edition = selectedCampaign?.rules_edition ?? '2014';
   // While a session is live, Run hands the fight to Play's Initiative instead.
@@ -49,6 +50,11 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
 
   // Creature sheet viewer
   const { openStatBlock } = useStatBlockPanel();
+
+  // An SRD creature fights from a stat sheet: the campaign's own by that name, or a new copy.
+  const sheetFromSrd = async (m: SrdMonster, ed: SrdEdition) =>
+    monsterStatblocks.find(s => s.name.trim().toLowerCase() === m.name.toLowerCase())
+    ?? upsertMonsterStatblock({ ...srdToStatblock(m, ed), sort_order: monsterStatblocks.length });
 
   // Active PC names for initiative tracker
   // The active party, with the HP and AC set on each PC in Cast.
@@ -165,6 +171,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
               upsertEncounter={campaignUpsert}
               party={partyByLevel}
               edition={edition}
+              sheetFromSrd={sheetFromSrd}
             />
           </div>
         ) : (

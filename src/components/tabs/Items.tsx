@@ -14,14 +14,17 @@ import { pushRecent } from '../../lib/recent';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { blankItem, holdersSummary, itemLine, itemTypeLabel, rarity } from '../../lib/items';
 import { ItemEditor } from '../entity/ItemEditor';
+import { SrdLibrary } from '../srd/SrdLibrary';
+import { srdToItem, type SrdItem } from '../../lib/srd';
 import type { Item } from '../../lib/database.types';
 
 const GLYPH = '✠';
 
 export default function Items({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void } = {}) {
   const ctx = useItems();
-  const { pcs } = useCampaign();
+  const { pcs, selectedCampaign } = useCampaign();
   const [search, setSearch] = useState('');
+  const [srdOpen, setSrdOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useReportRecord('items', selectedId);
 
@@ -60,6 +63,15 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
     setSelectedId(item.id);
   };
 
+  // A copy of an SRD magic item, which is the DM's to change from then on.
+  const addFromSrd = async (i: SrdItem) => {
+    const item = await ctx.saveItem(srdToItem(i));
+    setSearch('');
+    setSelectedId(item.id);
+  };
+  const haveItem = (name: string) => items.some(i => i.name.trim().toLowerCase() === name.toLowerCase())
+    ? `You already have an item called ${name}; this adds another.` : null;
+
   const renderRow = (item: Item) => {
     const r = rarity(item.rarity);
     return (
@@ -78,16 +90,20 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
   };
 
   return (
+    <>
     <ListDetail
       title="Items"
       count={shown.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={() => void handleAdd()}
-      addLabel="+ Add item"
+      addLabel="+ Add"
+      addOptions={[
+        { label: 'Blank item', onClick: () => void handleAdd() },
+        { label: 'From the SRD library…', onClick: () => setSrdOpen(true) },
+      ]}
       list={
         items.length === 0 ? (
-          <div className="cm-empty is-inline">No items yet. Add magic items, treasure and gear, then give them out from here, a PC’s page or a session’s loot.</div>
+          <div className="cm-empty is-inline">No items yet. Add magic items from the SRD library, or your own treasure and gear, then give them out from here, a PC’s page or a session’s loot.</div>
         ) : (
           <>
             {held.length > 0 && (
@@ -119,5 +135,8 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
         )
       }
     />
+    <SrdLibrary kind="items" open={srdOpen} onClose={() => setSrdOpen(false)}
+      edition={selectedCampaign?.rules_edition ?? '2014'} addLabel="Add to items" note={haveItem} onAdd={addFromSrd} />
+    </>
   );
 }

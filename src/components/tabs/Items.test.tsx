@@ -69,8 +69,25 @@ describe('Items', () => {
   it('adds an item and opens it', async () => {
     const value = items();
     show(value);
-    fireEvent.click(screen.getByRole('button', { name: '+ Add item' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add ▾' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Blank item' }));
     await waitFor(() => expect(value.saveItem).toHaveBeenCalledWith(expect.objectContaining({ name: '' })));
+  });
+
+  it('copies a magic item in from the SRD library', async () => {
+    const value = items();
+    show(value);
+    fireEvent.click(screen.getByRole('button', { name: '+ Add ▾' }));
+    fireEvent.click(screen.getByRole('button', { name: 'From the SRD library…' }));
+    const search = await screen.findByLabelText('Search magic items');
+    fireEvent.change(search, { target: { value: 'cloak of elvenkind' } });
+    await screen.findByText('1 of 362 magic items');
+    expect(screen.getByText(/System Reference Document 5\.1/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add to items' }));
+    await waitFor(() => expect(value.saveItem).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Cloak of Elvenkind', item_type: 'wondrous', rarity: 'uncommon', attunement: true,
+    })));
+    await waitFor(() => expect(screen.queryByText('SRD magic items')).toBeNull());
   });
 
   it('says what to do when there are none', () => {
