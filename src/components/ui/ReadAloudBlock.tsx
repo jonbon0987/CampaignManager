@@ -20,10 +20,10 @@ export function ReadAloudField({ value, onChange, maxLength, disabled }: {
 }
 
 /** The passage to read, as Play shows it. */
-export function ReadAloud({ text, large }: { text: string; large?: boolean }) {
+export function ReadAloud({ text, large, label = 'Read aloud' }: { text: string; large?: boolean; label?: string }) {
   return (
     <div className={`ra${large ? ' is-large' : ''}`}>
-      <div className="ra-label"><span aria-hidden>📜</span> Read aloud</div>
+      <div className="ra-label"><span aria-hidden>📜</span> {label}</div>
       <p className="ra-text">{text}</p>
     </div>
   );

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { usePlay } from '../../context/PlayContext';
 import { InitiativeTracker } from '../InitiativeTracker';
 import { ListDetail, ListRow, EmptyDetail, Pill } from '../ui/ListDetail';
 import type { PartyMember } from '../../lib/combat';
@@ -59,10 +60,13 @@ export default function RandomEncounters({ onImportFromWorld }: { onImportFromWo
     (data: EncounterSaveData): Promise<Encounter> => upsertEncounter({ ...data, world_id: null }),
     [upsertEncounter],
   );
+  // A rolled encounter is saved first; during a live session it joins Play's fight.
+  const { live, joinEncounter } = usePlay();
   const runEncounter = useCallback(async (data: EncounterSaveData) => {
     const enc = await saveEncounter(data);
-    setRunningEncounter(enc);
-  }, [saveEncounter]);
+    if (live) joinEncounter(enc);
+    else setRunningEncounter(enc);
+  }, [saveEncounter, live, joinEncounter]);
 
   const handleAdd = async (kind: string) => {
     const t = await upsertRandomEncounterTable({

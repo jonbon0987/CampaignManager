@@ -191,6 +191,31 @@ export function currentCombatant(f: Fight): Combatant | null {
   return isStarted(f) ? turnOrder(f.combatants)[f.turn] ?? null : null;
 }
 
+/**
+ * How a fight went, in a sentence or three for the recap: "2 rounds against
+ * Shattered Vanguard ×3. Down: Shattered Vanguard A. At 0 HP: Test Hero."
+ * Null for a fight that never started or had no foes.
+ */
+export function fightSummary(f: Fight | null | undefined): string | null {
+  if (!f || !isStarted(f)) return null;
+  const foes = f.combatants.filter(c => !c.isPC);
+  if (foes.length === 0) return null;
+  const kinds = new Map<string, number>();
+  for (const c of foes) {
+    const kind = c.name.replace(/ [A-Z]$/, '');
+    kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
+  }
+  const against = [...kinds].map(([kind, n]) => (n > 1 ? `${kind} ×${n}` : kind)).join(', ');
+  const isDown = (c: Combatant) => c.maxHp > 0 && c.currentHp <= 0;
+  const down = foes.filter(isDown).map(c => c.name);
+  const pcsDown = f.combatants.filter(c => c.isPC && isDown(c)).map(c => c.name);
+  return [
+    `${f.round} round${f.round === 1 ? '' : 's'} against ${against}.`,
+    down.length === foes.length ? 'All of them fell.' : down.length ? `Down: ${down.join(', ')}.` : 'None of them fell.',
+    ...(pcsDown.length ? [`At 0 HP: ${pcsDown.join(', ')}.`] : []),
+  ].join(' ');
+}
+
 export const startFight = (f: Fight): Fight => ({ ...f, turn: 0, round: 1 });
 export const resetFight = (f: Fight): Fight => ({ ...f, turn: -1, round: 1 });
 

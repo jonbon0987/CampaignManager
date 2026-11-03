@@ -11,6 +11,7 @@ import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
 import { PlayerPageCard } from '../player/PlayerPageCard';
 import { CampaignDateCard } from '../calendar/CampaignDate';
+import { PreviouslyOn } from '../session/PreviouslyOn';
 import { getHookCategoryStyle } from '../../lib/theme';
 import {
   clip, formatSessionDate, lastPlayed, liveSession, nextPlanned, nextSessionNumber, planIds, plainText,
@@ -206,32 +207,18 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
         </div>
       )}
 
-      {/* 2-col: Last time + Threads in motion */}
-      <div className="ov-grid">
-        <div className="ov-card" onClick={() => (last ? openRecord('sessions', last.id) : onNavigate('sessions'))}>
+      {/* What to read as the next session opens */}
+      {last && (
+        <section className="ov-prev" aria-labelledby="ov-prev-title">
           <div className="ov-card-head">
-            <span className="ov-card-title">Last time</span>
-            <span className="ov-card-chevron">›</span>
+            <span className="ov-card-title" id="ov-prev-title">Last time · {sessionName(last)}{last.session_date ? ` · ${formatSessionDate(last.session_date)}` : ''}</span>
           </div>
-          <div className="ov-card-body">
-            {last ? (
-              <>
-                <div className="ov-card-big">{sessionName(last)}</div>
-                {last.session_date && (
-                  <div className="ov-card-sub">{formatSessionDate(last.session_date)}</div>
-                )}
-                {last.summary && (
-                  <div className="ov-card-desc">{plainText(last.summary)}</div>
-                )}
-              </>
-            ) : (
-              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
-                No sessions played yet
-              </div>
-            )}
-          </div>
-        </div>
+          <PreviouslyOn sessions={sessions} before={next?.session_number} onOpenSession={id => openRecord('sessions', id)} />
+        </section>
+      )}
 
+      {/* Threads in motion, full width */}
+      <div className="ov-grid is-single">
         {/* Active Threads */}
         <div className="ov-card" onClick={() => onNavigate('threads')}>
           <div className="ov-card-head">
@@ -299,7 +286,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
                     />
                     <span className="ov-list-name">{pc.character_name}</span>
                     <span className="ov-list-meta">
-                      {`Lv ${pc.level ?? '—'} · HP ${pc.max_hp ?? '—'} · AC ${pc.armor_class ?? '—'}`}
+                      {`Lv ${pc.level ?? '—'} · HP ${pc.max_hp ?? '—'} · AC ${pc.armor_class ?? '—'}${pc.passive_perception ? ` · PP ${pc.passive_perception}` : ''}`}
                     </span>
                   </div>
                 ))}

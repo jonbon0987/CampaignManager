@@ -51,11 +51,15 @@ export type Campaign = {
   last_played: string;
   sort_order: number;
   world_date: Json | null;           // where the campaign is in the world's time, { year, day }
+  levelling: Levelling | null;       // how the party levels; null until the first wrap-up asks
   created_at: string;
   updated_at: string;
 };
 
-export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date'> & { world_date?: Json | null };
+/** How a campaign's party levels up: by experience points, or at story milestones. */
+export type Levelling = 'xp' | 'milestone';
+
+export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling'> & { world_date?: Json | null; levelling?: Levelling | null };
 
 // Campaigns fetched with an embedded session count (via PostgREST select)
 export type CampaignWithCount = Campaign & { session_count: number };
@@ -113,6 +117,9 @@ export interface PlayRoll { at: string; expr: string; total: number; rolls: numb
 /** A note jotted at the table, timestamped. */
 export interface PlayNote { id: string; at: string; text: string }
 
+/** A fight that ended during a session: its summary (lib/combat fightSummary) and XP (lib/levelling fightXp). */
+export interface PlayFight { summary: string; xp: number }
+
 /** What happened at the table, saved as the session is played. Every key is optional. */
 export interface SessionPlay {
   started_at?: string;
@@ -122,6 +129,14 @@ export interface SessionPlay {
   fight?: Fight | null;
   rolls?: PlayRoll[];
   notes?: PlayNote[];
+  /** Player characters holding inspiration (their ids). */
+  inspiration?: string[];
+  /** Where the party stopped, written in the wrap-up; Prep and "Previously on" show it next time. */
+  stopped?: string | null;
+  /** Fights cleared from Initiative during the session: how each went, and what its foes were worth. */
+  fights?: PlayFight[];
+  /** When the end-of-session wrap-up was saved or skipped, so it isn't offered again. */
+  wrapped_at?: string;
 }
 
 /** A session moves planned → live → done. */
@@ -156,6 +171,13 @@ export type PlayerCharacter = {
   is_active: boolean;
   faction_ids: string[];
   statblock_id: string | null;
+  // Read off the player's own sheet, for the party strip in Play.
+  sheet_url: string | null;          // D&D Beyond or wherever the sheet lives
+  passive_perception: number | null;
+  passive_insight: number | null;
+  passive_investigation: number | null;
+  spell_save_dc: number | null;
+  xp: number | null;                 // for tables that level by XP
   created_at: string;
   updated_at: string;
 };
@@ -357,7 +379,9 @@ type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play' | 'w
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
   & Partial<Pick<Session, SessionLifecycle>>;
 // Link columns have database defaults, so a save that leaves them out keeps what's stored.
-export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_npc_ids' | 'portrait_path'> & { key_npc_ids?: string[]; portrait_path?: string | null };
+export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_npc_ids' | 'portrait_path' | PCTableFields> & { key_npc_ids?: string[]; portrait_path?: string | null } & Partial<Pick<PlayerCharacter, PCTableFields>>;
+// The numbers off the player's sheet are optional on a save, so one that leaves them out keeps them.
+export type PCTableFields = 'sheet_url' | 'passive_perception' | 'passive_insight' | 'passive_investigation' | 'spell_save_dc' | 'xp';
 // disposition is optional: it's written by the session-recording review, and an
 // NPC save that omits it (every edit form) leaves the stored value untouched.
 export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id' | 'portrait_path'> & { disposition?: string | null; location_id?: string | null; portrait_path?: string | null };
@@ -876,7 +900,7 @@ export interface Database {
       };
       campaigns: {
         Row: Campaign;
-        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date'> & { id?: string; world_date?: Json | null };
+        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null };
         Update: Partial<Omit<Campaign, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };

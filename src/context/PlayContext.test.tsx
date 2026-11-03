@@ -108,6 +108,22 @@ describe('at the table', () => {
     expect(markMoment).toHaveBeenCalledWith('Ambush');
   });
 
+  it('keeps a line about a fight when the tracker is cleared, and empties it', () => {
+    const foe = { id: 'v', name: 'Vanguard', initiative: 10, dexMod: 0, maxHp: 52, currentHp: 52, temp: 0, deathSaves: { s: 0, f: 0 }, ac: 16, conditions: [], isPC: false, statblockId: null, notes: null };
+    const { result } = setup([makeSession({ id: 's6', status: 'live', play: { fight: { combatants: [foe], turn: 0, round: 3 } } })]);
+    act(() => { result.current.clearFight(); });
+    expect(result.current.play.fights).toEqual([{ summary: '3 rounds against Vanguard. None of them fell.', xp: 0 }]);
+    expect(result.current.fight.combatants).toEqual([]);
+  });
+
+  it('gives inspiration and takes it back', () => {
+    const { result } = setup([live()]);
+    act(() => { result.current.toggleInspiration('pc1'); });
+    expect(result.current.play.inspiration).toEqual(['pc1']);
+    act(() => { result.current.toggleInspiration('pc1'); });
+    expect(result.current.play.inspiration).toEqual([]);
+  });
+
   it('keeps only the latest 50 rolls', () => {
     const { result } = setup([live()]);
     act(() => {
@@ -133,6 +149,23 @@ describe('ending a session', () => {
     const { result } = setup([makeSession({ id: 's6', status: 'live' })], 'other');
     await act(async () => { await result.current.end(); });
     expect(endRecording).not.toHaveBeenCalled();
+  });
+
+  it('drafts the combat summary from the night’s fights, and opens the wrap-up', async () => {
+    const goblin = { id: 'g', name: 'Goblin', initiative: 12, dexMod: 2, maxHp: 7, currentHp: 0, temp: 0, deathSaves: { s: 0, f: 0 }, ac: 15, conditions: [], isPC: false, statblockId: null, notes: null };
+    const { result } = setup([makeSession({ id: 's6', status: 'live', combats: null, play: {
+      fights: [{ summary: '3 rounds against Wolf ×2. All of them fell.', xp: 100 }],
+      fight: { combatants: [goblin], turn: 0, round: 2 },
+    } })]);
+    await act(async () => { await result.current.end(); });
+    expect(updateSession.mock.calls.at(-1)![1].combats).toBe('- 3 rounds against Wolf ×2. All of them fell.\n- 2 rounds against Goblin. All of them fell.');
+    expect(result.current.wrapFor).toBe('s6');
+  });
+
+  it('never drafts over a combat summary already written', async () => {
+    const { result } = setup([makeSession({ id: 's6', status: 'live', combats: 'By hand.', play: { fights: [{ summary: 'A fight.', xp: 0 }] } })]);
+    await act(async () => { await result.current.end(); });
+    expect(updateSession.mock.calls.at(-1)![1]).not.toHaveProperty('combats');
   });
 
   it('notes the campaign’s in-world date, after time moved on, as the session’s end', async () => {

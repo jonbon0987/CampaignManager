@@ -180,6 +180,12 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
             {last.summary
               ? <p className="sp-last-body">{clip(plainText(last.summary), 420)}</p>
               : <p className="sp-empty">No recap written for that session.</p>}
+            {last.play?.stopped?.trim() && (
+              <div className="sp-last-open">
+                <div className="sp-last-label">Where you stopped</div>
+                <p className="sp-last-body">{last.play.stopped}</p>
+              </div>
+            )}
             {last.hooks_notes && (
               <div className="sp-last-open">
                 <div className="sp-last-label">Left open</div>

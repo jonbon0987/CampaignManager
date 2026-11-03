@@ -99,6 +99,8 @@ interface CampaignContextType {
 
   // Player Characters
   upsertPC: (pc: Omit<PlayerCharacterInsert, 'campaign_id'> & { id?: string }) => Promise<PlayerCharacter>;
+  /** Changes only the fields given on one player character. */
+  updatePC: (id: string, patch: Partial<Omit<PlayerCharacterInsert, 'campaign_id'>>) => Promise<PlayerCharacter>;
   deletePC: (id: string) => Promise<void>;
 
   // NPCs — scope: 'campaign' creates campaign-specific, 'global' creates in global pool
@@ -554,6 +556,12 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
     return result;
   }, [selectedCampaignId]);
 
+  const updatePC = useCallback(async (id: string, patch: Partial<Omit<PlayerCharacterInsert, 'campaign_id'>>) => {
+    const result = await PlayerCharactersDB.update(id, patch);
+    setPCs(prev => prev.map(r => (r.id === id ? result : r)));
+    return result;
+  }, []);
+
   const deletePC = useCallback(async (id: string) => {
     if (!selectedCampaignId) return;
     await PlayerCharactersDB.delete(id);
@@ -843,6 +851,7 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
       updateSession: withToast(updateSession),
       deleteSession: withUndo(deleteSession, 'sessions', 'Session deleted'),
       upsertPC: withToast(upsertPC),
+      updatePC: withToast(updatePC),
       deletePC: withUndo(deletePC, 'player_characters', 'Character deleted'),
       upsertNPC: withToast(upsertNPC),
       deleteNPC: withUndo(deleteNPC, 'npcs', 'NPC deleted'),

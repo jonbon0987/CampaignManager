@@ -84,6 +84,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     key_npcs: LIMIT.PROSE,
     dm_notes: LIMIT.PROSE,
     portrait_path: LIMIT.STATLINE,
+    sheet_url: LIMIT.STATLINE,
   },
   npcs: {
     name: LIMIT.NAME,
@@ -276,6 +277,11 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
     level: [1, 20],
     max_hp: [1, 999],
     armor_class: [1, 40],
+    passive_perception: [1, 40],
+    passive_insight: [1, 40],
+    passive_investigation: [1, 40],
+    spell_save_dc: [1, 40],
+    xp: [0, 999_999],
   },
   npcs: {
     first_session: [0, 9_999],

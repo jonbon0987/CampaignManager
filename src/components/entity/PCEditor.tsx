@@ -19,17 +19,21 @@ import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import { LinkList, WasText } from './LinkPicker';
 import { PCInventory } from '../items/ItemPlaces';
-import type { Faction, NPC, PlayerCharacter } from '../../lib/database.types';
+import { xpProgress } from '../../lib/levelling';
+import type { Faction, Levelling, NPC, PlayerCharacter } from '../../lib/database.types';
 
 export type PCFields = Pick<PlayerCharacter,
   'character_name' | 'player_name' | 'race' | 'class' | 'background' | 'story_hooks' | 'key_npcs' | 'key_npc_ids'
-  | 'dm_notes' | 'is_active' | 'faction_ids' | 'statblock_id' | 'level' | 'max_hp' | 'armor_class' | 'portrait_path'>;
+  | 'dm_notes' | 'is_active' | 'faction_ids' | 'statblock_id' | 'level' | 'max_hp' | 'armor_class' | 'portrait_path'
+  | 'sheet_url' | 'passive_perception' | 'passive_insight' | 'passive_investigation' | 'spell_save_dc' | 'xp'>;
 
 const toFields = (pc: PlayerCharacter): PCFields => ({
   character_name: pc.character_name, player_name: pc.player_name, race: pc.race, class: pc.class,
   background: pc.background, story_hooks: pc.story_hooks, key_npcs: pc.key_npcs, key_npc_ids: pc.key_npc_ids ?? [],
   dm_notes: pc.dm_notes, is_active: pc.is_active, faction_ids: pc.faction_ids ?? [], statblock_id: pc.statblock_id,
   level: pc.level, max_hp: pc.max_hp, armor_class: pc.armor_class, portrait_path: pc.portrait_path ?? null,
+  sheet_url: pc.sheet_url ?? null, passive_perception: pc.passive_perception ?? null, passive_insight: pc.passive_insight ?? null,
+  passive_investigation: pc.passive_investigation ?? null, spell_save_dc: pc.spell_save_dc ?? null, xp: pc.xp ?? null,
 });
 
 const isEmpty = (v: string | null | undefined) => !v?.trim();
@@ -37,8 +41,10 @@ const isEmpty = (v: string | null | undefined) => !v?.trim();
 type Optional = 'hooks' | 'notes' | 'statblock';
 const OPTIONAL_LABEL: Record<Optional, string> = { hooks: 'Story hooks', notes: 'DM notes', statblock: 'Stat sheet' };
 
-export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDeleted, onOpenNPC }: {
+export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDeleted, onOpenNPC, levelling }: {
   pc: PlayerCharacter;
+  /** How the campaign levels; XP shows when it's by experience (or already has a value). */
+  levelling?: Levelling | null;
   factions: Faction[];
   /** NPCs in the campaign, who can matter to this character. */
   npcs: Pick<NPC, 'id' | 'name' | 'role'>[];
@@ -63,6 +69,8 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
   });
 
   const set = <K extends keyof PCFields>(key: K, val: PCFields[K]) => setForm(f => ({ ...f, [key]: val }));
+  const sheetHref = form.sheet_url && /^https?:\/\//i.test(form.sheet_url) ? form.sheet_url : null;
+  const xpNote = xpProgress(form.xp, form.level);
 
   const handleDelete = async () => {
     if (await confirm({ title: 'Delete this character?', message: 'You can undo this from its toast or Recently deleted.', confirmLabel: 'Delete', danger: true })) {
@@ -126,6 +134,46 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
           </div>
         ))}
       </div>
+
+      {/* Read off the player's own sheet: the party strip in Play shows these */}
+      <div className="as-fl">
+        <label className="as-ll" htmlFor={`pc-sheet-${pc.id}`}>Character sheet</label>
+        <div className="pc-sheet-row">
+          <input id={`pc-sheet-${pc.id}`} className="as-input" type="url" inputMode="url" value={form.sheet_url ?? ''}
+            onChange={e => set('sheet_url', e.target.value.trim() || null)}
+            placeholder="https://www.dndbeyond.com/characters/…" maxLength={limitFor('player_characters', 'sheet_url')} />
+          {sheetHref && <a className="pc-sheet-open" href={sheetHref} target="_blank" rel="noreferrer noopener">Open ↗</a>}
+        </div>
+        {form.sheet_url && !sheetHref && <span className="as-hint">Starts with https://, as copied from the browser.</span>}
+      </div>
+
+      <div className="as-grid-4">
+        {([
+          ['passive_perception', 'Passive Perception'],
+          ['passive_insight', 'Passive Insight'],
+          ['passive_investigation', 'Passive Investigation'],
+          ['spell_save_dc', 'Spell save DC'],
+        ] as const).map(([key, label]) => (
+          <div key={key} className="as-fl">
+            <label className="as-ll" htmlFor={`pc-${key}-${pc.id}`}>{label}</label>
+            <input id={`pc-${key}-${pc.id}`} className="as-input" type="number" inputMode="numeric"
+              min={minFor('player_characters', key)} max={maxFor('player_characters', key)}
+              value={form[key] ?? ''} onChange={e => set(key, e.target.value ? parseInt(e.target.value, 10) : null)} placeholder="—" />
+          </div>
+        ))}
+      </div>
+
+      {(levelling === 'xp' || form.xp != null) && (
+        <div className="as-fl pc-xp">
+          <label className="as-ll" htmlFor={`pc-xp-${pc.id}`}>Experience</label>
+          <div className="pc-sheet-row">
+            <input id={`pc-xp-${pc.id}`} className="as-input" type="number" inputMode="numeric" style={{ maxWidth: 140 }}
+              min={minFor('player_characters', 'xp')} max={maxFor('player_characters', 'xp')}
+              value={form.xp ?? ''} onChange={e => set('xp', e.target.value ? parseInt(e.target.value, 10) : null)} placeholder="0" />
+            {xpNote && <span className="as-hint">{xpNote}</span>}
+          </div>
+        </div>
+      )}
 
       <div className="as-fl">
         <label className="as-ll">Background</label>
