@@ -69,12 +69,13 @@ export interface AppSidebarProps {
   onOpenRecent?: (tab: Tab, id: string) => void;
   runMode?: boolean;
   onToggleRun?: () => void;
+  onExport?: () => void;
 }
 
 export default function AppSidebar({
   scope, activeId, onNavigate, collapsed: collapsedProp, onToggleCollapsed,
   isMobile, mobileOpen, onCloseMobile, onOpenShortcuts,
-  campaignId = null, onOpenRecent, runMode = false, onToggleRun,
+  campaignId = null, onOpenRecent, runMode = false, onToggleRun, onExport,
 }: AppSidebarProps) {
   const world = useWorld();
   const confirm = useConfirm();
@@ -112,6 +113,7 @@ export default function AppSidebar({
   };
   const footMenu: OverflowMenuEntry[] = [
     ...(scope === 'campaign' ? [{ label: 'Campaign settings', onClick: () => go('settings') }] : []),
+    ...(onExport ? [{ label: 'Export campaign…', onClick: onExport }] : []),
     { label: 'Recently deleted', onClick: () => setDeletedOpen(true) },
     { label: 'Keyboard shortcuts', onClick: onOpenShortcuts },
     { sep: true },

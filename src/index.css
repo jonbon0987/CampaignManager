@@ -3940,3 +3940,12 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .wc-days { width: 64px; flex-shrink: 0; }
 .wc-unit { width: 48px; flex-shrink: 0; font-size: 12px; color: var(--ink-3); }
 @media (max-width: 640px) { .wc-preset { margin-left: 0; } }
+
+/* ═══ Export (components/export/ExportCampaign) ═══ */
+.ex { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.ex-note { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.ex-note code { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.ex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ex-status { font-size: 13px; color: var(--ink-3); }
+.ex-warn { margin: 0; font-size: 13px; color: var(--warn); }
+.ex-foot { display: flex; justify-content: flex-end; }

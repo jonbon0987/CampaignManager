@@ -33,6 +33,7 @@ import CampaignCreationGate from './components/world/CampaignCreationGate';
 import CanvasLoading from './components/ui/CanvasLoading';
 import { RecordingProvider } from './context/RecordingContext';
 import { RecordingIndicator, StartRecordingModal } from './components/session/RecorderPanel';
+import { ExportCampaignDialog } from './components/export/ExportCampaign';
 import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayerShareProvider } from './context/PlayerShareContext';
 import { ItemsProvider } from './context/ItemsContext';
@@ -113,6 +114,7 @@ function AppInner() {
   const chrome = useShellChrome({ hasNote: true });
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState('all');
+  const [exportOpen, setExportOpen] = useState(false);
   // A record the user asked to open (search, Recent, a link). The destination
   // tab reads its id, selects that record, then clears the target.
   const [openTarget, setOpenTarget] = useState<{ tab: Tab; id: string; kind?: string } | null>(
@@ -215,6 +217,7 @@ function AppInner() {
     openSessionTools: () => showTool('initiative'),
     openNote: chrome.openNote,
     openShortcuts: chrome.toggleShortcuts,
+    openExport: () => setExportOpen(true),
     backToWorld: world.backToWorld,
   // chrome's openers are stable callbacks or plain setters
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,6 +249,7 @@ function AppInner() {
           onOpenRecent={openRecord}
           runMode={runMode}
           onToggleRun={toggleRun}
+          onExport={() => setExportOpen(true)}
         />
 
         {/* Main column */}
@@ -310,6 +314,7 @@ function AppInner() {
         />
         {play.startOpen && <StartSessionDialog />}
         {play.recordFor && <StartRecordingModal session={play.recordFor} onClose={() => { play.clearRecordFor(); showTool('record'); }} />}
+        {exportOpen && <ExportCampaignDialog onClose={() => setExportOpen(false)} />}
         <ShortcutsOverlay open={chrome.shortcutsOpen} onClose={chrome.closeShortcuts} />
         <WorldImportDrawer
           open={importOpen}
