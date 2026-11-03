@@ -13,6 +13,12 @@ vi.mock('../../context/CampaignContext', () => ({ useCampaign: () => h.campaign.
 vi.mock('../../context/NavigationContext', () => ({ useOpenRecord: () => h.open }));
 // Handouts load from the database; Prep's tests are about the plan.
 vi.mock('../../hooks/useHandouts', () => ({ useHandouts: () => ({ handouts: [], adding: false, add: vi.fn(), rename: vi.fn(), remove: vi.fn() }) }));
+// The sheet itself is tested on its own.
+vi.mock('./PrepSheet', () => ({
+  PrepSheet: ({ session, onClose }: { session: { session_number: number }; onClose: () => void }) => (
+    <div role="dialog" aria-label="Prep sheet">Sheet for {session.session_number}<button onClick={onClose}>Close sheet</button></div>
+  ),
+}));
 vi.mock('../ui/SlashField', () => ({
   SlashField: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
     <textarea aria-label="Prep notes" value={value ?? ''} onChange={e => onChange(e.target.value)} />
@@ -51,6 +57,15 @@ beforeEach(() => {
 });
 
 describe('SessionPrep', () => {
+  it('opens the prep sheet to print, and closes it', () => {
+    renderPrep();
+    expect(screen.queryByRole('dialog', { name: 'Prep sheet' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Print prep sheet' }));
+    expect(screen.getByRole('dialog', { name: 'Prep sheet' }).textContent).toContain('Sheet for 6');
+    fireEvent.click(screen.getByRole('button', { name: 'Close sheet' }));
+    expect(screen.queryByRole('dialog', { name: 'Prep sheet' })).toBeNull();
+  });
+
   it('recaps the previous played session, with what was left open', () => {
     const { onOpenSession } = renderPrep();
     expect(screen.getByText('Met Brenna at the docks.')).toBeTruthy();

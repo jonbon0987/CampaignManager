@@ -2,7 +2,7 @@
 // plans to use. The plan is stored as links on the session record, so the
 // agenda, threads, encounters and NPCs stay current as their records change.
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useOpenRecord } from '../../context/NavigationContext';
@@ -12,6 +12,7 @@ import { IconButton } from '../ui/IconButton';
 import { HandoutGallery } from '../handouts/HandoutGallery';
 import { useHandouts } from '../../hooks/useHandouts';
 import { ReadAloud } from '../ui/ReadAloudBlock';
+import { PrepSheet } from './PrepSheet';
 import { Button } from '../ui/Button';
 import { limitFor } from '../../lib/fieldLimits';
 import { clip, formatSessionDate, lastPlayed, planIds, plainText, prepDone, withPlanIds, PREP_PARTS, sessionName, type PrepPart } from '../../lib/sessionLifecycle';
@@ -79,6 +80,7 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
   const { hooks, encounters, npcs, modules, submodules, scenes, loadModuleTree } = useCampaign();
   const openRecord = useOpenRecord();
   const open = (tab: Tab, id: string, kind?: string) => () => openRecord(tab, id, kind);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // The agenda picks from every scene in the campaign, which the module
   // screens only load one branch at a time.
@@ -150,15 +152,19 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
 
   return (
     <div className="sp">
-      <nav className="sp-progress" aria-label="Prep progress">
-        <span className="sp-progress-count">{Object.values(done).filter(Boolean).length} of {PREP_PARTS.length} ready</span>
-        {PREP_PARTS.map(p => (
-          <a key={p.id} href={`#prep-${p.id}`} className={`sp-progress-part${done[p.id] ? ' is-done' : ''}`}
-            onClick={e => { e.preventDefault(); document.getElementById(`prep-${p.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
-            <span aria-hidden>{done[p.id] ? '✓' : '○'}</span> {p.label}
-          </a>
-        ))}
-      </nav>
+      <div className="sp-top">
+        <nav className="sp-progress" aria-label="Prep progress">
+          <span className="sp-progress-count">{Object.values(done).filter(Boolean).length} of {PREP_PARTS.length} ready</span>
+          {PREP_PARTS.map(p => (
+            <a key={p.id} href={`#prep-${p.id}`} className={`sp-progress-part${done[p.id] ? ' is-done' : ''}`}
+              onClick={e => { e.preventDefault(); document.getElementById(`prep-${p.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+              <span aria-hidden>{done[p.id] ? '✓' : '○'}</span> {p.label}
+            </a>
+          ))}
+        </nav>
+        <Button size="xs" variant="secondary" onClick={() => setSheetOpen(true)}>Print prep sheet</Button>
+      </div>
+      {sheetOpen && <PrepSheet session={session} sessions={sessions} plan={plan} prepNotes={prepNotes} onClose={() => setSheetOpen(false)} />}
 
       <section className="sp-part">
         <div className="cm-section-head">

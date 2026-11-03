@@ -5,6 +5,7 @@ import type { WorldCampaign } from '../../types/world';
 import { signOut } from '../../lib/auth';
 import { Button } from '../ui/Button';
 import { DiscordBotSettings } from '../session/DiscordBotSettings';
+import { ExportCampaignPanel } from '../export/ExportCampaign';
 
 function SettingRow({ label, help, children }: { label: string; help: string; children: React.ReactNode }) {
   return (
@@ -79,6 +80,16 @@ export default function SettingsView() {
                   </div>
                 </SettingRow>
               )}
+            </section>
+
+            {/* Backup */}
+            <section className="cm-section">
+              <div className="cm-section-head">
+                <span className="cm-section-rule" />
+                <span className="cm-section-title">Backup</span>
+                <span className="cm-section-rule" />
+              </div>
+              <ExportCampaignPanel />
             </section>
 
             {/* Discord */}
