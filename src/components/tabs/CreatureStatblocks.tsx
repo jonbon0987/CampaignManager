@@ -4,6 +4,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { StatBlockText } from '../ui/StatBlockText';
+import { RollableText } from '../ui/RollableText';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock } from '../../lib/campaignContext';
@@ -183,11 +184,11 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
     initiative || proficiency ||
     m.saving_throws || m.skills || m.damage_resistances || m.damage_immunities || m.condition_immunities || m.senses || m.languages;
 
-  const traitRow = (label: string, value: string | null) =>
+  const traitRow = (label: string, value: string | null, rollable?: 'checks') =>
     value ? (
       <div key={label} style={{ fontSize: '0.8rem', color: 'var(--ink)', lineHeight: '1.5' }}>
         <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{label}: </span>
-        {value}
+        {rollable ? <RollableText text={value} checks source={m.name} /> : value}
       </div>
     ) : null;
 
@@ -235,7 +236,9 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
                   {score ?? '—'}
                 </div>
                 {score != null && (
-                  <div style={{ fontSize: '0.7rem', color: 'var(--ink-2)' }}>{abilityMod(score)}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--ink-2)' }}>
+                    <RollableText text={`${key[0].toUpperCase()}${key.slice(1)} ${abilityMod(score)}`} checks source={m.name} />
+                  </div>
                 )}
               </div>
             );
@@ -248,8 +251,8 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {traitRow('Initiative', initiative)}
           {traitRow('Proficiency Bonus', proficiency)}
-          {traitRow('Saving Throws', m.saving_throws)}
-          {traitRow('Skills', m.skills)}
+          {traitRow('Saving Throws', m.saving_throws, 'checks')}
+          {traitRow('Skills', m.skills, 'checks')}
           {traitRow('Damage Resistances', m.damage_resistances)}
           {traitRow('Damage Immunities', m.damage_immunities)}
           {traitRow('Condition Immunities', m.condition_immunities)}
@@ -265,6 +268,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
           <StatBlockText
             as="pre"
             text={m.content}
+            rollableFor={m.name}
             style={{
               color: 'var(--ink)',
               lineHeight: '1.7',

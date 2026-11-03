@@ -52,6 +52,7 @@ function DiceTray() {
           const nat = d20Natural(r);
           return (
             <li key={`${r.at}-${i}`} className={`pt-roll${i === 0 ? ' is-latest' : ''}`}>
+              {r.label && <span className="pt-roll-label">{r.label}</span>}
               <span className="pt-roll-expr">{r.expr}</span>
               {r.rolls.length > 1 && <span className="pt-roll-detail">[{r.rolls.join(', ')}]</span>}
               <span className={`pt-roll-total${nat ? ` is-${nat}` : ''}`}>{r.total}</span>

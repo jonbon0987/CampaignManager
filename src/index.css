@@ -1891,8 +1891,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .pt-row .as-input { flex: 1; min-width: 0; }
 .pt-dice { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .pt-log, .pt-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.pt-roll { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--paper); font-family: var(--mono); font-size: 12px; }
+.pt-roll { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--paper); font-family: var(--mono); font-size: 12px; }
 .pt-roll.is-latest { border-color: var(--gold-line); }
+.pt-roll-label { flex: 1 1 100%; font-family: var(--serif); font-size: 13px; color: var(--ink); }
 .pt-roll-expr { color: var(--ink-2); }
 .pt-roll-detail { color: var(--ink-3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .pt-roll-total { margin-left: auto; font-size: 16px; color: var(--ink); font-weight: 600; }
@@ -2796,6 +2797,17 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .enc-rate-head { display: flex; align-items: baseline; gap: 10px; }
 .enc-rate-tier { font-family: var(--display); font-size: 20px; text-transform: capitalize; }
 .enc-rate-xp { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.enc-advice { margin: 8px 0 0; font-size: 14px; color: var(--ink-2); }
+.enc-advice::before { content: "↳ "; color: var(--gold); }
+
+/* Dice in a stat block (ui/RollableText) */
+.rl { white-space: nowrap; }
+.rl-chip { font: inherit; color: var(--gold); background: var(--gold-dim); border: 1px solid var(--gold-line); border-radius: 4px; padding: 0 4px; cursor: pointer; }
+.rl-chip:hover { border-color: var(--gold); }
+.rl-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.rl-out { margin-left: 4px; font-family: var(--mono); font-size: 0.85em; font-weight: 600; color: var(--ink); }
+.rl-out.is-crit { color: var(--moss); }
+.rl-out.is-fumble { color: var(--red); }
 .enc-scale { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .enc-scale-step {
   display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px;

@@ -2,6 +2,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { useToast } from '../../context/ToastContext';
 import type { WorldCampaign } from '../../types/world';
+import type { Levelling, RulesEdition } from '../../lib/database.types';
 import { signOut } from '../../lib/auth';
 import { Button } from '../ui/Button';
 import { DiscordBotSettings } from '../session/DiscordBotSettings';
@@ -33,11 +34,23 @@ const STATUSES: { id: WorldCampaign['status']; label: string }[] = [
   { id: 'completed', label: 'Completed' },
 ];
 
+const EDITIONS: RulesEdition[] = ['2014', '2024'];
+const LEVELLING: { id: Levelling; label: string }[] = [
+  { id: 'xp', label: 'By XP' },
+  { id: 'milestone', label: 'By milestone' },
+];
+
 export default function SettingsView() {
-  const { selectedCampaign } = useCampaign();
+  const { selectedCampaign, updateCampaign: updateCampaignRow } = useCampaign();
   const { campaigns, updateCampaign } = useWorld();
   const toast = useToast();
   const worldCampaign = campaigns.find(c => c.id === selectedCampaign?.id) ?? null;
+
+  const setRules = (patch: { rules_edition?: RulesEdition; levelling?: Levelling }) => {
+    if (!selectedCampaign) return;
+    updateCampaignRow(selectedCampaign.id, patch)
+      .catch(e => toast(e instanceof Error ? e.message : 'Couldn’t save the rules.', 'error'));
+  };
 
   const setStatus = (status: WorldCampaign['status']) => {
     if (!worldCampaign) return;
@@ -81,6 +94,41 @@ export default function SettingsView() {
                 </SettingRow>
               )}
             </section>
+
+            {/* Rules: which edition rates encounters, and how the party levels */}
+            {selectedCampaign && (
+              <section className="cm-section">
+                <div className="cm-section-head">
+                  <span className="cm-section-rule" />
+                  <span className="cm-section-title">Rules</span>
+                  <span className="cm-section-rule" />
+                </div>
+                <SettingRow
+                  label="Edition"
+                  help="Encounter difficulty follows it: the 2014 thresholds and multipliers, or the 2024 XP budget (Low, Moderate, High)."
+                >
+                  <div className="flex gap-1" role="radiogroup" aria-label="Rules edition">
+                    {EDITIONS.map(ed => (
+                      <TogglePill key={ed} active={(selectedCampaign.rules_edition ?? '2014') === ed} onClick={() => setRules({ rules_edition: ed })}>
+                        {ed} rules
+                      </TogglePill>
+                    ))}
+                  </div>
+                </SettingRow>
+                <SettingRow
+                  label="Levelling"
+                  help="What the end-of-session wrap-up asks: XP from the night's fights, or a level at a milestone."
+                >
+                  <div className="flex gap-1" role="radiogroup" aria-label="Levelling">
+                    {LEVELLING.map(l => (
+                      <TogglePill key={l.id} active={selectedCampaign.levelling === l.id} onClick={() => setRules({ levelling: l.id })}>
+                        {l.label}
+                      </TogglePill>
+                    ))}
+                  </div>
+                </SettingRow>
+              </section>
+            )}
 
             {/* Backup */}
             <section className="cm-section">

@@ -15,6 +15,9 @@ import {
   partyThresholds,
   rateEncounter,
   isUnratable,
+  adviseEncounter,
+  partyBudget2024,
+  stepReached,
   type ScaleCreature,
   type EncounterParams,
 } from './encounterScaling';
@@ -200,5 +203,49 @@ describe('partyLevels', () => {
   it('falls back to the size and level typed in', () => {
     expect(partyLevels([{ name: 'A', level: null }], '3', '7')).toEqual([7, 7, 7]);
     expect(partyLevels(undefined, '2', '')).toEqual([]);
+  });
+});
+
+describe('rating by the 2024 rules', () => {
+  it('sums the party’s XP budgets', () => {
+    expect(partyBudget2024([3])).toEqual([150, 225, 400]);
+    expect(partyBudget2024([5, 5, 5, 5])).toEqual([2000, 3000, 4400]);
+  });
+
+  it('rates plain XP against the budgets, with no multiplier', () => {
+    const four5 = [5, 5, 5, 5];
+    // four goblins: 200 XP, within the Low budget of 2000
+    expect(rateEncounter([{ cr: '1/4', count: 4 }], four5, '2024')).toMatchObject({ xp: 200, tier: 'low', edition: '2024' });
+    expect(rateEncounter([{ cr: '5', count: 1 }, { cr: '1/2', count: 4 }], four5, '2024')?.tier).toBe('moderate'); // 2200
+    expect(rateEncounter([{ cr: '7', count: 1 }, { cr: '2', count: 2 }], four5, '2024')?.tier).toBe('high'); // 3800
+    expect(rateEncounter([{ cr: '2', count: 3 }], [3], '2024')).toMatchObject({ xp: 1350, tier: 'beyond' });
+  });
+
+  it('fills the scale up to the tier', () => {
+    const r = rateEncounter([{ cr: '1', count: 1 }], [3], '2024')!; // 200 → moderate
+    expect(r.steps).toEqual(['low', 'moderate', 'high']);
+    expect([0, 1, 2].map(i => stepReached(r, i))).toEqual([true, true, false]);
+  });
+
+  it('still rates by 2014 unless told otherwise', () => {
+    expect(rateEncounter([{ cr: '2', count: 3 }], [3])).toMatchObject({ edition: '2014', tier: 'deadly', steps: ['easy', 'medium', 'hard', 'deadly'] });
+  });
+});
+
+describe('difficulty advice', () => {
+  const vanguards = [{ name: 'Shattered Vanguard', cr: '2', count: 3 }];
+
+  it('says nothing about an encounter that isn’t over the top', () => {
+    expect(adviseEncounter([{ name: 'Wolf', cr: '1/4', count: 2 }], [3])).toBeNull();
+  });
+
+  it('suggests fewer of the main foe when that’s enough', () => {
+    // four level-5s against eight CR 2s is deadly; four of them is hard
+    expect(adviseEncounter([{ name: 'Ogre Thug', cr: '2', count: 8 }], [5, 5, 5, 5])).toBe("With 4 Ogre Thug instead of 8, it's Hard.");
+  });
+
+  it('suggests a single smaller creature when even one is too much', () => {
+    expect(adviseEncounter(vanguards, [3])).toBe('Even one Shattered Vanguard is Deadly for this party; a single CR 1 creature is Hard.');
+    expect(adviseEncounter(vanguards, [3], '2024')).toBe('Even one Shattered Vanguard is Beyond High for this party; a single CR 1 creature is Moderate.');
   });
 });

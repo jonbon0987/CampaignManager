@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { useEntityRefs } from '../../context/EntityRefContext';
 import { parseSegments, hasRefs, refRegex, KIND_GLYPH, KIND_LABEL } from '../../lib/slashMarkdown';
 import type { RefKind } from '../../lib/slashMarkdown';
+import { RollableText } from './RollableText';
 
 /** Reference kinds. `creature` is accepted on read as a legacy alias for `statblock`. */
 type EntityType = RefKind;
@@ -64,14 +65,17 @@ interface StatBlockTextProps {
   as?: 'pre' | 'p' | 'div';
   style?: CSSProperties;
   className?: string;
+  /** Make the attack, damage and save numbers dice to click, naming the creature in the dice log. */
+  rollableFor?: string;
 }
 
-export function StatBlockText({ text, as: Tag = 'p', style, className }: StatBlockTextProps) {
+export function StatBlockText({ text, as: Tag = 'p', style, className, rollableFor }: StatBlockTextProps) {
   if (!text) return null;
+  const plain = (value: string) => (rollableFor !== undefined ? <RollableText text={value} source={rollableFor} /> : value);
 
   // Fast path: no entity links — render the plain element.
   if (!hasRefs(text)) {
-    return <Tag style={style} className={className}>{text}</Tag>;
+    return <Tag style={style} className={className}>{plain(text)}</Tag>;
   }
 
   const segments = parseSegments(text);
@@ -79,7 +83,7 @@ export function StatBlockText({ text, as: Tag = 'p', style, className }: StatBlo
     <Tag style={style} className={className}>
       {segments.map((seg, i) =>
         seg.type === 'text' ? (
-          <span key={i}>{seg.value}</span>
+          <span key={i}>{plain(seg.value)}</span>
         ) : (
           <EntityChip key={i} entityType={seg.entityType} id={seg.id} displayName={seg.displayName} />
         ),

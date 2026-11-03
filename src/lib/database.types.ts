@@ -52,6 +52,7 @@ export type Campaign = {
   sort_order: number;
   world_date: Json | null;           // where the campaign is in the world's time, { year, day }
   levelling: Levelling | null;       // how the party levels; null until the first wrap-up asks
+  rules_edition: RulesEdition | null; // which rules rate encounters; null reads as 2014
   created_at: string;
   updated_at: string;
 };
@@ -59,7 +60,10 @@ export type Campaign = {
 /** How a campaign's party levels up: by experience points, or at story milestones. */
 export type Levelling = 'xp' | 'milestone';
 
-export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling'> & { world_date?: Json | null; levelling?: Levelling | null };
+/** Which edition's rules a campaign plays by. */
+export type RulesEdition = '2014' | '2024';
+
+export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition'> & { world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null };
 
 // Campaigns fetched with an embedded session count (via PostgREST select)
 export type CampaignWithCount = Campaign & { session_count: number };
@@ -112,7 +116,7 @@ export type Session = {
 };
 
 /** A dice roll made during a session, newest first in its log. */
-export interface PlayRoll { at: string; expr: string; total: number; rolls: number[] }
+export interface PlayRoll { at: string; expr: string; total: number; rolls: number[]; /** What was rolled for: "Goblin · +4 to hit". */ label?: string }
 
 /** A note jotted at the table, timestamped. */
 export interface PlayNote { id: string; at: string; text: string }
@@ -900,7 +904,7 @@ export interface Database {
       };
       campaigns: {
         Row: Campaign;
-        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null };
+        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null };
         Update: Partial<Omit<Campaign, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
