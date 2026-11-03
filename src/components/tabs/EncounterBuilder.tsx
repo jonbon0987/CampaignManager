@@ -14,7 +14,7 @@ import {
   parseCombatants,
   type EncounterSaveData,
 } from '../ui/EncounterDetail';
-import { partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
+import { isUnratable, partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
 
 // ================================================================
 // Main component
@@ -56,11 +56,13 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
     () => pcs.filter(p => p.is_active).map(p => ({ name: p.character_name, level: p.level })),
     [pcs],
   );
-  const tierOf = (enc: Encounter) =>
-    rateEncounter(
-      parseCombatants(enc.combatants).map(c => ({ cr: c.challenge_rating, count: c.count })),
-      partyLevels(partyByLevel, String(enc.party_size ?? ''), String(enc.party_level ?? '')),
-    )?.tier ?? enc.difficulty;
+  // The worked-out tier; a stored one only while the creatures can't say, and
+  // never when none of them has a CR (that's a leftover default, not a rating).
+  const tierOf = (enc: Encounter) => {
+    const foes = parseCombatants(enc.combatants).map(c => ({ cr: c.challenge_rating, count: c.count }));
+    const rated = rateEncounter(foes, partyLevels(partyByLevel, String(enc.party_size ?? ''), String(enc.party_level ?? '')));
+    return rated?.tier ?? (isUnratable(foes) ? null : enc.difficulty);
+  };
 
   // Adapter so the shared EncounterDetail can call the campaign upsert
   const campaignUpsert = useCallback(
@@ -74,7 +76,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
   const handleAdd = async () => {
     const e = await upsertEncounter({
       name: '',
-      difficulty: 'medium',
+      difficulty: null,
       status: 'draft',
       sort_order: encounters.length,
       description: null,
@@ -139,10 +141,11 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
           : filtered.map(enc => {
             const tier = tierOf(enc);
             const dc = tier ? difficultyColors[tier] : null;
+            const unrated = !tier && isUnratable(parseCombatants(enc.combatants).map(c => ({ cr: c.challenge_rating, count: c.count })));
             return (
               <ListRow key={enc.id} active={selectedEnc?.id === enc.id} onClick={() => setSelectedId(enc.id)} glyph="⚔"
                 title={enc.name || 'Unnamed encounter'} subtitle={enc.environment ?? undefined}
-                badges={<>{dc && badge(dc, tier!)}{badge(statusColors[enc.status] ?? statusColors.draft, enc.status)}</>} />
+                badges={<>{dc && badge(dc, tier!)}{unrated && badge(statusColors.draft, 'unrated')}{badge(statusColors[enc.status] ?? statusColors.draft, enc.status)}</>} />
             );
           })}
         detail={selectedEnc ? (

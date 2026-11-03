@@ -229,7 +229,7 @@ export default function Threads({ openId, onOpenConsumed }: { openId?: string | 
                 <>
                   <IdeaComposer onAdd={(text, tag) => upsertIdea({ text, tag: tag || null, promoted_hook_id: null })} />
                   {inbox.map(i => <IdeaCard key={i.id} idea={i} onPromote={(idea, to) => void promote(idea, to)} onDismiss={idea => void dismiss(idea)} />)}
-                  {inbox.length === 0 && <p className="th-empty">{q ? 'No ideas match.' : 'Nothing waiting. Jot ideas here, or anywhere with ⌘.'}</p>}
+                  {inbox.length === 0 && <p className="th-empty">{q ? 'No ideas match.' : <>Nothing waiting. Jot ideas here, or press <kbd className="cm-kbd">⌘.</kbd> from anywhere.</>}</p>}
                 </>
               )}
               {cards.map(h => <ThreadCard key={h.id} h={h} onOpen={() => setOpenThreadId(h.id)} />)}

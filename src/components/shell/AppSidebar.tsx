@@ -36,14 +36,15 @@ const CAMPAIGN_NAV: NavGroup[] = [
   ] },
 ];
 
-// Status-adaptive copy for the world's campaign cards.
+// Status-adaptive copy for the world's campaign cards. This is the campaign's
+// status, not whether a session is live, so it never says "now playing".
 const CAMPAIGN_EYEBROW: Record<WorldCampaign['status'], string> = {
-  active: 'Now playing',
+  active: 'Active campaign',
   paused: 'Paused campaign',
   completed: 'Completed',
 };
 const CAMPAIGN_CTA: Record<WorldCampaign['status'], string> = {
-  active: 'Continue session ›',
+  active: 'Open campaign ›',
   paused: 'Resume campaign ›',
   completed: 'Reopen chronicle ›',
 };

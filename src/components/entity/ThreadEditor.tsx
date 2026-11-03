@@ -2,6 +2,7 @@
 // saves as you type, and empty parts wait in an Add row.
 
 import { useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -60,7 +61,7 @@ export function ThreadEditor({ thread, save, remove, onDeleted, onPromote, onClo
 
       <div className="cm-eyebrow">Thread</div>
 
-      <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Thread title…" maxLength={limitFor('hooks', 'title')} aria-label="Title" />
+      <TitleInput value={form.title} onChange={e => set('title', e.target.value)} placeholder="Thread title…" maxLength={limitFor('hooks', 'title')} aria-label="Title" />
 
       <div className="as-fl">
         <span className="as-ll">State</span>

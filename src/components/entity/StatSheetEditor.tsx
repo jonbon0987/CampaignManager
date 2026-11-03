@@ -3,6 +3,7 @@
 // sheet at the table happens in the rail (StatBlockPanel).
 
 import { useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -98,7 +99,7 @@ export function StatSheetEditor({ statblock, scope, save, remove, onDeleted, onV
 
       <div className="cm-eyebrow">{scope === 'world' ? 'World stat sheet' : 'Stat sheet'}</div>
 
-      <input className="as-title" value={form.name} onChange={field('name')} placeholder="Creature name…" maxLength={limitFor('monster_statblocks', 'name')} aria-label="Name" />
+      <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Creature name…" maxLength={limitFor('monster_statblocks', 'name')} aria-label="Name" />
 
       <div className="as-meta">
         <div className="as-mi">

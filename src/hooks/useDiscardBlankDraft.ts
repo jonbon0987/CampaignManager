@@ -3,7 +3,30 @@ import { useEffect, useRef } from 'react';
 // "+ New" saves an empty record so its page can open straight away. Records
 // made that way are drafts until the DM leaves them; one left without anything
 // written in it is deleted, so abandoned drafts don't pile up as "Unnamed" rows.
-const drafts = new Set<string>();
+//
+// The draft list is kept in localStorage too. A reload or a closed tab skips the
+// cleanup below, and the URL (or "wherever you were last") reopens the same
+// record, so remembering it lets leaving it then still delete it.
+const STORE_KEY = 'cm-drafts';
+const KEEP = 50;
+const drafts = loadDrafts();
+
+function loadDrafts(): Set<string> {
+  try {
+    const ids: unknown = JSON.parse(localStorage.getItem(STORE_KEY) ?? '[]');
+    return new Set(Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDrafts() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify([...drafts].slice(-KEEP)));
+  } catch {
+    // Storage off or full: drafts are still cleaned up within this visit.
+  }
+}
 // Deletes waiting a tick, so a record that's straight back (React re-runs
 // effects once in development) cancels its own delete.
 const pending = new Map<string, ReturnType<typeof setTimeout>>();
@@ -11,6 +34,7 @@ const pending = new Map<string, ReturnType<typeof setTimeout>>();
 /** Marks a record "+ New" just created, so leaving it blank deletes it. */
 export function markDraft(id: string) {
   drafts.add(id);
+  saveDrafts();
 }
 
 /**
@@ -35,6 +59,7 @@ export function useDiscardBlankDraft(id: string, blank: boolean, remove: (id: st
       pending.set(left.id, setTimeout(() => {
         pending.delete(left.id);
         drafts.delete(left.id);
+        saveDrafts();
         if (left.blank) void Promise.resolve(left.remove(left.id)).catch(() => {});
       }, 0));
     };

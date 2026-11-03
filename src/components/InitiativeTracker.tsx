@@ -7,6 +7,8 @@ import {
 } from '../lib/combat';
 import { useFight } from '../hooks/useFight';
 import { useStatBlockPanel } from '../context/StatBlockPanelContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { plural } from '../lib/plural';
 import StatBlockPanel from './StatBlockPanel';
 
 interface InitiativeTrackerProps {
@@ -46,7 +48,8 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
     round: 1,
   }));
   const f = useFight(fight, setFight);
-  const { openStatBlock, activeStatBlockId } = useStatBlockPanel();
+  const { openStatBlock, activeStatBlockId, closeStatBlock } = useStatBlockPanel();
+  const confirm = useConfirm();
   const [conditionMenuId, setConditionMenuId] = useState<string | null>(null);
   const [addingCombatant, setAddingCombatant] = useState(false);
   const [newCombatantName, setNewCombatantName] = useState('');
@@ -61,6 +64,23 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
     f.add([newCombatant(newCombatantName.trim())]);
     setNewCombatantName('');
     setAddingCombatant(false);
+  };
+
+  // A fight under way is only in memory here, so ending it asks first. Either
+  // way the stat sheet docked beside it closes with it.
+  const endFight = async () => {
+    if (started) {
+      const foes = fight.combatants.filter(c => !c.isPC);
+      const down = foes.filter(c => c.currentHp <= 0).length;
+      const ok = await confirm({
+        title: 'End this fight?',
+        message: `Round ${round}${foes.length > 0 ? `, ${down} of ${plural(foes.length, 'foe')} down` : ''}. The tracker isn’t kept once it closes.`,
+        confirmLabel: 'End fight',
+      });
+      if (!ok) return;
+    }
+    closeStatBlock();
+    onClose();
   };
 
   const allHaveInitiative = fight.combatants.every(c => c.initiative !== null);
@@ -144,7 +164,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
               <button onClick={f.next} style={primaryBtn}>Next turn ▶</button>
             </>
           )}
-          <button onClick={onClose} style={exitBtn}>✕ End</button>
+          <button onClick={() => void endFight()} style={exitBtn}>✕ End</button>
         </div>
       </div>
 

@@ -12,7 +12,7 @@ const GROUPS: { title: string; shortcuts: Shortcut[] }[] = [
   { title: 'Anywhere', shortcuts: [
     { keys: ['⌘', 'K'], label: 'Search, jump, create, roll or ask' },
     { keys: ['⌘', 'J'], label: 'Assistant' },
-    { keys: ['⌘', '.'], label: 'Quick note to Ideas', campaignOnly: true },
+    { keys: ['⌘', '.'], label: 'Quick note to the Threads Inbox', campaignOnly: true },
     { keys: ['⌘', '\\'], label: 'Collapse sidebar' },
   ]},
   { title: 'Editing', shortcuts: [

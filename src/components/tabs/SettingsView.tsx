@@ -116,7 +116,7 @@ export default function SettingsView() {
                   onClick={signOut}
                   style={{ color: 'var(--red)' }}
                 >
-                  Sign out
+                  Log out
                 </Button>
               </div>
             </section>

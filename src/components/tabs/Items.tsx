@@ -3,6 +3,7 @@
 // the world.
 
 import { useEffect, useMemo, useState } from 'react';
+import { firstNamed } from '../../lib/firstNamed';
 import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useItems } from '../../context/items';
@@ -44,7 +45,7 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
   const heldIds = new Set(holdings.map(h => h.item_id));
   const held = shown.filter(i => heldIds.has(i.id));
   const unheld = shown.filter(i => !heldIds.has(i.id));
-  const selected = shown.find(i => i.id === selectedId) ?? shown[0] ?? null;
+  const selected = shown.find(i => i.id === selectedId) ?? firstNamed(shown, i => i.name) ?? null;
 
   if (!ctx) return null;
 

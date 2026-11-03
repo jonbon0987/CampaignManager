@@ -5,6 +5,7 @@
    renders a dependency map.
    ════════════════════════════════════════════════════════════════ */
 import { useState, useRef } from 'react';
+import { TitleInput } from '../../ui/TitleInput';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
 import { useAutoSave } from '../../../hooks/useAutoSave';
@@ -86,7 +87,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
         </div>
 
         <div className="md-eyebrow">Module overview</div>
-        <input className="as-title" value={form.title} placeholder="Module title…"
+        <TitleInput value={form.title} placeholder="Module title…"
           onChange={e => set('title', e.target.value)} maxLength={limitFor('modules', 'title')} />
 
         {/* meta controls */}

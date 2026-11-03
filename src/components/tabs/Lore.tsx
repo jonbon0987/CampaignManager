@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { firstNamed } from '../../lib/firstNamed';
 import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
@@ -56,7 +57,7 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
 
   const imported = all.filter(i => i.origin === 'imported');
   const local = all.filter(i => i.origin === 'local');
-  const selected = all.find(x => x.id === selectedId) || all[0] || null;
+  const selected = all.find(x => x.id === selectedId) || firstNamed(all, x => x.raw.title) || null;
 
   const handleSelect = (item: LoreItem) => {
     setSelectedId(item.id);

@@ -75,6 +75,21 @@ describe('ModuleWeb', () => {
     await waitFor(() => expect(screen.getByText('3 chapters · 0 parts · 0 scenes')).toBeTruthy());
   });
 
+  it('counts every part and scene in the shown chapters, collapsed or not', async () => {
+    h.getSubmodulesByModules.mockResolvedValue([
+      makeSubmodule('s1', { module_id: 'm1' }),
+      makeSubmodule('s2', { module_id: 'm1' }),
+    ]);
+    h.getScenesBySubmodules.mockResolvedValue([
+      makeScene('x1', { submodule_id: 's1' }),
+      makeScene('x2', { submodule_id: 's1' }),
+      makeScene('x3', { submodule_id: 's2' }),
+    ]);
+    render(<ModuleWeb />);
+    // Nothing is expanded, so none of these are bodies on the stage, but all are counted.
+    await waitFor(() => expect(screen.getByText('3 chapters · 2 parts · 3 scenes')).toBeTruthy());
+  });
+
   it('starts with nothing selected', () => {
     render(<ModuleWeb />);
     expect(screen.getByText('Nothing selected')).toBeTruthy();

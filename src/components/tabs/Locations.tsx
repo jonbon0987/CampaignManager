@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { firstNamed } from '../../lib/firstNamed';
 import { useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
@@ -78,7 +79,7 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
   }, [search, locations, byId]);
 
   const roots = childrenOf.get(null) ?? [];
-  const selected = selectedId ? byId.get(selectedId) ?? null : (roots[0] ?? null);
+  const selected = selectedId ? byId.get(selectedId) ?? null : (firstNamed(roots, l => l.name) ?? null);
 
   const totalShown = visible ? visible.size : locations.length;
 

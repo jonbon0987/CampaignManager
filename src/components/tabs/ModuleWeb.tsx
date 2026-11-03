@@ -126,11 +126,12 @@ export default function ModuleWeb({ onOpen, initialModuleId }: {
     return { nodes, links };
   }, [modules, submodules, scenes, subDeps, moduleDeps, expanded, filters]);
 
-  const counts = useMemo(() => ({
-    modules: graph.nodes.filter(n => n.kind === 'module').length,
-    subs: graph.nodes.filter(n => n.kind === 'sub').length,
-    scenes: graph.nodes.filter(n => n.kind === 'scene').length,
-  }), [graph]);
+  // What the shown chapters hold, collapsed or not; the graph only has the expanded nodes.
+  const counts = useMemo(() => {
+    const shown = new Set(modules.filter(m => filters.has(m.status)).map(m => m.id));
+    const subIds = new Set(submodules.filter(s => shown.has(s.module_id)).map(s => s.id));
+    return { modules: shown.size, subs: subIds.size, scenes: scenes.filter(x => subIds.has(x.submodule_id)).length };
+  }, [modules, submodules, scenes, filters]);
 
   /* Selection dims everything but the selection, its two levels of children,
      its ancestor chain, and anything joined to it by a dependency. */

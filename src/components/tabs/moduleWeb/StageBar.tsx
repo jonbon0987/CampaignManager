@@ -1,6 +1,7 @@
 /* moduleWeb/StageBar.tsx — the floating control bar over the stage:
    Reveal depth, gravity, status filters, counts, Settle and Fit. */
 import type { Module } from '../../../lib/database.types';
+import { plural } from '../../../lib/plural';
 
 export type Depth = 'modules' | 'subs' | 'scenes' | 'custom';
 export type Status = Module['status'];
@@ -54,7 +55,7 @@ export function StageBar({ depth, setDepth, gravity, setGravity, filters, toggle
       </div>
       <div className="orr-bar-spacer" />
       <div className="orr-bar-group">
-        <span className="orr-bar-count">{counts.modules} chapters · {counts.subs} parts · {counts.scenes} scenes</span>
+        <span className="orr-bar-count">{plural(counts.modules, 'chapter')} · {plural(counts.subs, 'part')} · {plural(counts.scenes, 'scene')}</span>
         {/* eslint-disable-next-line no-restricted-syntax -- bespoke stage-bar control sized to the floating bar */}
         <button className="orr-btn" onClick={onSettle} title="Re-run the simulation">Settle</button>
         {/* eslint-disable-next-line no-restricted-syntax -- bespoke stage-bar control */}
