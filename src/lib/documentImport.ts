@@ -6,6 +6,7 @@
 //   3. The caller (AIAssistant) passes the actions into DocumentImportReview.
 
 import { authHeaders } from './apiClient';
+import { googleDocId } from './googleDocs';
 import type {
   SessionInsert,
   PlayerCharacterInsert,
@@ -238,7 +239,7 @@ export async function extractClientSide(file: File): Promise<DocumentInput> {
 
 export function parseGoogleDocsUrl(url: string): DocumentInput {
   const trimmed = url.trim();
-  if (!/^https?:\/\/docs\.google\.com\/document\/d\/[a-zA-Z0-9_-]+/.test(trimmed)) {
+  if (!googleDocId(trimmed)) {
     throw new Error('That doesn\'t look like a Google Docs URL.');
   }
   return { kind: 'gdocs-url', payload: trimmed };
