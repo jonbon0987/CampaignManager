@@ -8,7 +8,7 @@ import { OverflowMenu } from './OverflowMenu';
 import { SlashField } from './SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
-import { isUnratable, partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
+import { adviseEncounter, isUnratable, partyLevels, rateEncounter, RATING_LABEL, stepReached, type Edition, type PartyLevel, type Rating } from '../../lib/encounterScaling';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
 // ================================================================
@@ -32,6 +32,11 @@ export const difficultyColors: Record<string, { bg: string; text: string; border
   hard:   { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
   deadly: { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
   trivial: { bg: 'var(--paper-2)',   text: 'var(--ink-3)',   border: 'var(--rule)' },
+  // The 2024 tiers, on the same scale of colour.
+  low:      { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
+  moderate: { bg: 'var(--warn-bg)',    text: 'var(--warn)',    border: 'var(--warn-line)' },
+  high:     { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
+  beyond:   { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
 };
 
 export const statusColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -195,11 +200,14 @@ export function EncounterDetail({
   onViewStatblock,
   upsertEncounter,
   party,
+  edition = '2014',
 }: {
   enc: Encounter;
   monsterStatblocks: MonsterStatblock[];
   /** The campaign's active PCs. Without them (the world) the party is typed in. */
   party?: PartyLevel[];
+  /** The campaign's rules; the world rates by 2014. */
+  edition?: Edition;
   onDelete: () => void;
   onRun?: () => void;
   onViewStatblock: (sb: MonsterStatblock) => void;
@@ -227,7 +235,7 @@ export function EncounterDetail({
     onSave: async ({ form: f, combatants: c }) => {
       const levels = partyLevels(party, f.party_size, f.party_level);
       const foes = c.map(x => ({ cr: x.challenge_rating, count: x.count }));
-      const rated = rateEncounter(foes, levels);
+      const rated = rateEncounter(foes, levels, edition);
       await upsertEncounter({
         id: enc.id,
         name: f.name.trim() || 'Untitled',
@@ -300,7 +308,8 @@ export function EncounterDetail({
   const levels = partyLevels(party, form.party_size, form.party_level);
   const fromPCs = !!party && party.some(p => p.level != null);
   const foes = combatants.map(c => ({ cr: c.challenge_rating, count: c.count }));
-  const rating = rateEncounter(foes, levels);
+  const rating = rateEncounter(foes, levels, edition);
+  const advice = adviseEncounter(combatants.map(c => ({ name: c.name, cr: c.challenge_rating, count: c.count })), levels, edition);
   const diffVal = rating?.tier ?? (isUnratable(foes) ? 'unrated' : (form.difficulty || enc.difficulty));
   const unlevelled = fromPCs ? party!.filter(p => p.level == null).length : 0;
 
@@ -334,7 +343,7 @@ export function EncounterDetail({
         color: 'var(--ink-3)', fontSize: '0.6rem', fontWeight: 700,
         letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px',
       }}>
-        Encounter{diffVal ? ` · ${diffVal}` : ''}
+        Encounter{diffVal ? ` · ${RATING_LABEL[diffVal as Rating] ?? diffVal}` : ''}
       </div>
 
       {/* ── Title ── */}
@@ -390,16 +399,17 @@ export function EncounterDetail({
         {rating ? (
           <div className="enc-rate">
             <div className="enc-rate-head">
-              <span className="enc-rate-tier" style={{ color: difficultyColors[rating.tier].text }}>{rating.tier}</span>
-              <span className="enc-rate-xp">{rating.xp.toLocaleString()} adjusted XP</span>
+              <span className="enc-rate-tier" style={{ color: difficultyColors[rating.tier].text }}>{RATING_LABEL[rating.tier]}</span>
+              <span className="enc-rate-xp">{rating.xp.toLocaleString()} {rating.edition === '2024' ? 'XP · 2024 budget' : 'adjusted XP'}</span>
             </div>
             <div className="enc-scale">
-              {DIFFICULTIES.map((d, i) => (
-                <span key={d} className={`enc-scale-step${rating.xp >= rating.thresholds[i] ? ' is-reached' : ''}${rating.tier === d ? ' is-tier' : ''}`}>
-                  <span>{d}</span><span>{rating.thresholds[i].toLocaleString()}</span>
+              {rating.steps.map((d, i) => (
+                <span key={d} className={`enc-scale-step${stepReached(rating, i) ? ' is-reached' : ''}${rating.tier === d ? ' is-tier' : ''}`}>
+                  <span>{RATING_LABEL[d]}</span><span>{rating.thresholds[i].toLocaleString()}</span>
                 </span>
               ))}
             </div>
+            {advice && <p className="enc-advice">{advice}</p>}
             {(rating.unrated > 0 || unlevelled > 0) && (
               <p className="as-empty-note">
                 {rating.unrated > 0 && `${rating.unrated} ${rating.unrated === 1 ? 'creature has' : 'creatures have'} no CR and add no XP. `}

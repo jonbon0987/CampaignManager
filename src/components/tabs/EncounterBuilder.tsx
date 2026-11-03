@@ -15,14 +15,16 @@ import {
   parseCombatants,
   type EncounterSaveData,
 } from '../ui/EncounterDetail';
-import { isUnratable, partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
+import { isUnratable, partyLevels, rateEncounter, RATING_LABEL, type PartyLevel, type Rating } from '../../lib/encounterScaling';
 
 // ================================================================
 // Main component
 // ================================================================
 
 export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void } = {}) {
-  const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, pcs } = useCampaign();
+  const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, pcs, selectedCampaign } = useCampaign();
+  // The campaign's rules rate its encounters (unset reads as 2014).
+  const edition = selectedCampaign?.rules_edition ?? '2014';
   // While a session is live, Run hands the fight to Play's Initiative instead.
   const play = usePlay();
   const confirm = useConfirm();
@@ -63,7 +65,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
   // never when none of them has a CR (that's a leftover default, not a rating).
   const tierOf = (enc: Encounter) => {
     const foes = parseCombatants(enc.combatants).map(c => ({ cr: c.challenge_rating, count: c.count }));
-    const rated = rateEncounter(foes, partyLevels(partyByLevel, String(enc.party_size ?? ''), String(enc.party_level ?? '')));
+    const rated = rateEncounter(foes, partyLevels(partyByLevel, String(enc.party_size ?? ''), String(enc.party_level ?? '')), edition);
     return rated?.tier ?? (isUnratable(foes) ? null : enc.difficulty);
   };
 
@@ -148,7 +150,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
             return (
               <ListRow key={enc.id} active={selectedEnc?.id === enc.id} onClick={() => setSelectedId(enc.id)} glyph="⚔"
                 title={enc.name || 'Unnamed encounter'} subtitle={enc.environment ?? undefined}
-                badges={<>{dc && badge(dc, tier!)}{unrated && badge(statusColors.draft, 'unrated')}{badge(statusColors[enc.status] ?? statusColors.draft, enc.status)}</>} />
+                badges={<>{dc && badge(dc, RATING_LABEL[tier as Rating] ?? tier!)}{unrated && badge(statusColors.draft, 'unrated')}{badge(statusColors[enc.status] ?? statusColors.draft, enc.status)}</>} />
             );
           })}
         detail={selectedEnc ? (
@@ -162,6 +164,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
               onViewStatblock={sb => openStatBlock(sb.id)}
               upsertEncounter={campaignUpsert}
               party={partyByLevel}
+              edition={edition}
             />
           </div>
         ) : (

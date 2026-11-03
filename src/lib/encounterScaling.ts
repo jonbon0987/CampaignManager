@@ -58,34 +58,109 @@ export function multiplierFor(count: number, partySize: number): number {
   return MULTIPLIERS[step + shift];
 }
 
-/** Below the party's easy threshold an encounter is trivial. */
-export type Rating = Difficulty | 'trivial';
+/**
+ * A rating: the 2014 tiers (below Easy is trivial), or the 2024 ones (Low,
+ * Moderate, High, and beyond High).
+ */
+export type Rating = Difficulty | 'trivial' | 'low' | 'moderate' | 'high' | 'beyond';
+
+/** How a campaign's rules rate an encounter. */
+export type Edition = '2014' | '2024';
+
+export const RATING_LABEL: Record<Rating, string> = {
+  trivial: 'Trivial', easy: 'Easy', medium: 'Medium', hard: 'Hard', deadly: 'Deadly',
+  low: 'Low', moderate: 'Moderate', high: 'High', beyond: 'Beyond High',
+};
+
+// 2024 DMG: XP budget per character by level → [low, moderate, high].
+const BUDGET_2024: Record<number, [number, number, number]> = {
+  1: [50, 75, 100], 2: [100, 150, 200], 3: [150, 225, 400], 4: [250, 375, 500],
+  5: [500, 750, 1100], 6: [600, 1000, 1400], 7: [750, 1300, 1700], 8: [1000, 1700, 2100],
+  9: [1300, 2000, 2600], 10: [1600, 2300, 3100], 11: [1900, 2900, 4100], 12: [2200, 3700, 4700],
+  13: [2600, 4200, 5400], 14: [2900, 4900, 6200], 15: [3300, 5400, 7800], 16: [3800, 6100, 9800],
+  17: [4500, 7200, 11700], 18: [5000, 8700, 14200], 19: [5500, 10700, 17200], 20: [6400, 13200, 22000],
+};
+
+/** The party's 2024 budgets, summed character by character → [low, moderate, high]. */
+export function partyBudget2024(levels: number[]): [number, number, number] {
+  return levels.reduce<[number, number, number]>((t, level) => {
+    const row = BUDGET_2024[Math.max(1, Math.min(20, Math.round(level)))];
+    return [t[0] + row[0], t[1] + row[1], t[2] + row[2]];
+  }, [0, 0, 0]);
+}
 
 export interface EncounterRating {
   tier: Rating;
-  /** Adjusted XP: the foes' XP times the multiplier for how many there are. */
+  /** 2014: adjusted XP (the foes' XP times the multiplier for how many there are). 2024: the foes' XP. */
   xp: number;
-  thresholds: [number, number, number, number];
-  /** Foes with no CR: they count toward the multiplier but add no XP. */
+  /** The tiers on the scale, in order, and the party's threshold (2014) or budget (2024) for each. */
+  steps: Rating[];
+  thresholds: number[];
+  /** Foes with no CR: they add no XP (and, in 2014, still count toward the multiplier). */
   unrated: number;
+  edition: Edition;
 }
 
 /**
- * How hard a set of foes is for a party, by the DMG's rules. Null when there is
- * no party or no foe with a CR to go on.
+ * How hard a set of foes is for a party. By the 2014 DMG, adjusted XP against
+ * each tier's threshold; by the 2024 DMG, plain XP against the budgets (an
+ * encounter is Low up to the Low budget, and so on). Null when there is no
+ * party or no foe with a CR to go on.
  */
-export function rateEncounter(foes: { cr: string | null; count: number }[], levels: number[]): EncounterRating | null {
+export function rateEncounter(foes: { cr: string | null; count: number }[], levels: number[], edition: Edition = '2014'): EncounterRating | null {
   const xpOf = (cr: string | null) => CR_XP[String(cr ?? '').trim()];
   const rated = foes.filter(f => xpOf(f.cr) != null && f.count > 0);
   if (levels.length === 0 || rated.length === 0) return null;
-  const count = foes.reduce((s, f) => s + Math.max(0, f.count), 0);
   const base = rated.reduce((s, f) => s + xpOf(f.cr) * f.count, 0);
+  const unrated = foes.filter(f => xpOf(f.cr) == null).reduce((s, f) => s + Math.max(0, f.count), 0);
+
+  if (edition === '2024') {
+    const thresholds = partyBudget2024(levels);
+    const tier: Rating = base <= thresholds[0] ? 'low' : base <= thresholds[1] ? 'moderate' : base <= thresholds[2] ? 'high' : 'beyond';
+    return { tier, xp: base, steps: ['low', 'moderate', 'high'], thresholds, unrated, edition };
+  }
+
+  const count = foes.reduce((s, f) => s + Math.max(0, f.count), 0);
   const xp = Math.round(base * multiplierFor(count, levels.length));
   const thresholds = partyThresholds(levels);
   let tier: Rating = 'trivial';
   DIFFICULTIES.forEach((d, i) => { if (xp >= thresholds[i]) tier = d; });
-  const unrated = foes.filter(f => xpOf(f.cr) == null).reduce((s, f) => s + Math.max(0, f.count), 0);
-  return { tier, xp, thresholds, unrated };
+  return { tier, xp, steps: [...DIFFICULTIES], thresholds, unrated, edition };
+}
+
+/** Whether a rating has reached a step on its scale (to fill the scale up to the tier). */
+export function stepReached(r: EncounterRating, i: number): boolean {
+  return r.edition === '2024'
+    ? r.tier === 'beyond' || i <= r.steps.indexOf(r.tier)
+    : r.xp >= r.thresholds[i];
+}
+
+// Past these an encounter is too much; the advice aims back under them.
+const TOO_HARD: Record<Edition, Rating> = { '2014': 'deadly', '2024': 'beyond' };
+
+/**
+ * One line on how to bring an encounter that's over the top back in range:
+ * fewer of its main foe, or, if even one is too many, the biggest single
+ * creature that isn't. Null when the encounter isn't over the top.
+ */
+export function adviseEncounter(foes: { name: string; cr: string | null; count: number }[], levels: number[], edition: Edition = '2014'): string | null {
+  const r = rateEncounter(foes, levels, edition);
+  if (!r || r.tier !== TOO_HARD[edition]) return null;
+  const xpOf = (cr: string | null) => CR_XP[String(cr ?? '').trim()] ?? 0;
+  const main = foes.filter(f => xpOf(f.cr) > 0 && f.count > 0).sort((a, b) => xpOf(b.cr) * b.count - xpOf(a.cr) * a.count)[0];
+  if (!main) return null;
+
+  for (let n = main.count - 1; n >= 1; n--) {
+    const t = rateEncounter(foes.map(f => (f === main ? { ...f, count: n } : f)), levels, edition);
+    if (t && t.tier !== TOO_HARD[edition]) return `With ${n} ${main.name} instead of ${main.count}, it's ${RATING_LABEL[t.tier]}.`;
+  }
+
+  const fits = Object.keys(CR_XP)
+    .sort((a, b) => CR_XP[b] - CR_XP[a])
+    .map(cr => ({ cr, t: rateEncounter([{ cr, count: 1 }], levels, edition) }))
+    .find(x => x.t && x.t.tier !== TOO_HARD[edition]);
+  const even = `Even one ${main.name} is ${RATING_LABEL[TOO_HARD[edition]]} for this party`;
+  return fits?.t ? `${even}; a single CR ${fits.cr} creature is ${RATING_LABEL[fits.t.tier]}.` : `${even}.`;
 }
 
 /**

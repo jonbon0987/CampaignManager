@@ -35,7 +35,8 @@ interface PlayContextValue {
   /** Marks the live session played, stopping its recording. */
   end: () => Promise<Session | null>;
   setFight: Dispatch<SetStateAction<Fight>>;
-  logRoll: (roll: DiceRoll) => void;
+  /** Adds a roll to the session's dice log, with what it was for. */
+  logRoll: (roll: DiceRoll, label?: string) => void;
   addNote: (text: string) => void;
   removeNote: (id: string) => void;
   setScene: (id: string | null) => void;
@@ -160,8 +161,8 @@ export function PlayProvider({ children }: { children: ReactNode }) {
     });
   }, [change]);
 
-  const logRoll = useCallback((r: DiceRoll) => {
-    change(p => ({ ...p, rolls: [{ at: new Date().toISOString(), expr: r.expr, total: r.total, rolls: r.rolls }, ...(p.rolls ?? [])].slice(0, MAX_ROLLS) }));
+  const logRoll = useCallback((r: DiceRoll, label?: string) => {
+    change(p => ({ ...p, rolls: [{ at: new Date().toISOString(), expr: r.expr, total: r.total, rolls: r.rolls, ...(label ? { label } : {}) }, ...(p.rolls ?? [])].slice(0, MAX_ROLLS) }));
   }, [change]);
 
   const addNote = useCallback((text: string) => {
@@ -235,6 +236,11 @@ export function PlayProvider({ children }: { children: ReactNode }) {
   }), [live, play, startOpen, recordFor, start, end, setFight, logRoll, addNote, removeNote, setScene, toggleInspiration, clearFight, joinEncounter, showTool, toolRequest, wrapFor, tab]);
 
   return <PlayContext.Provider value={value}>{children}</PlayContext.Provider>;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- the hook belongs with its provider, as in the other contexts
+export function usePlayMaybe(): PlayContextValue | null {
+  return useContext(PlayContext);
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- the hook belongs with its provider, as in the other contexts
