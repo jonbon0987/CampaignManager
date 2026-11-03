@@ -337,6 +337,14 @@ export const PlayerCharacters = {
     return data;
   },
 
+  /** Changes only the fields given (an upsert would need the whole row). */
+  async update(id: string, patch: Partial<PlayerCharacterInsert>): Promise<PlayerCharacter> {
+    validateFieldLimits('player_characters', patch);
+    const { data, error } = await supabase.from('player_characters').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('player_characters').delete().eq('id', id);
     if (error) throw error;
