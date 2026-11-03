@@ -117,7 +117,7 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
 
 export function PlayInitiative() {
   const { pcs } = useCampaign();
-  const { fight, setFight } = usePlay();
+  const { fight, setFight, clearFight } = usePlay();
   const f = useFight(fight, setFight);
   const confirm = useConfirm();
   const [name, setName] = useState('');
@@ -176,8 +176,8 @@ export function PlayInitiative() {
         )}
         {fight.combatants.length > 0 && (
           <Button size="sm" variant="ghost" onClick={async () => {
-            if (await confirm({ title: 'Clear the fight?', message: 'Everyone leaves the tracker, the party included.', confirmLabel: 'Clear' })) {
-              setFight({ combatants: [], turn: -1, round: 1 });
+            if (await confirm({ title: 'Clear the fight?', message: 'Everyone leaves the tracker, the party included. A line about the fight is kept for the recap.', confirmLabel: 'Clear' })) {
+              clearFight();
             }
           }}>Clear</Button>
         )}

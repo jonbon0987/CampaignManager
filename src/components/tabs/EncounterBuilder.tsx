@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { usePlay } from '../../context/PlayContext';
 import { InitiativeTracker } from '../InitiativeTracker';
 import type { PartyMember } from '../../lib/combat';
 import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
@@ -22,6 +23,8 @@ import { isUnratable, partyLevels, rateEncounter, type PartyLevel } from '../../
 
 export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void } = {}) {
   const { encounters, upsertEncounter, deleteEncounter, monsterStatblocks, pcs } = useCampaign();
+  // While a session is live, Run hands the fight to Play's Initiative instead.
+  const play = usePlay();
   const confirm = useConfirm();
 
   // Selected encounter in master-detail
@@ -155,7 +158,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
               enc={selectedEnc}
               monsterStatblocks={monsterStatblocks}
               onDelete={() => handleDelete(selectedEnc)}
-              onRun={() => setRunningEncounter(selectedEnc)}
+              onRun={() => (play.live ? play.joinEncounter(selectedEnc) : setRunningEncounter(selectedEnc))}
               onViewStatblock={sb => openStatBlock(sb.id)}
               upsertEncounter={campaignUpsert}
               party={partyByLevel}

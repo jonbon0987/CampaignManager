@@ -7,7 +7,6 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useOpenRecord } from '../../context/NavigationContext';
 import { usePlay, type PlayTab } from '../../context/PlayContext';
 import { Button } from '../ui/Button';
-import { addCombatants, combatantsFromEncounter } from '../../lib/combat';
 import { planIds, sessionName } from '../../lib/sessionLifecycle';
 import { useEndSession } from './useEndSession';
 import { elapsedLabel } from '../../lib/playTime';
@@ -24,8 +23,8 @@ export function PlayClock({ since }: { since?: string }) {
 }
 
 export function PlayStrip({ onShowTool }: { onShowTool: (tab: PlayTab) => void }) {
-  const { scenes, submodules, modules, encounters, monsterStatblocks, loadModuleTree } = useCampaign();
-  const { live, play, fight, setFight, setScene } = usePlay();
+  const { scenes, submodules, modules, encounters, loadModuleTree } = useCampaign();
+  const { live, play, fight, setScene, joinEncounter } = usePlay();
   const openRecord = useOpenRecord();
   const endSession = useEndSession(openRecord);
   const [ending, setEnding] = useState(false);
@@ -50,11 +49,8 @@ export function PlayStrip({ onShowTool }: { onShowTool: (tab: PlayTab) => void }
   // An encounter joins the fight once; after that its chip just shows the tracker.
   const runEncounter = (id: string) => {
     const enc = encounters.find(e => e.id === id);
-    if (enc && !fight.combatants.some(c => c.encounterId === id)) {
-      const joining = combatantsFromEncounter(enc, monsterStatblocks);
-      setFight(f => addCombatants(f, joining));
-    }
-    onShowTool('initiative');
+    if (enc) joinEncounter(enc);
+    else onShowTool('initiative');
   };
 
   const finish = async () => {

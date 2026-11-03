@@ -8,15 +8,16 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useOpenRecord } from '../../context/NavigationContext';
 import { usePlay } from '../../context/PlayContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
-import { planIds } from '../../lib/sessionLifecycle';
+import { planIds, previouslyOn } from '../../lib/sessionLifecycle';
 import { parseLinkedIds } from '../tabs/moduleDetail/pickers';
 import { ReadAloud } from '../ui/ReadAloudBlock';
 import { Button } from '../ui/Button';
 import { HandoutGallery } from '../handouts/HandoutGallery';
 import { useHandouts } from '../../hooks/useHandouts';
+import { PreviouslyOn } from '../session/PreviouslyOn';
 
 export function PlayScene() {
-  const { scenes, submodules, modules, monsterStatblocks, loadModuleTree } = useCampaign();
+  const { scenes, submodules, modules, monsterStatblocks, sessions, loadModuleTree } = useCampaign();
   const { live, play, setScene } = usePlay();
   const openRecord = useOpenRecord();
   const { openStatBlock } = useStatBlockPanel();
@@ -35,10 +36,20 @@ export function PlayScene() {
 
   const go = (id: string) => setScene(id);
 
+  // Before the first scene, the recap to open the night with.
+  const hasPrevious = !!live && !!previouslyOn(sessions, live.session_number);
+  const opener = hasPrevious && live && (
+    <details className="psc-prev" open={!scene}>
+      <summary className="psc-label">📜 Previously on…</summary>
+      <PreviouslyOn sessions={sessions} before={live.session_number} large readLabel="Read aloud" onOpenSession={id => openRecord('sessions', id)} />
+    </details>
+  );
+
   if (!scene) {
     const picks = agenda.flatMap(id => scenes.filter(s => s.id === id));
     return (
       <div className="pt-pane">
+        {opener}
         <p className="pt-empty">
           {picks.length ? 'Pick the scene you’re running; its read-aloud text shows here.' : 'No scenes on the agenda. Pick them in the session’s Prep.'}
         </p>
@@ -56,6 +67,7 @@ export function PlayScene() {
 
   return (
     <div className="pt-pane psc">
+      {opener}
       <div className="psc-where">
         {[mod?.title, sub?.title].filter(Boolean).join(' › ')}
         {idx >= 0 && ` · scene ${idx + 1} of ${agenda.length}`}

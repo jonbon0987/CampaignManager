@@ -116,6 +116,47 @@ export function clip(text: string, max: number): string {
   return text.length > max ? text.slice(0, max).replace(/\s+\S*$/, '') + '…' : text;
 }
 
+/** What the table hears at the start of a session: the story so far, and where it stopped. */
+export interface PreviouslyOn {
+  /** The latest played session, whose "left open" and stopping point these are. */
+  last: Session;
+  /** The latest played session with a recap written, and that recap as plain text. */
+  recapFrom: Session | null;
+  recap: string;
+  leftOpen: string[];
+  stopped: string | null;
+  /** Sessions played after the recap's that have none of their own. */
+  unrecapped: Session[];
+}
+
+/**
+ * "Previously on…" for the session after `before` (default: the next one).
+ * The recap comes from the latest session that has one, so a few sessions
+ * without recaps still leave something to read.
+ */
+export function previouslyOn(sessions: Session[], before?: number): PreviouslyOn | null {
+  const done = sessions.filter(s => s.status === 'done' && (before === undefined || s.session_number < before)).sort(byNumber);
+  const last = done.at(-1);
+  if (!last) return null;
+  const recapFrom = [...done].reverse().find(s => s.summary?.trim()) ?? null;
+  return {
+    last,
+    recapFrom,
+    recap: recapFrom?.summary ? plainText(recapFrom.summary) : '',
+    leftOpen: leftOpenLines(last.hooks_notes),
+    stopped: last.play?.stopped?.trim() || null,
+    unrecapped: recapFrom ? done.filter(s => s.session_number > recapFrom.session_number && !s.summary?.trim()) : done,
+  };
+}
+
+/** "Session 5" or "Sessions 4–6", for a list of sessions in order. */
+export function sessionRange(sessions: Pick<Session, 'session_number'>[]): string {
+  if (sessions.length === 0) return '';
+  const first = sessions[0].session_number;
+  const last = sessions[sessions.length - 1].session_number;
+  return first === last ? `Session ${first}` : `Sessions ${first}–${last}`;
+}
+
 /** What a session left open, a line each: a bulleted list's items, else its lines. */
 export function leftOpenLines(text: string | null | undefined): string[] {
   if (!text?.trim()) return [];

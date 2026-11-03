@@ -38,10 +38,12 @@ import { ChroniclePipelineProvider } from './context/ChroniclePipelineContext';
 import { PlayerShareProvider } from './context/PlayerShareContext';
 import { ItemsProvider } from './context/ItemsContext';
 import { playerPageToken } from './lib/playerPage';
-import { PlayProvider, usePlay, type PlayTab } from './context/PlayContext';
+import { PlayProvider, usePlay } from './context/PlayContext';
 import { PlayStrip } from './components/play/PlayStrip';
 import { PlayTools } from './components/play/PlayTools';
+import { PartyStrip } from './components/play/PartyStrip';
 import { StartSessionDialog } from './components/play/StartSessionDialog';
+import { WrapUpDialog } from './components/play/WrapUpDialog';
 import { useEndSession } from './components/play/useEndSession';
 import AppSidebar from './components/shell/AppSidebar';
 import AppTopbar from './components/shell/AppTopbar';
@@ -200,14 +202,16 @@ function AppInner() {
   }, [runMode, endSession, openStart]);
 
   // Brings a table tool into the rail, in front of the assistant or a stat sheet.
-  const { setTab: setPlayTab } = play;
-  const showTool = useCallback((tab: PlayTab) => {
-    setPlayTab(tab);
+  // Play asks for it (an encounter run from its tab, the agenda strip), and the
+  // shell clears whatever covers the rail.
+  const { showTool, toolRequest } = play;
+  useEffect(() => {
+    if (!toolRequest) return;
     chrome.setAssistantOpen(false);
     closeStatBlock();
   // chrome's setters are stable
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setPlayTab, closeStatBlock]);
+  }, [toolRequest, closeStatBlock]);
 
   const paletteHandlers = useMemo(() => ({
     openRecord,
@@ -274,6 +278,7 @@ function AppInner() {
           />
 
           <PlayStrip onShowTool={showTool} />
+          <PartyStrip />
 
           <div className="cm-canvas">
             {error && (
@@ -313,6 +318,7 @@ function AppInner() {
           placeholder="Search the campaign, jump to a tab, create, roll 2d6, or ask…"
         />
         {play.startOpen && <StartSessionDialog />}
+        {play.wrapFor && <WrapUpDialog />}
         {play.recordFor && <StartRecordingModal session={play.recordFor} onClose={() => { play.clearRecordFor(); showTool('record'); }} />}
         {exportOpen && <ExportCampaignDialog onClose={() => setExportOpen(false)} />}
         <ShortcutsOverlay open={chrome.shortcutsOpen} onClose={chrome.closeShortcuts} />

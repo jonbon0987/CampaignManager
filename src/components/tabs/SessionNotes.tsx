@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { TitleInput } from '../ui/TitleInput';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
@@ -17,6 +17,7 @@ import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { RecorderPanel } from '../session/RecorderPanel';
 import { useEndSession } from '../play/useEndSession';
+import { usePlay } from '../../context/PlayContext';
 import { SessionPrep } from '../session/SessionPrep';
 import { SessionChronicles } from '../session/SessionChronicles';
 import { LeftOpenToInbox } from '../session/LeftOpenToInbox';
@@ -134,6 +135,7 @@ function SessionDetail({
   const { upsertSession, deleteSession } = useCampaign();
   const confirm = useConfirm();
   const endSession = useEndSession(useOpenRecord());
+  const { openWrapUp } = usePlay();
 
   const [form, setForm] = useState<SessionForm>(() => toForm(session));
   // A session still to play opens on its prep; one played opens on its recap,
@@ -297,6 +299,14 @@ function SessionDetail({
           />
         ) : (
           <>
+            {/* A session played in Play and not wrapped up yet (skipped, or the page closed) */}
+            {session.status === 'done' && session.play?.started_at && !session.play?.wrapped_at && (
+              <div className="ss-wrap">
+                <span>Not wrapped up yet: where you stopped, experience, loot and time.</span>
+                <Button variant="link" onClick={() => openWrapUp(session.id)}>Wrap up ›</Button>
+              </div>
+            )}
+
             <RecorderPanel session={session} />
 
             {/* Recap / Summary */}
@@ -441,12 +451,21 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
               {search ? 'No sessions match your search.' : 'No sessions yet.'}
             </div>
           ) : (
-            filtered.map(s => {
+            filtered.map((s, i) => {
               const date = s.session_date ? formatSessionDate(s.session_date) : null;
-              const sub = [s.title ? date : null, s.summary ? clip(plainText(s.summary), 60) : null].filter(Boolean).join(' · ');
+              // A row reads as what happened: the title, else the recap's first line.
+              const recapLine = s.summary ? clip(plainText(s.summary), 60) : null;
+              const title = s.title || recapLine || `Session ${s.session_number}`;
+              const sub = [date, s.title ? recapLine : null].filter(Boolean).join(' · ');
+              // Numbers missing between this row and the one above (deleted, or never logged).
+              const above = search ? undefined : filtered[i - 1]?.session_number;
+              const gap = above !== undefined && above - s.session_number > 1 ? [s.session_number + 1, above - 1] : null;
               return (
+                <Fragment key={s.id}>
+                {gap && (
+                  <div className="ss-gap">{gap[0] === gap[1] ? `No session ${gap[0]}` : `No sessions ${gap[0]}–${gap[1]}`}</div>
+                )}
                 <button
-                  key={s.id}
                   className={`cm-row ${selected?.id === s.id ? 'is-active' : ''}`}
                   onClick={() => setSelectedId(s.id)}
                 >
@@ -454,13 +473,14 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
                     #{s.session_number}
                   </span>
                   <div className="cm-row-body">
-                    <span className="cm-row-title">{s.title || date || `Session ${s.session_number}`}</span>
+                    <span className="cm-row-title">{title}</span>
                     {sub && <span className="cm-row-sub">{sub}</span>}
                   </div>
                   {s.status !== 'done' && (
                     <span className={`cm-tag ${s.status === 'live' ? 'cm-tag-active' : 'cm-tag-planned'}`}>{STATUS_LABEL[s.status]}</span>
                   )}
                 </button>
+                </Fragment>
               );
             })
           )}

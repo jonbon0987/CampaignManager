@@ -7,9 +7,10 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useCampaign } from './CampaignContext';
 import { useRecording } from './RecordingContext';
 import { blankSession, liveSession, localToday, nextSessionNumber } from '../lib/sessionLifecycle';
-import { EMPTY_FIGHT, combatantsFromParty, partyFrom, type Fight } from '../lib/combat';
+import { fightXp } from '../lib/levelling';
+import { EMPTY_FIGHT, addCombatants, combatantsFromEncounter, combatantsFromParty, fightSummary, partyFrom, type Fight } from '../lib/combat';
 import type { DiceRoll } from '../lib/dice';
-import type { Session, SessionPlay } from '../lib/database.types';
+import type { Encounter, Session, SessionPlay } from '../lib/database.types';
 
 const SAVE_DELAY = 600;
 const MAX_ROLLS = 50;
@@ -38,6 +39,19 @@ interface PlayContextValue {
   addNote: (text: string) => void;
   removeNote: (id: string) => void;
   setScene: (id: string | null) => void;
+  /** Gives a player character inspiration, or takes it back. */
+  toggleInspiration: (pcId: string) => void;
+  /** Empties the tracker, keeping a summary of the fight for the recap. */
+  clearFight: () => void;
+  /** Adds an encounter's creatures to the fight (once) and shows Initiative. */
+  joinEncounter: (encounter: Pick<Encounter, 'id' | 'combatants'>) => void;
+  /** Brings a table tool to the front of the rail; the shell closes what covers it when `toolRequest` changes. */
+  showTool: (tab: PlayTab) => void;
+  toolRequest: number;
+  /** The session whose end-of-session wrap-up is open (its id), right after End or reopened from its recap. */
+  wrapFor: string | null;
+  openWrapUp: (sessionId: string) => void;
+  closeWrapUp: () => void;
   /** Which table tool the rail shows. */
   tab: PlayTab;
   setTab: (tab: PlayTab) => void;
@@ -46,7 +60,7 @@ interface PlayContextValue {
 const PlayContext = createContext<PlayContextValue | null>(null);
 
 export function PlayProvider({ children }: { children: ReactNode }) {
-  const { sessions, pcs, upsertSession, updateSession, selectedCampaign } = useCampaign();
+  const { sessions, pcs, upsertSession, updateSession, selectedCampaign, monsterStatblocks } = useCampaign();
   const recording = useRecording();
   const live = liveSession(sessions);
   const liveId = live?.id ?? null;
@@ -55,6 +69,8 @@ export function PlayProvider({ children }: { children: ReactNode }) {
   const [startOpen, setStartOpen] = useState(false);
   const [recordFor, setRecordFor] = useState<Session | null>(null);
   const [tab, setTab] = useState<PlayTab>('initiative');
+  const [toolRequest, setToolRequest] = useState(0);
+  const [wrapFor, setWrapFor] = useState<string | null>(null);
 
   // The context's mutators are re-made each render, so read them through refs.
   const update = useRef(updateSession);
@@ -122,13 +138,19 @@ export function PlayProvider({ children }: { children: ReactNode }) {
     pending.current = null;
     const rec = recorder.current.live?.recording;
     if (rec && rec.session_id === live.id) await recorder.current.end(rec.id).catch(() => {});
-    return update.current(live.id, {
+    // The night's fights, as a draft of the recap's combat summary (never over one already written).
+    const fights = [...(play.fights ?? []).map(f => f.summary), fightSummary(play.fight)].filter((s): s is string => !!s);
+    const done = await update.current(live.id, {
       status: 'done',
       session_date: live.session_date ?? localToday(),
+      ...(fights.length > 0 && !live.combats?.trim() ? { combats: fights.map(s => `- ${s}`).join('\n') } : {}),
       // …and where it stands as it ends, after time moved on in play.
       ...(selectedCampaign?.world_date != null ? { world_end: selectedCampaign.world_date } : {}),
       play: { ...play, ended_at: new Date().toISOString() },
     });
+    // The wrap-up comes next, while the night is fresh.
+    setWrapFor(done.id);
+    return done;
   }, [live, play, selectedCampaign]);
 
   const setFight = useCallback<Dispatch<SetStateAction<Fight>>>(action => {
@@ -158,6 +180,32 @@ export function PlayProvider({ children }: { children: ReactNode }) {
 
   const setScene = useCallback((id: string | null) => change(p => ({ ...p, scene_id: id })), [change]);
 
+  const toggleInspiration = useCallback((pcId: string) => change(p => {
+    const has = (p.inspiration ?? []).includes(pcId);
+    return { ...p, inspiration: has ? (p.inspiration ?? []).filter(id => id !== pcId) : [...(p.inspiration ?? []), pcId] };
+  }), [change]);
+
+  // Clearing the tracker keeps a line about the fight for the recap.
+  const clearFight = useCallback(() => {
+    change(p => {
+      const summary = fightSummary(p.fight);
+      const logged = summary ? [...(p.fights ?? []), { summary, xp: fightXp(p.fight, monsterStatblocks).total }] : p.fights;
+      return { ...p, fights: logged, fight: { ...EMPTY_FIGHT } };
+    });
+  }, [change, monsterStatblocks]);
+
+  const showTool = useCallback((t: PlayTab) => {
+    setTab(t);
+    setToolRequest(n => n + 1);
+  }, []);
+
+  // During a live session every fight runs in Play, whether it starts from the
+  // agenda or from Encounters, so its log ends up on this session.
+  const joinEncounter = useCallback((enc: Pick<Encounter, 'id' | 'combatants'>) => {
+    setFight(f => (f.combatants.some(c => c.encounterId === enc.id) ? f : addCombatants(f, combatantsFromEncounter(enc, monsterStatblocks))));
+    showTool('initiative');
+  }, [setFight, monsterStatblocks, showTool]);
+
   const value = useMemo<PlayContextValue>(() => ({
     live,
     play,
@@ -174,9 +222,17 @@ export function PlayProvider({ children }: { children: ReactNode }) {
     addNote,
     removeNote,
     setScene,
+    toggleInspiration,
+    clearFight,
+    joinEncounter,
+    showTool,
+    toolRequest,
+    wrapFor,
+    openWrapUp: (id: string) => setWrapFor(id),
+    closeWrapUp: () => setWrapFor(null),
     tab,
     setTab,
-  }), [live, play, startOpen, recordFor, start, end, setFight, logRoll, addNote, removeNote, setScene, tab]);
+  }), [live, play, startOpen, recordFor, start, end, setFight, logRoll, addNote, removeNote, setScene, toggleInspiration, clearFight, joinEncounter, showTool, toolRequest, wrapFor, tab]);
 
   return <PlayContext.Provider value={value}>{children}</PlayContext.Provider>;
 }

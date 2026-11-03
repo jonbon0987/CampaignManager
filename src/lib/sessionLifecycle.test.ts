@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { makeSession } from '../test/fixtures';
 import {
   blankSession, clip, leftOpenLines, localToday, lastPlayed, liveSession, nextPlanned, nextSessionNumber, planIds, plainText,
-  prepDone, prepProgress, sessionName, withPlanIds,
+  prepDone, prepProgress, previouslyOn, sessionName, sessionRange, withPlanIds,
 } from './sessionLifecycle';
 
 const s = (n: number, status: 'planned' | 'live' | 'done', over = {}) =>
@@ -86,5 +86,37 @@ describe('previews', () => {
   it('clips at a word break', () => {
     expect(clip('one two three four', 9)).toBe('one two…');
     expect(clip('short', 9)).toBe('short');
+  });
+});
+
+describe('previously on', () => {
+  it('is nothing before the first session is played', () => {
+    expect(previouslyOn([s(1, 'planned')])).toBeNull();
+  });
+
+  it('reads the latest recap, and what the last session left open and where it stopped', () => {
+    const p = previouslyOn([
+      s(1, 'done', { summary: '**Brenna** met the party.' }),
+      s(2, 'done', { summary: 'They found the vault.', hooks_notes: '- Who hired them?\n- The sealed letter', play: { stopped: 'At the vault door.' } }),
+      s(3, 'planned'),
+    ]);
+    expect(p?.last.id).toBe('s2');
+    expect(p?.recapFrom?.id).toBe('s2');
+    expect(p?.recap).toBe('They found the vault.');
+    expect(p?.leftOpen).toEqual(['Who hired them?', 'The sealed letter']);
+    expect(p?.stopped).toBe('At the vault door.');
+    expect(p?.unrecapped).toEqual([]);
+  });
+
+  it('falls back to an older recap and names the sessions without one', () => {
+    const p = previouslyOn([s(1, 'done', { summary: 'The docks.' }), s(4, 'done'), s(5, 'done'), s(6, 'live')], 6);
+    expect(p?.recapFrom?.id).toBe('s1');
+    expect(p?.last.id).toBe('s5');
+    expect(p?.unrecapped.map(x => x.id)).toEqual(['s4', 's5']);
+    expect(sessionRange(p!.unrecapped)).toBe('Sessions 4–5');
+  });
+
+  it('only looks at sessions before the one about to be played', () => {
+    expect(previouslyOn([s(1, 'done', { summary: 'One.' }), s(2, 'done', { summary: 'Two.' })], 2)?.recap).toBe('One.');
   });
 });

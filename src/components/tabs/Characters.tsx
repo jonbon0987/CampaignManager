@@ -295,9 +295,10 @@ function CampaignPC({ pc, factions, statblocks, onSelect, onDeselect }: {
   onSelect: (id: string) => void;
   onDeselect: () => void;
 }) {
-  const { npcs, upsertPC, deletePC } = useCampaign();
+  const { npcs, upsertPC, deletePC, selectedCampaign } = useCampaign();
   return (
     <PCEditor
+      levelling={selectedCampaign?.levelling ?? null}
       pc={pc}
       factions={factions}
       npcs={npcs}

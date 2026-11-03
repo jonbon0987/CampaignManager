@@ -1577,6 +1577,16 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   white-space: pre-wrap;
 }
 .ra.is-large .ra-text { font-size: 21px; line-height: 1.55; padding: 16px 18px 18px; }
+
+/* "Previously on…": the recap to read as a session opens (session/PreviouslyOn) */
+.po { display: flex; flex-direction: column; gap: 12px; }
+.po-from, .po-missing, .po-empty { margin: 0; font-size: 13px; font-style: italic; color: var(--ink-3); }
+.po-part { display: flex; flex-direction: column; gap: 4px; }
+.po-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); }
+.po-text { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ink); }
+.po-list { margin: 0; padding-left: 18px; list-style: disc; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+.ov-prev { margin-top: 24px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px 18px 16px; }
+.ov-prev .ov-card-head { padding: 0 0 10px; }
 .ra-input {
   display: block;
   width: 100%;
@@ -1839,6 +1849,21 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ps-live:hover { color: var(--gold); }
 .ps-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--moss); box-shadow: 0 0 0 3px var(--moss-dim); }
 .ps-clock { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .06em; }
+
+/* The party under the play strip (play/PartyStrip) */
+.pty { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 20px; border-bottom: 1px solid var(--rule); background: var(--bg); flex-shrink: 0; }
+.pty-pc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 5px 10px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper); min-width: 0; }
+.pty-pc.is-down { border-color: var(--red-line); }
+.pty-name { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink); }
+.pty-name:hover { color: var(--gold); }
+.pty-stat, .pty-hp, .pty-saves { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
+.pty-stat-k { color: var(--ink-3); letter-spacing: .06em; }
+.pty-hp.is-hurt { color: var(--warn); }
+.pty-hp.is-low, .pty-hp.is-down, .pty-saves { color: var(--red); }
+.pty-cond { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--orange); background: var(--orange-bg); border: 1px solid var(--orange-line); border-radius: 999px; padding: 1px 8px; }
+.pty-insp { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--ink-3); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 2px 9px; cursor: pointer; }
+.pty-insp.is-on { color: var(--gold); border-color: var(--gold-line); background: var(--gold-dim); }
+.pty-sheet { font-size: 13px; color: var(--gold); }
 .ps-agenda { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; padding-left: 12px; border-left: 1px solid var(--rule); }
 .ps-step { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 4px 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); color: var(--ink-2); font-family: var(--serif); font-size: 13px; cursor: pointer; white-space: nowrap; }
 .ps-step:hover { border-color: var(--ink-3); color: var(--ink); }
@@ -2140,6 +2165,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   gap: 16px;
   margin-top: 24px;
 }
+.ov-grid.is-single { grid-template-columns: 1fr; }
 .ov-card {
   background: var(--paper);
   border: 1px solid var(--rule);
@@ -2584,6 +2610,23 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ss-meta { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; margin-top: 8px; }
 .ss-live { color: var(--moss); }
 .cm-pill.ss-live-pill { color: var(--moss); border-color: var(--moss); cursor: default; }
+.ss-gap { padding: 4px 12px 4px 40px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.ss-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; border: 1px solid var(--gold-line); background: var(--gold-dim); border-radius: var(--radius); font-size: 14px; color: var(--ink-2); }
+
+/* The end-of-session wrap-up (play/WrapUpDialog) */
+.wu { display: flex; flex-direction: column; gap: 20px; }
+.wu-intro { margin: 0; font-size: 14px; font-style: italic; color: var(--ink-2); }
+.wu-part { display: flex; flex-direction: column; gap: 8px; }
+.wu-label { font-family: var(--mono); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-3); }
+.wu-text { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--serif); font-size: 15px; line-height: 1.5; }
+.wu-pills { display: flex; gap: 6px; }
+.wu-fights { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.wu-fights li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-2); font-size: 14px; color: var(--ink); }
+.wu-num { font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--ink-2); }
+.wu-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2); }
+.wu-row .wu-num-in { width: 96px; flex: 0 0 96px; }
+.wu-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
+.wu-levels { margin: 0; font-size: 14px; color: var(--gold); }
 .st-title { background: none; border: none; padding: 0; text-align: inherit; cursor: pointer; }
 .st-title:hover { color: var(--gold); }
 .sp { display: flex; flex-direction: column; gap: 28px; }
@@ -2791,6 +2834,17 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   gap: 12px;
   margin-bottom: 4px;
 }
+.as-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
+}
+@media (max-width: 767px) { .as-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.as-hint { font-size: 12px; font-style: italic; color: var(--ink-3); }
+.pc-sheet-row { display: flex; align-items: center; gap: 10px; }
+.pc-sheet-row .as-input { flex: 1; min-width: 0; }
+.pc-sheet-open { font-size: 14px; white-space: nowrap; color: var(--gold); }
 
 /* Horizontal meta strip */
 .as-meta {
@@ -3818,6 +3872,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ho-title-text { flex: 1; min-width: 0; font-family: var(--serif); font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .psc-handouts { display: flex; flex-direction: column; gap: 6px; }
 .psc-label { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.psc-prev { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--rule-soft); }
+.psc-prev > summary { cursor: pointer; color: var(--gold); }
+.psc-prev[open] > summary { margin-bottom: 8px; }
 
 /* ═══ Player pages ═══ */
 /* The "Players can see" switch (components/ui/ShareToggle) */
