@@ -5,6 +5,7 @@ import mammoth from 'mammoth';
 import { extractText, getDocumentProxy } from 'unpdf';
 import { resolveProvider, streamSummary, structuredExtract, generateText, friendlyError, type AIProvider } from './_ai.js';
 import { requireAuth } from './_auth.js';
+import { googleDocExportUrl, googleDocId } from '../src/lib/googleDocs.js';
 
 type RequestBody = {
   kind: 'text' | 'docx' | 'pdf' | 'gdocs-url';
@@ -430,18 +431,13 @@ async function deriveTitle(provider: AIProvider, userContentText: string, scope:
   }
 }
 
-function extractDocIdFromGoogleDocsUrl(url: string): string | null {
-  const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : null;
-}
-
 async function fetchGoogleDocAsText(url: string): Promise<string> {
-  const id = extractDocIdFromGoogleDocsUrl(url);
+  // Only the checked document id comes from the link; the request is always to Google.
+  const id = googleDocId(url);
   if (!id) {
-    throw new Error('Could not parse a Google Docs document id from that URL.');
+    throw new Error('That doesn’t look like a Google Docs link.');
   }
-  const exportUrl = `https://docs.google.com/document/d/${id}/export?format=txt`;
-  const res = await fetch(exportUrl);
+  const res = await fetch(googleDocExportUrl(id));
   if (!res.ok) {
     throw new Error(
       `Couldn't fetch that Google Doc (HTTP ${res.status}). Make sure it's shared publicly ("Anyone with the link") or paste the text directly.`
