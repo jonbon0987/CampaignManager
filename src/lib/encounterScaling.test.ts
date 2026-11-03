@@ -14,6 +14,7 @@ import {
   partyLevels,
   partyThresholds,
   rateEncounter,
+  isUnratable,
   type ScaleCreature,
   type EncounterParams,
 } from './encounterScaling';
@@ -175,6 +176,19 @@ describe('rateEncounter', () => {
   it('can’t rate without a party or a foe with a CR', () => {
     expect(rateEncounter([{ cr: '1', count: 1 }], [])).toBeNull();
     expect(rateEncounter([{ cr: null, count: 3 }], four5)).toBeNull();
+  });
+});
+
+describe('isUnratable', () => {
+  it('is true when there are creatures and none has a known CR', () => {
+    expect(isUnratable([{ cr: null, count: 1 }])).toBe(true);
+    expect(isUnratable([{ cr: '', count: 2 }, { cr: 'lots', count: 1 }])).toBe(true);
+  });
+
+  it('is false with no creatures, or with any rated one', () => {
+    expect(isUnratable([])).toBe(false);
+    expect(isUnratable([{ cr: null, count: 0 }])).toBe(false);
+    expect(isUnratable([{ cr: null, count: 1 }, { cr: '2', count: 1 }])).toBe(false);
   });
 });
 

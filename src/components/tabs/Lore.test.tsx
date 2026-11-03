@@ -25,6 +25,9 @@ beforeEach(() => {
   h.confirm.value = makeConfirm(true);
 });
 
+// A list row's title; the open record's title field holds the same text.
+const ROW = { selector: '.cm-row-title' };
+
 describe('Lore', () => {
   it('renders the tab with a zero count when empty', () => {
     render(<Lore />);
@@ -85,8 +88,8 @@ describe('Lore', () => {
       linkedLoreIds: ['l2'],
     });
     render(<Lore />);
-    expect(screen.getByText('The First Flame')).toBeTruthy();
-    expect(screen.getByText('Borrowed Relic')).toBeTruthy();
+    expect(screen.getByText('The First Flame', ROW)).toBeTruthy();
+    expect(screen.getByText('Borrowed Relic', ROW)).toBeTruthy();
     // the linked entry carries the "imported" origin badge; the local one "only here"
     expect(screen.getByText('imported')).toBeTruthy();
     expect(screen.getByText('only here')).toBeTruthy();

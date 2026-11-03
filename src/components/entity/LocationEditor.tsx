@@ -1,6 +1,7 @@
 // The one place editor, used in the world and in its campaigns.
 
 import { useMemo, useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -104,7 +105,7 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
       <div className="cm-eyebrow">{scope === 'world' ? 'World location' : 'Location'}</div>
 
       <fieldset className="as-fieldset" disabled={locked}>
-        <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" maxLength={limitFor('locations', 'name')} aria-label="Name" />
+        <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" maxLength={limitFor('locations', 'name')} aria-label="Name" />
         <input className="as-sub" value={form.region ?? ''} onChange={e => set('region', e.target.value || null)} placeholder="Region…" maxLength={limitFor('locations', 'region')} aria-label="Region" />
 
         <div className="as-meta">

@@ -7,6 +7,8 @@ import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
 import { CharCounter } from '../ui/CharCounter';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { useAutoSave } from '../../hooks/useAutoSave';
+import { yearSuffix } from '../../lib/calendar';
+import { plural } from '../../lib/plural';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -23,6 +25,7 @@ export default function WorldTimeline() {
 
   const types = Object.keys(timelineTypeConfig);
   const eras = useMemo(() => [...new Set(timeline.map(e => e.era))], [timeline]);
+  const suffix = yearSuffix(activeWorld?.calendar);
 
   const filtered = useMemo(() => {
     let list = [...timeline];
@@ -60,7 +63,7 @@ export default function WorldTimeline() {
     <div className="tl-wrap">
       <div className="tl-head">
         <div>
-          <div className="tl-eyebrow">{filtered.length} events · {activeWorld?.calendar ?? ''}</div>
+          <div className="tl-eyebrow">{plural(filtered.length, 'event')}{suffix ? ` · ${suffix}` : ''}</div>
           <h2 className="tl-title">World Timeline</h2>
         </div>
         <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>+ Add event</Button>
@@ -113,7 +116,7 @@ export default function WorldTimeline() {
                   onSaveEdit={upsertTimelineEvent}
                   onCancelEdit={() => setEditingId(null)}
                   onDelete={() => handleDelete(ev.id)}
-                  calendar={activeWorld?.calendar ?? ''}
+                  calendar={suffix}
                   eras={eras}
                 />
               );
@@ -128,7 +131,7 @@ export default function WorldTimeline() {
 
       {addOpen && (
         <NewEventModal
-          calendar={activeWorld?.calendar ?? ''}
+          calendar={suffix}
           eras={eras}
           onSave={handleAddEvent}
           onClose={() => setAddOpen(false)}
@@ -171,7 +174,7 @@ function TimelineEventEditor({ event, types, calendar, eras, save, onDone, onDel
       </div>
       <div className="ne-row">
         <div className="ne-field">
-          <label>Year ({calendar})</label>
+          <label>Year{calendar ? ` (${calendar})` : ''}</label>
           <input type="number" value={form.year} onChange={e => set('year', e.target.value)} min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
         </div>
         <div className="ne-field">
@@ -278,7 +281,7 @@ function TimelineEventCard({
             <div>
               <div className="tl-event-expanded-label">Year</div>
               <div className="tl-event-expanded-value tl-event-expanded-value-lg">
-                {event.year < 0 ? `${Math.abs(event.year)} BR` : `${calendar.split('(')[0].trim()} ${event.year}`}
+                {event.year < 0 ? `${Math.abs(event.year)} BR` : calendar ? `${event.year} ${calendar}` : `Year ${event.year}`}
               </div>
             </div>
             <div>
@@ -347,7 +350,7 @@ function NewEventModal({
           </div>
           <div className="ne-row">
             <div className="ne-field">
-              <label>Year ({calendar})</label>
+              <label>Year{calendar ? ` (${calendar})` : ''}</label>
               <input type="number" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. 701" min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
             </div>
             <div className="ne-field">

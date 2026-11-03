@@ -6,6 +6,7 @@
    apply immediately.
    ════════════════════════════════════════════════════════════════ */
 import { useState, useEffect, useRef } from 'react';
+import { TitleInput } from '../../ui/TitleInput';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
 import { HandoutGallery } from '../../handouts/HandoutGallery';
@@ -36,9 +37,11 @@ function SceneHandouts({ sceneId }: { sceneId: string }) {
   );
 }
 
-function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dragging }: {
+function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dragging, focusKey }: {
   scene: Scene;
   index: number;
+  /** Changes each time the outline asks for this scene: open it and bring it into view. */
+  focusKey?: number;
   onDragStart: (i: number) => void;
   onDragOver: (e: React.DragEvent, i: number) => void;
   onDrop: (i: number) => void;
@@ -49,6 +52,13 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
   const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<SceneForm>(() => toForm(scene));
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!focusKey) return;
+    setOpen(true);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => rowRef.current?.scrollIntoView?.({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }));
+  }, [focusKey]);
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
@@ -81,6 +91,7 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
 
   return (
     <div
+      ref={rowRef}
       className={`md-scene-edit ${open ? 'is-open' : ''} ${dragging ? 'is-dragging' : ''}`}
       draggable
       onDragStart={() => onDragStart(index)}
@@ -150,11 +161,13 @@ function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dr
 
 interface SubForm { title: string; submodule_type: string; summary: string; content: string; dm_notes: string; }
 
-export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
+export function SubmoduleEditor({ submodule, module, siblings, onDeleted, focusScene }: {
   submodule: Submodule;
   module: Module;
   siblings: Submodule[];
   onDeleted: () => void;
+  /** A scene picked in the outline, with a counter so picking it again re-scrolls. */
+  focusScene?: { id: string; n: number } | null;
 }) {
   const {
     upsertSubmodule, deleteSubmodule,
@@ -247,7 +260,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
           <TypeTag type={form.submodule_type} types={SUBMODULE_TYPES} onPick={t => set('submodule_type', t)} />
         </div>
 
-        <input className="as-title" value={form.title} placeholder="Submodule title…"
+        <TitleInput value={form.title} placeholder="Submodule title…"
           onChange={e => set('title', e.target.value)} maxLength={limitFor('submodules', 'title')} />
 
         {/* summary */}
@@ -350,6 +363,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted }: {
             {subScenes.length === 0 && <div className="md-pop-empty" style={{ padding: '2px 0' }}>No scenes yet — add the beats you'll run from.</div>}
             {subScenes.map((sc, i) => (
               <SceneRow key={sc.id} scene={sc} index={i}
+                focusKey={focusScene?.id === sc.id ? focusScene.n : undefined}
                 dragging={draggingIdx === i}
                 onDragStart={(idx) => { dragFrom.current = idx; setDraggingIdx(idx); }}
                 onDragOver={(e) => e.preventDefault()}

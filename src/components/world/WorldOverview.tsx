@@ -141,7 +141,7 @@ export default function WorldOverview() {
             return (
               <div key={ev.id} className="w-ov-row">
                 <span className="w-ov-row-glyph" style={{ color: cfg.color }}>{cfg.glyph}</span>
-                <span className="w-ov-row-title">{ev.title}</span>
+                <span className="w-ov-row-title">{ev.title || 'Untitled event'}</span>
                 <span className="w-ov-row-meta">{ev.date}</span>
               </div>
             );
@@ -152,7 +152,7 @@ export default function WorldOverview() {
           {factions.slice(0, 5).map(f => (
             <div key={f.id} className="w-ov-row">
               <span className="w-ov-row-glyph" style={{ color: f.tone }}>❖</span>
-              <span className="w-ov-row-title">{f.name}</span>
+              <span className="w-ov-row-title">{f.name || 'Unnamed faction'}</span>
               <span className="w-ov-row-meta">{f.type}</span>
             </div>
           ))}
@@ -162,7 +162,7 @@ export default function WorldOverview() {
           {lore.slice(0, 4).map(l => (
             <div key={l.id} className="w-ov-row">
               <span className="w-ov-row-glyph">❦</span>
-              <span className="w-ov-row-title">{l.title}</span>
+              <span className="w-ov-row-title">{l.title || 'Untitled entry'}</span>
               <span className="w-ov-row-meta">{l.tags[0] ?? ''}</span>
             </div>
           ))}

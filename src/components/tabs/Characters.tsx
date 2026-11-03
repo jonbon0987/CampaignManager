@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { firstNamed } from '../../lib/firstNamed';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
@@ -117,7 +118,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
   }, [pcs, npcs, factions, filter, metFilter, search]);
 
   // Resolve selected item
-  const selected = all.find(x => x.id === selectedId) || all[0] || null;
+  const selected = all.find(x => x.id === selectedId) || firstNamed(all, x => x.name) || null;
 
   const handleSelect = (item: CastItem) => {
     setSelectedId(item.id);

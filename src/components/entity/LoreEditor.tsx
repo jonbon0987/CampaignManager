@@ -1,6 +1,7 @@
 // The one lore editor, used in the world and in its campaigns.
 
 import { useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -66,7 +67,7 @@ export function LoreEditor({ entry, scope, save, remove, onDeleted, canon }: {
       <div className="cm-eyebrow">{scope === 'world' ? 'World lore' : 'Lore'}</div>
 
       <fieldset className="as-fieldset" disabled={locked}>
-        <input className="as-title" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" maxLength={limitFor('lore_entries', 'title')} aria-label="Title" />
+        <TitleInput value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" maxLength={limitFor('lore_entries', 'title')} aria-label="Title" />
 
         <div className="as-meta">
           <div className="as-mi">

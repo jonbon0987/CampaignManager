@@ -27,6 +27,16 @@ describe('useDiscardBlankDraft', () => {
     expect(remove).toHaveBeenCalledWith('c');
   });
 
+  it('remembers drafts across a reload, and forgets them once handled', () => {
+    const stored = () => JSON.parse(localStorage.getItem('cm-drafts') ?? '[]') as string[];
+    markDraft('r1');
+    expect(stored()).toContain('r1');
+    const { unmount } = renderHook(() => useDiscardBlankDraft('r1', true, vi.fn()));
+    unmount();
+    act(() => { vi.runAllTimers(); });
+    expect(stored()).not.toContain('r1');
+  });
+
   it('keeps a draft the DM wrote something in', () => {
     const remove = vi.fn();
     markDraft('d');

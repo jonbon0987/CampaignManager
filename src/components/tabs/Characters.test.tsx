@@ -27,6 +27,9 @@ beforeEach(() => {
   h.confirm.value = makeConfirm(true);
 });
 
+// A list row's title; the open record's title field holds the same text.
+const ROW = { selector: '.cm-row-title' };
+
 describe('Characters (cast list)', () => {
   it('shows the empty list + detail states', () => {
     render(<Characters viewMode="list" />);
@@ -41,9 +44,9 @@ describe('Characters (cast list)', () => {
       factions: [makeFaction({ id: 'f1', name: 'The Guild' })],
     });
     render(<Characters viewMode="list" />);
-    expect(screen.getByText('Thorin')).toBeTruthy();
-    expect(screen.getByText('Kutter')).toBeTruthy();
-    expect(screen.getByText('The Guild')).toBeTruthy();
+    expect(screen.getByText('Thorin', ROW)).toBeTruthy();
+    expect(screen.getByText('Kutter', ROW)).toBeTruthy();
+    expect(screen.getByText('The Guild', ROW)).toBeTruthy();
   });
 
   it('filters the list to a single kind', () => {
@@ -54,9 +57,9 @@ describe('Characters (cast list)', () => {
     });
     render(<Characters viewMode="list" />);
     fireEvent.click(screen.getByRole('button', { name: 'Factions' }));
-    expect(screen.getByText('The Guild')).toBeTruthy();
-    expect(screen.queryByText('Thorin')).toBeNull();
-    expect(screen.queryByText('Kutter')).toBeNull();
+    expect(screen.getByText('The Guild', ROW)).toBeTruthy();
+    expect(screen.queryByText('Thorin', ROW)).toBeNull();
+    expect(screen.queryByText('Kutter', ROW)).toBeNull();
   });
 
   it('adds a PC when the PC filter is active', async () => {
@@ -92,7 +95,7 @@ describe('Characters (cast list)', () => {
         linkedNPCIds: ['n1'],
       });
       render(<Characters viewMode="list" />);
-      fireEvent.click(screen.getByText('Canon Kutter'));
+      fireEvent.click(screen.getByText('Canon Kutter', ROW));
       expect(screen.getByText('World canon · locked')).toBeTruthy();
       expect(locked()).toBe(true);
 
@@ -104,7 +107,7 @@ describe('Characters (cast list)', () => {
     it('never locks a campaign-local NPC', () => {
       h.campaign.value = makeCampaignContext({ npcs: [makeNPC({ id: 'n2', name: 'Local Marta' })], linkedNPCIds: [] });
       render(<Characters viewMode="list" />);
-      fireEvent.click(screen.getByText('Local Marta'));
+      fireEvent.click(screen.getByText('Local Marta', ROW));
       expect(locked()).toBe(false);
     });
 
@@ -114,7 +117,7 @@ describe('Characters (cast list)', () => {
         linkedNPCIds: [],
       });
       render(<Characters viewMode="list" />);
-      fireEvent.click(screen.getByText('Local Marta'));
+      fireEvent.click(screen.getByText('Local Marta', ROW));
       expect(screen.getByText('Created for this table')).toBeTruthy();
     });
 
@@ -126,7 +129,7 @@ describe('Characters (cast list)', () => {
         unlinkNPCFromCampaign: unlink,
       });
       render(<Characters viewMode="list" />);
-      fireEvent.click(screen.getByText('Canon Kutter'));
+      fireEvent.click(screen.getByText('Canon Kutter', ROW));
       fireEvent.click(screen.getByText('Detach copy'));
       expect(unlink).toHaveBeenCalledWith('n1');
     });

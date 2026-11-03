@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { plural } from '../../lib/plural';
+import { firstNamed } from '../../lib/firstNamed';
 import { useWorld } from '../../context/WorldContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
@@ -78,7 +80,7 @@ export function WorldNPCsView() {
     });
   }, [npcs, factions, filter, search]);
 
-  const sel = items.find(x => x.id === selected.npcs) || items[0];
+  const sel = items.find(x => x.id === selected.npcs) || firstNamed(items, x => x.name);
 
   return (
     <ListDetail
@@ -108,7 +110,7 @@ export function WorldNPCsView() {
               onClick={() => setSelected('npcs', x.id)}
               glyph={x.kind === 'faction' ? '❖' : '◇'}
               thumb={x.portrait ? <ImageThumb path={x.portrait} glyph="◇" /> : undefined}
-              title={x.name}
+              title={x.name || (x.kind === 'faction' ? 'Unnamed faction' : 'Unnamed NPC')}
               subtitle={x.kind === 'npc' ? x.role : formatType(x.type)}
               badges={
                 <>
@@ -212,7 +214,7 @@ export function WorldLocationsView() {
   }, [search, locations, byId]);
 
   const roots = childrenOf.get(null) ?? [];
-  const sel = (selected.locations && byId.get(selected.locations)) || roots[0] || null;
+  const sel = (selected.locations && byId.get(selected.locations)) || firstNamed(roots, l => l.name) || null;
 
   const toggle = (id: string) =>
     setCollapsed(prev => {
@@ -298,7 +300,7 @@ export function WorldLoreView() {
     });
   }, [lore, search]);
 
-  const sel = items.find(x => x.id === selected.lore) || items[0];
+  const sel = items.find(x => x.id === selected.lore) || firstNamed(items, x => x.title);
 
   return (
     <ListDetail
@@ -316,7 +318,7 @@ export function WorldLoreView() {
               active={sel?.id === x.id}
               onClick={() => setSelected('lore', x.id)}
               glyph="❦"
-              title={x.title}
+              title={x.title || 'Untitled entry'}
               subtitle="Lore"
               badges={x.tags.slice(0, 2).map(t => <SubtleTag key={t}>{formatType(t)}</SubtleTag>)}
             />
@@ -614,14 +616,14 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 subtitle={
                   x.kind === 'statblock' ? `CR ${x.cr} · ${x.type}`
                     : x.kind === 'random' ? `${kindMeta(x.tableKind ?? 'encounter').label} · ${x.rows} ${x.rows === 1 ? 'entry' : 'entries'}`
-                    : `${x.difficulty} · ${(x.creatures || []).length} creatures`
+                    : `${x.difficulty || 'unrated'} · ${plural((x.creatures || []).length, 'creature')}`
                 }
                 badges={
                   x.kind === 'statblock'
                     ? (x.tags || []).slice(0, 2).map(t => <SubtleTag key={t}>{t}</SubtleTag>)
                     : x.kind === 'random'
                       ? <SubtleTag>World</SubtleTag>
-                      : <><Tag kind={x.difficulty}>{x.difficulty}</Tag><SubtleTag>{x.status}</SubtleTag></>
+                      : <>{x.difficulty && <Tag kind={x.difficulty}>{x.difficulty}</Tag>}<SubtleTag>{x.status}</SubtleTag></>
                 }
               />
             ))}

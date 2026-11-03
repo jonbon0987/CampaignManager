@@ -2,12 +2,13 @@
 // and the world-level WorldCombatView. Data is passed via props, not context.
 
 import { useState, useEffect } from 'react';
+import { TitleInput } from './TitleInput';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from './OverflowMenu';
 import { SlashField } from './SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
-import { partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
+import { isUnratable, partyLevels, rateEncounter, type PartyLevel } from '../../lib/encounterScaling';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 
 // ================================================================
@@ -225,14 +226,16 @@ export function EncounterDetail({
     enabled: true,
     onSave: async ({ form: f, combatants: c }) => {
       const levels = partyLevels(party, f.party_size, f.party_level);
-      const rated = rateEncounter(c.map(x => ({ cr: x.challenge_rating, count: x.count })), levels);
+      const foes = c.map(x => ({ cr: x.challenge_rating, count: x.count }));
+      const rated = rateEncounter(foes, levels);
       await upsertEncounter({
         id: enc.id,
         name: f.name.trim() || 'Untitled',
         description: f.description || null,
         environment: f.environment || null,
-        // Worked out from the party; a stored value stays until it can be.
-        difficulty: rated?.tier ?? (f.difficulty || null),
+        // Worked out from the party; a stored value stays until it can be,
+        // unless no creature has a CR, when nothing can be.
+        difficulty: rated?.tier ?? (isUnratable(foes) ? null : (f.difficulty || null)),
         party_size: levels.length > 0 ? levels.length : null,
         party_level: levels.length > 0 ? Math.round(levels.reduce((s, l) => s + l, 0) / levels.length) : null,
         dm_notes: f.dm_notes || null,
@@ -296,8 +299,9 @@ export function EncounterDetail({
   // The party: the campaign's PCs once any has a level, else typed in.
   const levels = partyLevels(party, form.party_size, form.party_level);
   const fromPCs = !!party && party.some(p => p.level != null);
-  const rating = rateEncounter(combatants.map(c => ({ cr: c.challenge_rating, count: c.count })), levels);
-  const diffVal = rating?.tier ?? (form.difficulty || enc.difficulty);
+  const foes = combatants.map(c => ({ cr: c.challenge_rating, count: c.count }));
+  const rating = rateEncounter(foes, levels);
+  const diffVal = rating?.tier ?? (isUnratable(foes) ? 'unrated' : (form.difficulty || enc.difficulty));
   const unlevelled = fromPCs ? party!.filter(p => p.level == null).length : 0;
 
   return (
@@ -334,8 +338,7 @@ export function EncounterDetail({
       </div>
 
       {/* ── Title ── */}
-      <input
-        className="as-title"
+      <TitleInput
         value={form.name}
         onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
         placeholder="Encounter name…"

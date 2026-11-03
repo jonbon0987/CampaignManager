@@ -63,7 +63,14 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
     Object.entries(openIds).forEach(([id, open]) => { if (open) loadScenes(id); });
   }, [openIds, loadScenes]);
 
-  const selectSub = (id: string) => { setSelectedId(id); if (id !== OVERVIEW) setOpenIds(o => ({ ...o, [id]: true })); };
+  // A scene picked in the outline opens its part and scrolls to it. The counter
+  // makes picking the same scene again scroll again.
+  const [focusScene, setFocusScene] = useState<{ id: string; n: number } | null>(null);
+  const selectSub = (id: string) => { setSelectedId(id); setFocusScene(null); if (id !== OVERVIEW) setOpenIds(o => ({ ...o, [id]: true })); };
+  const selectScene = (subId: string, sceneId: string) => {
+    selectSub(subId);
+    setFocusScene(f => ({ id: sceneId, n: (f?.n ?? 0) + 1 }));
+  };
   const toggleOpen = (id: string) => setOpenIds(o => ({ ...o, [id]: !o[id] }));
 
   const addSubmodule = async () => {
@@ -141,7 +148,8 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
                     {subScenes.sort((a, b) => a.sort_order - b.sort_order).map((sc, si) => {
                       const sinfo = typeInfo(sc.scene_type);
                       return (
-                        <div className="md-tree-scene" key={sc.id} onClick={() => selectSub(sub.id)}>
+                        <div className={`md-tree-scene${selectedId === sub.id && focusScene?.id === sc.id ? ' is-active' : ''}`} key={sc.id}
+                          onClick={() => selectScene(sub.id, sc.id)}>
                           <span className="md-tree-scene-dot" style={{ background: sinfo.color }} />
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{si + 1}. {sc.title}</span>
                         </div>
@@ -166,7 +174,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
               onSelect={selectSub} onDeleted={onModuleDeleted} />
           : selectedSub
             ? <SubmoduleEditor key={selectedSub.id} submodule={selectedSub} module={mod} siblings={modSubs}
-                onDeleted={() => setSelectedId(OVERVIEW)} />
+                focusScene={focusScene} onDeleted={() => setSelectedId(OVERVIEW)} />
             : null}
       </section>
     </div>

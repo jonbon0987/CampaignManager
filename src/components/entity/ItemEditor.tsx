@@ -2,6 +2,7 @@
 // knows, and who has it.
 
 import { useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useItems } from '../../context/items';
 import { useAutoSave } from '../../hooks/useAutoSave';
@@ -67,7 +68,7 @@ export function ItemEditor({ item, save, remove, onDeleted }: {
       <div className="ent-head">
         <div className="ent-head-text">
           <div className="cm-eyebrow">Item</div>
-          <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Item name…"
+          <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Item name…"
             maxLength={limitFor('items', 'name')} aria-label="Name" />
           <input className="as-sub" value={form.value ?? ''} onChange={e => set('value', e.target.value || null)} placeholder="Worth… (e.g. 50 gp)"
             maxLength={limitFor('items', 'value')} aria-label="Value" />

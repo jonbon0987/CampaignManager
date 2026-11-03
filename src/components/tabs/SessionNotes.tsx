@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { SlashField } from '../ui/SlashField';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
@@ -15,6 +16,7 @@ import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { RecorderPanel } from '../session/RecorderPanel';
+import { useEndSession } from '../play/useEndSession';
 import { SessionPrep } from '../session/SessionPrep';
 import { SessionChronicles } from '../session/SessionChronicles';
 import { LeftOpenToInbox } from '../session/LeftOpenToInbox';
@@ -131,6 +133,7 @@ function SessionDetail({
 }) {
   const { upsertSession, deleteSession } = useCampaign();
   const confirm = useConfirm();
+  const endSession = useEndSession(useOpenRecord());
 
   const [form, setForm] = useState<SessionForm>(() => toForm(session));
   // A session still to play opens on its prep; one played opens on its recap,
@@ -206,8 +209,7 @@ function SessionDetail({
             Session {form.session_number}
             {form.status === 'live' && <span className="ss-live"> · ● Live</span>}
           </div>
-          <input
-            className="as-title"
+          <TitleInput
             value={form.title ?? ''}
             onChange={e => set('title', e.target.value || null)}
             placeholder="Untitled session"
@@ -241,6 +243,13 @@ function SessionDetail({
             </div>
             <div className="as-fl">
               <span className="as-ll" id={`ss-status-${session.id}`}>Status</span>
+              {/* Live is set by Start and cleared by End, not picked here. */}
+              {form.status === 'live' ? (
+                <div className="flex items-center gap-2" aria-labelledby={`ss-status-${session.id}`}>
+                  <span className="cm-pill is-subtle ss-live-pill">● {STATUS_LABEL.live}</span>
+                  <Button variant="secondary" size="xs" onClick={() => void endSession()}>■ End session</Button>
+                </div>
+              ) : (
               <div className="flex gap-1" role="radiogroup" aria-labelledby={`ss-status-${session.id}`}>
                 {(['planned', 'done'] as const).map(st => (
                   // eslint-disable-next-line no-restricted-syntax -- a status pill, styled by .cm-pill
@@ -255,6 +264,7 @@ function SessionDetail({
                   </button>
                 ))}
               </div>
+              )}
             </div>
           </div>
           <SessionWorldDates session={session} />

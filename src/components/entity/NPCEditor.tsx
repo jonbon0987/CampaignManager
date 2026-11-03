@@ -3,6 +3,7 @@
 // where the NPC came from (canon or this table) and what sessions did with it.
 
 import { useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -129,7 +130,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
         <div className="ent-head-text">
           <div className="cm-eyebrow">{scope === 'world' ? 'World NPC' : 'Non-Player Character'}</div>
           <fieldset className="as-fieldset" disabled={locked}>
-            <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Character name…" maxLength={limitFor('npcs', 'name')} aria-label="Name" />
+            <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Character name…" maxLength={limitFor('npcs', 'name')} aria-label="Name" />
             <input className="as-sub" value={form.role ?? ''} onChange={e => set('role', e.target.value || null)} placeholder="Role or title…" maxLength={limitFor('npcs', 'role')} aria-label="Role" />
           </fieldset>
         </div>

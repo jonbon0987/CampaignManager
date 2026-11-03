@@ -1,6 +1,7 @@
 // The one faction editor, used in the world and in its campaigns.
 
 import { useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -85,7 +86,7 @@ export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, o
       <div className="cm-eyebrow">{scope === 'world' ? 'World faction' : 'Faction'}</div>
 
       <fieldset className="as-fieldset" disabled={locked}>
-        <input className="as-title" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Faction name…" maxLength={limitFor('factions', 'name')} aria-label="Name" />
+        <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Faction name…" maxLength={limitFor('factions', 'name')} aria-label="Name" />
 
         <div className="as-meta">
           <div className="as-mi">

@@ -6,6 +6,7 @@
 // saved to Encounters or run in the Initiative Tracker.
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { TitleInput } from './TitleInput';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { OverflowMenu } from './OverflowMenu';
 import { SlashField } from './SlashField';
@@ -400,8 +401,7 @@ export function RandomEncounterDetail({
       </div>
 
       {/* ── Title + subtitle ── */}
-      <input
-        className="as-title"
+      <TitleInput
         value={form.name}
         onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
         placeholder="Name this table…"

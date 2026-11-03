@@ -88,6 +88,15 @@ export function rateEncounter(foes: { cr: string | null; count: number }[], leve
   return { tier, xp, thresholds, unrated };
 }
 
+/**
+ * True when an encounter has creatures but none with a known CR, so no
+ * difficulty can be worked out and any stored one is a leftover default.
+ */
+export function isUnratable(foes: { cr: string | null; count: number }[]): boolean {
+  const present = foes.filter(f => f.count > 0);
+  return present.length > 0 && present.every(f => CR_XP[String(f.cr ?? '').trim()] == null);
+}
+
 /** A party member as the rating needs them. */
 export interface PartyLevel { name: string; level: number | null }
 

@@ -1855,8 +1855,10 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 
 /* Table tools in the rail */
 .pt { display: flex; flex-direction: column; flex: 1; height: 100%; min-height: 0; background: var(--bg); }
-.pt-tabs { padding: 0 6px; }
-.pt-tabs .cm-subtab { padding: 12px 9px; font-size: 13px; }
+/* Six tools don't fit one row of a 340px rail, so they sit in two rows of three. */
+/* (.cm-subtabs is defined later and sets flex, hence the doubled class) */
+.cm-subtabs.pt-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0 6px; }
+.pt-tabs .cm-subtab { padding: 10px 6px; font-size: 13px; text-align: center; overflow: hidden; text-overflow: ellipsis; }
 .pt-body { flex: 1; min-height: 0; overflow-y: auto; }
 .pt-body > [hidden] { display: none; }
 .pt-pane { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
@@ -1978,6 +1980,8 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border-left: 1px solid var(--rule);
   background: var(--bg);
   overflow: hidden;
+  /* clip, not just hidden: focusing a control near the edge must not scroll the rail sideways */
+  overflow: clip;
   height: 100vh;
 }
 .cm-rail-head {
@@ -2579,6 +2583,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .ss-head { display: flex; flex-direction: column; }
 .ss-meta { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; margin-top: 8px; }
 .ss-live { color: var(--moss); }
+.cm-pill.ss-live-pill { color: var(--moss); border-color: var(--moss); cursor: default; }
 .st-title { background: none; border: none; padding: 0; text-align: inherit; cursor: pointer; }
 .st-title:hover { color: var(--gold); }
 .sp { display: flex; flex-direction: column; gap: 28px; }
@@ -2623,10 +2628,14 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .as-spacer { flex: 1; }
 
-/* Title input — mirrors .cm-detail-title */
+/* Title input — mirrors .cm-detail-title. A one-row textarea (TitleInput) that
+   grows as it wraps, so long names show in full. */
 .as-title {
   display: block;
   width: 100%;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   font-family: var(--display);
   font-size: 44px;
   line-height: 1.05;
@@ -3341,6 +3350,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   font-size: 13px; color: var(--ink-2);
 }
 .md-tree-scene:hover { background: var(--paper); color: var(--ink); }
+.md-tree-scene.is-active { background: var(--paper-2); color: var(--ink); box-shadow: inset 2px 0 0 var(--gold); }
 .md-tree-scene-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
 
 .md-railfoot { padding: 10px 12px; border-top: 1px solid var(--rule-soft); }

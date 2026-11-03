@@ -2,6 +2,7 @@
 // NPC, faction, place and lore editors.
 
 import { useState } from 'react';
+import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useDiscardBlankDraft } from '../../hooks/useDiscardBlankDraft';
@@ -83,7 +84,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
       <div className="ent-head">
         <div className="ent-head-text">
           <div className="cm-eyebrow">Player character</div>
-          <input className="as-title" value={form.character_name} onChange={e => set('character_name', e.target.value)} placeholder="Character name…" maxLength={limitFor('player_characters', 'character_name')} aria-label="Name" />
+          <TitleInput value={form.character_name} onChange={e => set('character_name', e.target.value)} placeholder="Character name…" maxLength={limitFor('player_characters', 'character_name')} aria-label="Name" />
           <input className="as-sub" value={form.player_name ?? ''} onChange={e => set('player_name', e.target.value || null)} placeholder="Player name…" maxLength={limitFor('player_characters', 'player_name')} aria-label="Player" />
         </div>
         <ImageSlot path={form.portrait_path} onChange={p => set('portrait_path', p)} label="Portrait" />
