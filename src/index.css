@@ -2628,6 +2628,32 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .wu-row .wu-num-in { width: 96px; flex: 0 0 96px; }
 .wu-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
 .wu-levels { margin: 0; font-size: 14px; color: var(--gold); }
+
+/* SRD library (components/srd/SrdLibrary) */
+.srd { display: flex; flex-direction: column; gap: 12px; }
+.srd-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.srd-editions { display: flex; gap: 6px; }
+.srd-search { flex: 1 1 220px; width: auto; }
+.srd-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.srd-cr { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-3); }
+.srd-split { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 16px; height: min(58vh, 600px); }
+.srd-list { overflow-y: auto; min-height: 0; border-right: 1px solid var(--rule-soft); padding-right: 8px; }
+.srd-count { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); padding: 2px 12px 8px; }
+.srd-preview { overflow-y: auto; min-height: 0; padding-right: 4px; }
+.srd-entry { display: flex; flex-direction: column; gap: 10px; }
+.srd-name { margin: 0; font-family: var(--display); font-size: 22px; color: var(--gold); }
+.srd-meta { margin: -6px 0 0; font-size: 13px; font-style: italic; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.srd-note { margin: 12px 0 0; }
+.srd-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.srd-credit { margin: 0; flex: 1 1 320px; font-size: 11px; line-height: 1.5; color: var(--ink-3); }
+.srd-credit a { color: var(--ink-2); text-decoration: underline; }
+.srd-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.srd-error { font-size: 13px; color: var(--red); }
+@media (max-width: 640px) {
+  .srd-split { grid-template-columns: 1fr; height: auto; }
+  .srd-list { max-height: 38vh; border-right: none; border-bottom: 1px solid var(--rule-soft); padding: 0 0 8px; }
+  .srd-preview { overflow: visible; }
+}
 .st-title { background: none; border: none; padding: 0; text-align: inherit; cursor: pointer; }
 .st-title:hover { color: var(--gold); }
 .sp { display: flex; flex-direction: column; gap: 28px; }

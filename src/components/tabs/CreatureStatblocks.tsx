@@ -17,6 +17,8 @@ import { parsedToMonsterForm, statblockFieldsFromForm } from '../../lib/statbloc
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { ListDetail, ListRow, EmptyDetail, Pill } from '../ui/ListDetail';
 import { StatSheetEditor } from '../entity/StatSheetEditor';
+import { SrdLibrary } from '../srd/SrdLibrary';
+import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd';
 import type { MonsterStatblock } from '../../lib/database.types';
 
 // --------------- Form type ---------------
@@ -312,7 +314,8 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 // ================================================================
 
 export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromWorld?: () => void; openId?: string | null; onOpenConsumed?: () => void }) {
-  const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, overview } = useCampaign();
+  const { monsterStatblocks, upsertMonsterStatblock, deleteMonsterStatblock, overview, selectedCampaign } = useCampaign();
+  const [srdOpen, setSrdOpen] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
@@ -346,6 +349,16 @@ export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenCo
     setSearch('');
     setSelectedId(m.id);
   };
+
+  // A copy of an SRD creature, which is the DM's to change from then on.
+  const addFromSrd = async (m: SrdMonster, edition: SrdEdition) => {
+    const sb = await upsertMonsterStatblock({ ...srdToStatblock(m, edition), sort_order: monsterStatblocks.length });
+    setFilterType('all');
+    setSearch('');
+    setSelectedId(sb.id);
+  };
+  const haveSheet = (name: string) => monsterStatblocks.some(s => s.name.trim().toLowerCase() === name.toLowerCase())
+    ? `You already have a stat sheet called ${name}; this adds another.` : null;
 
   const removeSheet = async (id: string) => {
     await deleteMonsterStatblock(id);
@@ -479,8 +492,11 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         count={monsterStatblocks.length}
         search={search}
         onSearchChange={setSearch}
-        onAdd={() => void handleAdd()}
-        addLabel="+ Add stat sheet"
+        addLabel="+ Add"
+        addOptions={[
+          { label: 'Blank stat sheet', onClick: () => void handleAdd() },
+          { label: 'From the SRD library…', onClick: () => setSrdOpen(true) },
+        ]}
         onGenerate={openGenModal}
         onImport={onImportFromWorld}
         filters={monsterStatblocks.length > 0 && (
@@ -490,7 +506,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           </>
         )}
         list={filtered.length === 0
-          ? <div className="cm-empty is-inline">{monsterStatblocks.length === 0 ? 'No stat sheets yet. Add one, or generate one.' : 'No stat sheets match.'}</div>
+          ? <div className="cm-empty is-inline">{monsterStatblocks.length === 0 ? 'No stat sheets yet. Add one from the SRD library, write your own, or generate one.' : 'No stat sheets match.'}</div>
           : filtered.map(m => (
             <ListRow key={m.id} active={selected?.id === m.id} onClick={() => setSelectedId(m.id)} glyph="◆"
               title={m.name || 'Unnamed creature'}
@@ -510,6 +526,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           <EmptyDetail>Select a stat sheet, or add one.</EmptyDetail>
         )}
       />
+
+      <SrdLibrary kind="monsters" open={srdOpen} onClose={() => setSrdOpen(false)}
+        edition={selectedCampaign?.rules_edition ?? '2014'} addLabel="Add to stat sheets" note={haveSheet} onAdd={addFromSrd} />
 
       {/* ================================================================
           GENERATE MODAL

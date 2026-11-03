@@ -1,5 +1,5 @@
-// The numbers in a stat block that can be rolled: an attack's "+5 to hit", its
-// damage "10 (2d6 + 3)" or a bare "1d6", and a save or skill "Wis +3". The text
+// The numbers in a stat block that can be rolled: an attack's "+5 to hit" (2024:
+// "Attack Roll: +5"), its damage "10 (2d6 + 3)" or a bare "1d6", and a save or skill "Wis +3". The text
 // is split into plain runs and those, so the stat sheet can show them as dice
 // to click. Pure; the dice themselves are in lib/dice.
 
@@ -15,6 +15,7 @@ export interface RollSegment { text: string; roll?: Rollable }
 const DICE = String.raw`\d*d\d+(?:\s*[+-]\s*\d+)?`;
 const PARTS = [
   String.raw`(?<atk>[+-]\d+)\s+to hit`,
+  String.raw`(?<=Attack Roll:\s*)(?<atk24>[+-]\d+)`,
   String.raw`\d+\s*\((?<avg>${DICE})\)`,
   String.raw`\b(?<dice>${DICE})\b`,
 ];
@@ -32,7 +33,7 @@ export function rollSegments(text: string, { checks = false }: { checks?: boolea
   for (const m of text.matchAll(re)) {
     const g = m.groups ?? {};
     let roll: Rollable | null = null;
-    if (g.atk) roll = { kind: 'attack', mod: parseInt(g.atk, 10) };
+    if (g.atk || g.atk24) roll = { kind: 'attack', mod: parseInt(g.atk ?? g.atk24, 10) };
     else if (g.avg || g.dice) {
       const spec = parseDice(g.avg ?? g.dice);
       if (spec) roll = { kind: 'damage', spec };

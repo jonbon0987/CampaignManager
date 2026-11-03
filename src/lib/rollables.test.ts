@@ -12,6 +12,14 @@ describe('rollables', () => {
     expect(segs.map(s => s.text).join('')).toBe('Greatsword. Melee Weapon Attack: +5 to hit, reach 5 ft. Hit: 10 (2d6 + 3) slashing, or 1d4 more.');
   });
 
+  it('reads the 2024 "Attack Roll: +N" wording, leaving the words as text', () => {
+    const text = 'Scimitar. Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6 + 2) Slashing damage.';
+    const rolls = rollSegments(text).filter(s => s.roll);
+    expect(rolls.map(s => s.text)).toEqual(['+4', '5 (1d6 + 2)']);
+    expect(rolls[0].roll).toEqual({ kind: 'attack', mod: 4 });
+    expect(rollSegments(text).map(s => s.text).join('')).toBe(text);
+  });
+
   it('reads saves and skills only when asked', () => {
     expect(rollSegments('Wis +3, Perception +3').some(s => s.roll)).toBe(false);
     const segs = rollSegments('Wis +3, Perception -1', { checks: true }).filter(s => s.roll);

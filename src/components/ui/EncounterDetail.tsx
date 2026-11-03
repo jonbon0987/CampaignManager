@@ -10,6 +10,8 @@ import { limitFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
 import { adviseEncounter, isUnratable, partyLevels, rateEncounter, RATING_LABEL, stepReached, type Edition, type PartyLevel, type Rating } from '../../lib/encounterScaling';
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
+import { SrdLibrary } from '../srd/SrdLibrary';
+import type { SrdEdition, SrdMonster } from '../../lib/srd';
 
 // ================================================================
 // Constants
@@ -201,6 +203,7 @@ export function EncounterDetail({
   upsertEncounter,
   party,
   edition = '2014',
+  sheetFromSrd,
 }: {
   enc: Encounter;
   monsterStatblocks: MonsterStatblock[];
@@ -213,11 +216,14 @@ export function EncounterDetail({
   onViewStatblock: (sb: MonsterStatblock) => void;
   upsertEncounter: (data: EncounterSaveData) => Promise<Encounter>;
   enableMentions?: boolean;
+  /** The stat sheet an SRD creature fights from; without it there's no SRD picker. */
+  sheetFromSrd?: (m: SrdMonster, edition: SrdEdition) => Promise<MonsterStatblock>;
 }) {
   const [form, setForm] = useState<EncounterForm>(() => formFromEncounter(enc));
   const [combatants, setCombatants] = useState<EncounterCombatant[]>(() => parseCombatants(enc.combatants));
 
   const [addCreatureMode, setAddCreatureMode] = useState<'saved' | 'custom' | null>(null);
+  const [srdOpen, setSrdOpen] = useState(false);
   const [customCreatureName, setCustomCreatureName] = useState('');
   const [customCreatureType, setCustomCreatureType] = useState('');
   const [customCreatureCR, setCustomCreatureCR] = useState('');
@@ -254,9 +260,8 @@ export function EncounterDetail({
     },
   });
 
-  const addSavedCombatant = (statblockId: string) => {
-    const sb = monsterStatblocks.find(m => m.id === statblockId);
-    if (!sb) return;
+  const addSavedCombatant = (sb: MonsterStatblock) => {
+    const statblockId = sb.id;
     const existing = combatants.findIndex(c => c.statblock_id === statblockId);
     if (existing >= 0) {
       setCombatants(prev => prev.map((c, i) => i === existing ? { ...c, count: c.count + 1 } : c));
@@ -465,7 +470,13 @@ export function EncounterDetail({
             {monsterStatblocks.length > 0 && (
               <button onClick={() => setAddCreatureMode('saved')} className="text-xs px-3 py-1.5 rounded"
                 style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}>
-                + From Library
+                + From stat sheets
+              </button>
+            )}
+            {sheetFromSrd && (
+              <button onClick={() => setSrdOpen(true)} className="text-xs px-3 py-1.5 rounded"
+                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}>
+                + From SRD
               </button>
             )}
             <button onClick={() => setAddCreatureMode('custom')} className="text-xs px-3 py-1.5 rounded"
@@ -477,10 +488,10 @@ export function EncounterDetail({
 
         {addCreatureMode === 'saved' && (
           <div className="rounded p-3 space-y-2" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-            <p className="text-xs font-semibold" style={{ color: 'var(--gold)' }}>Select from Library</p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--gold)' }}>Your stat sheets</p>
             <div className="max-h-48 overflow-y-auto space-y-1">
               {monsterStatblocks.map(m => (
-                <button key={m.id} onClick={() => addSavedCombatant(m.id)}
+                <button key={m.id} onClick={() => addSavedCombatant(m)}
                   className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
                   style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule-soft)' }}>
                   <span className="flex-1">{m.name}</span>
@@ -518,6 +529,13 @@ export function EncounterDetail({
                 style={{ color: 'var(--ink-3)', border: '1px solid var(--rule)' }}>Cancel</button>
             </div>
           </div>
+        )}
+
+        {sheetFromSrd && (
+          <SrdLibrary kind="monsters" open={srdOpen} onClose={() => setSrdOpen(false)} edition={edition} addLabel="Add to encounter"
+            note={name => monsterStatblocks.some(m => m.name.trim().toLowerCase() === name.toLowerCase())
+              ? `Uses your ${name} stat sheet.` : `Also adds ${name} to your stat sheets, to run it from.`}
+            onAdd={async (m, ed) => addSavedCombatant(await sheetFromSrd(m, ed))} />
         )}
 
         {totalCreatures > 0 && (
