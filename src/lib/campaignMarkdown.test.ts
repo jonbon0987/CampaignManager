@@ -169,6 +169,15 @@ describe('markdownFiles', () => {
     expect(files['Bestiary.md']).toContain('| 8 (-1) | 14 (+2) |');
   });
 
+  it('keeps a table row whole when its text holds backslashes and pipes', () => {
+    const table = row({ id: 'rt2', name: 'Odd', die_size: 4, sort_order: 0, entries: JSON.stringify([
+      { id: 'a', name: 'C:\\ drive', description: 'a\\|b', weight: 1, rarity: null },
+    ]) });
+    const out = markdownFiles({ ...data, tables: { ...empty, random_encounter_tables: [table as never] } }, new Map())['Encounters.md'];
+    // a\|b → a\\\|b: an escaped backslash, then an escaped pipe, so the cell isn't split.
+    expect(out).toContain('| 1–4 | C:\\\\ drive | a\\\\\\|b |');
+  });
+
   it('leaves out parts with nothing in them', () => {
     const bare = markdownFiles({ ...data, canon: { npcs: [], locations: [], lore_entries: [] }, tables: empty }, new Map());
     expect(Object.keys(bare)).toEqual(['README.md']);

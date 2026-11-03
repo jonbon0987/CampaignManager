@@ -402,7 +402,8 @@ function encounters(data: CampaignExport, names: Names): string {
     const ranges = weightedRanges(entries, die);
     md.h(2, r.name || 'Untitled table').meta([r.subtitle, r.kind, `d${die}`, r.environment]).para(r.description);
     if (entries.length) {
-      const cell = (s: string | null | undefined) => oneLine(clean(s)).replace(/\|/g, '\\|');
+      // Backslashes first, so text holding "\|" can't end up as an escaped backslash before a bare pipe.
+      const cell = (s: string | null | undefined) => oneLine(clean(s)).replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
       md.raw(['| Roll | Result | Details |', '| --- | --- | --- |', ...entries.map((en, i) => {
         const { lo, hi } = ranges[i];
         return `| ${lo === hi ? lo : `${lo}–${hi}`} | ${cell(en.name)} | ${cell(en.description)} |`;
