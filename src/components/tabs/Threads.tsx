@@ -4,7 +4,7 @@
 // a place). A thread's column is its state: drag it to another, or set it in
 // the thread's own page.
 
-import { useEffect, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
@@ -15,9 +15,12 @@ import { formatThreadKind, hookCategoryStyles, threadStateMeta, THREAD_STATES } 
 import { PageHeader } from '../ui/PageHeader';
 import { SearchBar } from '../ui/SearchBar';
 import { Button } from '../ui/Button';
-import { ThreadEditor, type ThreadFields } from '../entity/ThreadEditor';
+import { ImageThumb } from '../ui/ImageThumb';
+import { ClockDots } from '../ui/ThreadClock';
+import { ThreadEditor, type ThreadFields, type ThreadLinkOptions } from '../entity/ThreadEditor';
 import { PromoteThreadModal } from './PromoteThreadModal';
-import type { Hook, Idea } from '../../lib/database.types';
+import { clockOf } from '../../lib/threadClock';
+import type { Faction, Hook, Idea, Location, NPC } from '../../lib/database.types';
 
 type Column = 'inbox' | (typeof THREAD_STATES)[number];
 const DRAG_THREAD = 'application/x-thread';
@@ -102,9 +105,33 @@ function IdeaComposer({ onAdd }: { onAdd: (text: string, tag: string) => Promise
   );
 }
 
-function ThreadCard({ h, onOpen }: { h: Hook; onOpen: () => void }) {
+const MAX_FACES = 4;
+
+/** The NPCs a thread touches: their portraits, or an initial until they have one. */
+function Faces({ people }: { people: NPC[] }) {
+  if (people.length === 0) return null;
+  const extra = people.length - MAX_FACES;
+  return (
+    <span className="th-faces" aria-label={`With ${people.map(p => p.name || 'an unnamed NPC').join(', ')}`} role="img">
+      {people.slice(0, MAX_FACES).map(p => (
+        <span key={p.id} className="th-face" title={p.name}>
+          {p.portrait_path ? <ImageThumb path={p.portrait_path} /> : (p.name.trim()[0] ?? '?').toUpperCase()}
+        </span>
+      ))}
+      {extra > 0 && <span className="th-face th-face-more">+{extra}</span>}
+    </span>
+  );
+}
+
+function ThreadCard({ h, npcs, places, factions, onOpen }: { h: Hook; npcs: NPC[]; places: Location[]; factions: Faction[]; onOpen: () => void }) {
   const ks = hookCategoryStyles[h.category ?? 'side_quest'] ?? hookCategoryStyles.side_quest;
   const sum = h.description ? plainText(h.description) : '';
+  const clock = clockOf(h);
+  const people = (h.npc_ids ?? []).flatMap(id => npcs.filter(n => n.id === id));
+  const where = [
+    ...(h.location_ids ?? []).flatMap(id => places.filter(l => l.id === id).map(l => l.name)),
+    ...(h.faction_ids ?? []).flatMap(id => factions.filter(f => f.id === id).map(f => f.name)),
+  ].filter(Boolean);
   return (
     <div className="th-card" role="button" tabIndex={0} draggable
       style={{ borderLeftColor: ks.badge }}
@@ -113,13 +140,25 @@ function ThreadCard({ h, onOpen }: { h: Hook; onOpen: () => void }) {
       <span className="th-card-kind" style={{ color: ks.badge }}>{formatThreadKind(h.category)}</span>
       <span className="th-card-title">{h.title || 'Untitled thread'}</span>
       {sum && <span className="th-card-sum">{sum}</span>}
-      {h.last_updated_session != null && <span className="th-card-foot">Session {h.last_updated_session}</span>}
+      {clock && (
+        <span className="th-card-clock">
+          <ClockDots clock={clock} />
+          {(clock.full || clock.label) && <span>{clock.full ? `Full${clock.label ? `: ${clock.label}` : ''}` : clock.label}</span>}
+        </span>
+      )}
+      {where.length > 0 && <span className="th-card-where">{where.slice(0, 2).join(' · ')}{where.length > 2 ? ` +${where.length - 2}` : ''}</span>}
+      {(people.length > 0 || h.last_updated_session != null) && (
+        <span className="th-card-foot">
+          <Faces people={people} />
+          {h.last_updated_session != null && <span>Last seen Session {h.last_updated_session}</span>}
+        </span>
+      )}
     </div>
   );
 }
 
 export default function Threads({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void }) {
-  const { hooks, ideas, upsertHook, deleteHook, upsertIdea, deleteIdea, promoteIdea, upsertLore, upsertLocation } = useCampaign();
+  const { hooks, ideas, npcs, locations, factions, modules, upsertHook, deleteHook, upsertIdea, deleteIdea, promoteIdea, upsertLore, upsertLocation } = useCampaign();
   const confirm = useConfirm();
   const openRecord = useOpenRecord();
   const [search, setSearch] = useState('');
@@ -147,13 +186,21 @@ export default function Threads({ openId, onOpenConsumed }: { openId?: string | 
   const q = search.trim().toLowerCase();
   const matches = (...texts: (string | null)[]) => !q || texts.some(t => t?.toLowerCase().includes(q));
   const inbox = ideas.filter(i => !i.promoted_hook_id && matches(i.text, i.tag));
-  const shown = hooks.filter(h => matches(h.title, h.description));
+  const shown = hooks.filter(h => matches(h.title, h.description, h.clock_label ?? null));
   const live = hooks.filter(h => stateOf(h) !== 'resolved').length;
 
-  const saveThread = (h: Hook) => (f: ThreadFields) => upsertHook({
+  const saveThread = (h: Hook) => (f: Pick<ThreadFields, 'title' | 'category' | 'state' | 'description'> & Partial<ThreadFields>) => upsertHook({
     id: h.id, ...f, is_active: f.state !== 'resolved',
     last_updated_session: h.last_updated_session, dm_only_notes: h.dm_only_notes,
   });
+
+  const links = useMemo<ThreadLinkOptions>(() => ({
+    npcs: npcs.filter(n => n.name).map(n => ({ id: n.id, label: n.name, detail: n.role ?? undefined })),
+    places: locations.filter(l => l.name).map(l => ({ id: l.id, label: l.name, detail: l.region ?? undefined })),
+    factions: factions.filter(f => f.name).map(f => ({ id: f.id, label: f.name })),
+    modules: modules.filter(m => m.title).map(m => ({ id: m.id, label: m.title, detail: m.chapter ? `Chapter ${m.chapter}` : undefined })),
+    open: (kind, id) => openRecord(kind === 'place' ? 'locations' : kind === 'module' ? 'modules' : 'cast', id),
+  }), [npcs, locations, factions, modules, openRecord]);
 
   const moveThread = async (h: Hook, state: string) => {
     if (stateOf(h) === state) return;
@@ -232,7 +279,7 @@ export default function Threads({ openId, onOpenConsumed }: { openId?: string | 
                   {inbox.length === 0 && <p className="th-empty">{q ? 'No ideas match.' : <>Nothing waiting. Jot ideas here, or press <kbd className="cm-kbd">⌘.</kbd> from anywhere.</>}</p>}
                 </>
               )}
-              {cards.map(h => <ThreadCard key={h.id} h={h} onOpen={() => setOpenThreadId(h.id)} />)}
+              {cards.map(h => <ThreadCard key={h.id} h={h} npcs={npcs} places={locations} factions={factions} onOpen={() => setOpenThreadId(h.id)} />)}
               {col !== 'inbox' && cards.length === 0 && <p className="th-empty">—</p>}
             </section>
           );
@@ -243,7 +290,7 @@ export default function Threads({ openId, onOpenConsumed }: { openId?: string | 
         <div className="cm-drawer-back" onClick={() => setOpenThreadId(null)} />
         <div className="cm-drawer th-drawer" role="dialog" aria-label={openThread?.title || 'Thread'}>
           {openThread && (
-            <ThreadEditor key={openThread.id} thread={openThread} save={saveThread(openThread)} remove={deleteHook}
+            <ThreadEditor key={openThread.id} thread={openThread} links={links} save={saveThread(openThread)} remove={deleteHook}
               onDeleted={() => setOpenThreadId(null)} onPromote={() => { setPromoting(openThread); setOpenThreadId(null); }}
               onClose={() => setOpenThreadId(null)} />
           )}

@@ -123,6 +123,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     description: LIMIT.PROSE,
     state: LIMIT.TAG,
     dm_only_notes: LIMIT.PROSE,
+    clock_label: LIMIT.NAME,
   },
   ideas: {
     text: LIMIT.PROSE,
@@ -291,6 +292,7 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
   },
   hooks: {
     last_updated_session: [0, 9_999],
+    clock_filled: [0, 8],
   },
   modules: {
     played_session: [0, 9_999],

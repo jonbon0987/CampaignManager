@@ -203,7 +203,7 @@ FACTIONS (${data.factions.length}):
 ${data.factions.map(f => `  ${f.name} (${f.faction_type ?? '?'})${names(f.key_figure_ids, npcName) ? `; key figures: ${names(f.key_figure_ids, npcName)}` : ''} [id:${f.id}]${textFields(f as unknown as Record<string, unknown>, ['overview', 'key_figures', 'agenda', 'dm_notes'])}`).join('\n') || '  (none)'}
 
 HOOKS & IDEAS (${data.hooks.length}):
-${data.hooks.map(h => `  [${h.state ?? (h.is_active ? 'active' : 'resolved')}] ${h.title} (${h.category ?? '?'}) [id:${h.id}]${textFields(h as unknown as Record<string, unknown>, ['description', 'dm_only_notes'])}`).join('\n') || '  (none)'}
+${data.hooks.map(h => `  [${h.state ?? (h.is_active ? 'active' : 'resolved')}] ${h.title} (${h.category ?? '?'})${h.clock_size ? `; clock ${h.clock_filled ?? 0} of ${h.clock_size}${h.clock_label ? `: ${h.clock_label}` : ''}` : ''}${names(h.npc_ids, npcName) ? `; NPCs: ${names(h.npc_ids, npcName)}` : ''}${names(h.faction_ids, factionName) ? `; factions: ${names(h.faction_ids, factionName)}` : ''} [id:${h.id}]${textFields(h as unknown as Record<string, unknown>, ['description', 'dm_only_notes'])}`).join('\n') || '  (none)'}
 
 LORE ENTRIES (${data.lore.length}):
 ${data.lore.map(l => `  ${l.title} (${l.category ?? '?'}) [id:${l.id}]${textFields(l as unknown as Record<string, unknown>, ['content'])}`).join('\n') || '  (none)'}

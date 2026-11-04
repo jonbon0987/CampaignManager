@@ -258,6 +258,13 @@ export type Hook = {
   last_updated_session: number | null;
   is_active: boolean;
   dm_only_notes: string | null;
+  clock_size: number | null;         // 4, 6 or 8 segments; null for no clock
+  clock_filled: number;
+  clock_label: string | null;        // what happens when it fills
+  npc_ids: string[] | null;          // what the thread touches
+  location_ids: string[] | null;
+  faction_ids: string[] | null;
+  module_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -394,7 +401,8 @@ export type PCTableFields = 'sheet_url' | 'passive_perception' | 'passive_insigh
 export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id' | 'portrait_path'> & { disposition?: string | null; location_id?: string | null; portrait_path?: string | null };
 export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud' | 'map_path'> & { read_aloud?: string | null; map_path?: string | null };
 export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'> & { key_figure_ids?: string[] };
-export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+type HookExtras = 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id';
+export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at' | HookExtras> & Partial<Pick<Hook, HookExtras>>;
 export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
@@ -961,7 +969,7 @@ export interface Database {
       };
       hooks: {
         Row: Hook;
-        Insert: Omit<Hook, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: Omit<Hook, 'id' | 'created_at' | 'updated_at' | HookExtras> & Partial<Pick<Hook, HookExtras>> & { id?: string };
         Update: Partial<Omit<Hook, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
