@@ -295,6 +295,7 @@ export function WorldLocationsView() {
           allLocations={locations.flatMap(l => (l.row ? [l.row] : []))}
           save={fields => upsertWorldLocation({ id: sel.id, ...fields })}
           remove={deleteWorldLocation}
+          onOpenLocation={id => setSelected('locations', id)}
         />
       ) : <EmptyDetail noun="place" />}
     />

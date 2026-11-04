@@ -15,19 +15,21 @@ import { SessionHistory } from '../session/SessionHistory';
 import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import { useCanonLock } from './useCanonLock';
 import { ImageSlot } from '../ui/ImageSlot';
+import { MapPins } from './MapPins';
+import { pinsOf } from '../../lib/mapPins';
 import { ReadAloudField } from '../ui/ReadAloudBlock';
 import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import type { EntityCanon, EntityScope } from './types';
-import type { Location } from '../../lib/database.types';
+import type { Json, Location } from '../../lib/database.types';
 
 export type LocationFields = Pick<Location,
-  'name' | 'region' | 'location_type' | 'parent_id' | 'population' | 'status' | 'description' | 'history' | 'dm_notes' | 'read_aloud' | 'map_path'>;
+  'name' | 'region' | 'location_type' | 'parent_id' | 'population' | 'status' | 'description' | 'history' | 'dm_notes' | 'read_aloud' | 'map_path' | 'map_pins'>;
 
 const toFields = (l: Location): LocationFields => ({
   name: l.name, region: l.region, location_type: l.location_type, parent_id: l.parent_id, population: l.population,
   status: l.status, description: l.description, history: l.history, dm_notes: l.dm_notes, read_aloud: l.read_aloud ?? null,
-  map_path: l.map_path ?? null,
+  map_path: l.map_path ?? null, map_pins: l.map_pins ?? [],
 });
 
 const LOCATION_TYPES = ['continent', 'city', 'town', 'dungeon', 'faction_hq', 'landmark', 'other'] as const;
@@ -51,7 +53,7 @@ function insideOf(id: string, all: Pick<Location, 'id' | 'parent_id'>[]): Set<st
 type Optional = 'map' | 'read' | 'history' | 'notes';
 const OPTIONAL_LABEL: Record<Optional, string> = { map: 'Map', read: 'Read aloud', history: 'History', notes: 'DM notes' };
 
-export function LocationEditor({ location, scope, allLocations, save, remove, onDeleted, canon }: {
+export function LocationEditor({ location, scope, allLocations, save, remove, onDeleted, onOpenLocation, canon }: {
   location: Location;
   scope: EntityScope;
   /** Places in the same scope, to pick what this one is within. */
@@ -59,6 +61,8 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
   save: (fields: LocationFields) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
   onDeleted?: () => void;
+  /** Opens another place, from a pin on this one's map. */
+  onOpenLocation?: (id: string) => void;
   canon?: EntityCanon<LocationFields>;
 }) {
   const confirm = useConfirm();
@@ -76,6 +80,11 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
 
   const forbidden = useMemo(() => insideOf(location.id, allLocations), [location.id, allLocations]);
   const parentOptions = allLocations.filter(l => !forbidden.has(l.id)).sort((a, b) => a.name.localeCompare(b.name));
+  // What a pin can mark: the places inside this one first, then the rest.
+  const pinPlaces = useMemo(() => allLocations
+    .filter(l => l.id !== location.id && l.name)
+    .sort((a, b) => Number(b.parent_id === location.id) - Number(a.parent_id === location.id) || a.name.localeCompare(b.name))
+    .map(l => ({ id: l.id, label: l.name, detail: l.parent_id === location.id ? 'Inside this place' : l.region ?? undefined })), [allLocations, location.id]);
 
   const handleDelete = async () => {
     if (await confirm({ title: 'Delete this place?', message: 'Any places within it move to the top level. You can undo this from its toast or Recently deleted.', confirmLabel: 'Delete', danger: true })) {
@@ -139,13 +148,22 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
           <SlashField value={form.description ?? ''} onChange={v => set('description', v || null)} placeholder="Describe this place…" minHeight="96px" maxLength={limitFor('locations', 'description')} readOnly={locked} />
         </div>
 
+        </fieldset>
+
+        {/* Outside the lock: an imported map's pins still open their places. */}
         {sections.shown('map') && (
           <div className="as-fl">
             <span className="as-ll">Map</span>
-            <ImageSlot path={form.map_path} onChange={p => set('map_path', p)} label="Map" shape="wide" disabled={locked} />
+            <ImageSlot path={form.map_path} label="Map" shape="wide" disabled={locked}
+              onChange={p => setForm(f => ({ ...f, map_path: p, map_pins: p ? f.map_pins : [] }))}
+              frame={(url, viewFull) => (
+                <MapPins url={url} pins={pinsOf(form.map_pins)} onChange={pins => set('map_pins', pins as unknown as Json)} places={pinPlaces}
+                  disabled={locked} onOpenPlace={onOpenLocation} onViewFull={viewFull} />
+              )} />
           </div>
         )}
 
+        <fieldset className="as-fieldset" disabled={locked}>
         {sections.shown('read') && (
           <div className="as-fl">
             <ReadAloudField value={form.read_aloud ?? ''} onChange={v => set('read_aloud', v || null)} maxLength={limitFor('locations', 'read_aloud')} disabled={locked} />

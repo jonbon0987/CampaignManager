@@ -6,8 +6,9 @@
 //                                            a world tab, a record in it, and its view
 //   /w/:worldId/c/:campaignId                a campaign's Home
 //   /w/:worldId/c/:campaignId/:tab[/:recordId[/:sub]][?view=web]
-//                                            a campaign tab, a record, a part of it
-//                                            (a module's part), and the tab's view
+//                                            a campaign tab, a record, what's open
+//                                            in it (a module's part or scene), and
+//                                            the tab's view
 //
 // Anything else (the bare "/") means "wherever you were last".
 

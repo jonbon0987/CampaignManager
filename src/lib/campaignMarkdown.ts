@@ -218,7 +218,7 @@ function cast(data: CampaignExport, names: Names, pics: Pics): string {
     history(md, t.entity_session_entries.filter(e => e.entity_type === 'npc' && e.entity_id === n.id), names);
     md.section('DM notes', n.dm_notes);
   }
-  const who = (kind: string, id: string) => (kind === 'pc' ? names.pc.get(id) : names.npc.get(id)) ?? 'someone since deleted';
+  const who = (kind: string, id: string) => (kind === 'pc' ? names.pc : kind === 'faction' ? names.faction : names.npc).get(id) ?? 'someone since deleted';
   const ties = t.character_relationships.map(r => `${who(r.from_kind, r.from_id)} → ${who(r.to_kind, r.to_id)}: ${r.relationship_type}${r.label ? ` (${r.label})` : ''}`);
   if (ties.length) md.h(2, 'Relationships').list(null, ties);
   return md.toString();

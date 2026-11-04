@@ -9,6 +9,7 @@ import type { Origin } from '../ui/OriginBand';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../../lib/recent';
 import CharacterWeb from './CharacterWeb';
+import { currentRoute } from '../../hooks/useRouteSync';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { ImageThumb } from '../ui/ImageThumb';
 import { NPCEditor } from '../entity/NPCEditor';
@@ -36,7 +37,7 @@ export default function Characters({ viewMode = 'list', onImportFromWorld, openI
   return (
     <div style={{ height: '100%', overflow: viewMode === 'list' ? 'hidden' : 'auto' }}>
       {viewMode === 'list' && <CastList onImportFromWorld={onImportFromWorld} openId={openId} onOpenConsumed={onOpenConsumed} />}
-      {viewMode === 'web'  && <CharacterWeb />}
+      {viewMode === 'web'  && <CharacterWeb openId={openId} onOpenConsumed={onOpenConsumed} />}
     </div>
   );
 }
@@ -58,7 +59,11 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [metFilter, setMetFilter] = useState<MetFilter>('all');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Starts on the record in the URL, so switching from the web keeps your place.
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    const r = currentRoute();
+    return r?.scope === 'campaign' && r.tab === 'cast' ? r.recordId ?? null : null;
+  });
   useReportRecord('cast', selectedId);
 
   // Open a record requested from outside the tab (e.g. the sidebar "Recent"

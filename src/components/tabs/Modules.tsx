@@ -213,8 +213,9 @@ function ModuleCreatePanel({
 export default function Modules({ viewMode = 'list', setViewMode, openId: requestedId, openSubmoduleId, onOpenConsumed }: { viewMode?: string; setViewMode?: (v: string) => void; openId?: string | null; openSubmoduleId?: string | null; onOpenConsumed?: () => void }) {
   const { modules } = useCampaign();
   const [openId, setOpenId] = useState<string | null>(null);
-  const [focusSub, setFocusSub] = useState<string | null>(null);
-  // The part open in the module, which the URL carries too.
+  // What was last asked for from outside, counted so asking again moves there again.
+  const [target, setTarget] = useState<{ id: string | null; n: number }>({ id: null, n: 0 });
+  // The part or scene open in the module, which the URL carries too.
   const [partId, setPartId] = useState<string | null>(null);
   useReportRecord('modules', openId, viewMode === 'web' ? null : partId);
 
@@ -224,7 +225,7 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
     if (!requestedId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenId(requestedId);
-    setFocusSub(openSubmoduleId ?? null);
+    setTarget(t => ({ id: openSubmoduleId ?? null, n: t.n + 1 }));
     setPartId(openSubmoduleId ?? null);
     onOpenConsumed?.();
   }, [requestedId, openSubmoduleId, onOpenConsumed]);
@@ -232,7 +233,7 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
 
   // Opening a module from the web jumps to the full editor — leave the web view
   // so the editor (which takes over) actually shows instead of staying on the web.
-  const openInEditor = (id: string) => { setOpenId(id); setPartId(null); if (viewMode === 'web') setViewMode?.('list'); };
+  const openInEditor = (id: string) => { setOpenId(id); setPartId(null); setTarget(t => ({ id: null, n: t.n + 1 })); if (viewMode === 'web') setViewMode?.('list'); };
 
   // An open module takes over the whole area as [outline rail | editor] — EXCEPT
   // in the web view, where an open module instead seeds ModuleWeb's initial
@@ -240,9 +241,9 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
   if (openModule && viewMode !== 'web') {
     return (
       <ModuleDetail
-        key={`${openModule.id}:${focusSub ?? ''}`}
+        key={openModule.id}
         module={openModule}
-        initialSubmoduleId={focusSub}
+        target={target}
         onPartChange={setPartId}
         onBack={() => { setOpenId(null); setPartId(null); }}
         onModuleDeleted={() => { setOpenId(null); setPartId(null); }}
@@ -252,7 +253,7 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
 
   return (
     <div style={{ height: '100%', overflow: viewMode === 'list' ? 'auto' : 'hidden' }}>
-      {viewMode === 'list' && <ModuleList onOpen={id => { setOpenId(id); setPartId(null); }} />}
+      {viewMode === 'list' && <ModuleList onOpen={id => { setOpenId(id); setPartId(null); setTarget(t => ({ id: null, n: t.n + 1 })); }} />}
       {viewMode === 'web'  && <ModuleWeb onOpen={openInEditor} initialModuleId={openId} />}
     </div>
   );

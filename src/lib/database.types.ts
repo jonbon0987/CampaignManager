@@ -227,6 +227,7 @@ export type Location = {
   dm_notes: string | null;
   read_aloud: string | null;         // boxed text the DM reads as the party arrives
   map_path: string | null;           // a map, in the entity-images bucket
+  map_pins: Json | null;             // pins on that map (lib/mapPins)
   created_at: string;
   updated_at: string;
 };
@@ -333,7 +334,7 @@ export type Module = {
 };
 
 export type RelationshipType = 'ally' | 'rival' | 'foe' | 'neutral';
-export type CharacterKind = 'pc' | 'npc';
+export type CharacterKind = 'pc' | 'npc' | 'faction';
 
 export type CharacterRelationship = {
   id: string;
@@ -399,7 +400,7 @@ export type PCTableFields = 'sheet_url' | 'passive_perception' | 'passive_insigh
 // disposition is optional: it's written by the session-recording review, and an
 // NPC save that omits it (every edit form) leaves the stored value untouched.
 export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id' | 'portrait_path'> & { disposition?: string | null; location_id?: string | null; portrait_path?: string | null };
-export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud' | 'map_path'> & { read_aloud?: string | null; map_path?: string | null };
+export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud' | 'map_path' | 'map_pins'> & { read_aloud?: string | null; map_path?: string | null; map_pins?: Json | null };
 export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'> & { key_figure_ids?: string[] };
 type HookExtras = 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id';
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at' | HookExtras> & Partial<Pick<Hook, HookExtras>>;

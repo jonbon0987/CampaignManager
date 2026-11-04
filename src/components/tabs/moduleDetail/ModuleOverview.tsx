@@ -161,7 +161,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
                   return (
                     <div className="md-depmap-row" key={s.id}>
                       <button className="md-depmap-node" style={{ borderColor: info.color + '55' }} onClick={() => onSelect(s.id)}>
-                        <span className="md-dot" style={{ background: info.color }} />
+                        <span className="md-glyph" style={{ color: info.color }} title={info.label} aria-hidden>{info.glyph}</span>
                         <span className="md-num">{i + 1}</span>
                         <span className="md-depmap-name">{s.title}</span>
                       </button>
