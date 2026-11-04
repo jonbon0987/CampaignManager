@@ -34,6 +34,7 @@ const KINDS: Record<string, { noun: string; label: (d: Row) => string }> = {
   scenes: { noun: 'Scene', label: named },
   handouts: { noun: 'Handout', label: named },
   items: { noun: 'Item', label: named },
+  treasury_entries: { noun: 'Treasury line', label: d => text(d.note) || 'Coin' },
   monster_statblocks: { noun: 'Stat sheet', label: named },
   encounters: { noun: 'Encounter', label: named },
   random_encounter_tables: { noun: 'Random table', label: named },

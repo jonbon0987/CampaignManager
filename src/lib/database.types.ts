@@ -54,9 +54,13 @@ export type Campaign = {
   levelling: Levelling | null;       // how the party levels; null until the first wrap-up asks
   rules_edition: RulesEdition | null; // which rules rate encounters; null reads as 2014
   archived_at: string | null;        // when it was archived; null while in use
+  session_repeat: SessionRepeat | null; // how often the table meets; null for no pattern
   created_at: string;
   updated_at: string;
 };
+
+/** How often a campaign's table meets. */
+export type SessionRepeat = 'weekly' | 'fortnightly';
 
 /** How a campaign's party levels up: by experience points, or at story milestones. */
 export type Levelling = 'xp' | 'milestone';
@@ -64,7 +68,7 @@ export type Levelling = 'xp' | 'milestone';
 /** Which edition's rules a campaign plays by. */
 export type RulesEdition = '2014' | '2024';
 
-export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at'> & { world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null };
+export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at' | 'session_repeat'> & { world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null; session_repeat?: SessionRepeat | null };
 
 // Campaigns fetched with an embedded session count (via PostgREST select)
 export type CampaignWithCount = Campaign & { session_count: number };
@@ -99,6 +103,7 @@ export type Session = {
   campaign_id: string;
   session_number: number;
   session_date: string | null;       // ISO date string
+  session_time: string | null;       // when it starts, 'HH:MM'
   summary: string | null;
   combats: string | null;
   loot_rewards: string | null;
@@ -266,6 +271,7 @@ export type Hook = {
   location_ids: string[] | null;
   faction_ids: string[] | null;
   module_id: string | null;
+  player_text: string | null;        // the thread in the players' words, for the player page
   created_at: string;
   updated_at: string;
 };
@@ -390,7 +396,7 @@ export type SubmoduleDependencyInsert = Omit<SubmoduleDependency, 'id' | 'user_i
 
 // The lifecycle fields have database defaults, so a save that leaves them out
 // (the assistant, post-session capture) keeps what's stored.
-type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play' | 'world_start' | 'world_end' | 'timeline_event_id';
+type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play' | 'world_start' | 'world_end' | 'timeline_event_id' | 'session_time';
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
   & Partial<Pick<Session, SessionLifecycle>>;
 // Link columns have database defaults, so a save that leaves them out keeps what's stored.
@@ -402,7 +408,7 @@ export type PCTableFields = 'sheet_url' | 'passive_perception' | 'passive_insigh
 export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id' | 'portrait_path'> & { disposition?: string | null; location_id?: string | null; portrait_path?: string | null };
 export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud' | 'map_path' | 'map_pins'> & { read_aloud?: string | null; map_path?: string | null; map_pins?: Json | null };
 export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'> & { key_figure_ids?: string[] };
-type HookExtras = 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id';
+type HookExtras = 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id' | 'player_text';
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at' | HookExtras> & Partial<Pick<Hook, HookExtras>>;
 export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type ModuleInsert = Omit<Module, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
@@ -523,6 +529,24 @@ export type ItemHolding = {
 };
 export type ItemHoldingInsert = Omit<ItemHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
+/** A line in the party's ledger: coin in (positive) or out (negative). The balance is their sum. */
+export type TreasuryEntry = {
+  id: string;
+  user_id: string;
+  campaign_id: string;
+  session_id: string | null;
+  pc_id: string | null;              // who it went to or came from, if anyone
+  cp: number;
+  sp: number;
+  ep: number;
+  gp: number;
+  pp: number;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type TreasuryEntryInsert = Omit<TreasuryEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 // --------------- Recently deleted (migrations/0042_recently_deleted.sql) ---------------
 
 /** A deleted record, kept for 30 days. `batch` groups it with what its delete took along. */
@@ -543,7 +567,10 @@ export type DeletedItem = Pick<TrashRow, 'batch' | 'table_name' | 'record_id' | 
 // --------------- Player pages (migrations/0040_player_pages.sql) ---------------
 
 /** What a campaign can show its players, one switch per item. */
-export type ShareKind = 'npc' | 'location' | 'lore' | 'handout' | 'session';
+export type ShareKind = 'npc' | 'location' | 'lore' | 'handout' | 'session' | 'thread';
+
+/** The parts of a player page beyond its shared records, each off until switched on. */
+export type PlayerPagePart = 'show_next_session' | 'show_world_date' | 'show_treasury';
 
 /** A campaign's player page: the link players open, which can be turned off or replaced. */
 export type PlayerPageLink = {
@@ -551,6 +578,9 @@ export type PlayerPageLink = {
   user_id: string;
   token: string;
   enabled: boolean;
+  show_next_session: boolean;
+  show_world_date: boolean;
+  show_treasury: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -572,6 +602,14 @@ export interface PlayerPageData {
   people: { id: string; name: string; role: string | null; status: NPC['status']; description: string | null; portrait: string | null }[];
   places: { id: string; name: string; type: string | null; region: string | null; description: string | null; map: string | null }[];
   lore: { id: string; title: string; category: string | null; content: string | null }[];
+  /** Threads known to the party, in their own words. */
+  threads: { id: string; title: string; text: string | null; done: boolean }[];
+  /** Null unless the DM shows the next session. */
+  schedule: { number: number | null; date: string | null; time: string | null; repeat: SessionRepeat | null; last_date: string | null; last_time: string | null } | null;
+  /** Null unless the DM shows the in-world date. */
+  world_date: { date: Json; months: Json | null; suffix: string | null } | null;
+  /** Null unless the DM shows the treasure. */
+  treasury: { cp: number; sp: number; ep: number; gp: number; pp: number } | null;
 }
 
 export type ModuleSheet = {
@@ -916,7 +954,7 @@ export interface Database {
       };
       campaigns: {
         Row: Campaign;
-        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null };
+        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at' | 'session_repeat'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null; session_repeat?: SessionRepeat | null };
         Update: Partial<Omit<Campaign, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
@@ -1118,10 +1156,16 @@ export interface Database {
         Update: Partial<Omit<Handout, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
+      treasury_entries: {
+        Row: TreasuryEntry;
+        Insert: Omit<TreasuryEntry, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<TreasuryEntry, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
       player_pages: {
         Row: PlayerPageLink;
-        Insert: Omit<PlayerPageLink, 'created_at' | 'updated_at' | 'enabled'> & { enabled?: boolean };
-        Update: Partial<Pick<PlayerPageLink, 'token' | 'enabled'>>;
+        Insert: Omit<PlayerPageLink, 'created_at' | 'updated_at' | 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury'> & Partial<Pick<PlayerPageLink, 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury'>>;
+        Update: Partial<Pick<PlayerPageLink, 'token' | 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury'>>;
         Relationships: [];
       };
       player_shares: {

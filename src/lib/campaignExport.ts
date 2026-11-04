@@ -34,7 +34,7 @@ async function rowsWhere<T>(table: string, column: string, values: string[], ord
 
 const BY_CAMPAIGN = [
   'player_characters', 'npcs', 'factions', 'locations', 'lore_entries', 'hooks', 'ideas', 'modules', 'module_dependencies',
-  'sessions', 'encounters', 'monster_statblocks', 'random_encounter_tables', 'items', 'item_holdings', 'handouts',
+  'sessions', 'encounters', 'monster_statblocks', 'random_encounter_tables', 'items', 'item_holdings', 'treasury_entries', 'handouts',
   'character_relationships', 'entity_session_entries', 'session_recordings',
 ] as const satisfies readonly (keyof ExportTables)[];
 

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useCampaign } from '../context/CampaignContext';
-import { blankSession, liveSession, nextPlanned, nextSessionNumber } from '../lib/sessionLifecycle';
+import { liveSession, nextBlankSession, nextPlanned } from '../lib/sessionLifecycle';
 import type { Session } from '../lib/database.types';
 
 /**
@@ -8,11 +8,12 @@ import type { Session } from '../lib/database.types';
  * else a new planned session numbered after the last.
  */
 export function usePlanNextSession(): () => Promise<Session | null> {
-  const { sessions, upsertSession } = useCampaign();
+  const { sessions, upsertSession, selectedCampaign } = useCampaign();
+  const repeat = selectedCampaign?.session_repeat;
   return useCallback(async () => {
     const existing = liveSession(sessions) ?? nextPlanned(sessions);
     if (existing) return existing;
-    const created = await upsertSession(blankSession(nextSessionNumber(sessions)));
+    const created = await upsertSession(nextBlankSession(sessions, repeat));
     return created?.id ? created : null;
-  }, [sessions, upsertSession]);
+  }, [sessions, upsertSession, repeat]);
 }

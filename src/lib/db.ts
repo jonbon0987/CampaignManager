@@ -43,7 +43,7 @@ import type {
   Handout, HandoutInsert,
   PlayerPageLink, PlayerShare, PlayerPageData, ShareKind,
   DeletedItem,
-  Item, ItemInsert, ItemHolding, ItemHoldingInsert,
+  Item, ItemInsert, ItemHolding, ItemHoldingInsert, TreasuryEntry, TreasuryEntryInsert, PlayerPagePart,
   EntitySessionEntry, EntitySessionEntryInsert, SessionEntryEntityType,
 } from './database.types';
 
@@ -1783,11 +1783,40 @@ export const PlayerPages = {
     return data;
   },
 
+  /** Switches a part of the page on or off: the next session, the in-world date, the treasure. */
+  async setPart(campaignId: string, part: PlayerPagePart, on: boolean): Promise<PlayerPageLink> {
+    const { data, error } = await supabase.from('player_pages').update({ [part]: on }).eq('campaign_id', campaignId).select().single();
+    if (error) throw error;
+    return data;
+  },
+
   /** What players see at a link: null when it's wrong or turned off. Needs no sign-in. */
   async load(token: string): Promise<PlayerPageData | null> {
     const { data, error } = await supabase.rpc('player_page', { p_token: token });
     if (error) throw error;
     return data ?? null;
+  },
+};
+
+export const TreasuryEntries = {
+  async getByCampaign(campaignId: string): Promise<TreasuryEntry[]> {
+    const { data, error } = await supabase.from('treasury_entries').select('*').eq('campaign_id', campaignId).order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  /** Adds lines to the ledger, all or none: splitting the coin writes one per PC. */
+  async insert(entries: TreasuryEntryInsert[]): Promise<TreasuryEntry[]> {
+    entries.forEach(e => validateFieldLimits('treasury_entries', e));
+    const user_id = await getUserId();
+    const { data, error } = await supabase.from('treasury_entries').insert(entries.map(e => ({ ...e, user_id }))).select();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('treasury_entries').delete().eq('id', id);
+    if (error) throw error;
   },
 };
 

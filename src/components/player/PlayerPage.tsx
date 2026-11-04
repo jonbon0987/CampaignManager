@@ -8,7 +8,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PlayerPages } from '../../lib/db';
 import { refsToNames } from '../../lib/slashMarkdown';
-import { formatSessionDate } from '../../lib/sessionLifecycle';
+import { formatSessionDate, localToday } from '../../lib/sessionLifecycle';
+import { dateOf, formatWorldDate, monthsOf, yearSuffix } from '../../lib/calendar';
+import { expectedNext, formatWhen } from '../../lib/schedule';
+import { formatCoins, hasCoins } from '../../lib/treasury';
 import { useImageUrl } from '../../hooks/useImageUrl';
 import { Button } from '../ui/Button';
 import { Lightbox } from '../ui/Lightbox';
@@ -65,6 +68,7 @@ function Picture({ path, title, className, onShow }: { path: string; title: stri
 }
 
 const SECTIONS = [
+  ['threads', 'quests', 'Quest log'],
   ['recaps', 'story', 'The story so far'],
   ['handouts', 'handouts', 'Handouts'],
   ['people', 'people', 'People'],
@@ -74,11 +78,25 @@ const SECTIONS = [
 
 const NPC_STATUS: Record<string, string | undefined> = { deceased: 'Deceased', unknown: 'Fate unknown' };
 
+/** When the table next meets: the planned session, or the next on the repeat. */
+function nextMeeting(s: NonNullable<PlayerPageData['schedule']>): string | null {
+  if (s.date) return formatWhen(s.date, s.time);
+  const expected = expectedNext([{ session_date: s.last_date, session_time: s.last_time }], s.repeat, localToday());
+  return expected ? `Expected ${formatWhen(expected.date, expected.time)}` : null;
+}
+
 function Page({ data }: { data: PlayerPageData }) {
   const [showing, setShowing] = useState<{ url: string; title: string } | null>(null);
   const show = (url: string, title: string) => setShowing({ url, title });
   const name = data.campaign.title?.trim() || data.campaign.name;
-  const present = SECTIONS.filter(([key]) => data[key].length > 0);
+  const present = SECTIONS.filter(([key]) => (data[key] ?? []).length > 0);
+  const threads = data.threads ?? [];
+  const open = threads.filter(t => !t.done);
+  const closed = threads.filter(t => t.done);
+  const meeting = data.schedule ? nextMeeting(data.schedule) : null;
+  const worldDate = data.world_date ? dateOf(data.world_date.date) : null;
+  const inWorld = worldDate && data.world_date ? formatWorldDate(worldDate, monthsOf(data.world_date.months), yearSuffix(data.world_date.suffix)) : null;
+  const treasure = data.treasury && hasCoins(data.treasury) ? formatCoins(data.treasury) : null;
 
   useEffect(() => { document.title = `${name} · Player page`; }, [name]);
 
@@ -87,6 +105,12 @@ function Page({ data }: { data: PlayerPageData }) {
       <header className="pp-head">
         <div className="pp-eyebrow">Player page</div>
         <h1 className="pp-title">{name}</h1>
+        {(meeting || inWorld) && (
+          <dl className="pp-facts">
+            {meeting && <div><dt className="pp-label">Next session</dt><dd>{meeting}</dd></div>}
+            {inWorld && <div><dt className="pp-label">In the world</dt><dd>{inWorld}</dd></div>}
+          </dl>
+        )}
         {present.length > 1 && (
           <nav className="pp-nav" aria-label="Sections">
             {present.map(([, id, label]) => <a key={id} className="pp-nav-link" href={`#${id}`}>{label}</a>)}
@@ -111,11 +135,35 @@ function Page({ data }: { data: PlayerPageData }) {
               </li>
             ))}
           </ul>
+          {treasure && <p className="pp-treasure"><span className="pp-label">The party’s treasure</span> {treasure}</p>}
         </section>
       )}
 
       {present.length === 0 && (
-        <p className="pp-empty">Nothing else has been shared yet. Your DM adds recaps, handouts, people, places and lore here as the campaign goes on.</p>
+        <p className="pp-empty">Nothing else has been shared yet. Your DM adds leads, recaps, handouts, people, places and lore here as the campaign goes on.</p>
+      )}
+
+      {threads.length > 0 && (
+        <section className="pp-sec" id="quests" aria-labelledby="pp-quests">
+          <h2 className="pp-h2" id="pp-quests">Quest log</h2>
+          {open.map(t => (
+            <article key={t.id} className="pp-item" id={`quest-${t.id}`}>
+              <h3 className="pp-h3">{t.title}</h3>
+              <Prose text={t.text} />
+            </article>
+          ))}
+          {closed.length > 0 && (
+            <>
+              <div className="pp-label pp-quests-done">Resolved</div>
+              {closed.map(t => (
+                <article key={t.id} className="pp-item is-done" id={`quest-${t.id}`}>
+                  <h3 className="pp-h3">{t.title}</h3>
+                  <Prose text={t.text} />
+                </article>
+              ))}
+            </>
+          )}
+        </section>
       )}
 
       {data.recaps.length > 0 && (

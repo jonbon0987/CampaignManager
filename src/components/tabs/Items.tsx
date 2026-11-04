@@ -14,11 +14,15 @@ import { pushRecent } from '../../lib/recent';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { blankItem, holdersSummary, itemLine, itemTypeLabel, rarity } from '../../lib/items';
 import { ItemEditor } from '../entity/ItemEditor';
+import { TreasuryPanel } from '../items/Treasury';
+import { formatCoins, sumCoins } from '../../lib/treasury';
 import { SrdLibrary } from '../srd/SrdLibrary';
 import { srdToItem, type SrdItem } from '../../lib/srd';
 import type { Item } from '../../lib/database.types';
 
 const GLYPH = '✠';
+/** The treasury's place in the list and the URL, alongside the items. */
+const TREASURY = 'treasury';
 
 export default function Items({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void } = {}) {
   const ctx = useItems();
@@ -48,7 +52,9 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
   const heldIds = new Set(holdings.map(h => h.item_id));
   const held = shown.filter(i => heldIds.has(i.id));
   const unheld = shown.filter(i => !heldIds.has(i.id));
-  const selected = shown.find(i => i.id === selectedId) ?? firstNamed(shown, i => i.name) ?? null;
+  const onTreasury = selectedId === TREASURY;
+  const selected = onTreasury ? null : shown.find(i => i.id === selectedId) ?? firstNamed(shown, i => i.name) ?? null;
+  const ledger = ctx?.treasury ?? [];
 
   if (!ctx) return null;
 
@@ -100,15 +106,19 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
       addOptions={[
         { label: 'Blank item', onClick: () => void handleAdd() },
         { label: 'From the SRD library…', onClick: () => setSrdOpen(true) },
+        { label: 'Coin to the treasury', onClick: () => setSelectedId(TREASURY) },
       ]}
-      empty={items.length === 0 ? {
+      empty={items.length === 0 && ledger.length === 0 && !onTreasury ? {
         glyph: GLYPH, text: 'No items yet. Copy magic items from the SRD library, or add your own treasure and gear, then give them out from here, a PC’s page or a session’s loot.',
         actionLabel: 'Browse the SRD library', onAction: () => setSrdOpen(true),
       } : null}
       list={
-        shown.length === 0 ? (
-          <div className="cm-empty is-inline">No items match.</div>
-        ) : (
+        <>
+          <ListRow active={onTreasury} onClick={() => setSelectedId(TREASURY)} glyph="◎" title="Party treasury"
+            subtitle={formatCoins(sumCoins(ledger)) || (ledger.length > 0 ? 'Empty' : 'No coin yet')} />
+          {shown.length === 0 ? (
+            items.length > 0 && <div className="cm-empty is-inline">No items match.</div>
+          ) : (
           <>
             {held.length > 0 && (
               <>
@@ -123,10 +133,11 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
               </>
             )}
           </>
-        )
+          )}
+        </>
       }
       detail={
-        selected ? (
+        onTreasury ? <TreasuryPanel /> : selected ? (
           <ItemEditor
             key={selected.id}
             item={selected}

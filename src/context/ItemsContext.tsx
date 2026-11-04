@@ -2,12 +2,13 @@
 // gives and takes. Reloads when deleted records come back.
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Items, ItemHoldings } from '../lib/db';
+import { Items, ItemHoldings, TreasuryEntries } from '../lib/db';
+import { coinsOf } from '../lib/treasury';
 import { RESTORED_EVENT } from '../lib/trash';
 import { useDeletedToast } from '../hooks/useDeletedToast';
 import { useToast } from './ToastContext';
 import { ItemsContext, type ItemsValue } from './items';
-import type { Item, ItemHolding } from '../lib/database.types';
+import type { Item, ItemHolding, TreasuryEntry } from '../lib/database.types';
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const byName = (a: Item, b: Item) => a.name.localeCompare(b.name);
@@ -17,13 +18,14 @@ export function ItemsProvider({ campaignId, children }: { campaignId: string; ch
   const deletedToast = useDeletedToast();
   const [items, setItems] = useState<Item[]>([]);
   const [holdings, setHoldings] = useState<ItemHolding[]>([]);
+  const [treasury, setTreasury] = useState<TreasuryEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
     let live = true;
-    Promise.all([Items.getByCampaign(campaignId), ItemHoldings.getByCampaign(campaignId)])
-      .then(([i, h]) => { if (live) { setItems(i); setHoldings(h); setLoaded(true); } })
+    Promise.all([Items.getByCampaign(campaignId), ItemHoldings.getByCampaign(campaignId), TreasuryEntries.getByCampaign(campaignId)])
+      .then(([i, h, t]) => { if (live) { setItems(i); setHoldings(h); setTreasury(t); setLoaded(true); } })
       .catch(() => { if (live) setLoaded(true); });
     return () => { live = false; };
   }, [campaignId, reloads]);
@@ -80,8 +82,31 @@ export function ItemsProvider({ campaignId, children }: { campaignId: string; ch
     }
   }, [toast, deletedToast]);
 
-  const value = useMemo<ItemsValue>(() => ({ items, holdings, loaded, saveItem, deleteItem, give, updateHolding, removeHolding }),
-    [items, holdings, loaded, saveItem, deleteItem, give, updateHolding, removeHolding]);
+  const addTreasury = useCallback<ItemsValue['addTreasury']>(async lines => {
+    try {
+      const saved = await TreasuryEntries.insert(lines.map(l => ({
+        ...coinsOf(l), note: l.note ?? null, session_id: l.session_id ?? null, pc_id: l.pc_id ?? null, campaign_id: campaignId,
+      })));
+      setTreasury(prev => [...saved, ...prev]);
+    } catch (e) {
+      toast(errorMessage(e), 'error');
+      throw e;
+    }
+  }, [campaignId, toast]);
+
+  const removeTreasury = useCallback<ItemsValue['removeTreasury']>(async line => {
+    setTreasury(prev => prev.filter(t => t.id !== line.id));
+    try {
+      await TreasuryEntries.delete(line.id);
+      deletedToast('Treasury line removed', 'treasury_entries', line.id);
+    } catch (e) {
+      setTreasury(prev => [line, ...prev]);
+      toast(errorMessage(e), 'error');
+    }
+  }, [toast, deletedToast]);
+
+  const value = useMemo<ItemsValue>(() => ({ items, holdings, loaded, saveItem, deleteItem, give, updateHolding, removeHolding, treasury, addTreasury, removeTreasury }),
+    [items, holdings, loaded, saveItem, deleteItem, give, updateHolding, removeHolding, treasury, addTreasury, removeTreasury]);
 
   return <ItemsContext.Provider value={value}>{children}</ItemsContext.Provider>;
 }

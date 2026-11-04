@@ -4,6 +4,9 @@ import type { ReactNode } from 'react';
 import type { Item, ItemHolding } from '../lib/database.types';
 
 const h = vi.hoisted(() => ({
+  getTreasury: vi.fn().mockResolvedValue([]),
+  insertTreasury: vi.fn(),
+  deleteTreasury: vi.fn().mockResolvedValue(undefined),
   toast: vi.fn(),
   deletedToast: vi.fn(),
   getItems: vi.fn(),
@@ -18,6 +21,7 @@ vi.mock('../hooks/useDeletedToast', () => ({ useDeletedToast: () => h.deletedToa
 vi.mock('../lib/db', () => ({
   Items: { getByCampaign: h.getItems, upsert: h.upsertItem, delete: h.deleteItem },
   ItemHoldings: { getByCampaign: h.getHoldings, upsert: h.upsertHolding, delete: h.deleteHolding },
+  TreasuryEntries: { getByCampaign: h.getTreasury, insert: h.insertTreasury, delete: h.deleteTreasury },
 }));
 
 import { ItemsProvider } from './ItemsContext';
@@ -106,6 +110,41 @@ describe('ItemsProvider', () => {
     await act(() => result.current.updateHolding(current, { quantity: 5 }));
     expect(result.current.holdings[0].quantity).toBe(1);
     expect(h.toast).toHaveBeenCalledWith('Offline', 'error');
+  });
+
+  describe('the treasury', () => {
+    const line = (id: string, gp: number) => ({ id, gp, cp: 0, sp: 0, ep: 0, pp: 0, note: null, session_id: null, pc_id: null, campaign_id: 'c1', user_id: 'u', created_at: '', updated_at: '' });
+
+    it('loads the ledger, and adds lines to the front with every coin filled in', async () => {
+      h.getTreasury.mockResolvedValue([line('a', 10)]);
+      h.insertTreasury.mockImplementation(async (rows: { gp: number }[]) => rows.map((r, i) => line(`n${i}`, r.gp)));
+      const { result } = await loaded();
+      expect(result.current.treasury.map(t => t.id)).toEqual(['a']);
+      await act(() => result.current.addTreasury([{ gp: 5, note: 'A bribe' }]));
+      expect(h.insertTreasury).toHaveBeenCalledWith([{ cp: 0, sp: 0, ep: 0, gp: 5, pp: 0, note: 'A bribe', session_id: null, pc_id: null, campaign_id: 'c1' }]);
+      expect(result.current.treasury.map(t => t.id)).toEqual(['n0', 'a']);
+    });
+
+    it('says so and passes the failure on when a line won’t save', async () => {
+      h.getTreasury.mockResolvedValue([]);
+      h.insertTreasury.mockRejectedValueOnce(new Error('Offline'));
+      const { result } = await loaded();
+      await expect(result.current.addTreasury([{ gp: 5 }])).rejects.toThrow('Offline');
+      expect(h.toast).toHaveBeenCalledWith('Offline', 'error');
+    });
+
+    it('removes a line with Undo, and puts it back if the delete fails', async () => {
+      h.getTreasury.mockResolvedValue([line('a', 10)]);
+      const { result } = await loaded();
+      await act(() => result.current.removeTreasury(result.current.treasury[0]));
+      expect(result.current.treasury).toEqual([]);
+      expect(h.deletedToast).toHaveBeenCalledWith('Treasury line removed', 'treasury_entries', 'a');
+
+      h.deleteTreasury.mockRejectedValueOnce(new Error('Offline'));
+      const again = await loaded();
+      await act(() => again.result.current.removeTreasury(again.result.current.treasury[0]));
+      expect(again.result.current.treasury.map(t => t.id)).toEqual(['a']);
+    });
   });
 
   it('takes an item away with Undo, and puts it back if the delete fails', async () => {

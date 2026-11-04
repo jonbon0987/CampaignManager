@@ -5,6 +5,7 @@ import { useItems } from '../../context/items';
 import { useOpenRecord } from '../../context/NavigationContext';
 import { GiveItem } from './GiveItem';
 import { HoldingList } from './HoldingList';
+import { SessionCoin } from './Treasury';
 
 /** A PC's inventory, on their page. */
 export function PCInventory({ pcId }: { pcId: string }) {
@@ -32,6 +33,7 @@ export function SessionLoot({ sessionId }: { sessionId: string }) {
       <HoldingList holdings={ctx.holdings.filter(h => h.session_id === sessionId)} showItem showHolder showSession={false}
         onOpenItem={id => open('items', id)} empty="Nothing from the item list yet." />
       <GiveItem sessionId={sessionId} label="Hand out" />
+      <SessionCoin sessionId={sessionId} />
     </div>
   );
 }

@@ -83,6 +83,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
         if (s?.id) h.openRecord('sessions', s.id);
       } },
       ...(last ? [{ key: 'a:recap', group: 'Actions', glyph: '✍', label: `Recap ${sessionName(last)}`, detail: 'What happened, what changed, what’s left open', run: () => h.openRecord('sessions', last.id) }] : []),
+      { key: 'a:treasury', group: 'Go to', glyph: '◎', label: 'Party treasury', run: () => h.openRecord('items', 'treasury') },
       { key: 'a:keys', group: 'Actions', glyph: '⌨', label: 'Keyboard shortcuts', run: h.openShortcuts },
       { key: 'a:export', group: 'Actions', glyph: '⇩', label: 'Export campaign', detail: 'A .zip of Markdown, JSON and pictures to keep', action: true, run: h.openExport },
       { key: 'a:world', group: 'Actions', glyph: '⊕', label: 'Back to the world', run: h.backToWorld },

@@ -1,6 +1,7 @@
 // Where each session stands, planned → live → done, and what its prep covers.
 
-import type { Session, SessionInsert, SessionPlan } from './database.types';
+import type { Session, SessionInsert, SessionPlan, SessionRepeat } from './database.types';
+import { expectedNext } from './schedule';
 import { plainList } from './recording/chronicleView';
 
 const byNumber = (a: Session, b: Session) => a.session_number - b.session_number;
@@ -16,6 +17,12 @@ export function blankSession(session_number: number, status: Session['status'] =
     session_number, session_date: null, status, title: null, prep_notes: null, plan: {}, play: {},
     summary: null, combats: null, loot_rewards: null, hooks_notes: null, dm_notes: null,
   };
+}
+
+/** The next new session, dated on from the last if the campaign meets on a repeat. */
+export function nextBlankSession(sessions: Session[], repeat: SessionRepeat | null | undefined): Omit<SessionInsert, 'campaign_id'> {
+  const expected = expectedNext(sessions, repeat, localToday());
+  return { ...blankSession(nextSessionNumber(sessions)), ...(expected ? { session_date: expected.date, session_time: expected.time } : {}) };
 }
 
 /** The session being played now, if any. */

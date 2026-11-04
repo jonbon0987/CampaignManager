@@ -2,7 +2,11 @@
 // outside a campaign there's none, and useItems() returns null.
 
 import { createContext, useContext } from 'react';
-import type { Item, ItemHolding, ItemHoldingInsert, ItemInsert } from '../lib/database.types';
+import type { Item, ItemHolding, ItemHoldingInsert, ItemInsert, TreasuryEntry } from '../lib/database.types';
+import type { Coins } from '../lib/treasury';
+
+/** A ledger line: any coins, and optionally a note, a session and a PC. */
+export type NewTreasuryLine = Partial<Coins> & Partial<Pick<TreasuryEntry, 'note' | 'session_id' | 'pc_id'>>;
 
 export type NewHolding = Omit<ItemHoldingInsert, 'campaign_id' | 'attuned' | 'note'> & Partial<Pick<ItemHolding, 'attuned' | 'note'>>;
 
@@ -19,6 +23,12 @@ export interface ItemsValue {
   updateHolding: (holding: ItemHolding, patch: Partial<Pick<ItemHolding, 'pc_id' | 'quantity' | 'attuned' | 'note' | 'session_id'>>) => Promise<void>;
   /** Takes it away; the toast offers Undo. */
   removeHolding: (holding: ItemHolding) => Promise<void>;
+  /** The party's ledger, newest first. */
+  treasury: TreasuryEntry[];
+  /** Adds lines to it, all or none. */
+  addTreasury: (lines: NewTreasuryLine[]) => Promise<void>;
+  /** Removes a line; the toast offers Undo. */
+  removeTreasury: (line: TreasuryEntry) => Promise<void>;
 }
 
 export const ItemsContext = createContext<ItemsValue | null>(null);

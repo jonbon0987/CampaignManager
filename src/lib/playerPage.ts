@@ -30,6 +30,7 @@ export function describeShared(counts: Partial<Record<ShareKind, number>>): stri
     ['npc', 'person', 'people'],
     ['location', 'place', 'places'],
     ['lore', 'lore entry', 'lore entries'],
+    ['thread', 'lead', 'leads'],
   ];
   return parts
     .filter(([k]) => (counts[k] ?? 0) > 0)

@@ -273,6 +273,8 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   // needing it in their dependency arrays. Undefined → unscoped fallback.
   const worldIdRef = useRef<string | null | undefined>(worldId);
   useEffect(() => { worldIdRef.current = worldId; });
+  const sessionsRef = useRef(sessions);
+  useEffect(() => { sessionsRef.current = sessions; });
 
   // NPCs and Locations share the "linkable globals" pattern: campaign-specific
   // rows + a global pool that campaigns opt into. One generic hook backs both.
@@ -510,7 +512,14 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   const updateCampaign = useCallback(async (id: string, data: Partial<CampaignInsert>) => {
     const existing = campaigns.find(c => c.id === id);
     if (!existing) return;
-    await CampaignsDB.upsert({ id, name: existing.name, description: existing.description, sort_order: existing.sort_order, title: existing.title, plot_summary: existing.plot_summary, major_characters: existing.major_characters, world_info: existing.world_info, ...data });
+    // Shown at once, so a control doesn't snap back while the write is under way.
+    setCampaigns(prev => prev.map(c => (c.id === id ? { ...c, ...data } : c)));
+    try {
+      await CampaignsDB.upsert({ id, name: existing.name, description: existing.description, sort_order: existing.sort_order, title: existing.title, plot_summary: existing.plot_summary, major_characters: existing.major_characters, world_info: existing.world_info, ...data });
+    } catch (err) {
+      setCampaigns(prev => prev.map(c => (c.id === id ? existing : c)));
+      throw err;
+    }
     setCampaigns(await CampaignsDB.getAll(worldIdRef.current ?? undefined));
   }, [campaigns]);
 
@@ -537,9 +546,23 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   }, [selectedCampaignId]);
 
   const updateSession = useCallback(async (id: string, patch: Partial<Omit<SessionInsert, 'campaign_id'>>) => {
-    const result = await SessionsDB.update(id, patch);
-    setSessions(prev => prev.map(r => (r.id === id ? result : r)));
-    return result;
+    // Shown at once, and not replaced by the row the write returns: two quick
+    // edits (a date, then a time) can come back out of order, and the older row
+    // would wipe the newer edit from the screen though both were saved.
+    const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    const before = sessionsRef.current.find(r => r.id === id);
+    setSessions(prev => prev.map(r => (r.id === id ? { ...r, ...changed } as Session : r)));
+    try {
+      const result = await SessionsDB.update(id, patch);
+      setSessions(prev => prev.map(r => (r.id === id ? { ...r, updated_at: result.updated_at } : r)));
+      return result;
+    } catch (err) {
+      if (before) {
+        const undone = Object.fromEntries(Object.keys(changed).map(k => [k, before[k as keyof Session]]));
+        setSessions(prev => prev.map(r => (r.id === id ? { ...r, ...undone } as Session : r)));
+      }
+      throw err;
+    }
   }, []);
 
   const deleteSession = useCallback(async (id: string) => {

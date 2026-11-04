@@ -33,6 +33,7 @@ vi.mock('../session/SessionHistory', () => ({ SessionHistory: () => null }));
 vi.mock('../session/SessionUpdateBand', () => ({ SessionUpdateBand: () => null }));
 
 import Threads from './Threads';
+import { PlayerSharesContext } from '../../context/playerShares';
 
 const cc = () => h.campaign.value!;
 
@@ -125,6 +126,35 @@ describe('Threads board', () => {
       h.campaign.value = makeCampaignContext({ hooks: [makeHook({ id: 'a', title: 'Plain', state: 'seed' })] });
       render(<Threads />);
       expect(within(column('Seed')).queryByRole('img')).toBeNull();
+    });
+  });
+
+  describe('the quest log', () => {
+    const openKnown = (known: boolean) => {
+      const upsertHook = vi.fn().mockResolvedValue(undefined);
+      h.campaign.value = makeCampaignContext({ upsertHook, hooks: [makeHook({ id: 'a', title: 'The Letter', state: 'active' })] });
+      const shares = {
+        campaignId: 'c', page: null, loaded: true, isShared: () => known, setShared: vi.fn(), sharedIds: () => [],
+        issueLink: vi.fn(), setEnabled: vi.fn(), setPart: vi.fn(),
+      };
+      render(<PlayerSharesContext.Provider value={shares}><Threads /></PlayerSharesContext.Provider>);
+      fireEvent.click(screen.getByText('The Letter'));
+      return { upsertHook, shares };
+    };
+
+    it('asks for the players’ words only once the thread is known to them, and marks the card', async () => {
+      const { upsertHook } = openKnown(true);
+      expect(within(column('Active')).getByText('Players know')).toBeTruthy();
+      fireEvent.change(screen.getByLabelText('What the players know'), { target: { value: 'He wants it back.' } });
+      await vi.waitFor(() => expect(upsertHook).toHaveBeenCalledWith(expect.objectContaining({ id: 'a', player_text: 'He wants it back.' })), { timeout: 3000 });
+    });
+
+    it('keeps it to the DM by default', () => {
+      const { shares } = openKnown(false);
+      expect(screen.queryByLabelText('What the players know')).toBeNull();
+      expect(within(column('Active')).queryByText('Players know')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /Hidden from players/ }));
+      expect(shares.setShared).toHaveBeenCalledWith('thread', 'a', true);
     });
   });
 

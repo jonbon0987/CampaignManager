@@ -23,13 +23,14 @@ import { usePlay } from '../../context/PlayContext';
 import { SessionPrep } from '../session/SessionPrep';
 import { SessionChronicles } from '../session/SessionChronicles';
 import { LeftOpenToInbox } from '../session/LeftOpenToInbox';
-import { blankSession, formatSessionDate, nextSessionNumber, plainText, clip, STATUS_LABEL } from '../../lib/sessionLifecycle';
+import { formatSessionDate, nextBlankSession, plainText, clip, STATUS_LABEL } from '../../lib/sessionLifecycle';
 import { noteStamp } from '../../lib/playTime';
 import type { Session, SessionPlan, SessionStatus } from '../../lib/database.types';
 
 type SessionForm = {
   session_number: number;
   session_date: string | null;
+  session_time: string | null;
   title: string | null;
   status: SessionStatus;
   prep_notes: string | null;
@@ -44,6 +45,7 @@ type SessionForm = {
 const toForm = (s: Session): SessionForm => ({
   session_number: s.session_number,
   session_date: s.session_date,
+  session_time: s.session_time ?? null,
   title: s.title,
   status: s.status,
   prep_notes: s.prep_notes,
@@ -245,6 +247,19 @@ function SessionDetail({
                 onChange={e => set('session_date', e.target.value || null)}
               />
             </div>
+            {form.status !== 'done' && (
+              <div className="as-fl">
+                <label className="as-ll" htmlFor={`ss-time-${session.id}`}>Time</label>
+                <input
+                  id={`ss-time-${session.id}`}
+                  className="as-input"
+                  type="time"
+                  style={{ colorScheme: 'dark' }}
+                  value={form.session_time ?? ''}
+                  onChange={e => set('session_time', e.target.value || null)}
+                />
+              </div>
+            )}
             <div className="as-fl">
               <span className="as-ll" id={`ss-status-${session.id}`}>Status</span>
               {/* Live is set by Start and cleared by End, not picked here. */}
@@ -385,7 +400,7 @@ function SessionDetail({
 
 /* Session log — master-detail layout */
 function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpenConsumed?: () => void }) {
-  const { sessions, upsertSession } = useCampaign();
+  const { sessions, upsertSession, selectedCampaign } = useCampaign();
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useReportRecord('sessions', selectedId);
@@ -423,7 +438,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
 
   // A new session is planned: it gets a date when it's played.
   const handleAdd = async () => {
-    const result = await upsertSession(blankSession(nextSessionNumber(sessions)));
+    const result = await upsertSession(nextBlankSession(sessions, selectedCampaign?.session_repeat));
     if (result?.id) setSelectedId(result.id);
   };
 
