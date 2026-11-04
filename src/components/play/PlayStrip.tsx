@@ -43,7 +43,7 @@ export function PlayStrip({ onShowTool }: { onShowTool: (tab: PlayTab) => void }
     onShowTool('scene');
     const sub = submodules.find(s => s.id === scenes.find(sc => sc.id === id)?.submodule_id);
     const mod = sub ? modules.find(m => m.id === sub.module_id) : undefined;
-    if (mod && sub) openRecord('modules', mod.id, `submodule:${sub.id}`);
+    if (mod && sub) openRecord('modules', mod.id, `submodule:${id}`);
   };
 
   // An encounter joins the fight once; after that its chip just shows the tracker.

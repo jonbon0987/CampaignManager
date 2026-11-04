@@ -98,7 +98,7 @@ export function PlayScene() {
 
       <div className="psc-nav">
         <Button size="sm" variant="ghost" disabled={idx <= 0} onClick={() => go(agenda[idx - 1])}>‹ Previous</Button>
-        {mod && sub && <Button size="sm" variant="ghost" onClick={() => openRecord('modules', mod.id, `submodule:${sub.id}`)}>Open the scene</Button>}
+        {mod && sub && <Button size="sm" variant="ghost" onClick={() => openRecord('modules', mod.id, `submodule:${scene.id}`)}>Open the scene</Button>}
         <Button size="sm" variant="secondary" disabled={idx < 0 || idx >= agenda.length - 1} onClick={() => go(agenda[idx + 1])}>Next ›</Button>
       </div>
     </div>

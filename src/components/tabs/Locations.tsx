@@ -191,6 +191,7 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
               originOf(selected.id) === 'imported' ? 'global' : 'campaign')}
             remove={deleteLocation}
             onDeleted={() => setSelectedId(null)}
+            onOpenLocation={setSelectedId}
             canon={{
               origin: originOf(selected.id),
               onOpenInCanon: () => openInCanon(selected.id),

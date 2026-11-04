@@ -115,7 +115,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
         keywords: join(e.description), run: () => h.openRecord('combat', e.id, 'encounter') })),
       ...randomEncounterTables.map(t => ({ key: `rt:${t.id}`, group: 'Random tables', glyph: kindMeta(t.kind).glyph, label: t.name || 'Untitled table',
         detail: kindMeta(t.kind).label, keywords: join(t.subtitle, t.description), run: () => h.openRecord('combat', t.id, 'random') })),
-      // Parts and scenes open in their module, with the module (and part) as detail.
+      // Parts and scenes open as pages in their module, with the module (and part) as detail.
       ...submodules.flatMap(sub => {
         const mod = modules.find(m => m.id === sub.module_id);
         return mod ? [{ key: `sub:${sub.id}`, group: 'Parts', glyph: '▣', label: sub.title || 'Untitled part', detail: mod.title,
@@ -126,7 +126,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
         const mod = sub && modules.find(m => m.id === sub.module_id);
         return sub && mod ? [{ key: `scene:${sc.id}`, group: 'Scenes', glyph: '▸', label: sc.title || 'Untitled scene',
           detail: `${sub.title || 'Untitled part'} · ${mod.title}`, keywords: join(sc.summary, sc.read_aloud),
-          run: () => h.openRecord('modules', mod.id, `submodule:${sub.id}`) }] : [];
+          run: () => h.openRecord('modules', mod.id, `submodule:${sc.id}`) }] : [];
       }),
     ];
     return [...actions, ...records];

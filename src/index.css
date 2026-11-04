@@ -2366,6 +2366,13 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .cw-svg { width: 100%; height: 100%; max-height: 600px; display: block; }
 .cw-ring { fill: none; stroke: var(--rule); stroke-dasharray: 2 4; opacity: 0.5; }
 .cw-ring-label { font-family: var(--mono); font-size: 9px; fill: var(--ink-3); letter-spacing: 0.18em; }
+.cw-member { stroke: var(--sky); stroke-width: 1.1; stroke-dasharray: 3 4; opacity: .7; transition: opacity .2s; }
+.cw-member.is-dim { opacity: .1; }
+.cw-legend-line.is-member { background: repeating-linear-gradient(90deg, var(--sky) 0 3px, transparent 3px 6px); }
+.cw-node-faction .cw-node-ring { stroke: var(--sky); }
+.cw-node:focus, .cw-node:focus-visible { outline: none; }
+.cw-node:focus-visible .cw-node-ring { stroke: var(--gold-2); stroke-width: 3; }
+.cw-empty-action { margin-top: 14px; }
 .cw-edge { transition: opacity 0.2s; }
 .cw-edge.is-dim { opacity: 0.12; }
 .cw-edge-label { font-family: var(--serif); font-size: 11px; font-style: italic; }
@@ -3458,7 +3465,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   text-align: center;
 }
 .md-srow:hover .md-grip,
-.md-scene-edit:hover .md-grip { opacity: .55; }
+.md-scene-row:hover .md-grip { opacity: .55; }
 .md-grip:hover { color: var(--gold); }
 .md-grip:active { cursor: grabbing; }
 
@@ -3467,7 +3474,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   transition: transform .16s; cursor: pointer; line-height: 1;
 }
 .md-srow.is-open .md-twist { transform: rotate(90deg); }
-.md-dot { width: 9px; height: 9px; border-radius: 50%; }
+/* A part's or scene's kind: its glyph in its colour, so colour isn't the only signal. */
+.md-glyph { display: inline-block; width: 14px; text-align: center; font-size: 12px; line-height: 1; flex: 0 0 14px; }
+.md-glyph.is-small { font-size: 11px; }
 .md-num { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .md-sname {
   font-family: var(--serif); font-size: 15px; color: var(--ink);
@@ -3479,13 +3488,13 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 /* nested scene rows in the tree */
 .md-tree-scenes { padding: 1px 0 6px 34px; display: flex; flex-direction: column; gap: 1px; }
 .md-tree-scene {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: none; border: none; font-family: var(--serif);
   padding: 5px 10px; border-radius: var(--radius); cursor: pointer;
   font-size: 13px; color: var(--ink-2);
 }
 .md-tree-scene:hover { background: var(--paper); color: var(--ink); }
 .md-tree-scene.is-active { background: var(--paper-2); color: var(--ink); box-shadow: inset 2px 0 0 var(--gold); }
-.md-tree-scene-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
 
 .md-railfoot { padding: 10px 12px; border-top: 1px solid var(--rule-soft); }
 
@@ -3543,30 +3552,20 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   color: var(--accent); margin-bottom: 4px;
 }
 
-/* ── inline scene editor (right pane) ── */
+/* ── a part's scene list, and a scene's own page ── */
 .md-scene-list { display: flex; flex-direction: column; gap: 6px; }
-.md-scene-edit {
-  border: 1px solid var(--rule); border-radius: var(--radius);
-  background: var(--bg); overflow: hidden; transition: border-color .12s;
-}
-.md-scene-edit:hover { border-color: var(--rule-hover); }
-.md-scene-edit.is-open { border-color: rgba(201,168,76,.3); }
-.md-scene-edit.is-dragging { opacity: .4; }
-.md-scene-head { display: flex; align-items: center; gap: 9px; padding: 9px 12px; }
+.md-scene-row { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--bg); transition: border-color .12s; }
+.md-scene-row:hover { border-color: var(--rule-hover); }
+.md-scene-row.is-dragging { opacity: .4; }
 .md-scene-num { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
-.md-scene-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
-.md-scene-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.md-scene-title-in {
-  font-family: var(--display); font-size: 16px; color: var(--ink);
-  background: transparent; border: none; outline: none; padding: 0;
-  width: 100%;
-}
-.md-scene-title-in::placeholder { color: var(--ink-3); }
-.md-scene-sum-in {
-  font-family: var(--serif); font-size: 12.5px; color: var(--ink-3); font-style: italic;
-  background: transparent; border: none; outline: none; padding: 0; width: 100%;
-}
-.md-scene-body { padding: 4px 14px 14px 46px; border-top: 1px solid var(--rule-soft); }
+.md-scene-open { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; text-align: left; background: none; border: none; padding: 0; cursor: pointer; }
+.md-scene-open:focus-visible { outline: 1px solid var(--gold); outline-offset: 3px; }
+.md-scene-name { font-family: var(--display); font-size: 16px; color: var(--ink); }
+.md-scene-open:hover .md-scene-name { color: var(--gold); }
+.md-scene-beat { font-family: var(--serif); font-size: 12.5px; font-style: italic; color: var(--ink-3); }
+.md-scene-kind { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.md-scene-walk { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--rule-soft); }
+.md-eyebrow-link { font: inherit; letter-spacing: inherit; text-transform: inherit; }
 .md-iconbtn {
   appearance: none; cursor: pointer; border: 1px solid transparent; background: transparent;
   color: var(--ink-3); width: 26px; height: 26px; border-radius: var(--radius); line-height: 1;
@@ -3922,6 +3921,22 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .img-slot.is-wide .img-slot-frame { width: 100%; min-height: 120px; max-height: 420px; }
 .img-slot-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .img-slot.is-wide .img-slot-frame img { object-fit: contain; max-height: 420px; }
+/* A place's map with pins (components/entity/MapPins) */
+.mp { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.mp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.mp-hint { flex: 1 1 160px; }
+.mp-map { position: relative; width: fit-content; max-width: 100%; line-height: 0; border: 1px solid var(--rule); border-radius: var(--radius); }
+.mp-map.is-placing { cursor: crosshair; }
+.mp-img { display: block; max-width: 100%; max-height: 560px; border-radius: var(--radius); user-select: none; }
+.mp-loading { display: block; line-height: 1.4; padding: 40px; }
+.mp-pin { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; background: none; border: none; cursor: pointer; line-height: 1; touch-action: none; }
+.mp-pin-mark { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); border: 1.5px solid var(--gold); color: var(--gold); font-size: 11px; box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.mp-pin:hover .mp-pin-mark, .mp-pin:focus-visible .mp-pin-mark, .mp-pin.is-selected .mp-pin-mark { background: var(--gold); color: var(--bg); }
+.mp-pin:focus-visible { outline: none; }
+.mp-pin-name { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); padding: 2px 7px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--rule); color: var(--ink); font-family: var(--serif); font-size: 12px; line-height: 1.4; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 1; }
+.mp-pin:hover .mp-pin-name, .mp-pin:focus-visible .mp-pin-name, .mp-pin.is-selected .mp-pin-name { opacity: 1; }
+.mp-edit { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 10px 12px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: var(--radius); }
+.mp-edit-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 200px; min-width: 0; }
 .img-slot-frame.is-empty { border-style: dashed; }
 .img-slot-frame.is-empty:hover:not(:disabled) { border-color: var(--gold-line); }
 .img-slot-frame:disabled { cursor: default; }

@@ -28,7 +28,7 @@ describe('the campaign palette', () => {
     expect(find('The Drowned Portico')).toMatchObject({ group: 'Parts', detail: 'The Sunken Crown' });
     expect(find('The Toll Gate')).toMatchObject({ group: 'Scenes', detail: 'The Drowned Portico · The Sunken Crown' });
     find('The Toll Gate').run();
-    expect(openRecord).toHaveBeenLastCalledWith('modules', 'm1', 'submodule:p1');
+    expect(openRecord).toHaveBeenLastCalledWith('modules', 'm1', 'submodule:s1');
     find('Sewer encounters').run();
     expect(openRecord).toHaveBeenLastCalledWith('combat', 't1', 'random');
   });

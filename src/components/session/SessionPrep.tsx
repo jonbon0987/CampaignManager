@@ -114,7 +114,7 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
     const sc = scenes.find(s => s.id === id);
     if (!sc) return [];
     const where = sceneWhere.get(id);
-    return [{ id, label: sc.title, detail: where?.path, open: where?.moduleId ? open('modules', where.moduleId) : undefined }];
+    return [{ id, label: sc.title, detail: where?.path, open: where?.moduleId ? open('modules', where.moduleId, `submodule:${id}`) : undefined }];
   });
   const pickedThreads: Linked[] = ids('threads').flatMap(id => {
     const h = hooks.find(x => x.id === id);

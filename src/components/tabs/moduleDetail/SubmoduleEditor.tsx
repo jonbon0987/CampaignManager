@@ -9,9 +9,6 @@ import { useState, useEffect, useRef } from 'react';
 import { TitleInput } from '../../ui/TitleInput';
 import { useCampaign } from '../../../context/CampaignContext';
 import { useConfirm } from '../../../context/ConfirmContext';
-import { HandoutGallery } from '../../handouts/HandoutGallery';
-import { useHandouts } from '../../../hooks/useHandouts';
-import { ReadAloudField } from '../../ui/ReadAloudBlock';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
@@ -20,154 +17,48 @@ import { limitFor } from '../../../lib/fieldLimits';
 import { wouldCreateSubmoduleCycle } from '../../../lib/moduleUtils';
 import type { Module, Submodule, Scene, MonsterStatblock, Encounter } from '../../../lib/database.types';
 import {
-  TypeTag, InlinePicker, typeInfo, parseLinkedIds, SCENE_TYPES, SUBMODULE_TYPES,
+  TypeTag, InlinePicker, typeInfo, parseLinkedIds, SUBMODULE_TYPES,
 } from './pickers';
 import { difficultyColors as diffColor } from '../../../lib/theme';
 
 /* ───────────────────────── scene row ───────────────────────── */
 
-interface SceneForm { title: string; scene_type: string; summary: string; content: string; dm_notes: string; read_aloud: string; }
-
-/** A scene's handouts, loaded when the scene is opened. */
-function SceneHandouts({ sceneId }: { sceneId: string }) {
-  const { handouts, adding, add, rename, remove } = useHandouts([sceneId]);
-  return (
-    <HandoutGallery handouts={handouts} adding={adding} onAdd={files => void add(sceneId, files)}
-      onRename={(h, t) => void rename(h, t)} onRemove={h => void remove(h)} sharable />
-  );
-}
-
-function SceneRow({ scene, index, onDragStart, onDragOver, onDrop, onDragEnd, dragging, focusKey }: {
+/** A scene in its part's list: it opens as its own page, and drags to reorder. */
+function SceneRow({ scene, index, onOpen, onDragStart, onDrop, onDragEnd, dragging }: {
   scene: Scene;
   index: number;
-  /** Changes each time the outline asks for this scene: open it and bring it into view. */
-  focusKey?: number;
+  onOpen: () => void;
   onDragStart: (i: number) => void;
-  onDragOver: (e: React.DragEvent, i: number) => void;
   onDrop: (i: number) => void;
   onDragEnd: () => void;
   dragging: boolean;
 }) {
-  const { upsertScene, deleteScene, monsterStatblocks } = useCampaign();
-  const confirm = useConfirm();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<SceneForm>(() => toForm(scene));
-  const rowRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!focusKey) return;
-    setOpen(true);
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    requestAnimationFrame(() => rowRef.current?.scrollIntoView?.({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }));
-  }, [focusKey]);
-  const sceneRef = useRef(scene);
-  sceneRef.current = scene;
-
-  const { status } = useAutoSave<SceneForm>({
-    data: form,
-    delay: 800,
-    onSave: async (d) => {
-      await upsertScene({
-        id: scene.id,
-        submodule_id: scene.submodule_id,
-        title: d.title || 'Untitled scene',
-        scene_type: d.scene_type || null,
-        summary: d.summary || null,
-        content: d.content || null,
-        dm_notes: d.dm_notes || null,
-        read_aloud: d.read_aloud || null,
-        sort_order: sceneRef.current.sort_order,
-        linked_monster_ids: sceneRef.current.linked_monster_ids,
-      });
-    },
-  });
-  const set = <K extends keyof SceneForm>(k: K, v: SceneForm[K]) => setForm(p => ({ ...p, [k]: v }));
-
   const info = typeInfo(scene.scene_type);
-  const linkedIds = parseLinkedIds(scene.linked_monster_ids);
-  const linked = linkedIds.map(id => monsterStatblocks.find(m => m.id === id)).filter((m): m is MonsterStatblock => !!m);
-
-  const linkCreature = (id: string) => upsertScene({ ...sceneRef.current, linked_monster_ids: JSON.stringify([...linkedIds, id]) });
-  const unlinkCreature = (id: string) => upsertScene({ ...sceneRef.current, linked_monster_ids: JSON.stringify(linkedIds.filter(x => x !== id)) });
-
   return (
-    <div
-      ref={rowRef}
-      className={`md-scene-edit ${open ? 'is-open' : ''} ${dragging ? 'is-dragging' : ''}`}
-      draggable
-      onDragStart={() => onDragStart(index)}
-      onDragOver={e => onDragOver(e, index)}
-      onDrop={() => onDrop(index)}
-      onDragEnd={onDragEnd}
-    >
-      <div className="md-scene-head">
-        <span className="md-grip" title="Drag to reorder">⠿</span>
-        <span className="md-scene-num">{index + 1}</span>
-        <span className="md-scene-dot" style={{ background: info.color }} title={info.label} />
-        <div className="md-scene-main">
-          <input className="md-scene-title-in" value={form.title} placeholder="Scene title"
-            onChange={e => set('title', e.target.value)} maxLength={limitFor('scenes', 'title')} />
-          <input className="md-scene-sum-in" value={form.summary} placeholder="one-line beat"
-            onChange={e => set('summary', e.target.value)} maxLength={limitFor('scenes', 'summary')} />
-        </div>
-        <span style={{ marginRight: 4 }}><SaveStatusIndicator status={status} /></span>
-        <TypeTag type={form.scene_type} types={SCENE_TYPES} onPick={t => set('scene_type', t)} />
-        <button className="md-iconbtn" title={open ? 'Collapse' : 'Expand'} onClick={() => setOpen(o => !o)}>{open ? '▴' : '▾'}</button>
-        <button className="md-iconbtn is-danger" title="Delete scene"
-          onClick={async () => { if (await confirm(`Delete "${scene.title}"?`)) deleteScene(scene.id, scene.submodule_id); }}>✕</button>
-      </div>
-      {open && (
-        <div className="md-scene-body">
-          <div style={{ marginBottom: 12 }}>
-            <ReadAloudField value={form.read_aloud} onChange={v => set('read_aloud', v)} maxLength={limitFor('scenes', 'read_aloud')} />
-          </div>
-          <SlashField value={form.content} onChange={v => set('content', v)}
-            placeholder="Scene detail: tactics, outcomes, what changes…" minHeight="120px" maxLength={limitFor('scenes', 'content')} />
-          <div style={{ marginTop: 12 }}>
-            <div className="md-eyebrow" style={{ marginBottom: 6 }}>Stat Sheets</div>
-            <div className="md-chips">
-              {linked.map(m => {
-                const ci = typeInfo(m.creature_type);
-                return (
-                  <span key={m.id} className="md-chip">
-                    <span className="md-chip-glyph" style={{ color: ci.color }}>☠</span>{m.name}
-                    {m.challenge_rating && <span className="md-chip-cr">CR {m.challenge_rating}</span>}
-                    <button title="Unlink" onClick={() => unlinkCreature(m.id)}>✕</button>
-                  </span>
-                );
-              })}
-              <InlinePicker label="Stat sheet"
-                options={monsterStatblocks.filter(m => !linkedIds.includes(m.id)).map(m => ({
-                  id: m.id, label: m.name, meta: m.challenge_rating ? `CR ${m.challenge_rating}` : undefined,
-                  glyph: '☠', color: typeInfo(m.creature_type).color,
-                }))}
-                onPick={linkCreature} />
-            </div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <div className="md-eyebrow" style={{ marginBottom: 6 }}>Handouts</div>
-            <SceneHandouts sceneId={scene.id} />
-          </div>
-        </div>
-      )}
+    <div className={`md-scene-row${dragging ? ' is-dragging' : ''}`} draggable
+      onDragStart={() => onDragStart(index)} onDragOver={e => e.preventDefault()} onDrop={() => onDrop(index)} onDragEnd={onDragEnd}>
+      <span className="md-grip" title="Drag to reorder">⠿</span>
+      <span className="md-scene-num">{index + 1}</span>
+      <span className="md-glyph" style={{ color: info.color }} title={info.label} aria-hidden>{info.glyph}</span>
+      <button type="button" className="md-scene-open" onClick={onOpen}>
+        <span className="md-scene-name">{scene.title || 'Untitled scene'}</span>
+        {scene.summary && <span className="md-scene-beat">{scene.summary}</span>}
+      </button>
+      <span className="md-scene-kind">{info.label}</span>
     </div>
   );
-
-  function toForm(s: Scene): SceneForm {
-    return { title: s.title, scene_type: s.scene_type ?? 'encounter', summary: s.summary ?? '', content: s.content ?? '', dm_notes: s.dm_notes ?? '', read_aloud: s.read_aloud ?? '' };
-  }
 }
 
 /* ───────────────────── submodule editor ───────────────────── */
 
 interface SubForm { title: string; submodule_type: string; summary: string; content: string; dm_notes: string; }
 
-export function SubmoduleEditor({ submodule, module, siblings, onDeleted, focusScene }: {
+export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpenScene }: {
   submodule: Submodule;
   module: Module;
   siblings: Submodule[];
   onDeleted: () => void;
-  /** A scene picked in the outline, with a counter so picking it again re-scrolls. */
-  focusScene?: { id: string; n: number } | null;
+  onOpenScene: (id: string) => void;
 }) {
   const {
     upsertSubmodule, deleteSubmodule,
@@ -227,7 +118,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, focusS
   };
 
   /* scenes for this submodule + drag reorder */
-  const subScenes = scenes.filter(s => s.submodule_id === submodule.id);
+  const subScenes = scenes.filter(s => s.submodule_id === submodule.id).sort((a, b) => a.sort_order - b.sort_order);
   const dragFrom = useRef<number | null>(null);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const reorderScenes = async (from: number, to: number) => {
@@ -362,20 +253,19 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, focusS
           <div className="md-scene-list">
             {subScenes.length === 0 && <div className="md-pop-empty" style={{ padding: '2px 0' }}>No scenes yet — add the beats you'll run from.</div>}
             {subScenes.map((sc, i) => (
-              <SceneRow key={sc.id} scene={sc} index={i}
-                focusKey={focusScene?.id === sc.id ? focusScene.n : undefined}
+              <SceneRow key={sc.id} scene={sc} index={i} onOpen={() => onOpenScene(sc.id)}
                 dragging={draggingIdx === i}
                 onDragStart={(idx) => { dragFrom.current = idx; setDraggingIdx(idx); }}
-                onDragOver={(e) => e.preventDefault()}
                 onDrop={(idx) => { if (dragFrom.current != null) reorderScenes(dragFrom.current, idx); }}
                 onDragEnd={() => { dragFrom.current = null; setDraggingIdx(null); }}
               />
             ))}
             <button className="md-add" style={{ marginTop: 6 }} onClick={async () => {
-              await upsertScene({
+              const made = await upsertScene({
                 submodule_id: submodule.id, title: 'New scene', scene_type: 'encounter',
                 summary: null, content: null, dm_notes: null, sort_order: subScenes.length, linked_monster_ids: null,
               });
+              if (made) onOpenScene(made.id);
             }}>＋ Scene</button>
           </div>
         </div>

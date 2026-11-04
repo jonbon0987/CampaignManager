@@ -13,13 +13,14 @@
 
    Drop-in replacement: same props + default export as the original.
    ════════════════════════════════════════════════════════════════ */
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Breadcrumb } from '../ui/Breadcrumb';
 import type { Module } from '../../lib/database.types';
 import { typeInfo } from './moduleDetail/pickers';
 import { ModuleOverview } from './moduleDetail/ModuleOverview';
 import { SubmoduleEditor } from './moduleDetail/SubmoduleEditor';
+import { SceneEditor } from './moduleDetail/SceneEditor';
 
 // Styles live in src/index.css — see the "Module Atlas" block appended there.
 
@@ -27,28 +28,42 @@ interface ModuleDetailProps {
   module: Module;
   onBack: () => void;
   onModuleDeleted: () => void;
-  /** Opens on this submodule instead of the overview (a scene picked from Play's agenda, the URL). */
-  initialSubmoduleId?: string | null;
-  /** Told which part is open (null for the overview), for the URL. */
-  onPartChange?: (submoduleId: string | null) => void;
+  /**
+   * The part or scene asked for from outside (Play's agenda, the palette, the
+   * URL, Back), or null for the overview. A new request moves there even when
+   * the id is one it was already asked for.
+   */
+  target?: { id: string | null; n: number };
+  /** Told which part or scene is open (null for the overview), for the URL. */
+  onPartChange?: (partOrSceneId: string | null) => void;
 }
 
 const OVERVIEW = '__overview';
 
-export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, initialSubmoduleId, onPartChange }: ModuleDetailProps) {
+export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, target, onPartChange }: ModuleDetailProps) {
   const {
-    submodules, loadSubmodules, upsertSubmodule,
-    scenes, loadScenes,
+    submodules, upsertSubmodule,
+    scenes, loadModuleTree,
     submoduleDeps, loadSubmoduleDeps,
   } = useCampaign();
 
-  const [selectedId, setSelectedId] = useState<string>(initialSubmoduleId ?? OVERVIEW);
-  const [openIds, setOpenIds] = useState<Record<string, boolean>>(() => (initialSubmoduleId ? { [initialSubmoduleId]: true } : {}));
-
+  const [selectedId, setSelectedId] = useState<string>(target?.id ?? OVERVIEW);
+  const [openIds, setOpenIds] = useState<Record<string, boolean>>(() => (target?.id ? { [target.id]: true } : {}));
+  const targetN = target?.n;
+  const targetId = target?.id ?? null;
   useEffect(() => {
-    loadSubmodules(mod.id);
+    if (targetN === undefined) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- following a request from outside (Back, a link)
+    setSelectedId(targetId ?? OVERVIEW);
+    if (targetId) setOpenIds(o => (o[targetId] ? o : { ...o, [targetId]: true }));
+  }, [targetN, targetId]);
+
+  // The whole tree: a scene can be opened directly, and Prev and Next walk every part.
+  const [treeReady, setTreeReady] = useState(false);
+  useEffect(() => {
+    void loadModuleTree().catch(() => {}).finally(() => setTreeReady(true));
     loadSubmoduleDeps(mod.id);
-  }, [mod.id, loadSubmodules, loadSubmoduleDeps]);
+  }, [mod.id, loadModuleTree, loadSubmoduleDeps]);
 
   const modSubs = useMemo(
     () => submodules.filter(s => s.module_id === mod.id).sort((a, b) => a.sort_order - b.sort_order),
@@ -57,24 +72,27 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
 
   useEffect(() => { onPartChange?.(selectedId === OVERVIEW ? null : selectedId); }, [selectedId, onPartChange]);
 
-  // keep selection valid (once the submodules have loaded)
-  useEffect(() => {
-    if (selectedId !== OVERVIEW && modSubs.length > 0 && !modSubs.find(s => s.id === selectedId)) setSelectedId(OVERVIEW);
-  }, [modSubs, selectedId]);
+  // The module's scenes in running order: by part, then within each part.
+  const scenesOf = useCallback((subId: string) => scenes.filter(s => s.submodule_id === subId).sort((a, b) => a.sort_order - b.sort_order), [scenes]);
+  const running = useMemo(() => modSubs.flatMap(sub => scenesOf(sub.id)), [modSubs, scenesOf]);
 
-  // load scenes for expanded rows so the tree can show them
-  useEffect(() => {
-    Object.entries(openIds).forEach(([id, open]) => { if (open) loadScenes(id); });
-  }, [openIds, loadScenes]);
+  const selectedSub = modSubs.find(s => s.id === selectedId) ?? null;
+  const selectedScene = running.find(s => s.id === selectedId) ?? null;
+  const sceneAt = selectedScene ? running.indexOf(selectedScene) : -1;
+  const scenePart = selectedScene ? modSubs.find(s => s.id === selectedScene.submodule_id) ?? null : null;
 
-  // A scene picked in the outline opens its part and scrolls to it. The counter
-  // makes picking the same scene again scroll again.
-  const [focusScene, setFocusScene] = useState<{ id: string; n: number } | null>(null);
-  const selectSub = (id: string) => { setSelectedId(id); setFocusScene(null); if (id !== OVERVIEW) setOpenIds(o => ({ ...o, [id]: true })); };
-  const selectScene = (subId: string, sceneId: string) => {
-    selectSub(subId);
-    setFocusScene(f => ({ id: sceneId, n: (f?.n ?? 0) + 1 }));
-  };
+  // Keep the selection valid once the tree has loaded, and its part open in the outline.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the tree it's checked against loads after mount
+    if (treeReady && selectedId !== OVERVIEW && !selectedSub && !selectedScene) setSelectedId(OVERVIEW);
+  }, [treeReady, selectedId, selectedSub, selectedScene]);
+  const openPartId = scenePart?.id;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follows a scene opened from outside, as well as the outline
+    if (openPartId) setOpenIds(o => (o[openPartId] ? o : { ...o, [openPartId]: true }));
+  }, [openPartId]);
+
+  const selectSub = (id: string) => { setSelectedId(id); if (id !== OVERVIEW) setOpenIds(o => ({ ...o, [id]: true })); };
   const toggleOpen = (id: string) => setOpenIds(o => ({ ...o, [id]: !o[id] }));
 
   const addSubmodule = async () => {
@@ -97,8 +115,6 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
       if (arr[i].sort_order !== i) await upsertSubmodule({ ...arr[i], sort_order: i });
     }
   };
-
-  const selectedSub = modSubs.find(s => s.id === selectedId) ?? null;
 
   return (
     <div className="cm-md" style={{ height: '100%' }}>
@@ -125,7 +141,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
           {modSubs.map((sub, i) => {
             const info = typeInfo(sub.submodule_type);
             const open = !!openIds[sub.id];
-            const subScenes = scenes.filter(s => s.submodule_id === sub.id);
+            const subScenes = scenesOf(sub.id);
             return (
               <div key={sub.id}>
                 <div
@@ -141,7 +157,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
                   <span className="md-twist" onClick={e => { e.stopPropagation(); toggleOpen(sub.id); }}>
                     {subScenes.length > 0 || open ? '▶' : ''}
                   </span>
-                  <span className="md-dot" style={{ background: info.color }} title={info.label} />
+                  <span className="md-glyph" style={{ color: info.color }} title={info.label} aria-hidden>{info.glyph}</span>
                   <span className="md-num">{i + 1}</span>
                   <span className="md-sname">{sub.title || 'Untitled'}</span>
                   {subScenes.length > 0 && <span className="md-scount">{subScenes.length}</span>}
@@ -149,14 +165,14 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
 
                 {open && subScenes.length > 0 && (
                   <div className="md-tree-scenes">
-                    {subScenes.sort((a, b) => a.sort_order - b.sort_order).map((sc, si) => {
+                    {subScenes.map((sc, si) => {
                       const sinfo = typeInfo(sc.scene_type);
                       return (
-                        <div className={`md-tree-scene${selectedId === sub.id && focusScene?.id === sc.id ? ' is-active' : ''}`} key={sc.id}
-                          onClick={() => selectScene(sub.id, sc.id)}>
-                          <span className="md-tree-scene-dot" style={{ background: sinfo.color }} />
+                        <button type="button" className={`md-tree-scene${selectedId === sc.id ? ' is-active' : ''}`} key={sc.id}
+                          aria-current={selectedId === sc.id ? 'page' : undefined} onClick={() => setSelectedId(sc.id)}>
+                          <span className="md-glyph is-small" style={{ color: sinfo.color }} title={sinfo.label} aria-hidden>{sinfo.glyph}</span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{si + 1}. {sc.title}</span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -178,8 +194,13 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
               onSelect={selectSub} onDeleted={onModuleDeleted} />
           : selectedSub
             ? <SubmoduleEditor key={selectedSub.id} submodule={selectedSub} module={mod} siblings={modSubs}
-                focusScene={focusScene} onDeleted={() => setSelectedId(OVERVIEW)} />
-            : null}
+                onOpenScene={setSelectedId} onDeleted={() => setSelectedId(OVERVIEW)} />
+            : selectedScene && scenePart
+              ? <SceneEditor key={selectedScene.id} scene={selectedScene} part={scenePart} module={mod}
+                  index={scenesOf(scenePart.id).indexOf(selectedScene)} total={scenesOf(scenePart.id).length}
+                  prev={running[sceneAt - 1] ?? null} next={running[sceneAt + 1] ?? null}
+                  onOpenScene={setSelectedId} onOpenPart={() => setSelectedId(scenePart.id)} onDeleted={() => setSelectedId(scenePart.id)} />
+              : null}
       </section>
     </div>
   );

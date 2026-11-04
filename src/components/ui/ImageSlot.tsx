@@ -10,7 +10,7 @@ import { useImageUrl } from '../../hooks/useImageUrl';
 import { Button } from './Button';
 import { Lightbox } from './Lightbox';
 
-export function ImageSlot({ path, onChange, label, shape = 'portrait', disabled }: {
+export function ImageSlot({ path, onChange, label, shape = 'portrait', disabled, frame }: {
   path: string | null;
   onChange: (path: string | null) => void;
   /** What the picture is: "Portrait", "Map". */
@@ -18,6 +18,8 @@ export function ImageSlot({ path, onChange, label, shape = 'portrait', disabled 
   /** A portrait is tall; a map is wide. */
   shape?: 'portrait' | 'wide';
   disabled?: boolean;
+  /** Draws the picture itself, in place of the plain frame (a map with pins on it). */
+  frame?: (url: string | null, viewFull: () => void) => React.ReactNode;
 }) {
   const url = useImageUrl(path);
   const confirm = useConfirm();
@@ -47,7 +49,7 @@ export function ImageSlot({ path, onChange, label, shape = 'portrait', disabled 
 
   return (
     <div className={`img-slot is-${shape}`}>
-      {path ? (
+      {path && frame ? frame(url, () => setViewing(true)) : path ? (
         <button type="button" className="img-slot-frame" onClick={() => url && setViewing(true)} aria-label={`View the ${label.toLowerCase()}`}>
           {url ? <img src={url} alt={label} /> : <span className="img-slot-note">Loading…</span>}
         </button>
