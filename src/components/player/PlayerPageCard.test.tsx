@@ -21,6 +21,7 @@ function shares(p: PlayerPageLink | null, ids: Partial<Record<ShareKind, string[
     sharedIds: kind => ids[kind] ?? [],
     issueLink: vi.fn().mockResolvedValue(undefined),
     setEnabled: vi.fn().mockResolvedValue(undefined),
+    setPart: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -34,6 +35,23 @@ describe('PlayerPageCard', () => {
       sessions: [{ id: 's1' }], npcs: [{ id: 'n1' }, { id: 'n2' }], locations: [{ id: 'l1' }],
       lore: [{ id: 'e1', dm_only: false }, { id: 'e2', dm_only: true }],
     });
+  });
+
+  it('switches the next session, in-world date and treasure on and off, all off to start', () => {
+    const value = shares({ ...page(), show_treasury: true });
+    show(value);
+    expect(screen.getByRole('button', { name: 'Next session' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Treasure' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'In-world date' }));
+    expect(value.setPart).toHaveBeenCalledWith('show_world_date', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Treasure' }));
+    expect(value.setPart).toHaveBeenCalledWith('show_treasury', false);
+  });
+
+  it('counts the leads it shows', () => {
+    h.campaign.value = makeCampaignContext({ hooks: [{ id: 't1' }], sessions: [], npcs: [], locations: [], lore: [] });
+    show(shares(page(), { thread: ['t1', 'gone'] }));
+    expect(screen.getByText(/1 lead\./)).toBeTruthy();
   });
 
   it('shows nothing outside a campaign', () => {

@@ -33,6 +33,9 @@ function items(over: Partial<ItemsValue> = {}): ItemsValue {
     give: vi.fn(async x => holding('hn', x.item_id, x.pc_id)),
     updateHolding: vi.fn(),
     removeHolding: vi.fn(),
+    treasury: [],
+    addTreasury: vi.fn().mockResolvedValue(undefined),
+    removeTreasury: vi.fn().mockResolvedValue(undefined),
     ...over,
   };
 }

@@ -10,7 +10,7 @@ import PlayerPage from './PlayerPage';
 
 const empty: PlayerPageData = {
   campaign: { name: 'Test', title: 'The Sunken Crown' },
-  party: [], recaps: [], handouts: [], people: [], places: [], lore: [],
+  party: [], recaps: [], handouts: [], people: [], places: [], lore: [], threads: [], schedule: null, world_date: null, treasury: null,
 };
 
 const full: PlayerPageData = {
@@ -25,6 +25,60 @@ const full: PlayerPageData = {
 
 describe('PlayerPage', () => {
   beforeEach(() => { load.mockReset(); });
+
+  describe('the quest log and what the DM switched on', () => {
+    const extras = {
+      threads: [
+        { id: 't1', title: 'The Harbormaster’s Letter', text: 'He wants it **back**, and he’ll pay.', done: false },
+        { id: 't2', title: 'The Missing Smith', text: null, done: true },
+      ],
+      schedule: { number: 7, date: '2026-11-12', time: '19:00', repeat: 'weekly', last_date: '2026-11-05', last_time: '19:00' },
+      world_date: { date: { year: 1492, day: 45 }, months: [{ name: 'Hammer', days: 30 }, { name: 'Alturiak', days: 30 }], suffix: 'DR' },
+      treasury: { cp: 0, sp: 5, ep: 0, gp: 120, pp: 0 },
+    } as unknown as Partial<PlayerPageData>;
+
+    it('shows leads in their own words, with resolved ones apart', async () => {
+      load.mockResolvedValue({ ...full, ...extras });
+      render(<PlayerPage token={'x'.repeat(32)} />);
+      expect(await screen.findByRole('heading', { name: 'Quest log' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Quest log' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'The Harbormaster’s Letter' })).toBeTruthy();
+      expect(screen.getByText('back').tagName).toBe('STRONG');
+      expect(screen.getByText('Resolved')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'The Missing Smith' }).closest('.is-done')).toBeTruthy();
+    });
+
+    it('shows the next session, the in-world date and the treasure when they’re on', async () => {
+      load.mockResolvedValue({ ...full, ...extras });
+      render(<PlayerPage token={'x'.repeat(32)} />);
+      expect(await screen.findByText('Thu, Nov 12, 2026 at 7:00 PM')).toBeTruthy();
+      expect(screen.getByText('15 Alturiak 1492 DR')).toBeTruthy();
+      expect(screen.getByText(/120 gp, 5 sp/)).toBeTruthy();
+    });
+
+    it('works out the next session from the repeat when none is planned', async () => {
+      load.mockResolvedValue({ ...full, schedule: { number: null, date: null, time: null, repeat: 'weekly', last_date: '2099-01-01', last_time: null } });
+      render(<PlayerPage token={'x'.repeat(32)} />);
+      expect(await screen.findByText(/^Expected .*Jan 8, 2099/)).toBeTruthy();
+    });
+
+    it('leaves all of it out when it’s off, even for a page saved before they existed', async () => {
+      load.mockResolvedValue(full);
+      render(<PlayerPage token={'x'.repeat(32)} />);
+      await screen.findByRole('heading', { name: 'The Sunken Crown' });
+      expect(screen.queryByText('Quest log')).toBeNull();
+      expect(screen.queryByText('Next session')).toBeNull();
+      expect(screen.queryByText('In the world')).toBeNull();
+      expect(screen.queryByText('The party’s treasure')).toBeNull();
+    });
+
+    it('says nothing about treasure when the purse is empty', async () => {
+      load.mockResolvedValue({ ...full, treasury: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 } });
+      render(<PlayerPage token={'x'.repeat(32)} />);
+      await screen.findByRole('heading', { name: 'The Sunken Crown' });
+      expect(screen.queryByText('The party’s treasure')).toBeNull();
+    });
+  });
 
   it('says the page is gone when the link is wrong or turned off', async () => {
     load.mockResolvedValue(null);

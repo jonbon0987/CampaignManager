@@ -16,6 +16,8 @@ import { SlashField } from '../ui/SlashField';
 import { SessionHistory } from '../session/SessionHistory';
 import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import { ClockControl } from '../ui/ThreadClock';
+import { ShareToggle } from '../ui/ShareToggle';
+import { usePlayerShares } from '../../context/playerShares';
 import { Button } from '../ui/Button';
 import { AddSections } from './AddSections';
 import { useOptionalSections } from './useOptionalSections';
@@ -24,12 +26,13 @@ import { CLOCK_SIZES, clockFullNote, stateAfterClock } from '../../lib/threadClo
 import type { Hook } from '../../lib/database.types';
 
 export type ThreadFields = Pick<Hook, 'title' | 'category' | 'state' | 'description'
-  | 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id'>;
+  | 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id' | 'player_text'>;
 
 const toFields = (h: Hook): ThreadFields => ({
   title: h.title, category: h.category ?? 'side_quest', state: h.state ?? (h.is_active ? 'active' : 'resolved'), description: h.description,
   clock_size: h.clock_size ?? null, clock_filled: h.clock_filled ?? 0, clock_label: h.clock_label ?? null,
   npc_ids: h.npc_ids ?? [], location_ids: h.location_ids ?? [], faction_ids: h.faction_ids ?? [], module_id: h.module_id ?? null,
+  player_text: h.player_text ?? null,
 });
 
 type Optional = 'clock' | 'links';
@@ -56,6 +59,7 @@ export function ThreadEditor({ thread, links, save, remove, onDeleted, onPromote
 }) {
   const confirm = useConfirm();
   const toast = useToast();
+  const knownToParty = usePlayerShares()?.isShared('thread', thread.id) ?? false;
   const [form, setForm] = useState<ThreadFields>(() => toFields(thread));
   const { status, saveNow } = useAutoSave({ data: form, onSave: async data => { await save(data); }, delay: 800 });
   useDiscardBlankDraft(thread.id, !form.title.trim() && !form.description?.trim(), remove);
@@ -93,6 +97,7 @@ export function ThreadEditor({ thread, links, save, remove, onDeleted, onPromote
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
         <div className="as-spacer" />
+        <ShareToggle kind="thread" id={thread.id} />
         <OverflowMenu items={[
           ...(onPromote ? [{ label: 'Promote to a module…', onClick: () => { void saveNow().then(onPromote); } }] : []),
           { label: 'Delete thread', danger: true, onClick: handleDelete },
@@ -135,6 +140,16 @@ export function ThreadEditor({ thread, links, save, remove, onDeleted, onPromote
         <SlashField value={form.description ?? ''} onChange={v => set('description', v || null)}
           placeholder="What is this thread about? Who and where does it touch?" minHeight="160px" maxLength={limitFor('hooks', 'description')} />
       </div>
+
+      {knownToParty && (
+        <div className="as-fl">
+          <label className="as-ll" htmlFor={`thread-known-${thread.id}`}>What the players know</label>
+          <textarea id={`thread-known-${thread.id}`} className="as-input th-known" rows={3} value={form.player_text ?? ''}
+            placeholder="In their words: the harbormaster wants the letter back, and he’ll pay."
+            onChange={e => set('player_text', e.target.value || null)} maxLength={limitFor('hooks', 'player_text')} />
+          <span className="as-hint">The player page shows the thread’s title and this, under the quest log. Never the summary, clock or links.</span>
+        </div>
+      )}
 
       {sections.shown('clock') && (
         <div className="as-fl th-clock-field">

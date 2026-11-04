@@ -3,7 +3,7 @@
 // none, and usePlayerShares() returns null so the switches don't show.
 
 import { createContext, useContext } from 'react';
-import type { PlayerPageLink, ShareKind } from '../lib/database.types';
+import type { PlayerPageLink, PlayerPagePart, ShareKind } from '../lib/database.types';
 
 export interface PlayerSharesValue {
   campaignId: string;
@@ -17,6 +17,8 @@ export interface PlayerSharesValue {
   /** Makes the page, or gives it a new link (the old one stops working). */
   issueLink: () => Promise<void>;
   setEnabled: (enabled: boolean) => Promise<void>;
+  /** Shows or hides the next session, the in-world date or the treasure. */
+  setPart: (part: PlayerPagePart, on: boolean) => Promise<void>;
 }
 
 export const PlayerSharesContext = createContext<PlayerSharesValue | null>(null);

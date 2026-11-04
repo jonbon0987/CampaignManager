@@ -4,6 +4,7 @@
 
 import { refsToNames } from './slashMarkdown';
 import { clockOf } from './threadClock';
+import { formatCoins, formatLine, sumCoins } from './treasury';
 import { dateOf, formatSpan, monthsOf, yearSuffix } from './calendar';
 import { formatSessionDate, localToday, planIds, sessionName, STATUS_LABEL } from './sessionLifecycle';
 import { holderName, itemLine } from './items';
@@ -12,6 +13,7 @@ import type {
   Campaign, CharacterRelationship, Encounter, EncounterCombatant, EntitySessionEntry, Faction, Handout, Hook, Idea, Item,
   ItemHolding, Location, LoreEntry, Module, ModuleDependency, ModuleSheet, MonsterStatblock, NPC, PlayerCharacter,
   RandomEncounterTable, RecordingMoment, Scene, Session, SessionRecording, Submodule, TranscriptSegment,
+  TreasuryEntry,
 } from './database.types';
 
 export interface ExportTables {
@@ -33,6 +35,7 @@ export interface ExportTables {
   random_encounter_tables: RandomEncounterTable[];
   items: Item[];
   item_holdings: ItemHolding[];
+  treasury_entries: TreasuryEntry[];
   handouts: Handout[];
   character_relationships: CharacterRelationship[];
   entity_session_entries: EntitySessionEntry[];
@@ -290,6 +293,7 @@ function threads(data: CampaignExport, names: Names): string {
         ...pick(names.npc, h.npc_ids), ...pick(names.place, h.location_ids), ...pick(names.faction, h.faction_ids), ...pick(names.module, [h.module_id]),
       ]);
       history(md, t.entity_session_entries.filter(e => e.entity_type === 'hook' && e.entity_id === h.id), names);
+      md.section('What the players know', h.player_text);
       md.section('DM notes', h.dm_only_notes);
     }
   }
@@ -442,6 +446,11 @@ function bestiary(data: CampaignExport): string {
 function items(data: CampaignExport, pics: Pics): string {
   const t = data.tables;
   const md = new Md().h(1, 'Items');
+  const ledger = t.treasury_entries ?? [];
+  if (ledger.length) {
+    md.h(2, 'Party treasury').para(formatCoins(sumCoins(ledger)) || 'Nothing left.');
+    md.list('Ledger', ledger.map(l => [formatLine(l), l.note].filter(Boolean).join(': ')));
+  }
   for (const i of [...t.items].sort(byName<Item>(x => x.name))) {
     md.h(2, i.name || 'Unnamed item').meta([itemLine(i), i.value]);
     md.image(`Picture of ${i.name}`, pics.get(i.image_path ?? ''));

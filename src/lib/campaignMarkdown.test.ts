@@ -7,7 +7,7 @@ const row = <T>(over: Record<string, unknown>) => ({ user_id: 'u', created_at: '
 const empty: ExportTables = {
   player_characters: [], npcs: [], factions: [], locations: [], lore_entries: [], hooks: [], ideas: [], modules: [],
   module_dependencies: [], module_sheets: [], submodules: [], scenes: [], sessions: [], encounters: [], monster_statblocks: [],
-  random_encounter_tables: [], items: [], item_holdings: [], handouts: [], character_relationships: [], entity_session_entries: [],
+  random_encounter_tables: [], items: [], item_holdings: [], treasury_entries: [], handouts: [], character_relationships: [], entity_session_entries: [],
   session_recordings: [], transcript_segments: [], recording_moments: [],
 };
 
@@ -37,9 +37,10 @@ function fixture(): CampaignExport {
       ],
       lore_entries: [row({ id: 'lo1', title: 'The Black Spider', category: 'Villains', content: 'A drow seeking Wave Echo Cave.', dm_only: true })],
       hooks: [
-        row({ id: 'h1', title: 'Find Gundren', state: 'active', is_active: true, category: 'main_plot', description: 'He never arrived.', clock_size: 6, clock_filled: 2, clock_label: 'The goblins sell him', location_ids: ['l2'] }),
+        row({ id: 'h1', title: 'Find Gundren', state: 'active', is_active: true, category: 'main_plot', description: 'He never arrived.', clock_size: 6, clock_filled: 2, clock_label: 'The goblins sell him', location_ids: ['l2'], player_text: 'He’ll pay for news of Gundren.' }),
         row({ id: 'h2', title: 'An old debt', state: null, is_active: false }),
       ],
+      treasury_entries: [row({ id: 'te1', gp: 120, sp: 5, cp: 0, ep: 0, pp: 0, note: 'The bribe' }), row({ id: 'te2', gp: -20, sp: 0, cp: 0, ep: 0, pp: 0, note: null })],
       ideas: [row({ id: 'i1', text: 'A ghost in the mine', tag: 'npc' })],
       sessions: [row({
         id: 's1', session_number: 1, title: 'Goblin Arrows', status: 'done', session_date: '2026-10-26', summary: 'Ambushed on the road.',
@@ -156,6 +157,9 @@ describe('markdownFiles', () => {
     expect(files['Threads.md']).toMatch(/## Inbox\n\n- A ghost in the mine \(npc\)/);
     expect(files['Threads.md'].indexOf('## Active')).toBeLessThan(files['Threads.md'].indexOf('## Resolved'));
     expect(files['Threads.md']).toContain('clock 2 of 6: The goblins sell him');
+    expect(files['Threads.md']).toContain('He’ll pay for news of Gundren.');
+    expect(files['Items.md']).toContain('100 gp, 5 sp');
+    expect(files['Items.md']).toContain('+120 gp, +5 sp: The bribe');
     expect(files['Threads.md']).toMatch(/\*\*Linked\*\*\n\n- The Sleeping Giant/);
     expect(files['Modules.md']).toContain('## Chapter 1 · Phandelver');
     expect(files['Modules.md']).toContain('> Water rushes past.\n> The dark yawns.');

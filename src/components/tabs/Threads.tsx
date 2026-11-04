@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { usePlayerShares } from '../../context/playerShares';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { limitFor } from '../../lib/fieldLimits';
@@ -123,7 +124,7 @@ function Faces({ people }: { people: NPC[] }) {
   );
 }
 
-function ThreadCard({ h, npcs, places, factions, onOpen }: { h: Hook; npcs: NPC[]; places: Location[]; factions: Faction[]; onOpen: () => void }) {
+function ThreadCard({ h, npcs, places, factions, known, onOpen }: { h: Hook; npcs: NPC[]; places: Location[]; factions: Faction[]; known: boolean; onOpen: () => void }) {
   const ks = hookCategoryStyles[h.category ?? 'side_quest'] ?? hookCategoryStyles.side_quest;
   const sum = h.description ? plainText(h.description) : '';
   const clock = clockOf(h);
@@ -147,10 +148,11 @@ function ThreadCard({ h, npcs, places, factions, onOpen }: { h: Hook; npcs: NPC[
         </span>
       )}
       {where.length > 0 && <span className="th-card-where">{where.slice(0, 2).join(' · ')}{where.length > 2 ? ` +${where.length - 2}` : ''}</span>}
-      {(people.length > 0 || h.last_updated_session != null) && (
+      {(people.length > 0 || h.last_updated_session != null || known) && (
         <span className="th-card-foot">
           <Faces people={people} />
           {h.last_updated_session != null && <span>Last seen Session {h.last_updated_session}</span>}
+          {known && <span className="th-card-known">Players know</span>}
         </span>
       )}
     </div>
@@ -161,6 +163,7 @@ export default function Threads({ openId, onOpenConsumed }: { openId?: string | 
   const { hooks, ideas, npcs, locations, factions, modules, upsertHook, deleteHook, upsertIdea, deleteIdea, promoteIdea, upsertLore, upsertLocation } = useCampaign();
   const confirm = useConfirm();
   const openRecord = useOpenRecord();
+  const shares = usePlayerShares();
   const [search, setSearch] = useState('');
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
   const [promoting, setPromoting] = useState<Hook | null>(null);
@@ -279,7 +282,7 @@ export default function Threads({ openId, onOpenConsumed }: { openId?: string | 
                   {inbox.length === 0 && <p className="th-empty">{q ? 'No ideas match.' : <>Nothing waiting. Jot ideas here, or press <kbd className="cm-kbd">⌘.</kbd> from anywhere.</>}</p>}
                 </>
               )}
-              {cards.map(h => <ThreadCard key={h.id} h={h} npcs={npcs} places={locations} factions={factions} onOpen={() => setOpenThreadId(h.id)} />)}
+              {cards.map(h => <ThreadCard key={h.id} h={h} npcs={npcs} places={locations} factions={factions} known={shares?.isShared('thread', h.id) ?? false} onOpen={() => setOpenThreadId(h.id)} />)}
               {col !== 'inbox' && cards.length === 0 && <p className="th-empty">—</p>}
             </section>
           );

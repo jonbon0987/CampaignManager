@@ -63,6 +63,14 @@ export function PlayerShareProvider({ campaignId, children }: { campaignId: stri
     }
   }, [campaignId, toast]);
 
+  const setPart = useCallback<PlayerSharesValue['setPart']>(async (part, on) => {
+    try {
+      setPage(await PlayerPages.setPart(campaignId, part, on));
+    } catch (e) {
+      toast(errorMessage(e), 'error');
+    }
+  }, [campaignId, toast]);
+
   const value = useMemo<PlayerSharesValue>(() => ({
     campaignId,
     page,
@@ -72,7 +80,8 @@ export function PlayerShareProvider({ campaignId, children }: { campaignId: stri
     sharedIds: kind => [...shared].filter(k => k.startsWith(`${kind}:`)).map(k => k.slice(kind.length + 1)),
     issueLink,
     setEnabled,
-  }), [campaignId, page, loaded, shared, setShared, issueLink, setEnabled]);
+    setPart,
+  }), [campaignId, page, loaded, shared, setShared, issueLink, setEnabled, setPart]);
 
   return <PlayerSharesContext.Provider value={value}>{children}</PlayerSharesContext.Provider>;
 }

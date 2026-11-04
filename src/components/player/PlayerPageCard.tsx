@@ -8,6 +8,13 @@ import { usePlayerShares, type PlayerSharesValue } from '../../context/playerSha
 import { useToast } from '../../context/ToastContext';
 import { describeShared, playerPageUrl } from '../../lib/playerPage';
 import { Button } from '../ui/Button';
+import type { PlayerPagePart } from '../../lib/database.types';
+
+const PARTS: [PlayerPagePart, string][] = [
+  ['show_next_session', 'Next session'],
+  ['show_world_date', 'In-world date'],
+  ['show_treasury', 'Treasure'],
+];
 
 export function PlayerPageCard() {
   const shares = usePlayerShares();
@@ -15,7 +22,7 @@ export function PlayerPageCard() {
 }
 
 function Card({ shares }: { shares: PlayerSharesValue }) {
-  const { sessions, npcs, locations, lore } = useCampaign();
+  const { sessions, npcs, locations, lore, hooks } = useCampaign();
   const toast = useToast();
   const confirm = useConfirm();
   const { page } = shares;
@@ -28,6 +35,7 @@ function Card({ shares }: { shares: PlayerSharesValue }) {
     npc: present(shares.sharedIds('npc'), npcs),
     location: present(shares.sharedIds('location'), locations),
     lore: present(shares.sharedIds('lore'), lore.filter(e => !e.dm_only)),
+    thread: present(shares.sharedIds('thread'), hooks),
   });
   const url = page ? playerPageUrl(page.token) : '';
 
@@ -52,7 +60,7 @@ function Card({ shares }: { shares: PlayerSharesValue }) {
         <>
           <p className="ov-card-sub">
             A read-only page for your players, with no sign-in. It shows the party, and the recaps, handouts, people,
-            places and lore you switch on. Notes and secrets never appear on it.
+            places, lore and leads you switch on. Notes and secrets never appear on it.
           </p>
           <div className="ov-share-actions">
             <Button size="sm" variant="secondary" onClick={() => void shares.issueLink()}>Make a player page</Button>
@@ -73,8 +81,18 @@ function Card({ shares }: { shares: PlayerSharesValue }) {
             {page.enabled ? 'Showing the party' : 'When it’s on, it shows the party'}
             {summary
               ? `, and ${summary}.`
-              : '. Use “Hidden from players” on a recap, handout, NPC, place or lore entry to add it.'}
+              : '. Use “Hidden from players” on a recap, handout, NPC, place, lore entry or thread to add it.'}
           </p>
+          <div className="ov-share-parts" role="group" aria-label="Also show on the page">
+            <span className="ov-card-sub">Also show:</span>
+            {PARTS.map(([part, label]) => (
+              // eslint-disable-next-line no-restricted-syntax -- an on/off pill, styled .cm-pill
+              <button key={part} type="button" className={`cm-pill is-subtle${page[part] ? ' is-active' : ''}`} aria-pressed={!!page[part]}
+                onClick={() => void shares.setPart(part, !page[part])}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="ov-share-actions">
             {page.enabled
               ? <Button size="xs" variant="ghost" onClick={() => void shares.setEnabled(false)}>Turn off</Button>

@@ -74,6 +74,9 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
   item_holdings: {
     note: LIMIT.TAGLINE,
   },
+  treasury_entries: {
+    note: LIMIT.TAGLINE,
+  },
   player_characters: {
     character_name: LIMIT.NAME,
     player_name: LIMIT.NAME,
@@ -124,6 +127,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     state: LIMIT.TAG,
     dm_only_notes: LIMIT.PROSE,
     clock_label: LIMIT.NAME,
+    player_text: LIMIT.PROSE,
   },
   ideas: {
     text: LIMIT.PROSE,
@@ -289,6 +293,13 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
   },
   item_holdings: {
     quantity: [1, 9_999],
+  },
+  treasury_entries: {
+    cp: [-9_999_999, 9_999_999],
+    sp: [-9_999_999, 9_999_999],
+    ep: [-9_999_999, 9_999_999],
+    gp: [-9_999_999, 9_999_999],
+    pp: [-9_999_999, 9_999_999],
   },
   hooks: {
     last_updated_session: [0, 9_999],

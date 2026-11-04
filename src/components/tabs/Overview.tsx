@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useOpenRecord } from '../../context/NavigationContext';
+import { useToast } from '../../context/ToastContext';
+import { errorMessage } from '../../lib/errors';
 import { usePlanNextSession } from '../../hooks/useSessionLifecycle';
 import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContext';
 import { STAGE_LABEL } from '../../lib/recording/pipeline';
@@ -12,10 +14,11 @@ import { CampaignDateCard } from '../calendar/CampaignDate';
 import { PreviouslyOn } from '../session/PreviouslyOn';
 import { getHookCategoryStyle } from '../../lib/theme';
 import {
-  clip, formatSessionDate, lastPlayed, liveSession, nextPlanned, nextSessionNumber, planIds, plainText,
+  clip, formatSessionDate, lastPlayed, liveSession, localToday, nextPlanned, nextSessionNumber, planIds, plainText,
   prepDone, PREP_PARTS, sessionName, type PrepPart,
 } from '../../lib/sessionLifecycle';
-import type { Session } from '../../lib/database.types';
+import { REPEATS, expectedNext, formatWhen } from '../../lib/schedule';
+import type { Session, SessionRepeat } from '../../lib/database.types';
 import type { Tab } from '../../App';
 
 interface OverviewProps {
@@ -29,9 +32,11 @@ const names = (list: string[], none: string) =>
 
 /** The next session, front and centre: when, how ready, and the way in. */
 function NextSession({ next, runMode, onToggleRun }: { next: Session | null; runMode: boolean; onToggleRun: () => void }) {
-  const { sessions, hooks, encounters, npcs, scenes, updateSession, loadModuleTree } = useCampaign();
+  const { sessions, hooks, encounters, npcs, scenes, updateSession, loadModuleTree, selectedCampaign, updateCampaign } = useCampaign();
   const openRecord = useOpenRecord();
+  const toast = useToast();
   const planNext = usePlanNextSession();
+  const repeat = selectedCampaign?.session_repeat ?? null;
   const hasAgenda = !!next && planIds(next.plan, 'agenda').length > 0;
 
   // The agenda's scene names come from the module tree, which isn't loaded up front.
@@ -39,12 +44,13 @@ function NextSession({ next, runMode, onToggleRun }: { next: Session | null; run
 
   if (!next) {
     const n = nextSessionNumber(sessions);
+    const expected = expectedNext(sessions, repeat, localToday());
     return (
       <section className="ov-next">
         <div className="ov-next-main">
           <div className="ov-card-title">Next session</div>
           <div className="ov-next-name">Session {n}</div>
-          <p className="ov-card-sub">Not planned yet.</p>
+          <p className="ov-card-sub">{expected ? `Not planned yet. Expected ${formatWhen(expected.date, expected.time)}.` : 'Not planned yet.'}</p>
           <div className="ov-next-actions">
             <Button variant="primary" onClick={async () => { const s = await planNext(); if (s) openRecord('sessions', s.id); }}>
               Plan Session {n}
@@ -77,8 +83,8 @@ function NextSession({ next, runMode, onToggleRun }: { next: Session | null; run
       <div className="ov-next-main">
         <div className="ov-card-title">{live ? '● Live now' : 'Next session · planned'}</div>
         <div className="ov-next-name">{sessionName(next)}</div>
-        <label className="ov-next-date">
-          <span className="ov-card-sub">{next.session_date ? formatSessionDate(next.session_date) : 'No date yet.'}</span>
+        <p className="ov-card-sub ov-next-when">{next.session_date ? formatWhen(next.session_date, next.session_time) : 'No date yet.'}</p>
+        <div className="ov-next-date">
           <input
             type="date"
             className="as-input"
@@ -87,7 +93,27 @@ function NextSession({ next, runMode, onToggleRun }: { next: Session | null; run
             value={next.session_date ?? ''}
             onChange={e => void updateSession(next.id, { session_date: e.target.value || null }).catch(() => {})}
           />
-        </label>
+          <input
+            type="time"
+            className="as-input"
+            aria-label={`Time of Session ${next.session_number}`}
+            style={{ colorScheme: 'dark', width: 120 }}
+            value={next.session_time ?? ''}
+            onChange={e => void updateSession(next.id, { session_time: e.target.value || null }).catch(() => {})}
+          />
+          {selectedCampaign && (
+            <select
+              className="as-select"
+              aria-label="How often you meet"
+              value={repeat ?? ''}
+              onChange={e => void updateCampaign(selectedCampaign.id, { session_repeat: (e.target.value || null) as SessionRepeat | null })
+                .catch(err => toast(errorMessage(err), 'error'))}
+            >
+              <option value="">Doesn’t repeat</option>
+              {REPEATS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+            </select>
+          )}
+        </div>
         <div className="ov-next-actions">
           <Button variant="primary" onClick={onToggleRun}>{runMode ? '■ End session' : '▶ Start session'}</Button>
           <Button variant="secondary" onClick={() => openRecord('sessions', next.id)}>{live ? 'Open session' : 'Continue prep'}</Button>
