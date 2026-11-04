@@ -97,7 +97,7 @@ export function StatSheetEditor({ statblock, scope, save, remove, onDeleted, onV
       </div>
       {fillError && <p className="as-empty-note" style={{ color: 'var(--red)' }}>{fillError}</p>}
 
-      <div className="cm-eyebrow">{scope === 'world' ? 'World stat sheet' : 'Stat sheet'}</div>
+      <div className="cm-eyebrow">{scope === 'world' ? 'Stat sheet · in canon' : 'Stat sheet'}</div>
 
       <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Creature name…" maxLength={limitFor('monster_statblocks', 'name')} aria-label="Name" />
 

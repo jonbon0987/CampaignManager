@@ -13,6 +13,7 @@ import { SaveStatusIndicator } from '../../ui/SaveStatusIndicator';
 import { OverflowMenu } from '../../ui/OverflowMenu';
 import { SlashField } from '../../ui/SlashField';
 import { limitFor } from '../../../lib/fieldLimits';
+import { plural } from '../../../lib/plural';
 import { Button } from '../../ui/Button';
 import { GenerateModuleStructureModal } from '../../ui/GenerateModuleStructureModal';
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
@@ -115,7 +116,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
             </select>
           </label>
           {faction && <span className="md-chip"><span className="md-chip-glyph" style={{ color: 'var(--gold)' }}>◆</span>{faction.name}</span>}
-          <span className="md-chip"><span className="md-chip-cr">{submodules.length} submodules</span></span>
+          <span className="md-chip"><span className="md-chip-cr">{plural(submodules.length, 'part')}</span></span>
         </div>
 
         <div className="as-fl" style={{ marginTop: 18 }}>

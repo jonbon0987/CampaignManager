@@ -100,7 +100,7 @@ export default function ScopeSwitcher({ collapsed, onExpand }: { collapsed: bool
                 {/* eslint-disable-next-line no-restricted-syntax -- menu row affordance */}
                 <button className="ws-drop-item-delete" onClick={() => void removeWorld(w.id, w.name)} title="Delete world" aria-label={`Delete ${w.name}`}>✕</button>
               </div>
-              {w.id === activeWorldId && campaigns.map(c => (
+              {w.id === activeWorldId && campaigns.filter(c => !c.archived || c.id === activeCampaignId).map(c => (
                 // eslint-disable-next-line no-restricted-syntax -- menu row
                 <button key={c.id} role="menuitem" className={`cm-scope-camp ${c.id === activeCampaignId ? 'is-active' : ''}`} onClick={() => pickCampaign(c.id)}>
                   <span className={`wc-dot wc-dot-${c.status}`} aria-hidden="true" />

@@ -24,6 +24,12 @@ function setup(calendar = 'Year (Y)') {
   });
 }
 
+/** The calendar folds to one line once set; Edit calendar opens it. */
+function renderOpen() {
+  render(<WorldCalendar />);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit calendar' }));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   h.confirm = makeConfirm();
@@ -33,15 +39,26 @@ beforeEach(() => {
 });
 
 describe('WorldCalendar', () => {
-  it('lists the months, marking one-day months as festivals', () => {
+  it('folds to one line until the DM opens it', () => {
+    setup('DR');
     render(<WorldCalendar />);
+    expect(screen.getByText('3 months · 61 days a year · years counted as DR')).toBeTruthy();
+    expect(screen.queryByLabelText('Month 1 name')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit calendar' }));
+    expect(screen.getByLabelText('Month 1 name')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByLabelText('Month 1 name')).toBeNull();
+  });
+
+  it('lists the months, marking one-day months as festivals', () => {
+    renderOpen();
     expect(screen.getByText('3 months · 61 days a year')).toBeTruthy();
     expect(screen.getAllByText('festival')).toHaveLength(1);
     expect((screen.getByLabelText('Month 2 name') as HTMLInputElement).value).toBe('Midwinter');
   });
 
   it('saves a renamed or resized month when the DM leaves it', () => {
-    render(<WorldCalendar />);
+    renderOpen();
     fireEvent.change(screen.getByLabelText('Month 1 name'), { target: { value: 'Deepwinter' } });
     fireEvent.blur(screen.getByLabelText('Month 1 name'));
     expect(updateWorld).toHaveBeenLastCalledWith('w1', { calendarMonths: [{ name: 'Deepwinter', days: 30 }, months[1], months[2]] });
@@ -51,7 +68,7 @@ describe('WorldCalendar', () => {
   });
 
   it('keeps a month’s name and days when they are left blank, without saving', () => {
-    render(<WorldCalendar />);
+    renderOpen();
     fireEvent.change(screen.getByLabelText('Month 1 name'), { target: { value: '  ' } });
     fireEvent.blur(screen.getByLabelText('Month 1 name'));
     fireEvent.change(screen.getByLabelText('Days in Hammer'), { target: { value: '' } });
@@ -61,7 +78,7 @@ describe('WorldCalendar', () => {
   });
 
   it('adds and removes months', () => {
-    render(<WorldCalendar />);
+    renderOpen();
     fireEvent.click(screen.getByRole('button', { name: '+ Add month' }));
     expect(updateWorld).toHaveBeenLastCalledWith('w1', { calendarMonths: [...months, { name: 'Month 4', days: 30 }] });
     fireEvent.click(screen.getByRole('button', { name: 'Remove Midwinter' }));
@@ -69,7 +86,7 @@ describe('WorldCalendar', () => {
   });
 
   it('replaces the months with a preset once the DM confirms', async () => {
-    render(<WorldCalendar />);
+    renderOpen();
     fireEvent.change(screen.getByLabelText('Start from a preset'), { target: { value: 'twelve' } });
     await waitFor(() => expect(updateWorld).toHaveBeenCalledWith('w1', { calendarMonths: DEFAULT_MONTHS }));
     expect(h.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: `Use ${PRESETS[0].label}?` }));
@@ -77,14 +94,14 @@ describe('WorldCalendar', () => {
 
   it('leaves the months be when the DM cancels a preset', async () => {
     h.confirm = makeConfirm(false);
-    render(<WorldCalendar />);
+    renderOpen();
     fireEvent.change(screen.getByLabelText('Start from a preset'), { target: { value: 'harptos' } });
     await waitFor(() => expect(h.confirm).toHaveBeenCalled());
     expect(updateWorld).not.toHaveBeenCalled();
   });
 
   it('saves what years are counted as, starting blank for a new world', () => {
-    render(<WorldCalendar />);
+    renderOpen();
     const suffix = screen.getByLabelText('Years are counted as') as HTMLInputElement;
     expect(suffix.value).toBe('');
     fireEvent.change(suffix, { target: { value: ' DR ' } });
@@ -94,7 +111,7 @@ describe('WorldCalendar', () => {
 
   it('says so when a save fails', async () => {
     updateWorld.mockRejectedValueOnce(new Error('offline'));
-    render(<WorldCalendar />);
+    renderOpen();
     fireEvent.click(screen.getByRole('button', { name: '+ Add month' }));
     await waitFor(() => expect(h.toast).toHaveBeenCalledWith('offline', 'error'));
   });

@@ -29,9 +29,9 @@ export const WORLDS: World[] = [
 ];
 
 export const WORLD_CAMPAIGNS: WorldCampaign[] = [
-  { id: 'c1', worldId: 'w1', name: 'The Hollow Crown of Vellandar', sessions: 14, party: 'The Ember Pact', lastPlayed: 'CR 1247, 9th of Ashfall', status: 'active' },
-  { id: 'c2', worldId: 'w1', name: 'The Briarsong War', sessions: 3, party: 'The Silver Tongue', lastPlayed: 'CR 1245, 1st of Midwinter', status: 'paused' },
-  { id: 'c3', worldId: 'w2', name: 'Tides of the Forgotten', sessions: 8, party: 'The Barnacle Crew', lastPlayed: 'DY 88, Storm-season', status: 'active' },
+  { id: 'c1', worldId: 'w1', name: 'The Hollow Crown of Vellandar', sessions: 14, party: 'The Ember Pact', lastPlayed: 'CR 1247, 9th of Ashfall', status: 'active', archived: false },
+  { id: 'c2', worldId: 'w1', name: 'The Briarsong War', sessions: 3, party: 'The Silver Tongue', lastPlayed: 'CR 1245, 1st of Midwinter', status: 'paused', archived: false },
+  { id: 'c3', worldId: 'w2', name: 'Tides of the Forgotten', sessions: 8, party: 'The Barnacle Crew', lastPlayed: 'DY 88, Storm-season', status: 'active', archived: false },
 ];
 
 export const WORLD_FACTIONS: WorldFaction[] = [

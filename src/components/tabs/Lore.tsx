@@ -113,10 +113,14 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
       addLabel="+ Add lore"
       onImport={onImportFromWorld}
       importLabel="⊕ Import lore"
+      empty={lore.length === 0 ? {
+        glyph: '❡', text: 'No lore yet. Write down this campaign’s history, myths and secrets, or import them from canon.',
+        actionLabel: 'Add lore', onAction: () => void handleAdd(),
+      } : null}
       list={
         <>
           {all.length === 0 ? (
-            <div className="cm-empty is-inline">No lore yet — create one or import from canon</div>
+            <div className="cm-empty is-inline">No lore matches.</div>
           ) : (
             <>
               {imported.length > 0 && (
@@ -153,7 +157,7 @@ export default function Lore({ openId, onOpenConsumed, onImportFromWorld }: { op
             }}
           />
         ) : (
-          <EmptyDetail>Select an entry from the list</EmptyDetail>
+          <EmptyDetail noun="lore entry" />
         )
       }
     />

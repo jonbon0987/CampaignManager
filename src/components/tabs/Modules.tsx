@@ -18,6 +18,8 @@ import { useCampaign } from '../../context/CampaignContext';
 import { FormField, inputStyle } from '../FormField';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
+import { EmptyState } from '../ui/EmptyState';
+import { EmptyDetail } from '../ui/ListDetail';
 import type { Module, Faction } from '../../lib/database.types';
 import { factionTypeColors } from '../../lib/theme';
 import ModuleDetail from './ModuleDetail';
@@ -67,16 +69,14 @@ function ModuleList({ onOpen }: { onOpen: (id: string) => void }) {
   });
 
   return (
-    <div className="cm-md" style={{ height: '100%' }}>
+    <div className={`cm-md${modules.length === 0 && !creating ? ' is-empty' : ''}`} style={{ height: '100%' }}>
       {/* Left rail */}
       <div className="cm-md-list">
         <PageHeader className="cm-md-list-head" eyebrow={`${modules.length} ${modules.length === 1 ? 'module' : 'modules'}`} title="Modules">
           <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>+ Add module</Button>
         </PageHeader>
         <div className="cm-md-list-scroll">
-          {modules.length === 0 ? (
-            <div className="cm-empty">No modules yet.</div>
-          ) : sortedModules.map(mod => {
+          {sortedModules.map(mod => {
             const faction = mod.faction_id ? factions.find(f => f.id === mod.faction_id) : null;
             const fColor = faction ? (FACTION_TYPE_COLORS[faction.faction_type ?? 'other'] ?? 'var(--ink-2)') : null;
             return (
@@ -121,12 +121,11 @@ function ModuleList({ onOpen }: { onOpen: (id: string) => void }) {
               if (created?.id) onOpen(created.id);
             }}
           />
+        ) : modules.length === 0 ? (
+          <EmptyState glyph="❧" text="No modules yet. A module is a chapter of the story: its parts, scenes and the encounters in them."
+            actionLabel="Add a module" onAction={() => setCreating(true)} />
         ) : (
-          <div className="cm-empty" style={{ paddingTop: 80 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>❧</div>
-            <div style={{ fontFamily: 'var(--display)', fontSize: 18, color: 'var(--ink-2)' }}>Select a module</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 6 }}>Choose from the list to view details.</div>
-          </div>
+          <EmptyDetail noun="module" />
         )}
       </div>
     </div>
@@ -215,7 +214,9 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
   const { modules } = useCampaign();
   const [openId, setOpenId] = useState<string | null>(null);
   const [focusSub, setFocusSub] = useState<string | null>(null);
-  useReportRecord('modules', openId);
+  // The part open in the module, which the URL carries too.
+  const [partId, setPartId] = useState<string | null>(null);
+  useReportRecord('modules', openId, viewMode === 'web' ? null : partId);
 
   // Open a module requested from outside the tab (search, Recent), or one of
   // its submodules (a scene picked from Play's agenda).
@@ -224,13 +225,14 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenId(requestedId);
     setFocusSub(openSubmoduleId ?? null);
+    setPartId(openSubmoduleId ?? null);
     onOpenConsumed?.();
   }, [requestedId, openSubmoduleId, onOpenConsumed]);
   const openModule = openId ? modules.find(m => m.id === openId) ?? null : null;
 
   // Opening a module from the web jumps to the full editor — leave the web view
   // so the editor (which takes over) actually shows instead of staying on the web.
-  const openInEditor = (id: string) => { setOpenId(id); if (viewMode === 'web') setViewMode?.('list'); };
+  const openInEditor = (id: string) => { setOpenId(id); setPartId(null); if (viewMode === 'web') setViewMode?.('list'); };
 
   // An open module takes over the whole area as [outline rail | editor] — EXCEPT
   // in the web view, where an open module instead seeds ModuleWeb's initial
@@ -241,15 +243,16 @@ export default function Modules({ viewMode = 'list', setViewMode, openId: reques
         key={`${openModule.id}:${focusSub ?? ''}`}
         module={openModule}
         initialSubmoduleId={focusSub}
-        onBack={() => setOpenId(null)}
-        onModuleDeleted={() => setOpenId(null)}
+        onPartChange={setPartId}
+        onBack={() => { setOpenId(null); setPartId(null); }}
+        onModuleDeleted={() => { setOpenId(null); setPartId(null); }}
       />
     );
   }
 
   return (
     <div style={{ height: '100%', overflow: viewMode === 'list' ? 'auto' : 'hidden' }}>
-      {viewMode === 'list' && <ModuleList onOpen={setOpenId} />}
+      {viewMode === 'list' && <ModuleList onOpen={id => { setOpenId(id); setPartId(null); }} />}
       {viewMode === 'web'  && <ModuleWeb onOpen={openInEditor} initialModuleId={openId} />}
     </div>
   );

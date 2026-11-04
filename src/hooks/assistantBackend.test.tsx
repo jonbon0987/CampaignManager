@@ -179,7 +179,7 @@ describe('campaign assistant — submodule & scene writes', () => {
     await b.applyChatAction(submoduleAction({ module_id: 'mod-1', summary: 'no title given' }));
     await b.applyChatAction(sceneAction({ submodule_id: 'sub-x', summary: 'no title given' }));
 
-    expect(cc().upsertSubmodule).toHaveBeenCalledWith(expect.objectContaining({ title: 'Untitled Submodule' }));
+    expect(cc().upsertSubmodule).toHaveBeenCalledWith(expect.objectContaining({ title: 'Untitled part' }));
     expect(cc().upsertScene).toHaveBeenCalledWith(expect.objectContaining({ title: 'Untitled scene' }));
   });
 

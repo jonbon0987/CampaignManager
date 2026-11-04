@@ -71,11 +71,11 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
     const n = parseInt(submoduleCount.trim(), 10);
     const per = parseInt(scenesPer.trim(), 10);
     if (isNaN(n) || n < MIN_SUBMODULES || n > MAX_SUBMODULES) {
-      setError(`Number of submodules must be between ${MIN_SUBMODULES} and ${MAX_SUBMODULES}.`);
+      setError(`Number of parts must be between ${MIN_SUBMODULES} and ${MAX_SUBMODULES}.`);
       return;
     }
     if (isNaN(per) || per < MIN_SCENES || per > MAX_SCENES) {
-      setError(`Scenes per submodule must be between ${MIN_SCENES} and ${MAX_SCENES}.`);
+      setError(`Scenes per part must be between ${MIN_SCENES} and ${MAX_SCENES}.`);
       return;
     }
     if (!hasSource) {
@@ -145,7 +145,7 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
           linked_monster_ids: null,
           linked_encounter_ids: null,
         });
-        if (!saved) throw new Error(`Could not save the submodule "${sub.title}".`);
+        if (!saved) throw new Error(`Could not save the part "${sub.title}".`);
         if (!firstId) firstId = saved.id;
 
         for (let s = 0; s < sub.scenes.length; s++) {
@@ -164,7 +164,7 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
         }
       }
       toast(
-        `Added ${keptCount} submodule${keptCount === 1 ? '' : 's'}` +
+        `Added ${keptCount} part${keptCount === 1 ? '' : 's'}` +
         (scenesWritten > 0 ? ` and ${scenesWritten} scene${scenesWritten === 1 ? '' : 's'}` : '') +
         ` to ${mod.title}.`,
         'success',
@@ -189,8 +189,8 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
         <div className="flex justify-between items-center">
           <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
             {draft
-              ? `${keptCount} of ${draft.length} submodule${draft.length === 1 ? '' : 's'} · ${countScenes(draft.filter((_, i) => keep[i]))} scenes`
-              : `Appends below ${existing.length} existing submodule${existing.length === 1 ? '' : 's'}.`}
+              ? `${keptCount} of ${draft.length} part${draft.length === 1 ? '' : 's'} · ${countScenes(draft.filter((_, i) => keep[i]))} scenes`
+              : `Appends below ${existing.length} existing part${existing.length === 1 ? '' : 's'}.`}
           </span>
           <div className="flex gap-2">
             {draft
@@ -222,7 +222,7 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
             </p>
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="Submodules">
+              <FormField label="Parts">
                 <input type="number" min={MIN_SUBMODULES} max={MAX_SUBMODULES} value={submoduleCount}
                   onChange={e => { setSubmoduleCount(e.target.value); setError(''); }}
                   style={inputStyle} disabled={busy} />

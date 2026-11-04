@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { plural } from '../../lib/plural';
 import { firstNamed } from '../../lib/firstNamed';
 import { useWorld } from '../../context/WorldContext';
@@ -25,6 +25,8 @@ import {
 } from '../ui/EntityContextPicker';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import type { WorldLocation } from '../../types/world';
+import type { NPC } from '../../lib/database.types';
+import { CampaignNPCs } from '../../lib/db';
 import { NPCEditor } from '../entity/NPCEditor';
 import { LocationEditor } from '../entity/LocationEditor';
 import { LoreEditor } from '../entity/LoreEditor';
@@ -84,7 +86,7 @@ export function WorldNPCsView() {
 
   return (
     <ListDetail
-      title="World NPCs"
+      title="Cast"
       count={items.length}
       search={search}
       onSearchChange={setSearch}
@@ -94,6 +96,10 @@ export function WorldNPCsView() {
         { label: 'NPC', onClick: addCharacter },
         { label: 'Faction', onClick: addFaction },
       ] : undefined}
+      empty={npcs.length + factions.length === 0 ? {
+        glyph: '❦', text: 'No NPCs or factions in canon yet. The people of this world live here, and any campaign can import them.',
+        actionLabel: 'Add an NPC', onAction: () => void addCharacter(),
+      } : null}
       filters={
         <>
           <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
@@ -103,6 +109,7 @@ export function WorldNPCsView() {
       }
       list={
         <div>
+          {items.length === 0 && <div className="cm-empty is-inline">No one matches.</div>}
           {items.map(x => (
             <ListRow
               key={x.kind + x.id}
@@ -123,14 +130,14 @@ export function WorldNPCsView() {
           ))}
         </div>
       }
-      detail={sel ? <WorldNPCDetail entity={sel} /> : <EmptyDetail>Select an entry.</EmptyDetail>}
+      detail={sel ? <WorldNPCDetail entity={sel} /> : <EmptyDetail noun="character" />}
     />
   );
 }
 
 // The world's NPCs and factions, in the same editors a campaign uses.
 function WorldNPCDetail({ entity }: { entity: { id: string; kind: 'npc' | 'faction' } }) {
-  const { npcs, factions, locations, worldStatblocks, setSelected, setWorldTab, upsertWorldNPC, deleteWorldNPC, upsertWorldFaction, deleteWorldFaction } = useWorld();
+  const { npcs, factions, setSelected, upsertWorldFaction, deleteWorldFaction } = useWorld();
   const factionRows = factions.flatMap(f => (f.row ? [f.row] : []));
   const npcRows = npcs.flatMap(n => (n.row ? [n.row] : []));
 
@@ -152,12 +159,26 @@ function WorldNPCDetail({ entity }: { entity: { id: string; kind: 'npc' | 'facti
 
   const row = npcRows.find(n => n.id === entity.id);
   if (!row) return <EmptyDetail>Loading…</EmptyDetail>;
+  return <WorldNPC key={row.id} row={row} />;
+}
+
+/** A canon NPC, with the campaigns that have imported it. */
+function WorldNPC({ row }: { row: NPC }) {
+  const { factions, locations, worldStatblocks, campaigns, openCampaign, setSelected, setWorldTab, upsertWorldNPC, deleteWorldNPC } = useWorld();
+  const [campaignIds, setCampaignIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    CampaignNPCs.getCampaignIds(row.id).then(ids => { if (live) setCampaignIds(ids); }, () => { if (live) setCampaignIds([]); });
+    return () => { live = false; };
+  }, [row.id]);
+  const usedIn = campaignIds && campaigns.filter(c => campaignIds.includes(c.id)).map(c => ({ id: c.id, name: c.name }));
   return (
     <NPCEditor
-      key={row.id}
       npc={row}
       scope="world"
-      factions={factionRows}
+      usedIn={usedIn}
+      onOpenCampaign={openCampaign}
+      factions={factions.flatMap(f => (f.row ? [f.row] : []))}
       locations={locations.flatMap(l => (l.row ? [l.row] : []))}
       onOpenLocation={id => { setWorldTab('locations'); setSelected('locations', id); }}
       statblocks={worldStatblocks.map(s => ({ id: s.id, name: s.name }))}
@@ -182,6 +203,7 @@ export function WorldLocationsView() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const byId = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations]);
+  const addLocation = async () => { const id = await createLocation(); if (id) { markDraft(id); setSelected('locations', id); } };
 
   // Group children by parent; a parent outside this world's set counts as a root.
   const childrenOf = useMemo(() => {
@@ -252,19 +274,19 @@ export function WorldLocationsView() {
 
   return (
     <ListDetail
-      title="World Locations"
+      title="Locations"
       count={visible ? visible.size : locations.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={async () => { const id = await createLocation(); if (id) { markDraft(id); setSelected('locations', id); } }}
+      onAdd={addLocation}
       addLabel="+ Add location"
-      list={
-        locations.length === 0 ? (
-          <div className="cm-empty is-inline">No locations yet — add one to start the map</div>
-        ) : (
-          <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>
-        )
-      }
+      empty={locations.length === 0 ? {
+        glyph: '✦', text: 'No places in canon yet. Add the world’s regions, cities and landmarks, and any campaign can import them.',
+        actionLabel: 'Add a place', onAction: () => void addLocation(),
+      } : null}
+      list={visible && visible.size === 0
+        ? <div className="cm-empty is-inline">No places match.</div>
+        : <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>}
       detail={sel?.row ? (
         <LocationEditor
           key={sel.id}
@@ -274,7 +296,7 @@ export function WorldLocationsView() {
           save={fields => upsertWorldLocation({ id: sel.id, ...fields })}
           remove={deleteWorldLocation}
         />
-      ) : <EmptyDetail>Select a location.</EmptyDetail>}
+      ) : <EmptyDetail noun="place" />}
     />
   );
 }
@@ -301,17 +323,23 @@ export function WorldLoreView() {
   }, [lore, search]);
 
   const sel = items.find(x => x.id === selected.lore) || firstNamed(items, x => x.title);
+  const addLore = async () => { const id = await createLoreEntry(); if (id) { markDraft(id); setSelected('lore', id); } };
 
   return (
     <ListDetail
-      title="World Lore"
+      title="Lore"
       count={items.length}
       search={search}
       onSearchChange={setSearch}
-      onAdd={async () => { const id = await createLoreEntry(); if (id) { markDraft(id); setSelected('lore', id); } }}
+      onAdd={addLore}
       addLabel="+ Add lore"
+      empty={lore.length === 0 ? {
+        glyph: '❡', text: 'No lore in canon yet. Write down the world’s history, gods and legends, and any campaign can import them.',
+        actionLabel: 'Add lore', onAction: () => void addLore(),
+      } : null}
       list={
         <div>
+          {items.length === 0 && <div className="cm-empty is-inline">No lore matches.</div>}
           {items.map(x => (
             <ListRow
               key={x.id}
@@ -333,7 +361,7 @@ export function WorldLoreView() {
           save={fields => upsertWorldLore({ id: sel.id, ...fields })}
           remove={deleteWorldLore}
         />
-      ) : <EmptyDetail>Select a lore entry.</EmptyDetail>}
+      ) : <EmptyDetail noun="lore entry" />}
     />
   );
 }
@@ -556,8 +584,10 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     if (ok) { await deleteRandomEncounterTable(selRawRandomTable.id); setSelected('combat', ''); }
   };
 
+  const noun = filter === 'encounter' ? 'encounter' : filter === 'random' ? 'table' : 'stat sheet';
+  const total = filter === 'encounter' ? encounters.length : filter === 'random' ? worldRandomEncounterTables.length : bestiary.length;
   const detail = !sel
-    ? <EmptyDetail>Select an entry.</EmptyDetail>
+    ? <EmptyDetail noun={noun} />
     : sel.kind === 'encounter' && selRawEncounter
       ? (
         <EncounterDetail
@@ -592,7 +622,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             onDeleted={() => setSelected('combat', '')}
             onView={() => openStatBlock(selRawStatblock.id)}
           />
-        : <EmptyDetail>Select an entry.</EmptyDetail>;
+        : <EmptyDetail noun={noun} />;
 
   return (
     <>
@@ -604,8 +634,19 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         onAdd={filter === 'encounter' ? handleAddEncounter : filter === 'random' ? handleAddRandomTable : handleAddCreature}
         addLabel={filter === 'encounter' ? '+ Add encounter' : filter === 'random' ? '+ Add table' : '+ Add stat sheet'}
         onGenerate={filter === 'bestiary' ? openGenModal : filter === 'encounter' ? () => setGenEncOpen(true) : filter === 'random' ? () => setGenTableOpen(true) : undefined}
+        empty={total > 0 ? null : filter === 'encounter' ? {
+          glyph: '⚔', text: 'No encounters in canon yet. Build fights any campaign can import, or generate one.',
+          actionLabel: 'Add an encounter', onAction: () => void handleAddEncounter(),
+        } : filter === 'random' ? {
+          glyph: '⚄', text: 'No random tables in canon yet. Roll for encounters, treasure or wild magic; add one or generate one.',
+          actionLabel: 'Add a table', onAction: () => void handleAddRandomTable(),
+        } : {
+          glyph: '✜', text: 'No stat sheets in canon yet. The world’s creatures live here, ready for any campaign’s encounters.',
+          actionLabel: 'Add a stat sheet', onAction: () => void handleAddCreature(),
+        }}
         list={
           <div>
+            {items.length === 0 && <div className="cm-empty is-inline">Nothing matches.</div>}
             {items.map(x => (
               <ListRow
                 key={x.kind + x.id}

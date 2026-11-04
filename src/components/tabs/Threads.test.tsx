@@ -261,7 +261,7 @@ describe('Threads', () => {
       expect(h.toast).toHaveBeenCalled();
     });
 
-    it('requires a target module before promoting to a submodule', async () => {
+    it('requires a target module before promoting to a part', async () => {
       const upsertSubmodule = vi.fn().mockResolvedValue(undefined);
       h.campaign.value = makeCampaignContext({
         hooks: [makeHook({ id: 'h1', title: 'The Heist' })],
@@ -270,7 +270,7 @@ describe('Threads', () => {
       });
       render(<Threads />);
       await promoteFromPage('The Heist');
-      fireEvent.click(screen.getByRole('button', { name: 'Submodule' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Part' }));
       // Disabled until a module is chosen.
       expect((screen.getByRole('button', { name: 'Promote' }) as HTMLButtonElement).disabled).toBe(true);
       fireEvent.click(screen.getByRole('button', { name: /Chapter One/ }));

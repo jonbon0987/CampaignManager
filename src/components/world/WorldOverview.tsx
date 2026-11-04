@@ -2,15 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { limitFor } from '../../lib/fieldLimits';
 import { WorldCalendar } from './WorldCalendar';
+import { plural } from '../../lib/plural';
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+/** A count that opens what it counts. */
+function Tile({ label, value, onClick }: { label: string; value: number; onClick?: () => void }) {
   return (
-    <div className="cm-stat">
-      <div className="cm-stat-label">{label}</div>
-      <div className="cm-stat-value">{value}</div>
-    </div>
+    // eslint-disable-next-line no-restricted-syntax -- a stat tile that links, styled .w-tile
+    <button type="button" className="w-tile" onClick={onClick} disabled={!onClick}>
+      <span className="w-tile-value">{value}</span>
+      <span className="w-tile-label">{label}</span>
+    </button>
   );
 }
+
+/** What a card says when it has nothing to show. */
+const Empty = ({ children }: { children: React.ReactNode }) => <p className="w-ov-empty">{children}</p>;
 
 function Card({ title, onClick, children }: { title: string; onClick?: () => void; children: React.ReactNode }) {
   return (
@@ -81,10 +87,11 @@ function InlineEdit({
 }
 
 export default function WorldOverview() {
-  const { activeWorld, campaigns, timeline, factions, lore, locations, openCampaign, setWorldTab, timelineTypeConfig, updateWorld } = useWorld();
+  const { activeWorld, campaigns, timeline, npcs, factions, lore, locations, encounters, bestiary, openCampaign, setWorldTab, timelineTypeConfig, updateWorld } = useWorld();
 
   if (!activeWorld) return null;
 
+  const archived = campaigns.filter(c => c.archived);
   const recentEvents = timeline
     .slice(-4)
     .reverse();
@@ -109,16 +116,21 @@ export default function WorldOverview() {
           onSave={v => updateWorld(activeWorld.id, { tagline: v })}
           maxLength={limitFor('worlds', 'tagline')}
         />
-        <div className="w-hero-stats">
-          <Stat label="Campaigns" value={campaigns.length} />
-          <Stat label="Locations" value={locations.length} />
+        <div className="w-tiles">
+          <Tile label={campaigns.length === 1 ? 'Campaign' : 'Campaigns'} value={campaigns.length} />
+          <Tile label="In the cast" value={npcs.length + factions.length} onClick={() => setWorldTab('npcs')} />
+          <Tile label={locations.length === 1 ? 'Place' : 'Places'} value={locations.length} onClick={() => setWorldTab('locations')} />
+          <Tile label="Lore" value={lore.length} onClick={() => setWorldTab('lore')} />
+          <Tile label="Encounters & sheets" value={encounters.length + bestiary.length} onClick={() => setWorldTab('combat')} />
+          <Tile label={timeline.length === 1 ? 'Event' : 'Events'} value={timeline.length} onClick={() => setWorldTab('timeline')} />
         </div>
       </div>
 
       <div className="w-grid">
         <Card title="Campaigns">
           <div className="w-ov-campaigns">
-            {campaigns.map(c => (
+            {campaigns.length === 0 && <Empty>No campaigns yet. Start one from the sidebar.</Empty>}
+            {campaigns.filter(c => !c.archived).map(c => (
               <div
                 key={c.id}
                 className="w-ov-camp"
@@ -127,15 +139,27 @@ export default function WorldOverview() {
                 <span className="w-ov-camp-glyph">❧</span>
                 <div>
                   <div className="w-ov-camp-name">{c.name}</div>
-                  <div className="w-ov-camp-sub">{c.party} · {c.sessions} sessions · {c.status}</div>
+                  <div className="w-ov-camp-sub">{[c.party, plural(c.sessions, 'session'), c.status].filter(Boolean).join(' · ')}</div>
                 </div>
                 <span className="cm-card-arrow">›</span>
               </div>
             ))}
+            {archived.length > 0 && (
+              <details className="w-ov-archived">
+                <summary>Archived · {archived.length}</summary>
+                {archived.map(c => (
+                  // eslint-disable-next-line no-restricted-syntax -- a campaign row, styled as text
+                  <button key={c.id} type="button" className="w-ov-archived-row" onClick={() => openCampaign(c.id)}>
+                    {c.name} <span>· {plural(c.sessions, 'session')}</span>
+                  </button>
+                ))}
+              </details>
+            )}
           </div>
         </Card>
 
-        <Card title="Recent Events" onClick={() => setWorldTab('timeline')}>
+        <Card title="Recent events" onClick={() => setWorldTab('timeline')}>
+          {recentEvents.length === 0 && <Empty>No events yet. The Timeline holds the world’s history.</Empty>}
           {recentEvents.map(ev => {
             const cfg = timelineTypeConfig[ev.type] ?? timelineTypeConfig.custom;
             return (
@@ -149,6 +173,7 @@ export default function WorldOverview() {
         </Card>
 
         <Card title="Factions" onClick={() => setWorldTab('npcs')}>
+          {factions.length === 0 && <Empty>No factions yet. Add the guilds, cults and crowns in Cast.</Empty>}
           {factions.slice(0, 5).map(f => (
             <div key={f.id} className="w-ov-row">
               <span className="w-ov-row-glyph" style={{ color: f.tone }}>❖</span>
@@ -159,6 +184,7 @@ export default function WorldOverview() {
         </Card>
 
         <Card title="Lore" onClick={() => setWorldTab('lore')}>
+          {lore.length === 0 && <Empty>No lore yet. Write down the world’s history, gods and legends.</Empty>}
           {lore.slice(0, 4).map(l => (
             <div key={l.id} className="w-ov-row">
               <span className="w-ov-row-glyph">❦</span>

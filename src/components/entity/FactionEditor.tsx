@@ -83,7 +83,7 @@ export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, o
 
       {scope === 'campaign' && <SessionUpdateBand entityType="faction" entityId={faction.id} />}
 
-      <div className="cm-eyebrow">{scope === 'world' ? 'World faction' : 'Faction'}</div>
+      <div className="cm-eyebrow">{scope === 'world' ? 'Faction · in canon' : 'Faction'}</div>
 
       <fieldset className="as-fieldset" disabled={locked}>
         <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Faction name…" maxLength={limitFor('factions', 'name')} aria-label="Name" />

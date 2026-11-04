@@ -1,13 +1,9 @@
-import { useState, useEffect } from 'react';
-import { SlashField } from '../ui/SlashField';
-import { limitFor } from '../../lib/fieldLimits';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useEffect } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useOpenRecord } from '../../context/NavigationContext';
 import { usePlanNextSession } from '../../hooks/useSessionLifecycle';
 import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContext';
 import { STAGE_LABEL } from '../../lib/recording/pipeline';
-import { FormField, inputStyle } from '../FormField';
 import { Button } from '../ui/Button';
 import { PlayerPageCard } from '../player/PlayerPageCard';
 import { CampaignDateCard } from '../calendar/CampaignDate';
@@ -113,33 +109,10 @@ function NextSession({ next, runMode, onToggleRun }: { next: Session | null; run
 
 export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewProps) {
   const {
-    overview, setOverview, selectedCampaign,
+    overview, selectedCampaign,
     sessions, pcs, hooks, modules, ideas,
   } = useCampaign();
   const openRecord = useOpenRecord();
-
-  const [form, setForm] = useState(overview);
-  const [saved, setSaved] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [infoOpen, setInfoOpen] = useState(false);
-
-  useEffect(() => {
-    setForm(overview);
-    setDirty(false);
-  }, [overview]);
-
-  const updateField = (field: keyof typeof form, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setDirty(true);
-    setSaved(false);
-  };
-
-  const handleSave = () => {
-    setOverview(form);
-    setSaved(true);
-    setDirty(false);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   // Derived data. A thread is active only in the Active state (not seeds,
   // cold or resolved); older rows without a state fall back to is_active.
@@ -152,8 +125,8 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
   const inbox = ideas.filter(i => !i.promoted_hook_id).length;
   // Recordings on their way to a chronicle, and chronicles waiting for review.
   const chronicles = useChroniclePipelineMaybe().entries.filter(e => e.stage === 'ready' || e.stage === 'saving' || e.stage === 'transcribing' || e.stage === 'writing');
-  // The Overview title falls back to the campaign's name, which every campaign has.
-  const campaignTitle = overview.title || selectedCampaign?.name || 'Untitled Campaign';
+  // The campaign's name (renamed in Settings); the old separate title only as a fallback.
+  const campaignTitle = selectedCampaign?.name || overview.title || 'Untitled Campaign';
   const meta = [
     currentModule ? [currentModule.chapter ? `Chapter ${currentModule.chapter}` : null, currentModule.title].filter(Boolean).join(' · ') : null,
     `${played} session${played === 1 ? '' : 's'} played`,
@@ -324,91 +297,6 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
 
       <PlayerPageCard />
 
-      {/* Collapsible Campaign Info */}
-      <div
-        className="rounded-lg border overflow-hidden"
-        style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', marginTop: '24px' }}
-      >
-        <button
-          onClick={() => setInfoOpen(o => !o)}
-          className="w-full flex items-center gap-3 px-4 py-3 text-left"
-          style={{ backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
-        >
-          <span
-            className="text-sm font-semibold"
-            style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
-          >
-            Campaign Info
-          </span>
-          {dirty && (
-            <span className="text-xs" style={{ color: 'var(--gold)' }}>• unsaved</span>
-          )}
-          <div className="flex-1" />
-          {infoOpen ? (
-            <ChevronUp size={16} style={{ color: 'var(--ink-3)' }} />
-          ) : (
-            <ChevronDown size={16} style={{ color: 'var(--ink-3)' }} />
-          )}
-        </button>
-
-        {infoOpen && (
-          <div className="px-6 pb-6 pt-2">
-            <FormField label="Campaign Title">
-              <input
-                type="text"
-                value={form.title}
-                onChange={e => updateField('title', e.target.value)}
-                placeholder="e.g., Age of Wild Magic"
-                maxLength={limitFor('campaigns', 'title')}
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Plot Summary">
-              <SlashField
-                value={form.plotSummary}
-                onChange={v => updateField('plotSummary', v)}
-                placeholder="The overarching story, main conflicts, and campaign themes..."
-                minHeight="160px"
-                maxLength={limitFor('campaigns', 'plot_summary')}
-              />
-            </FormField>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Major Characters">
-                <SlashField
-                  value={form.majorCharacters}
-                  onChange={v => updateField('majorCharacters', v)}
-                  placeholder="Key villains, allies, and important figures..."
-                  minHeight="120px"
-                  maxLength={limitFor('campaigns', 'major_characters')}
-                />
-              </FormField>
-
-              <FormField label="World Info & Additional Notes">
-                <SlashField
-                  value={form.worldInfo}
-                  onChange={v => updateField('worldInfo', v)}
-                  placeholder="Setting details, house rules, tone, important context..."
-                  minHeight="120px"
-                  maxLength={limitFor('campaigns', 'world_info')}
-                />
-              </FormField>
-            </div>
-
-            <div className="flex justify-end mt-4">
-              <Button
-                variant={saved ? 'secondary' : 'primary'}
-                size="sm"
-                onClick={handleSave}
-                disabled={!dirty && !saved}
-              >
-                {saved ? 'Saved!' : 'Save Changes'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

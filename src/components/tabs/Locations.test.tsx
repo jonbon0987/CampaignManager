@@ -26,10 +26,18 @@ beforeEach(() => {
 });
 
 describe('Locations', () => {
-  it('shows the inline empty message and a top-level add button', () => {
+  it('shows the one empty state and a top-level add button', () => {
     render(<Locations />);
-    expect(screen.getByText('No places yet — create one or import from canon')).toBeTruthy();
+    expect(screen.getByText(/No places yet/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add a place' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '+ Add location' })).toBeTruthy();
+  });
+
+  it('says so when a search finds no place', () => {
+    h.campaign.value = makeCampaignContext({ locations: [makeLocation({ id: 'p', name: 'Saltmarsh', parent_id: null })] });
+    render(<Locations />);
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: 'nowhere' } });
+    expect(screen.getByText('No places match.')).toBeTruthy();
   });
 
   it('adds a root landmark via the add button', () => {

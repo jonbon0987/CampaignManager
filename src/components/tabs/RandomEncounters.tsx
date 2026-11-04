@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useReportRecord } from '../../context/NavigationContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -23,7 +24,7 @@ import type { RandomEncounterTable, Encounter } from '../../lib/database.types';
 // Campaign-level random tables — master/detail. Tables come in five kinds
 // (Encounter / Treasure / Magic Item / Wild Magic / Custom); each is a weighted
 // die (d4–d100). Tables can be authored here or imported from the world.
-export default function RandomEncounters({ onImportFromWorld }: { onImportFromWorld?: () => void }) {
+export default function RandomEncounters({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromWorld?: () => void; openId?: string | null; onOpenConsumed?: () => void }) {
   const {
     randomEncounterTables, upsertRandomEncounterTable, deleteRandomEncounterTable,
     monsterStatblocks, pcs, upsertEncounter,
@@ -31,6 +32,13 @@ export default function RandomEncounters({ onImportFromWorld }: { onImportFromWo
   const confirm = useConfirm();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('combat', selectedId);
+
+  // Open a table requested from outside the tab (search, the URL).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openId) { setSelectedId(openId); setSearch(''); setKindFilter('all'); onOpenConsumed?.(); }
+  }, [openId, onOpenConsumed]);
   const [search, setSearch] = useState('');
   const [kindFilter, setKindFilter] = useState<string>('all');
   const { openStatBlock } = useStatBlockPanel();
@@ -118,11 +126,15 @@ export default function RandomEncounters({ onImportFromWorld }: { onImportFromWo
         addOptions={RANDOM_TABLE_KINDS.map(k => ({ label: `${k.glyph} ${k.label}`, onClick: () => void handleAdd(k.key) }))}
         onGenerate={() => setGenTableOpen(true)}
         onImport={onImportFromWorld}
+        empty={randomEncounterTables.length === 0 ? {
+          glyph: '⚄', text: 'No random tables yet. Roll for encounters, treasure, wild magic or anything else: add one, generate one, or import one from canon.',
+          actionLabel: 'Add an encounter table', onAction: () => void handleAdd('encounter'),
+        } : null}
         filters={[{ key: 'all', label: 'All' }, ...RANDOM_TABLE_KINDS].map(k => (
           <Pill key={k.key} active={kindFilter === k.key} onClick={() => setKindFilter(k.key)}>{k.label}</Pill>
         ))}
         list={filtered.length === 0
-          ? <div className="cm-empty is-inline">{randomEncounterTables.length === 0 ? 'No tables yet. Add one, or generate one.' : 'No tables match.'}</div>
+          ? <div className="cm-empty is-inline">No tables match.</div>
           : filtered.map(t => {
             const m = kindMeta(t.kind);
             const rows = parseEntries(t.entries).length;
@@ -147,7 +159,7 @@ export default function RandomEncounters({ onImportFromWorld }: { onImportFromWo
             />
           </div>
         ) : (
-          <EmptyDetail>Select a table, or add one.</EmptyDetail>
+          <EmptyDetail noun="table" />
         )}
       />
 

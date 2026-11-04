@@ -21,6 +21,6 @@ export const toRoman = (n: number) => ROMAN[n] || String(n || '');
 export const clip = (s: string | null | undefined, n: number) =>
   (s ?? '').length > n ? (s as string).slice(0, n - 1) + '…' : (s ?? '');
 
-export const kindLabel: Record<BodyKind, string> = { module: 'Chapter', sub: 'Part', scene: 'Scene' };
+export const kindLabel: Record<BodyKind, string> = { module: 'Module', sub: 'Part', scene: 'Scene' };
 
 export interface Selection { id: string; kind: BodyKind }

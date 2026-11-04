@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import { CampaignProvider, useCampaign } from './context/CampaignContext';
@@ -101,12 +101,15 @@ const normalizeTab = (tab: Tab, view?: string): { tab: Tab; view?: string } => {
 
 const RAIL_OVERLAY_CLASS = 'cm-rail';
 
+/** What to open for a record (and a module's part) the URL or a tab's memory names. */
+const openTargetFor = (tab: Tab, rec: { id: string; sub?: string }) => ({ tab, id: rec.id, kind: rec.sub ? `submodule:${rec.sub}` : undefined });
+
 function AppInner() {
   const world = useWorld();
   // Where the URL says to start (a deep link or a refresh).
   const [initial] = useState(() => {
     const r = currentRoute();
-    return r?.scope === 'campaign' ? { ...normalizeTab(r.tab, r.view), recordId: r.recordId } : null;
+    return r?.scope === 'campaign' ? { ...normalizeTab(r.tab, r.view), recordId: r.recordId, sub: r.sub } : null;
   });
   const [activeTab, setActiveTabState] = useState<Tab>(initial?.tab ?? 'overview');
   const [viewModes, setViewModes] = useState<Record<string, string>>(() => ({
@@ -120,17 +123,21 @@ function AppInner() {
   // A record the user asked to open (search, Recent, a link). The destination
   // tab reads its id, selects that record, then clears the target.
   const [openTarget, setOpenTarget] = useState<{ tab: Tab; id: string; kind?: string } | null>(
-    initial?.recordId ? { tab: initial.tab, id: initial.recordId } : null,
+    initial?.recordId ? { tab: initial.tab, id: initial.recordId, kind: initial.sub ? `submodule:${initial.sub}` : undefined } : null,
   );
-  // The record the active tab reports showing, for the URL.
-  const [shownRecord, setShownRecord] = useState<{ tab: Tab; id: string } | null>(
-    initial?.recordId ? { tab: initial.tab, id: initial.recordId } : null,
+  // The record the active tab reports showing (and a module's open part), for the URL.
+  const [shownRecord, setShownRecord] = useState<{ tab: Tab; id: string; sub?: string } | null>(
+    initial?.recordId ? { tab: initial.tab, id: initial.recordId, sub: initial.sub } : null,
   );
+  // The record each tab last showed, so going back to a tab reopens it.
+  const lastRecords = useRef(new Map<Tab, { id: string; sub?: string }>());
 
   const setActiveTab = useCallback((tab: Tab) => {
     const n = normalizeTab(tab);
     setActiveTabState(n.tab);
     if (n.view) setViewModes(prev => ({ ...prev, [n.tab]: n.view! }));
+    const last = lastRecords.current.get(n.tab);
+    if (last) setOpenTarget(openTargetFor(n.tab, last));
   }, []);
 
   const openRecord = useCallback((tab: Tab, id: string, kind?: string) => {
@@ -147,9 +154,11 @@ function AppInner() {
     if (view) setViewModes(prev => ({ ...prev, [tab]: view }));
   }, []);
 
-  const reportRecord = useCallback((tab: Tab, id: string | null) => {
+  const reportRecord = useCallback((tab: Tab, id: string | null, sub?: string | null) => {
+    if (id) lastRecords.current.set(tab, { id, sub: sub ?? undefined });
+    else lastRecords.current.delete(tab);
     setShownRecord(prev => {
-      if (id) return prev?.tab === tab && prev.id === id ? prev : { tab, id };
+      if (id) return prev?.tab === tab && prev.id === id && prev.sub === (sub ?? undefined) ? prev : { tab, id, sub: sub ?? undefined };
       return prev?.tab === tab ? null : prev;
     });
   }, []);
@@ -157,7 +166,7 @@ function AppInner() {
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
   const openIdFor = (tab: Tab) => (openTarget?.tab === tab ? openTarget.id : null);
-  const { loading, error, selectedCampaign, selectedCampaignId, monsterStatblocks } = useCampaign();
+  const { loading, error, selectedCampaign, selectedCampaignId, monsterStatblocks, loadModuleTree } = useCampaign();
   const { activeStatBlockId, closeStatBlock } = useStatBlockPanel();
   const chat = useAIChat(useCampaignAssistantBackend());
   const play = usePlay();
@@ -166,6 +175,15 @@ function AppInner() {
   const runMode = !!play.live;
 
   useMigrateScratchpad();
+
+  // Parts and scenes load a module at a time; the palette searches them all, so
+  // the first time it opens in a campaign it loads the whole tree.
+  const treeLoadedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!chrome.paletteOpen || !selectedCampaignId || treeLoadedFor.current === selectedCampaignId) return;
+    treeLoadedFor.current = selectedCampaignId;
+    loadModuleTree().catch(() => { treeLoadedFor.current = null; });
+  }, [chrome.paletteOpen, selectedCampaignId, loadModuleTree]);
   useEffect(() => { setRecentScope(selectedCampaignId); }, [selectedCampaignId]);
 
   // Keep the URL on this campaign, tab, record and view, and follow Back.
@@ -175,6 +193,7 @@ function AppInner() {
     campaignId: world.activeCampaignId,
     tab: activeTab,
     recordId: shownRecord?.tab === activeTab ? shownRecord.id : undefined,
+    sub: shownRecord?.tab === activeTab ? shownRecord.sub : undefined,
     view: activeViewMode !== (TAB_DEFAULT_VIEW[activeTab] ?? 'list') ? activeViewMode : undefined,
   } : null;
   useRouteSync(route, r => {
@@ -188,8 +207,8 @@ function AppInner() {
     const n = normalizeTab(r.tab, r.view);
     setActiveTabState(n.tab);
     setViewModes(prev => ({ ...prev, [n.tab]: n.view ?? TAB_DEFAULT_VIEW[n.tab] ?? 'list' }));
-    setShownRecord(r.recordId ? { tab: n.tab, id: r.recordId } : null);
-    if (r.recordId) setOpenTarget({ tab: n.tab, id: r.recordId });
+    setShownRecord(r.recordId ? { tab: n.tab, id: r.recordId, sub: r.sub } : null);
+    if (r.recordId) setOpenTarget(openTargetFor(n.tab, { id: r.recordId, sub: r.sub }));
   });
 
   // Start session asks which session and whether to record; End checks, then
@@ -571,6 +590,8 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
+const isWorldCombatView = (v: string | undefined): v is WorldCombatSubView => v === 'encounter' || v === 'random' || v === 'bestiary';
+
 const WORLD_COMBAT_VIEWS: { id: WorldCombatSubView; label: string }[] = [
   { id: 'encounter', label: 'Encounters' }, { id: 'random', label: 'Random tables' }, { id: 'bestiary', label: 'Stat sheets' },
 ];
@@ -600,23 +621,32 @@ function WorldShell() {
   const chrome = useShellChrome({ hasNote: false });
   const chat = useAIChat(useWorldAssistantBackend());
   const [newCampaignOpen, setNewCampaignOpen] = useState(false);
-  const [combatView, setCombatView] = useState<WorldCombatSubView>('encounter');
+  const [combatView, setCombatView] = useState<WorldCombatSubView>(() => {
+    const r = currentRoute();
+    return r?.scope === 'world' && isWorldCombatView(r.view) ? r.view : 'encounter';
+  });
 
-  // Keep the URL on this world, tab and record, and follow Back.
+  // Keep the URL on this world, tab, record and view, and follow Back.
   const recordId = world.selected[world.worldTab];
   const route: Route | null = world.activeWorldId
-    ? { scope: 'world', worldId: world.activeWorldId, tab: world.worldTab, recordId: world.worldTab === 'overview' || world.worldTab === 'timeline' ? undefined : recordId }
+    ? {
+      scope: 'world', worldId: world.activeWorldId, tab: world.worldTab,
+      recordId: world.worldTab === 'overview' || world.worldTab === 'timeline' ? undefined : recordId || undefined,
+      view: world.worldTab === 'combat' && combatView !== 'encounter' ? combatView : undefined,
+    }
     : null;
   useRouteSync(route, r => {
     if (r.worldId !== world.activeWorldId) world.setActiveWorldId(r.worldId);
     if (r.scope === 'campaign') { world.openCampaign(r.campaignId); return; }
     world.setWorldTab(r.tab);
+    if (r.tab === 'combat') setCombatView(isWorldCombatView(r.view) ? r.view : 'encounter');
     if (r.recordId) world.setSelected(r.tab, r.recordId);
   });
 
   const paletteHandlers = useMemo(() => ({
     openShortcuts: chrome.toggleShortcuts,
     openNewCampaign: () => setNewCampaignOpen(true),
+    openCombat: (view: WorldCombatSubView, id: string) => { setCombatView(view); world.setWorldTab('combat'); world.setSelected('combat', id); },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
   const paletteItems = useWorldPaletteItems(paletteHandlers);

@@ -31,10 +31,10 @@ beforeEach(() => {
 const ROW = { selector: '.cm-row-title' };
 
 describe('Characters (cast list)', () => {
-  it('shows the empty list + detail states', () => {
+  it('shows one empty state, with a way to add the first character, when the cast is empty', () => {
     render(<Characters viewMode="list" />);
-    expect(screen.getByText('No entries match your filters')).toBeTruthy();
-    expect(screen.getByText('Select an entry from the list')).toBeTruthy();
+    expect(screen.getByText(/No one in the cast yet/)).toBeTruthy();
+    expect(screen.queryByPlaceholderText('Search…')).toBeNull();
   });
 
   it('merges PCs, NPCs, and factions into one list', () => {
@@ -62,11 +62,10 @@ describe('Characters (cast list)', () => {
     expect(screen.queryByText('Kutter', ROW)).toBeNull();
   });
 
-  it('adds a PC when the PC filter is active', async () => {
+  it('adds a PC from the empty state', async () => {
     h.campaign.value = makeCampaignContext({ upsertPC: vi.fn().mockResolvedValue({ id: 'new-pc' }) });
     render(<Characters viewMode="list" />);
-    fireEvent.click(screen.getByRole('button', { name: 'PCs' }));
-    fireEvent.click(screen.getByRole('button', { name: '+ Add PC' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a player character' }));
     expect(cc().upsertPC).toHaveBeenCalledWith({ character_name: '', is_active: true, faction_ids: [] });
   });
 

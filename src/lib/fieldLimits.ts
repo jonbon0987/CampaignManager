@@ -297,6 +297,7 @@ export const NUMBER_RANGES: Record<string, Record<string, [number, number]>> = {
   },
   timeline_events: {
     year: [-99_999, 99_999],
+    day: [1, 16_000],
   },
   monster_statblocks: {
     armor_class: [0, 99],

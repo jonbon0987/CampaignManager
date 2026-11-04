@@ -372,7 +372,7 @@ export default function ModuleWeb({ onOpen, initialModuleId }: {
     if (t.kind !== n.kind) {
       return { ok: false, reason: t.kind === 'scene' || n.kind === 'scene'
         ? 'Scenes run in order — they take no prerequisites'
-        : 'Chapters require chapters; parts require parts' };
+        : 'Modules require modules; parts require parts' };
     }
     if (n.kind === 'scene') return { ok: false, reason: 'Scenes run in order — they take no prerequisites' };
     if (n.kind !== 'module' && t.parentId !== n.parentId) {

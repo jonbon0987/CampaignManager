@@ -65,6 +65,7 @@ function dbToWorldCampaign(c: CampaignWithCount | Campaign): WorldCampaign {
     party: c.party ?? '',
     lastPlayed: c.last_played ?? '',
     status: c.status ?? 'active',
+    archived: !!c.archived_at,
   };
 }
 
@@ -158,6 +159,7 @@ function dbToWorldTimelineEvent(e: DBTimelineEvent): WorldTimelineEvent {
     type: e.event_type as WorldTimelineEvent['type'],
     era: e.era,
     order: e.sort_order,
+    day: e.day ?? null,
   };
 }
 
@@ -512,9 +514,8 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     if (changes.party !== undefined) dbPatch.party = changes.party;
     if (changes.status !== undefined) dbPatch.status = changes.status;
     if (changes.lastPlayed !== undefined) dbPatch.last_played = changes.lastPlayed;
-    if (Object.keys(dbPatch).length) {
-      await CampaignsDB.upsert({ id, ...dbPatch } as Campaign);
-    }
+    if (changes.archived !== undefined) dbPatch.archived_at = changes.archived ? new Date().toISOString() : null;
+    if (Object.keys(dbPatch).length) await CampaignsDB.update(id, dbPatch);
   }, []);
 
   const deleteCampaign = useCallback(async (id: string) => {
@@ -837,6 +838,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       event_type: data.type,
       era: data.era,
       sort_order: data.order ?? data.year,
+      day: data.day ?? null,
     });
     setTimeline(prev => [...prev, dbToWorldTimelineEvent(dbEntry)]);
     return dbEntry.id;
@@ -851,6 +853,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     if (data.type !== undefined) dbData.event_type = data.type;
     if (data.era !== undefined) dbData.era = data.era;
     if (data.order !== undefined) dbData.sort_order = data.order;
+    if (data.day !== undefined) dbData.day = data.day;
     const dbEntry = await TimelineEventsDB.upsert({
       world_id: activeWorldId,
       title: dbData.title ?? '',
@@ -860,6 +863,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
       event_type: dbData.event_type ?? 'custom',
       era: dbData.era ?? '',
       sort_order: dbData.sort_order ?? dbData.year ?? 0,
+      ...(dbData.day !== undefined ? { day: dbData.day } : {}),
       id: data.id,
     });
     setTimeline(prev => prev.map(e => e.id === dbEntry.id ? dbToWorldTimelineEvent(dbEntry) : e));

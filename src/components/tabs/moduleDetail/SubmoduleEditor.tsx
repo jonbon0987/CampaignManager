@@ -247,20 +247,20 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, focusS
           <SaveStatusIndicator status={status} onRetry={save} />
           <div className="as-spacer" />
           <OverflowMenu items={[{
-            label: 'Delete Submodule', danger: true,
+            label: 'Delete part', danger: true,
             onClick: async () => { if (await confirm(`Delete "${submodule.title}" and all its scenes?`)) { await deleteSubmodule(submodule.id, submodule.module_id); onDeleted(); } },
           }]} />
         </div>
 
         <div className="md-eyebrow">
-          {module.title} · Submodule {siblings.findIndex(s => s.id === submodule.id) + 1} of {siblings.length}
+          {module.title} · Part {siblings.findIndex(s => s.id === submodule.id) + 1} of {siblings.length}
         </div>
 
         <div className="md-typebar">
           <TypeTag type={form.submodule_type} types={SUBMODULE_TYPES} onPick={t => set('submodule_type', t)} />
         </div>
 
-        <TitleInput value={form.title} placeholder="Submodule title…"
+        <TitleInput value={form.title} placeholder="Part title…"
           onChange={e => set('title', e.target.value)} maxLength={limitFor('submodules', 'title')} />
 
         {/* summary */}

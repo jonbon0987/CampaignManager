@@ -473,6 +473,23 @@
 }
 .w-hero-stats > .cm-stat { flex: 1; }
 
+/* Counts that open what they count */
+.w-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; max-width: 900px; }
+.w-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: var(--radius); text-align: left; cursor: pointer; transition: border-color .12s, background .12s; }
+.w-tile:hover:not(:disabled) { border-color: var(--gold-line, var(--rule)); background: var(--paper-3); }
+.w-tile:disabled { cursor: default; }
+.w-tile-value { font-family: var(--display); font-size: 26px; line-height: 1; color: var(--ink); }
+.w-tile-label { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+@media (max-width: 900px) { .w-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.w-ov-archived { margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+.w-ov-archived summary { cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; padding: 4px 0; }
+.w-ov-archived-row { display: block; width: 100%; text-align: left; background: none; border: none; padding: 6px 0 6px 12px; font-family: var(--serif); font-size: 14px; color: var(--ink-2); cursor: pointer; }
+.w-ov-archived-row:hover { color: var(--ink); }
+.w-ov-archived-row span { color: var(--ink-3); font-size: 12px; }
+.w-ov-empty { margin: 0; font-size: 14px; font-style: italic; color: var(--ink-3); line-height: 1.5; }
+.npc-used-in { font-size: 14px; color: var(--ink-2); }
+.npc-used-in .cm-linklike { font-family: var(--serif); font-size: 14px; }
+
 /* Overview grid */
 .w-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
@@ -762,6 +779,8 @@
 }
 .ne-field textarea { resize: vertical; min-height: 70px; }
 .ne-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ne-row.tl-date { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.tl-legacy { margin: -4px 0 0; }
 .ne-foot {
   padding: 16px 24px;
   border-top: 1px solid var(--rule-soft);

@@ -53,6 +53,7 @@ export type Campaign = {
   world_date: Json | null;           // where the campaign is in the world's time, { year, day }
   levelling: Levelling | null;       // how the party levels; null until the first wrap-up asks
   rules_edition: RulesEdition | null; // which rules rate encounters; null reads as 2014
+  archived_at: string | null;        // when it was archived; null while in use
   created_at: string;
   updated_at: string;
 };
@@ -63,7 +64,7 @@ export type Levelling = 'xp' | 'milestone';
 /** Which edition's rules a campaign plays by. */
 export type RulesEdition = '2014' | '2024';
 
-export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition'> & { world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null };
+export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at'> & { world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null };
 
 // Campaigns fetched with an embedded session count (via PostgREST select)
 export type CampaignWithCount = Campaign & { session_count: number };
@@ -298,11 +299,13 @@ export type TimelineEvent = {
   event_type: string;
   era: string;
   sort_order: number;
+  /** Day of the year in the world's calendar; null for an event known only by its year. */
+  day: number | null;
   created_at: string;
   updated_at: string;
 };
 
-export type TimelineEventInsert = Omit<TimelineEvent, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type TimelineEventInsert = Omit<TimelineEvent, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'day'> & { day?: number | null };
 
 export type Module = {
   id: string;
@@ -904,7 +907,7 @@ export interface Database {
       };
       campaigns: {
         Row: Campaign;
-        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null };
+        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null };
         Update: Partial<Omit<Campaign, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
@@ -976,7 +979,7 @@ export interface Database {
       };
       timeline_events: {
         Row: TimelineEvent;
-        Insert: Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Insert: Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at' | 'day'> & { id?: string; day?: number | null };
         Update: Partial<Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };

@@ -4,13 +4,64 @@ import { Pill } from '../ui/ListDetail';
 import { Button } from '../ui/Button';
 import type { WorldTimelineEvent, TimelineEventType } from '../../types/world';
 import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
-import { CharCounter } from '../ui/CharCounter';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { useAutoSave } from '../../hooks/useAutoSave';
-import { yearSuffix } from '../../lib/calendar';
+import { formatWorldDate, fromMonthDay, toMonthDay, yearSuffix, type Month } from '../../lib/calendar';
 import { plural } from '../../lib/plural';
+import { SlashField } from '../ui/SlashField';
+import { MarkdownContent } from '../ui/MarkdownContent';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** "701 DR", or "Year 701" in a calendar whose years have no name. */
+const yearLabel = (year: number, suffix: string) => (year < 0 ? `${Math.abs(year)} BR` : suffix ? `${year} ${suffix}` : `Year ${year}`);
+
+/** How an event's date reads: its day in the calendar when it has one, else its year. */
+function eventDateLabel(year: number, day: number | null, months: Month[], suffix: string): string {
+  return day != null && months.length ? formatWorldDate({ year, day }, months, suffix) : yearLabel(year, suffix);
+}
+
+/**
+ * An event's date in the world's calendar: a year, and the month and day when
+ * they're known. Festivals (one-day months) take no day.
+ */
+function EventDateFields({ year, day, months, suffix, onChange, idPrefix }: {
+  year: string;
+  day: number | null;
+  months: Month[];
+  suffix: string;
+  onChange: (year: string, day: number | null) => void;
+  idPrefix: string;
+}) {
+  const y = parseInt(year, 10) || 0;
+  const md = day != null && months.length ? toMonthDay({ year: y, day }, months) : null;
+  const month = md?.month ?? -1;
+  const setMonth = (m: number) => onChange(year, m < 0 ? null : fromMonthDay(y, m, md?.dayOfMonth ?? 1, months).day);
+  const setDayOfMonth = (dom: number) => onChange(year, fromMonthDay(y, month, Math.min(months[month].days, Math.max(1, dom)), months).day);
+  return (
+    <div className="ne-row tl-date">
+      <div className="ne-field">
+        <label htmlFor={`${idPrefix}-year`}>Year{suffix ? ` (${suffix})` : ''}</label>
+        <input id={`${idPrefix}-year`} type="number" value={year} onChange={e => onChange(e.target.value, day)} placeholder="e.g. 701"
+          min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
+      </div>
+      <div className="ne-field">
+        <label htmlFor={`${idPrefix}-month`}>Month</label>
+        <select id={`${idPrefix}-month`} value={month} onChange={e => setMonth(Number(e.target.value))}>
+          <option value={-1}>Just the year</option>
+          {months.map((m, i) => <option key={i} value={i}>{m.name}</option>)}
+        </select>
+      </div>
+      {month >= 0 && months[month].days > 1 && (
+        <div className="ne-field tl-date-day">
+          <label htmlFor={`${idPrefix}-day`}>Day</label>
+          <input id={`${idPrefix}-day`} type="number" min={1} max={months[month].days} value={md?.dayOfMonth ?? 1}
+            onChange={e => setDayOfMonth(Math.round(Number(e.target.value)) || 1)} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function WorldTimeline() {
   const {
@@ -154,15 +205,20 @@ function TimelineEventEditor({ event, types, calendar, eras, save, onDone, onDel
   onDone: () => void;
   onDelete: () => void;
 }) {
-  const { timelineTypeConfig } = useWorld();
-  const [form, setForm] = useState({ title: event.title, year: String(event.year), date: event.date, desc: event.desc, type: event.type, era: event.era });
+  const { timelineTypeConfig, activeWorld } = useWorld();
+  const months = activeWorld?.calendarMonths ?? [];
+  // An older event's free-text date ("Midsummer") stays until it's cleared or a month is set.
+  const legacy = event.day == null && event.date && event.date !== yearLabel(event.year, calendar) ? event.date : null;
+  const [form, setForm] = useState({ title: event.title, year: String(event.year), day: event.day ?? null, keepLegacy: !!legacy, desc: event.desc, type: event.type, era: event.era });
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm(f => ({ ...f, [key]: value }));
   const { status, saveNow } = useAutoSave({
     data: form,
     delay: 800,
     onSave: async f => {
       if (!f.title.trim()) return;
-      await save({ id: event.id, title: f.title.trim(), year: parseInt(f.year) || 0, date: f.date.trim(), desc: f.desc.trim(), type: f.type, era: f.era });
+      const year = parseInt(f.year) || 0;
+      const date = f.day == null && f.keepLegacy && legacy ? legacy : eventDateLabel(year, f.day, months, calendar);
+      await save({ id: event.id, title: f.title.trim(), year, day: f.day, order: f.day ?? 0, date, desc: f.desc.trim(), type: f.type, era: f.era });
     },
   });
 
@@ -172,16 +228,11 @@ function TimelineEventEditor({ event, types, calendar, eras, save, onDone, onDel
         <label>Title</label>
         <input value={form.title} onChange={e => set('title', e.target.value)} autoFocus maxLength={limitFor('timeline_events', 'title')} />
       </div>
-      <div className="ne-row">
-        <div className="ne-field">
-          <label>Year{calendar ? ` (${calendar})` : ''}</label>
-          <input type="number" value={form.year} onChange={e => set('year', e.target.value)} min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
-        </div>
-        <div className="ne-field">
-          <label>Display Date</label>
-          <input value={form.date} onChange={e => set('date', e.target.value)} maxLength={limitFor('timeline_events', 'display_date')} />
-        </div>
-      </div>
+      <EventDateFields idPrefix={`tl-${event.id}`} year={form.year} day={form.day} months={months} suffix={calendar}
+        onChange={(year, day) => setForm(f => ({ ...f, year, day, keepLegacy: day == null && f.keepLegacy }))} />
+      {legacy && form.keepLegacy && form.day == null && (
+        <p className="as-hint tl-legacy">Shown as “{legacy}”. <Button variant="link" onClick={() => set('keepLegacy', false)}>Use {yearLabel(parseInt(form.year) || 0, calendar)} instead</Button></p>
+      )}
       <div className="ne-row">
         <div className="ne-field">
           <label>Type</label>
@@ -202,8 +253,8 @@ function TimelineEventEditor({ event, types, calendar, eras, save, onDone, onDel
       </div>
       <div className="ne-field">
         <label>Description</label>
-        <textarea value={form.desc} onChange={e => set('desc', e.target.value)} rows={3} />
-        <CharCounter value={form.desc} limit={limitFor('timeline_events', 'description')} />
+        <SlashField value={form.desc} onChange={v => set('desc', v)} placeholder="What happened and why it matters… type @ to link a person or place"
+          minHeight="72px" maxLength={limitFor('timeline_events', 'description')} />
       </div>
       <div className="tl-edit-actions">
         <Button variant="danger" onClick={onDelete}>Delete</Button>
@@ -261,7 +312,7 @@ function TimelineEventCard({
       </div>
       <div className="tl-event-date">{event.date}</div>
       <div className="tl-event-title">{event.title}</div>
-      <div className="tl-event-desc">{event.desc}</div>
+      {event.desc && <MarkdownContent className="tl-event-desc" text={event.desc} />}
       <div className="tl-event-tags">
         <span
           className={`tl-event-type ${isCampaign ? 'tl-event-campaign' : ''}`}
@@ -281,7 +332,7 @@ function TimelineEventCard({
             <div>
               <div className="tl-event-expanded-label">Year</div>
               <div className="tl-event-expanded-value tl-event-expanded-value-lg">
-                {event.year < 0 ? `${Math.abs(event.year)} BR` : calendar ? `${event.year} ${calendar}` : `Year ${event.year}`}
+                {yearLabel(event.year, calendar)}
               </div>
             </div>
             <div>
@@ -293,7 +344,7 @@ function TimelineEventCard({
               <div className="tl-event-expanded-value" style={{ color: config.color }}>{config.glyph} {cap(event.type)}</div>
             </div>
           </div>
-          <div className="tl-event-expanded-desc">{event.desc}</div>
+          {event.desc && <MarkdownContent className="tl-event-expanded-desc" text={event.desc} />}
           <div className="tl-edit-actions" style={{ marginTop: 8 }}>
             <Button variant="primary" onClick={(e) => { e.stopPropagation(); onEdit(); }}>Edit</Button>
             <Button variant="danger" onClick={(e) => { e.stopPropagation(); onDelete(); }}>Delete</Button>
@@ -312,10 +363,11 @@ function NewEventModal({
   onSave: (event: Omit<WorldTimelineEvent, 'id' | 'worldId'>) => void;
   onClose: () => void;
 }) {
-  const { timelineTypeConfig } = useWorld();
+  const { timelineTypeConfig, activeWorld } = useWorld();
+  const months = activeWorld?.calendarMonths ?? [];
   const [title, setTitle] = useState('');
   const [year, setYear] = useState('');
-  const [date, setDate] = useState('');
+  const [day, setDay] = useState<number | null>(null);
   const [desc, setDesc] = useState('');
   const [type, setType] = useState<TimelineEventType>('custom');
   const [era, setEra] = useState(eras[eras.length - 1] || '');
@@ -325,11 +377,12 @@ function NewEventModal({
   const handleSave = () => {
     if (!title.trim()) return;
     const y = parseInt(year) || 0;
-    const calAbbr = calendar.split('(')[1]?.replace(')', '') || 'CR';
     onSave({
       title: title.trim(),
       year: y,
-      date: date.trim() || `${calAbbr} ${y}`,
+      day,
+      order: day ?? 0,
+      date: eventDateLabel(y, day, months, calendar),
       desc: desc.trim(),
       type,
       era: era || 'Unknown',
@@ -348,16 +401,8 @@ function NewEventModal({
             <label>Event Title</label>
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. The Battle of Ashfield" autoFocus maxLength={limitFor('timeline_events', 'title')} />
           </div>
-          <div className="ne-row">
-            <div className="ne-field">
-              <label>Year{calendar ? ` (${calendar})` : ''}</label>
-              <input type="number" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. 701" min={minFor('timeline_events', 'year')} max={maxFor('timeline_events', 'year')} />
-            </div>
-            <div className="ne-field">
-              <label>Display Date</label>
-              <input value={date} onChange={e => setDate(e.target.value)} placeholder="e.g. CR 701, Midsummer" maxLength={limitFor('timeline_events', 'display_date')} />
-            </div>
-          </div>
+          <EventDateFields idPrefix="tl-new" year={year} day={day} months={months} suffix={calendar}
+            onChange={(y, d) => { setYear(y); setDay(d); }} />
           <div className="ne-row">
             <div className="ne-field">
               <label>Type</label>
@@ -375,8 +420,8 @@ function NewEventModal({
           </div>
           <div className="ne-field">
             <label>Description</label>
-            <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What happened and why it matters…" rows={3} />
-            <CharCounter value={desc} limit={limitFor('timeline_events', 'description')} />
+            <SlashField value={desc} onChange={setDesc} placeholder="What happened and why it matters… type @ to link a person or place"
+              minHeight="72px" maxLength={limitFor('timeline_events', 'description')} />
           </div>
         </div>
         <div className="ne-foot">

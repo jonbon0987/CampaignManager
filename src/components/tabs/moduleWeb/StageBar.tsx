@@ -13,7 +13,7 @@ const STATUS_CHIPS: [Status, string, string][] = [
 ];
 
 const DEPTHS: [Exclude<Depth, 'custom'>, string][] = [
-  ['modules', 'Chapters'], ['subs', 'Parts'], ['scenes', 'Scenes'],
+  ['modules', 'Modules'], ['subs', 'Parts'], ['scenes', 'Scenes'],
 ];
 
 export function StageBar({ depth, setDepth, gravity, setGravity, filters, toggleFilter, counts, onFit, onSettle }: {

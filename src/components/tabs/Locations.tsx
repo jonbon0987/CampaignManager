@@ -160,11 +160,15 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
       addLabel="+ Add location"
       onImport={onImportFromWorld}
       importLabel="⊕ Import location"
+      empty={locations.length === 0 ? {
+        glyph: '✦', text: 'No places yet. Add the towns, dungeons and wilds the party will travel, or import them from canon.',
+        actionLabel: 'Add a place', onAction: () => void handleAdd(),
+      } : null}
       list={
         <>
 
-          {locations.length === 0 ? (
-            <div className="cm-empty is-inline">No places yet — create one or import from canon</div>
+          {visible && visible.size === 0 ? (
+            <div className="cm-empty is-inline">No places match.</div>
           ) : (
             <>
               <div className="cm-tree">{roots.map(r => renderNode(r, 0))}</div>
@@ -195,7 +199,7 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
             }}
           />
         ) : (
-          <EmptyDetail>Select a place from the tree</EmptyDetail>
+          <EmptyDetail noun="place" />
         )
       }
     />

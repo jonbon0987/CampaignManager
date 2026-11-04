@@ -205,9 +205,11 @@ export default function AppSidebar({
 // The world's campaigns: the one in play as a card, the rest as rows, each with
 // a ⋯ menu for its status and Delete, and a row to start a new one.
 function WorldCampaigns() {
-  const { campaigns, activeCampaignId, openCampaign, deleteCampaign, updateCampaign } = useWorld();
+  const { campaigns: all, activeCampaignId, openCampaign, deleteCampaign, updateCampaign } = useWorld();
   const confirm = useConfirm();
   const [creating, setCreating] = useState(false);
+  // Archived campaigns stay off the list (the world's Overview keeps them), unless one is open.
+  const campaigns = all.filter(c => !c.archived || c.id === activeCampaignId);
   const hero = campaigns.find(c => c.id === activeCampaignId) ?? campaigns.find(c => c.status === 'active') ?? campaigns[0] ?? null;
   const others = campaigns.filter(c => c.id !== hero?.id);
 

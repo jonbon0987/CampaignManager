@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { PageHeader } from './PageHeader';
+import { EmptyState, type EmptyStateProps } from './EmptyState';
 
 export interface AddOption {
   label: string;
@@ -24,6 +25,11 @@ interface ListDetailProps {
   filters?: ReactNode;
   list: ReactNode;
   detail: ReactNode;
+  /**
+   * Set when there's nothing in the list at all (not when a search hides
+   * everything): the one empty state then fills the page under the header.
+   */
+  empty?: EmptyStateProps | null;
 }
 
 function AddMenu({ label, options }: { label: string; options: AddOption[] }) {
@@ -80,9 +86,10 @@ export function ListDetail({
   filters,
   list,
   detail,
+  empty,
 }: ListDetailProps) {
   return (
-    <div className="cm-md">
+    <div className={`cm-md${empty ? ' is-empty' : ''}`}>
       <div className="cm-md-list">
         <PageHeader className="cm-md-list-head" eyebrow={`${count} ${count === 1 ? 'entry' : 'entries'}`} title={title}>
             {onGenerate && (
@@ -108,6 +115,7 @@ export function ListDetail({
               </Button>
             ) : null}
         </PageHeader>
+        {!empty && <>
         <div className="cm-md-search">
           <span className="cm-md-search-glyph">&#x2315;</span>
           <input
@@ -118,8 +126,9 @@ export function ListDetail({
         </div>
         {filters && <div className="cm-md-filters">{filters}</div>}
         <div className="cm-md-list-scroll">{list}</div>
+        </>}
       </div>
-      <div className="cm-md-detail">{detail}</div>
+      <div className="cm-md-detail">{empty ? <EmptyState {...empty} /> : detail}</div>
     </div>
   );
 }
@@ -223,9 +232,12 @@ export function FilterSep() {
 }
 
 interface EmptyDetailProps {
-  children: ReactNode;
+  /** What the list holds: "item" reads "Select an item from the list." */
+  noun?: string;
+  children?: ReactNode;
 }
 
-export function EmptyDetail({ children }: EmptyDetailProps) {
-  return <div className="cm-empty">{children}</div>;
+/** The detail pane when the list has records but none is open (a search hid them all). */
+export function EmptyDetail({ noun, children }: EmptyDetailProps) {
+  return <div className="cm-empty">{children ?? `Select ${/^[aeiou]/i.test(noun ?? 'entry') ? 'an' : 'a'} ${noun ?? 'entry'} from the list.`}</div>;
 }

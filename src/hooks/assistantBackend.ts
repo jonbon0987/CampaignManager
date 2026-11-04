@@ -268,7 +268,7 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       // An update keeps its place in the rail; a new section appends below.
       sort_order: clean.sort_order ?? existing?.sort_order
         ?? nextOrder(moduleId, campaign.submodules.filter(s => s.module_id === moduleId).length),
-      title: (typeof clean.title === 'string' && clean.title.trim()) || existing?.title || 'Untitled Submodule',
+      title: (typeof clean.title === 'string' && clean.title.trim()) || existing?.title || 'Untitled part',
       module_id: moduleId,
     } as Parameters<typeof campaign.upsertSubmodule>[0]);
     rememberRef(raw, saved?.id ?? existing?.id);
@@ -383,7 +383,7 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     composerPlaceholder: 'Ask about your campaign, or describe what to build…',
     samples: [
       { glyph: '▣', text: "Prep tonight's session" },
-      { glyph: '▸', text: 'Break a module into submodules and scenes' },
+      { glyph: '▸', text: 'Break a module into parts and scenes' },
       { glyph: '↯', text: 'What loose threads should I tie up?' },
       { glyph: '◉', text: 'Recap where we left off last session' },
     ],

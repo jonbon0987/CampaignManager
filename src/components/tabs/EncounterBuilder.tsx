@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
+import { useReportRecord } from '../../context/NavigationContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { usePlay } from '../../context/PlayContext';
@@ -32,6 +33,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
 
   // Selected encounter in master-detail
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('combat', selectedId);
 
   // Search
   const [search, setSearch] = useState('');
@@ -147,8 +149,12 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
         onAdd={() => void handleAdd()}
         addLabel="+ Add encounter"
         onGenerate={() => setGenOpen(true)}
+        empty={encounters.length === 0 ? {
+          glyph: '⚔', text: 'No encounters yet. Build one from your stat sheets or the SRD, and it rates itself for the party. Or generate one.',
+          actionLabel: 'Add an encounter', onAction: () => void handleAdd(),
+        } : null}
         list={filtered.length === 0
-          ? <div className="cm-empty is-inline">{encounters.length === 0 ? 'No encounters yet. Add one, or generate one.' : 'No matches.'}</div>
+          ? <div className="cm-empty is-inline">No encounters match.</div>
           : filtered.map(enc => {
             const tier = tierOf(enc);
             const dc = tier ? difficultyColors[tier] : null;
@@ -175,7 +181,7 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
             />
           </div>
         ) : (
-          <EmptyDetail>Select an encounter, or add one.</EmptyDetail>
+          <EmptyDetail noun="encounter" />
         )}
       />
 

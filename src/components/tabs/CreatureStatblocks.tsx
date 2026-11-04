@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useCampaign } from '../../context/CampaignContext';
+import { useReportRecord } from '../../context/NavigationContext';
 import { Modal } from '../Modal';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
 import { StatBlockText } from '../ui/StatBlockText';
@@ -318,6 +319,7 @@ export default function CreatureStatblocks({ onImportFromWorld, openId, onOpenCo
   const [srdOpen, setSrdOpen] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useReportRecord('combat', selectedId);
   const [filterType, setFilterType] = useState<string>('all');
   const [search, setSearch] = useState('');
   const { openStatBlock, activeStatBlockId, closeStatBlock } = useStatBlockPanel();
@@ -497,6 +499,10 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           { label: 'Blank stat sheet', onClick: () => void handleAdd() },
           { label: 'From the SRD library…', onClick: () => setSrdOpen(true) },
         ]}
+        empty={monsterStatblocks.length === 0 ? {
+          glyph: '◆', text: 'No stat sheets yet. Copy a creature from the SRD library, write your own, or generate one.',
+          actionLabel: 'Browse the SRD library', onAction: () => setSrdOpen(true),
+        } : null}
         onGenerate={openGenModal}
         onImport={onImportFromWorld}
         filters={monsterStatblocks.length > 0 && (
@@ -506,7 +512,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           </>
         )}
         list={filtered.length === 0
-          ? <div className="cm-empty is-inline">{monsterStatblocks.length === 0 ? 'No stat sheets yet. Add one from the SRD library, write your own, or generate one.' : 'No stat sheets match.'}</div>
+          ? <div className="cm-empty is-inline">No stat sheets match.</div>
           : filtered.map(m => (
             <ListRow key={m.id} active={selected?.id === m.id} onClick={() => setSelectedId(m.id)} glyph="◆"
               title={m.name || 'Unnamed creature'}
@@ -523,7 +529,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             onView={() => openStatBlock(selected.id)}
           />
         ) : (
-          <EmptyDetail>Select a stat sheet, or add one.</EmptyDetail>
+          <EmptyDetail noun="stat sheet" />
         )}
       />
 
