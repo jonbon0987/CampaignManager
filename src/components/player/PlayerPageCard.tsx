@@ -55,7 +55,7 @@ function Card({ shares }: { shares: PlayerSharesValue }) {
             places and lore you switch on. Notes and secrets never appear on it.
           </p>
           <div className="ov-share-actions">
-            <Button size="sm" variant="primary" onClick={() => void shares.issueLink()}>Make a player page</Button>
+            <Button size="sm" variant="secondary" onClick={() => void shares.issueLink()}>Make a player page</Button>
           </div>
         </>
       ) : (

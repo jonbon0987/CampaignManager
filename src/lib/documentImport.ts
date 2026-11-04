@@ -91,7 +91,7 @@ export const entityMeta: Record<ImportActionType, {
   upsertHook:         { label: 'Thread',       badgeColor: 'red',    glyph: '✧', nameField: 'title' },
   upsertLore:         { label: 'Lore',         badgeColor: 'muted',  glyph: '❡', nameField: 'title' },
   upsertModule:       { label: 'Module',       badgeColor: 'gold',   glyph: '◇', nameField: 'title' },
-  upsertSubmodule:    { label: 'Submodule',    badgeColor: 'muted',  glyph: '◇', nameField: 'title' },
+  upsertSubmodule:    { label: 'Part',         badgeColor: 'muted',  glyph: '◇', nameField: 'title' },
   upsertScene:        { label: 'Scene',        badgeColor: 'muted',  glyph: '▸', nameField: 'title' },
   upsertRelationship:      { label: 'Relationship', badgeColor: 'muted',  glyph: '⧉', nameField: 'label' },
   upsertMonsterStatblock:  { label: 'Stat sheet',   badgeColor: 'blue',   glyph: '◆', nameField: 'name' },

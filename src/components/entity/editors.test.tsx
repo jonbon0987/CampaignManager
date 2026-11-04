@@ -52,9 +52,20 @@ describe('NPCEditor', () => {
 
   it('leaves campaign-only parts out of the world', () => {
     render(<NPCEditor npc={npc()} scope="world" factions={[]} locations={[]} statblocks={[]} save={vi.fn()} remove={vi.fn()} />);
-    expect(screen.getByText('World NPC')).toBeTruthy();
+    expect(screen.getByText('NPC · in canon')).toBeTruthy();
     expect(screen.queryByText('Session history list')).toBeNull();
     expect(screen.queryByLabelText('First session #')).toBeNull();
+    // Whether the party has met them, and how they feel, is each campaign's own.
+    expect(screen.queryByText('Met by PCs')).toBeNull();
+    expect(screen.queryByLabelText('Toward the party')).toBeNull();
+  });
+
+  it('says which campaigns use a canon NPC', () => {
+    const onOpenCampaign = vi.fn();
+    render(<NPCEditor npc={npc()} scope="world" factions={[]} locations={[]} statblocks={[]} save={vi.fn()} remove={vi.fn()}
+      usedIn={[{ id: 'c1', name: 'Test' }]} onOpenCampaign={onOpenCampaign} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    expect(onOpenCampaign).toHaveBeenCalledWith('c1');
   });
 
   it('saves what was typed', async () => {
@@ -177,7 +188,7 @@ describe('StatSheetEditor', () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const onView = vi.fn();
     render(<StatSheetEditor statblock={sheet()} scope="world" save={save} remove={vi.fn()} onView={onView} />);
-    expect(screen.getByText('World stat sheet')).toBeTruthy();
+    expect(screen.getByText('Stat sheet · in canon')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'View sheet' }));
     await waitFor(() => expect(onView).toHaveBeenCalled());
     expect(save).toHaveBeenCalled();

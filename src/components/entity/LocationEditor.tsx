@@ -102,7 +102,7 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
 
       {scope === 'campaign' && <SessionUpdateBand entityType="location" entityId={location.id} />}
 
-      <div className="cm-eyebrow">{scope === 'world' ? 'World location' : 'Location'}</div>
+      <div className="cm-eyebrow">{scope === 'world' ? 'Location · in canon' : 'Location'}</div>
 
       <fieldset className="as-fieldset" disabled={locked}>
         <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Location name…" maxLength={limitFor('locations', 'name')} aria-label="Name" />

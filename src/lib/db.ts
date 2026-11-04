@@ -136,6 +136,13 @@ export const Campaigns = {
     return data;
   },
 
+  /** Changes some of a campaign's columns, leaving the rest. */
+  async update(id: string, patch: Partial<Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<void> {
+    validateFieldLimits('campaigns', patch);
+    const { error } = await supabase.from('campaigns').update(patch).eq('id', id);
+    if (error) throw error;
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('campaigns').delete().eq('id', id);
     if (error) throw error;
@@ -154,6 +161,16 @@ export const CampaignNPCs = {
       .eq('campaign_id', campaignId);
     if (error) throw error;
     return (data ?? []).map(row => row.npc_id);
+  },
+
+  /** The campaigns that have imported a canon NPC. */
+  async getCampaignIds(npcId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('campaign_npcs')
+      .select('campaign_id')
+      .eq('npc_id', npcId);
+    if (error) throw error;
+    return (data ?? []).map(row => row.campaign_id);
   },
 
   async link(campaignId: string, npcId: string): Promise<void> {

@@ -878,7 +878,7 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
       deleteRelationship: withUndo(deleteRelationship, 'character_relationships', 'Relationship removed'),
       submodules, loadSubmodules,
       upsertSubmodule: withToast(upsertSubmodule),
-      deleteSubmodule: withUndo(deleteSubmodule, 'submodules', 'Submodule deleted'),
+      deleteSubmodule: withUndo(deleteSubmodule, 'submodules', 'Part deleted'),
       scenes, loadScenes,
       upsertScene: withToast(upsertScene),
       deleteScene: withUndo(deleteScene, 'scenes', 'Scene deleted'),

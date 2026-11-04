@@ -33,7 +33,7 @@ function DateForm({ initial, months, onSave, onCancel }: {
       </select>
       <input className="as-input wd-year" type="number" value={year} aria-label="Year"
         onChange={e => setYear(Math.round(Number(e.target.value)) || 0)} />
-      <Button type="submit" size="xs" variant="primary">Set</Button>
+      <Button type="submit" size="xs" variant="secondary">Set</Button>
       {onCancel && <Button type="button" size="xs" variant="ghost" onClick={onCancel}>Cancel</Button>}
     </form>
   );

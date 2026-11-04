@@ -27,13 +27,15 @@ interface ModuleDetailProps {
   module: Module;
   onBack: () => void;
   onModuleDeleted: () => void;
-  /** Opens on this submodule instead of the overview (a scene picked from Play's agenda). */
+  /** Opens on this submodule instead of the overview (a scene picked from Play's agenda, the URL). */
   initialSubmoduleId?: string | null;
+  /** Told which part is open (null for the overview), for the URL. */
+  onPartChange?: (submoduleId: string | null) => void;
 }
 
 const OVERVIEW = '__overview';
 
-export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, initialSubmoduleId }: ModuleDetailProps) {
+export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, initialSubmoduleId, onPartChange }: ModuleDetailProps) {
   const {
     submodules, loadSubmodules, upsertSubmodule,
     scenes, loadScenes,
@@ -52,6 +54,8 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
     () => submodules.filter(s => s.module_id === mod.id).sort((a, b) => a.sort_order - b.sort_order),
     [submodules, mod.id],
   );
+
+  useEffect(() => { onPartChange?.(selectedId === OVERVIEW ? null : selectedId); }, [selectedId, onPartChange]);
 
   // keep selection valid (once the submodules have loaded)
   useEffect(() => {
@@ -75,7 +79,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
 
   const addSubmodule = async () => {
     await upsertSubmodule({
-      module_id: mod.id, title: 'New Submodule', submodule_type: 'location',
+      module_id: mod.id, title: 'New part', submodule_type: 'location',
       summary: null, content: null, dm_notes: null, sort_order: modSubs.length,
       linked_monster_ids: null, linked_encounter_ids: null,
     });
@@ -114,7 +118,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
 
         <div className="cm-md-list-scroll" style={{ flex: 1, overflowY: 'auto' }}>
           <div className="md-treelabel">
-            <span className="md-treelabel-text">Submodules</span>
+            <span className="md-treelabel-text">Parts</span>
             <span className="md-treelabel-rule" />
           </div>
 
@@ -162,7 +166,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, ini
           })}
 
           <div className="md-railfoot">
-            <button className="md-add md-add-block" onClick={addSubmodule}>＋ Add submodule</button>
+            <button className="md-add md-add-block" onClick={addSubmodule}>＋ Add part</button>
           </div>
         </div>
       </aside>

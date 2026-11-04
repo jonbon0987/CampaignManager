@@ -64,7 +64,7 @@ export function LoreEditor({ entry, scope, save, remove, onDeleted, canon }: {
 
       {scope === 'campaign' && <SessionUpdateBand entityType="lore" entityId={entry.id} />}
 
-      <div className="cm-eyebrow">{scope === 'world' ? 'World lore' : 'Lore'}</div>
+      <div className="cm-eyebrow">{scope === 'world' ? 'Lore · in canon' : 'Lore'}</div>
 
       <fieldset className="as-fieldset" disabled={locked}>
         <TitleInput value={form.title} onChange={e => set('title', e.target.value)} placeholder="Entry title…" maxLength={limitFor('lore_entries', 'title')} aria-label="Title" />

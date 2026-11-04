@@ -30,7 +30,7 @@ const KINDS: Record<string, { noun: string; label: (d: Row) => string }> = {
   lore_entries: { noun: 'Lore', label: named },
   timeline_events: { noun: 'Timeline event', label: named },
   modules: { noun: 'Module', label: named },
-  submodules: { noun: 'Submodule', label: named },
+  submodules: { noun: 'Part', label: named },
   scenes: { noun: 'Scene', label: named },
   handouts: { noun: 'Handout', label: named },
   items: { noun: 'Item', label: named },

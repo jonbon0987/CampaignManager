@@ -34,7 +34,7 @@ export function useRouteSync(route: Route | null, apply: (route: Route) => void)
     if (path === here) return;
     const minor = !prev || (sameTab(prev, route) && (
       !prev.recordId || !route.recordId ||
-      (prev.scope === 'campaign' && route.scope === 'campaign' && prev.recordId === route.recordId && prev.view !== route.view)
+      (prev.recordId === route.recordId && prev.view !== route.view)
     ));
     const url = path + window.location.hash;
     if (minor) window.history.replaceState(window.history.state, '', url);

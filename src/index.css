@@ -320,14 +320,15 @@ input:focus, textarea:focus, select:focus {
   flex-direction: column;
   gap: 10px;
 }
+/* Outlined, so each screen's one main action is the only filled gold on it. */
 .cm-run-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  background: var(--gold);
-  color: #1a1410;
-  border: 1px solid var(--gold);
+  background: var(--gold-dim);
+  color: var(--gold);
+  border: 1px solid var(--gold-line);
   border-radius: var(--radius);
   font-family: var(--display);
   font-size: 13px;
@@ -338,7 +339,8 @@ input:focus, textarea:focus, select:focus {
   transition: all .15s;
 }
 .cm-run-btn:hover {
-  background: var(--gold-2);
+  background: var(--gold);
+  color: #1a1410;
 }
 .cm-run-btn.is-on {
   background: var(--accent);
@@ -1118,6 +1120,11 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border-bottom: 1px solid var(--rule-soft);
 }
 .set-row:last-child { border-bottom: none; }
+.set-row .set-name { width: 280px; flex: 0 1 280px; min-width: 0; }
+.set-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.set-field { display: flex; flex-direction: column; gap: 6px; padding: 14px 0; border-bottom: 1px solid var(--rule-soft); }
+.set-field:last-child { border-bottom: none; }
+.set-field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .set-label {
   font-family: var(--serif);
   font-size: 15px;
@@ -1683,6 +1690,15 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   padding: 6px 0;
   text-align: left;
 }
+
+/* The one empty state (components/ui/EmptyState). In a list with nothing in it,
+   the list keeps its header and the state fills the page beneath. */
+.cm-es { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 64px 24px; max-width: 460px; margin: 0 auto; min-height: 100%; box-sizing: border-box; }
+.cm-es-glyph { font-family: var(--display); font-size: 32px; color: var(--gold); opacity: .7; }
+.cm-es-text { margin: 0; font-size: 15px; line-height: 1.55; font-style: italic; color: var(--ink-2); }
+.cm-md.is-empty { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+.cm-md.is-empty .cm-md-list { border-right: none; }
+.cm-md.is-empty .cm-md-detail { background: var(--bg); }
 
 /* ═══ Forms (updated for Scriptorium) ═══ */
 .cm-input {
@@ -4040,6 +4056,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .wc { margin-top: 24px; padding: 14px 18px 16px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
 .wc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .wc-total { font-size: 13px; color: var(--ink-3); }
+.wc-head .wc-total { flex: 1; }
+.wc.is-folded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.wc.is-folded .wc-total { flex: 1; min-width: 200px; }
 .wc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
 .wc-row .as-ll { margin: 0; }
 .wc-suffix { width: 110px; }

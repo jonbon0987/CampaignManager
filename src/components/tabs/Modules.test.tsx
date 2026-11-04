@@ -24,10 +24,10 @@ beforeEach(() => {
 });
 
 describe('Modules (list view)', () => {
-  it('shows the empty and select-a-module states', () => {
+  it('shows one empty state with a way to add the first module', () => {
     render(<Modules viewMode="list" />);
-    expect(screen.getByText('No modules yet.')).toBeTruthy();
-    expect(screen.getByText('Select a module')).toBeTruthy();
+    expect(screen.getByText(/No modules yet/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add a module' })).toBeTruthy();
   });
 
   it('lists modules sorted by numeric chapter', () => {

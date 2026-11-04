@@ -10,8 +10,8 @@ type Target = 'module' | 'submodule' | 'scene';
 
 const TARGETS: { id: Target; label: string; glyph: string; blurb: string }[] = [
   { id: 'module',    label: 'Module',    glyph: '▣', blurb: 'A new top-level chapter of the adventure.' },
-  { id: 'submodule', label: 'Submodule', glyph: '▣', blurb: 'A section inside a module you choose.' },
-  { id: 'scene',     label: 'Scene',     glyph: '▸', blurb: 'A beat inside a submodule you choose.' },
+  { id: 'submodule', label: 'Part', glyph: '▣', blurb: 'A section inside a module you choose.' },
+  { id: 'scene',     label: 'Scene',     glyph: '▸', blurb: 'A beat inside a part you choose.' },
 ];
 
 const moduleLabel = (m: { chapter: string | null; title: string }) =>
@@ -75,7 +75,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
           module_id: moduleId, title, submodule_type: null, summary, content: null, dm_notes: null,
           sort_order: subs.length, linked_monster_ids: null, linked_encounter_ids: null,
         });
-        toast(`Promoted “${title}” to a submodule.`);
+        toast(`Promoted “${title}” to a part.`);
       } else if (target === 'scene' && submoduleId) {
         const scenes = await ScenesDB.getBySubmodule(submoduleId);
         await upsertScene({
@@ -166,7 +166,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
 
       {target === 'scene' && (
         <div style={{ marginTop: 16 }}>
-          <label className="as-ll" style={{ display: 'block', marginBottom: 8 }}>Add under which submodule?</label>
+          <label className="as-ll" style={{ display: 'block', marginBottom: 8 }}>Add under which part?</label>
           {loadingTree ? (
             <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>Loading modules…</div>
           ) : modules.length === 0 || !hasAnySubmodule ? (
@@ -185,7 +185,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
                   <div style={{ paddingLeft: 12, borderLeft: '1px solid var(--rule)' }}>
                     {subs.map(s => (
                       <button key={s.id} onClick={() => setSubmoduleId(s.id)} style={rowStyle(submoduleId === s.id)}>
-                        <span style={{ color: 'var(--gold)', marginRight: 7 }} aria-hidden="true">▸</span>{s.title || 'Untitled Submodule'}
+                        <span style={{ color: 'var(--gold)', marginRight: 7 }} aria-hidden="true">▸</span>{s.title || 'Untitled part'}
                       </button>
                     ))}
                   </div>

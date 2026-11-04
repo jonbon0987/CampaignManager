@@ -162,6 +162,10 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       ] : undefined}
       onImport={onImportFromWorld && (filter === 'all' || filter === 'npc') ? onImportFromWorld : undefined}
       importLabel="⊕ Import NPC"
+      empty={pcs.length + npcs.length + factions.length === 0 ? {
+        glyph: '❦', text: 'No one in the cast yet. Add the party’s characters, the NPCs they’ll meet and the factions behind them, or import NPCs from canon.',
+        actionLabel: 'Add a player character', onAction: () => void addPC(),
+      } : null}
       filters={
         <>
           <Pill active={filter === 'all'} onClick={() => setFilter('all')}>All</Pill>
@@ -179,7 +183,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       }
       list={
         all.length === 0 ? (
-          <div className="cm-empty is-inline">No entries match your filters</div>
+          <div className="cm-empty is-inline">No one matches.</div>
         ) : (
           all.map(item => (
             <ListRow
@@ -216,7 +220,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
             onDeselect={() => setSelectedId(null)}
           />
         ) : (
-          <EmptyDetail>Select an entry from the list</EmptyDetail>
+          <EmptyDetail noun="character" />
         )
       }
     />

@@ -10,6 +10,8 @@ import { blankItem, itemLine } from '../../lib/items';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { usePlanNextSession } from '../../hooks/useSessionLifecycle';
 import { blankSession, lastPlayed, nextSessionNumber, sessionName, STATUS_LABEL } from '../../lib/sessionLifecycle';
+import { kindMeta } from '../../lib/randomEncounter';
+import type { WorldCombatSubView } from '../world/WorldViews';
 import type { PaletteItem } from './CommandPalette';
 
 const join = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' ');
@@ -21,6 +23,8 @@ const CAMPAIGN_PLACES: { tab: Tab; label: string; glyph: string; view?: string }
   { tab: 'threads', label: 'Threads', glyph: '✧' },
   { tab: 'threads', label: 'Inbox (ideas)', glyph: '✎' },
   { tab: 'combat', label: 'Encounters', glyph: '⚔' },
+  { tab: 'combat', label: 'Random tables', glyph: '⚄', view: 'random' },
+  { tab: 'combat', label: 'Stat sheets', glyph: '◆', view: 'statblocks' },
   { tab: 'cast', label: 'Cast', glyph: '❦' },
   { tab: 'cast', label: 'Relationship web', glyph: '❦', view: 'web' },
   { tab: 'locations', label: 'Locations', glyph: '✦' },
@@ -45,6 +49,7 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
   const c = useCampaign();
   const {
     sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, encounters,
+    submodules, scenes, randomEncounterTables,
     upsertNPC, upsertPC, upsertFaction, upsertLocation, upsertLore, upsertSession,
   } = c;
   const planNext = usePlanNextSession();
@@ -108,9 +113,25 @@ export function useCampaignPaletteItems(h: CampaignPaletteHandlers): PaletteItem
         detail: [s.creature_type, s.challenge_rating ? `CR ${s.challenge_rating}` : null].filter(Boolean).join(' · ') || undefined, keywords: join(s.tags), run: () => h.openRecord('combat', s.id, 'statblock') })),
       ...encounters.map(e => ({ key: `e:${e.id}`, group: 'Encounters', glyph: '⚔', label: e.name, detail: e.status ?? undefined,
         keywords: join(e.description), run: () => h.openRecord('combat', e.id, 'encounter') })),
+      ...randomEncounterTables.map(t => ({ key: `rt:${t.id}`, group: 'Random tables', glyph: kindMeta(t.kind).glyph, label: t.name || 'Untitled table',
+        detail: kindMeta(t.kind).label, keywords: join(t.subtitle, t.description), run: () => h.openRecord('combat', t.id, 'random') })),
+      // Parts and scenes open in their module, with the module (and part) as detail.
+      ...submodules.flatMap(sub => {
+        const mod = modules.find(m => m.id === sub.module_id);
+        return mod ? [{ key: `sub:${sub.id}`, group: 'Parts', glyph: '▣', label: sub.title || 'Untitled part', detail: mod.title,
+          keywords: join(sub.summary), run: () => h.openRecord('modules', mod.id, `submodule:${sub.id}`) }] : [];
+      }),
+      ...scenes.flatMap(sc => {
+        const sub = submodules.find(x => x.id === sc.submodule_id);
+        const mod = sub && modules.find(m => m.id === sub.module_id);
+        return sub && mod ? [{ key: `scene:${sc.id}`, group: 'Scenes', glyph: '▸', label: sc.title || 'Untitled scene',
+          detail: `${sub.title || 'Untitled part'} · ${mod.title}`, keywords: join(sc.summary, sc.read_aloud),
+          run: () => h.openRecord('modules', mod.id, `submodule:${sub.id}`) }] : [];
+      }),
     ];
     return [...actions, ...records];
-  }, [h, planNext, sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, encounters, itemsCtx,
+  }, [h, planNext, sessions, pcs, npcs, locations, factions, hooks, lore, modules, monsterStatblocks, encounters,
+      submodules, scenes, randomEncounterTables, itemsCtx,
       upsertNPC, upsertPC, upsertFaction, upsertLocation, upsertLore, upsertSession]);
 }
 
@@ -123,9 +144,14 @@ const WORLD_PLACES: { tab: WorldTab; label: string; glyph: string }[] = [
   { tab: 'combat', label: 'Encounters', glyph: '⚔' },
 ];
 
-export function useWorldPaletteItems(h: { openShortcuts: () => void; openNewCampaign: () => void }): PaletteItem[] {
+export function useWorldPaletteItems(h: {
+  openShortcuts: () => void;
+  openNewCampaign: () => void;
+  /** Opens a record in the world's Encounters tab, on the view it lives in. */
+  openCombat: (view: WorldCombatSubView, id: string) => void;
+}): PaletteItem[] {
   const w = useWorld();
-  const { npcs, factions, locations, lore, timeline, campaigns, setWorldTab, setSelected, openCampaign,
+  const { npcs, factions, locations, lore, timeline, campaigns, bestiary, encounters, worldRandomEncounterTables, setWorldTab, setSelected, openCampaign,
     createNPC, createFaction, createLocation, createLoreEntry } = w;
 
   return useMemo(() => {
@@ -144,14 +170,20 @@ export function useWorldPaletteItems(h: { openShortcuts: () => void; openNewCamp
       ...WORLD_PLACES.map(p => ({ key: `go:${p.tab}`, group: 'Go to', glyph: p.glyph, label: p.label, run: () => setWorldTab(p.tab) })),
     ];
     const records: PaletteItem[] = [
-      ...campaigns.map(c => ({ key: `c:${c.id}`, group: 'Campaigns', glyph: '❧', label: c.name, detail: c.status, run: () => openCampaign(c.id) })),
+      ...campaigns.map(c => ({ key: `c:${c.id}`, group: 'Campaigns', glyph: '❧', label: c.name, detail: c.archived ? 'archived' : c.status, run: () => openCampaign(c.id) })),
       ...npcs.map(n => ({ key: `npc:${n.id}`, group: 'NPCs', glyph: '❦', label: n.name || 'Unnamed NPC', detail: n.role || undefined, keywords: n.desc, run: () => open('npcs', n.id) })),
       ...factions.map(f => ({ key: `f:${f.id}`, group: 'Factions', glyph: '◈', label: f.name || 'Unnamed faction', detail: f.type || undefined, keywords: f.desc, run: () => open('npcs', f.id) })),
       ...locations.map(l => ({ key: `l:${l.id}`, group: 'Locations', glyph: '✦', label: l.name || 'Unnamed location', detail: l.type || undefined, keywords: join(l.desc, l.region, l.history), run: () => open('locations', l.id) })),
       ...lore.map(e => ({ key: `lore:${e.id}`, group: 'Lore', glyph: '❡', label: e.title || 'Untitled entry', keywords: e.desc, run: () => open('lore', e.id) })),
       ...timeline.map(t => ({ key: `tl:${t.id}`, group: 'Timeline', glyph: '❂', label: t.title, detail: t.date || undefined, keywords: t.desc, run: () => setWorldTab('timeline') })),
+      ...bestiary.map(b => ({ key: `sb:${b.id}`, group: 'Stat sheets', glyph: '◆', label: b.name || 'Unnamed creature', detail: [b.type, b.cr && `CR ${b.cr}`].filter(Boolean).join(' · ') || undefined,
+        run: () => h.openCombat('bestiary', b.id) })),
+      ...encounters.map(e => ({ key: `e:${e.id}`, group: 'Encounters', glyph: '⚔', label: e.name || 'Untitled encounter', detail: e.difficulty || undefined,
+        run: () => h.openCombat('encounter', e.id) })),
+      ...worldRandomEncounterTables.map(t => ({ key: `rt:${t.id}`, group: 'Random tables', glyph: kindMeta(t.kind).glyph, label: t.name || 'Untitled table',
+        detail: kindMeta(t.kind).label, run: () => h.openCombat('random', t.id) })),
     ];
     return [...actions, ...records];
-  }, [h, npcs, factions, locations, lore, timeline, campaigns, setWorldTab, setSelected, openCampaign,
+  }, [h, npcs, factions, locations, lore, timeline, campaigns, bestiary, encounters, worldRandomEncounterTables, setWorldTab, setSelected, openCampaign,
       createNPC, createFaction, createLocation, createLoreEntry]);
 }

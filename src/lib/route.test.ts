@@ -14,6 +14,15 @@ describe('parseRoute', () => {
     expect(parseRoute('/w/abc/npcs/n1')).toEqual({ scope: 'world', worldId: 'abc', tab: 'npcs', recordId: 'n1' });
   });
 
+  it('reads a world tab’s view', () => {
+    expect(parseRoute('/w/abc/combat/t1', '?view=random')).toMatchObject({ scope: 'world', tab: 'combat', recordId: 't1', view: 'random' });
+  });
+
+  it('reads the part open in a module', () => {
+    expect(parseRoute('/w/abc/c/c1/modules/m1/p2')).toMatchObject({ scope: 'campaign', tab: 'modules', recordId: 'm1', sub: 'p2' });
+    expect(parseRoute('/w/abc/c/c1/modules/m1')).toMatchObject({ recordId: 'm1', sub: undefined });
+  });
+
   it('falls back to Overview for an unknown world tab', () => {
     expect(parseRoute('/w/abc/nonsense')).toMatchObject({ scope: 'world', tab: 'overview' });
   });
@@ -35,6 +44,9 @@ describe('buildPath', () => {
     const routes: Route[] = [
       { scope: 'world', worldId: 'w 1', tab: 'locations', recordId: 'l/2' },
       { scope: 'campaign', worldId: 'w', campaignId: 'c', tab: 'sessions', recordId: 's', view: 'timeline' },
+      { scope: 'world', worldId: 'w', tab: 'combat', recordId: 'sb1', view: 'bestiary' },
+      { scope: 'campaign', worldId: 'w', campaignId: 'c', tab: 'modules', recordId: 'm1', sub: 'part 2' },
+      { scope: 'campaign', worldId: 'w', campaignId: 'c', tab: 'combat', recordId: 't1', view: 'random' },
     ];
     for (const r of routes) {
       const path = buildPath(r);

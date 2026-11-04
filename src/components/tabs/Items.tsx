@@ -101,9 +101,13 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
         { label: 'Blank item', onClick: () => void handleAdd() },
         { label: 'From the SRD library…', onClick: () => setSrdOpen(true) },
       ]}
+      empty={items.length === 0 ? {
+        glyph: GLYPH, text: 'No items yet. Copy magic items from the SRD library, or add your own treasure and gear, then give them out from here, a PC’s page or a session’s loot.',
+        actionLabel: 'Browse the SRD library', onAction: () => setSrdOpen(true),
+      } : null}
       list={
-        items.length === 0 ? (
-          <div className="cm-empty is-inline">No items yet. Add magic items from the SRD library, or your own treasure and gear, then give them out from here, a PC’s page or a session’s loot.</div>
+        shown.length === 0 ? (
+          <div className="cm-empty is-inline">No items match.</div>
         ) : (
           <>
             {held.length > 0 && (
@@ -131,7 +135,7 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
             onDeleted={() => setSelectedId(null)}
           />
         ) : (
-          <EmptyDetail>Select an item from the list</EmptyDetail>
+          <EmptyDetail noun="item" />
         )
       }
     />

@@ -39,11 +39,16 @@ export function DiscordBotSettings() {
         For players who join over Discord. The bot sits in your voice channel while you record and keeps each person on their own track, so their lines are matched to the right character.
         It runs on this computer while you play.
       </p>
+      {!bot.online && bot.presence && (
+        <p className="text-sm" style={{ margin: 0, color: 'var(--ink)' }}>
+          Not running. Start it on this computer before you record; the command is under Developer setup.
+        </p>
+      )}
       {!bot.online && (
-        // Setup is a one-off, so it folds away once the bot has been seen.
-        <details open={!bot.presence}>
-          <summary className="text-sm" style={{ cursor: 'pointer', color: 'var(--gold)' }}>
-            {bot.presence ? 'Set up the bot again' : 'Set up the bot (once)'}
+        // A one-off for whoever runs the app's code, so it stays folded.
+        <details className="set-dev">
+          <summary className="text-sm" style={{ cursor: 'pointer', color: 'var(--ink-2)' }}>
+            Developer setup: running the bot on this computer
           </summary>
         <ol className="text-sm flex flex-col gap-2" style={{ margin: '10px 0 0', paddingLeft: 20, color: 'var(--ink)', listStyle: 'decimal' }}>
           <li>Create a bot at the Discord Developer Portal (New Application → Bot), copy its token, and invite it to your server with View Channels, Connect and Send Messages.</li>
@@ -55,15 +60,10 @@ export function DiscordBotSettings() {
               <Button size="xs" onClick={() => copy(envLines)} aria-label="Copy the settings"><Copy size={12} /></Button>
             </div>
           </li>
-          <li>Start it with <span className="cm-kbd">npm run bot</span>. This shows “Running” within a few seconds.</li>
+          <li>Start it with <span className="cm-kbd">npm run bot</span>. This shows “Running” within a few seconds. Run the same command before each session you record.</li>
         </ol>
         <p className="text-xs" style={{ margin: '8px 0 0', color: 'var(--ink-3)' }}>The full steps, and what to do if something goes wrong, are in <span className="cm-kbd">bot/README.md</span>.</p>
         </details>
-      )}
-      {!bot.online && bot.presence && (
-        <p className="text-sm" style={{ margin: 0, color: 'var(--ink)' }}>
-          Start it with <span className="cm-kbd">npm run bot</span> before you record.
-        </p>
       )}
       <p className="text-xs" style={{ margin: 0, color: 'var(--ink-3)' }}>
         Only people you link to a character whose player has agreed to recording (or link as the DM) are recorded. The bot posts a notice in the channel when recording starts and stops.

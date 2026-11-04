@@ -24,7 +24,7 @@ interface NavigationContextValue {
   /** Clear the highlight */
   clearHighlight: () => void;
   /** Tells the shell which record a tab is showing, so the URL can name it. */
-  reportRecord?: (tab: Tab, id: string | null) => void;
+  reportRecord?: (tab: Tab, id: string | null, sub?: string | null) => void;
   /** Switches to a tab and opens a record there. Falls back to just the tab. */
   openRecord: (tab: Tab, id: string, kind?: string) => void;
 }
@@ -36,7 +36,7 @@ interface NavigationProviderProps {
   setActiveTab: (tab: Tab) => void;
   /** Switches to a tab and selects a record there (for tabs that take an open target). */
   openRecord?: (tab: Tab, id: string, kind?: string) => void;
-  reportRecord?: (tab: Tab, id: string | null) => void;
+  reportRecord?: (tab: Tab, id: string | null, sub?: string | null) => void;
 }
 
 export function NavigationProvider({ children, setActiveTab, openRecord, reportRecord }: NavigationProviderProps) {
@@ -87,12 +87,14 @@ export function NavigationProvider({ children, setActiveTab, openRecord, reportR
 }
 
 /**
- * Puts the record a tab is showing into the URL. Pass the record the DM picked
- * (null for none). Outside the campaign shell, such as in tests, it does nothing.
+ * Puts the record a tab is showing into the URL, and remembers it for the next
+ * visit to the tab. Pass the record the DM picked (null for none) and, for a
+ * module, the part open in it. Outside the campaign shell, such as in tests, it
+ * does nothing.
  */
-export function useReportRecord(tab: Tab, id: string | null | undefined) {
+export function useReportRecord(tab: Tab, id: string | null | undefined, sub?: string | null) {
   const report = useContext(NavigationContext)?.reportRecord;
-  useEffect(() => { report?.(tab, id ?? null); }, [report, tab, id]);
+  useEffect(() => { report?.(tab, id ?? null, sub ?? null); }, [report, tab, id, sub]);
 }
 
 const noOpen = () => {};

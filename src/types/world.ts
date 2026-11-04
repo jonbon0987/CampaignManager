@@ -105,6 +105,8 @@ export interface WorldTimelineEvent {
   era: string;
   /** Order within its year: a campaign event's day of the year. */
   order?: number;
+  /** Day of the year in the world's calendar, for an event set to a date. */
+  day?: number | null;
 }
 
 export interface TimelineTypeConfig {
@@ -124,6 +126,8 @@ export interface WorldCampaign {
   party: string;
   lastPlayed: string;
   status: 'active' | 'paused' | 'completed';
+  /** Archived campaigns leave the world's lists until restored. */
+  archived: boolean;
 }
 
 export type WorldTab = 'overview' | 'lore' | 'locations' | 'npcs' | 'combat' | 'timeline';

@@ -4,6 +4,7 @@ import CreatureStatblocks from './CreatureStatblocks';
 import RandomEncounters from './RandomEncounters';
 
 export type CombatSubView = 'encounters' | 'random' | 'statblocks';
+const KIND_VIEW: Record<string, CombatSubView> = { encounter: 'encounters', statblock: 'statblocks', random: 'random' };
 
 // The Encounters tab: encounters, random tables and stat sheets, switched from
 // the topbar like every other tab's views. onImportFromWorld receives the
@@ -13,7 +14,11 @@ export default function CombatView({ view, setView, onImportFromWorld, openTarge
   view: string;
   setView: (v: CombatSubView) => void;
   onImportFromWorld?: (type: string) => void;
-  /** A record requested from outside (search, an @-mention): a stat sheet or an encounter. */
+  /**
+   * A record requested from outside (search, an @-mention, the URL): a stat
+   * sheet, an encounter or a random table. Without a kind (the URL, a return to
+   * the tab) it opens in the view already showing.
+   */
   openTarget?: { id: string; kind?: string } | null;
   onOpenConsumed?: () => void;
 }) {
@@ -22,7 +27,8 @@ export default function CombatView({ view, setView, onImportFromWorld, openTarge
   // Show the view the requested record lives in, then hand its id down.
   useEffect(() => {
     if (!openTarget) return;
-    setView(openTarget.kind === 'encounter' ? 'encounters' : 'statblocks');
+    const kindView = KIND_VIEW[openTarget.kind ?? ''];
+    if (kindView) setView(kindView);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenId(openTarget.id);
     onOpenConsumed?.();
@@ -32,7 +38,7 @@ export default function CombatView({ view, setView, onImportFromWorld, openTarge
   return (
     <div style={{ height: '100%', overflow: 'auto' }}>
       {view === 'random'
-        ? <RandomEncounters onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('randomEncounter') : undefined} />
+        ? <RandomEncounters onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('randomEncounter') : undefined} openId={openId} onOpenConsumed={clearOpenId} />
         : view === 'statblocks'
           ? <CreatureStatblocks onImportFromWorld={onImportFromWorld ? () => onImportFromWorld('bestiary') : undefined} openId={openId} onOpenConsumed={clearOpenId} />
           : <EncounterBuilder openId={openId} onOpenConsumed={clearOpenId} />}

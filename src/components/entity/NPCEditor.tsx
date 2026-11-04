@@ -60,7 +60,7 @@ const isEmpty = (v: string | null | undefined) => !v?.trim();
 type Optional = 'hooks' | 'voice' | 'notes' | 'statblock';
 const OPTIONAL_LABEL: Record<Optional, string> = { hooks: 'Hooks & motivations', voice: 'Voice', notes: 'DM notes', statblock: 'Stat sheet' };
 
-export function NPCEditor({ npc, scope, factions, locations, statblocks, save, remove, onDeleted, onOpenStatBlock, onOpenLocation, canon }: {
+export function NPCEditor({ npc, scope, factions, locations, statblocks, save, remove, onDeleted, onOpenStatBlock, onOpenLocation, canon, usedIn, onOpenCampaign }: {
   npc: NPC;
   scope: EntityScope;
   /** Factions it can belong to, in the same scope. */
@@ -74,6 +74,9 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
   onOpenStatBlock?: (id: string) => void;
   onOpenLocation?: (id: string) => void;
   canon?: EntityCanon<NPCFields>;
+  /** In the world: the campaigns that have imported it (null while loading). */
+  usedIn?: { id: string; name: string }[] | null;
+  onOpenCampaign?: (id: string) => void;
 }) {
   const confirm = useConfirm();
   const [form, setForm] = useState<NPCFields>(() => toFields(npc));
@@ -128,7 +131,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
 
       <div className="ent-head">
         <div className="ent-head-text">
-          <div className="cm-eyebrow">{scope === 'world' ? 'World NPC' : 'Non-Player Character'}</div>
+          <div className="cm-eyebrow">{scope === 'world' ? 'NPC · in canon' : 'NPC'}</div>
           <fieldset className="as-fieldset" disabled={locked}>
             <TitleInput value={form.name} onChange={e => set('name', e.target.value)} placeholder="Character name…" maxLength={limitFor('npcs', 'name')} aria-label="Name" />
             <input className="as-sub" value={form.role ?? ''} onChange={e => set('role', e.target.value || null)} placeholder="Role or title…" maxLength={limitFor('npcs', 'role')} aria-label="Role" />
@@ -151,13 +154,32 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
               ))}
             </div>
           </div>
-          <div className="as-mi">
-            <span className="as-ml">Met by PCs</span>
-            {/* eslint-disable-next-line no-restricted-syntax -- an on/off toggle, styled .as-tog */}
-            <button type="button" className={`as-tog${form.met_by_pcs ? ' is-on' : ''}`} onClick={() => set('met_by_pcs', !form.met_by_pcs)}>
-              {form.met_by_pcs ? 'Yes' : 'No'}
-            </button>
-          </div>
+          {/* Whether the party has met them, and how they feel about it, is each table's own. */}
+          {scope === 'campaign' ? (
+            <div className="as-mi">
+              <span className="as-ml">Met by PCs</span>
+              {/* eslint-disable-next-line no-restricted-syntax -- an on/off toggle, styled .as-tog */}
+              <button type="button" className={`as-tog${form.met_by_pcs ? ' is-on' : ''}`} onClick={() => set('met_by_pcs', !form.met_by_pcs)}>
+                {form.met_by_pcs ? 'Yes' : 'No'}
+              </button>
+            </div>
+          ) : usedIn !== undefined && (
+            <div className="as-mi">
+              <span className="as-ml">Used in</span>
+              <span className="npc-used-in">
+                {usedIn === null ? '…' : usedIn.length === 0 ? <span className="as-hint">No campaign yet</span>
+                  : usedIn.map((c, i) => (
+                    <span key={c.id}>
+                      {i > 0 && ', '}
+                      {onOpenCampaign
+                        // eslint-disable-next-line no-restricted-syntax -- a link to the campaign, styled as text
+                        ? <button type="button" className="cm-linklike" onClick={() => onOpenCampaign(c.id)}>{c.name}</button>
+                        : c.name}
+                    </span>
+                  ))}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="as-grid-2">
@@ -168,10 +190,12 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
               onChange={id => set('location_id', id)} onOpen={onOpenLocation} disabled={locked} />
             <WasText text={form.location} onClear={() => set('location', null)} disabled={locked} />
           </div>
-          <div className="as-fl">
-            <label className="as-ll" htmlFor={`npc-disp-${npc.id}`}>Toward the party</label>
-            <input id={`npc-disp-${npc.id}`} className="as-input" value={form.disposition ?? ''} onChange={e => set('disposition', e.target.value || null)} placeholder="Wary, friendly, owes them a favor…" maxLength={limitFor('npcs', 'disposition')} />
-          </div>
+          {scope === 'campaign' && (
+            <div className="as-fl">
+              <label className="as-ll" htmlFor={`npc-disp-${npc.id}`}>Toward the party</label>
+              <input id={`npc-disp-${npc.id}`} className="as-input" value={form.disposition ?? ''} onChange={e => set('disposition', e.target.value || null)} placeholder="Wary, friendly, owes them a favor…" maxLength={limitFor('npcs', 'disposition')} />
+            </div>
+          )}
           {scope === 'campaign' && (
             <div className="as-fl">
               <label className="as-ll" htmlFor={`npc-first-${npc.id}`}>First session #</label>

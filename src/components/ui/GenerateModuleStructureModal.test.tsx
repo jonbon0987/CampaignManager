@@ -104,7 +104,7 @@ describe('GenerateModuleStructureModal', () => {
 
     expect(screen.getByText('The Dive')).toBeTruthy();
     expect(screen.getByText('The Toll Office')).toBeTruthy();
-    expect(screen.getByText('2 of 2 submodules · 2 scenes')).toBeTruthy();
+    expect(screen.getByText('2 of 2 parts · 2 scenes')).toBeTruthy();
     expect(cc().upsertSubmodule).not.toHaveBeenCalled();
   });
 
@@ -154,7 +154,7 @@ describe('GenerateModuleStructureModal', () => {
     await generate();
 
     fireEvent.click(screen.getAllByRole('checkbox')[0]);
-    expect(screen.getByText('1 of 2 submodules · 0 scenes')).toBeTruthy();
+    expect(screen.getByText('1 of 2 parts · 0 scenes')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to module' }));
     await waitFor(() => expect(cc().upsertSubmodule).toHaveBeenCalledTimes(1));
@@ -197,7 +197,7 @@ describe('GenerateModuleStructureModal', () => {
     fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
-    await screen.findByText(/Number of submodules must be between/);
+    await screen.findByText(/Number of parts must be between/);
     expect(f).not.toHaveBeenCalled();
   });
 

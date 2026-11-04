@@ -14,6 +14,8 @@ import { useItems } from '../../context/items';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
+import { EmptyState } from '../ui/EmptyState';
+import { EmptyDetail } from '../ui/ListDetail';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { RecorderPanel } from '../session/RecorderPanel';
 import { useEndSession } from '../play/useEndSession';
@@ -426,7 +428,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
   };
 
   return (
-    <div className="cm-md" style={{ height: '100%' }}>
+    <div className={`cm-md${sessions.length === 0 ? ' is-empty' : ''}`} style={{ height: '100%' }}>
       {/* Left: list */}
       <div className="cm-md-list">
         {/* List header */}
@@ -434,6 +436,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
           <Button variant="secondary" size="sm" onClick={handleAdd} title="Plan the next session">+ Add session</Button>
         </PageHeader>
 
+        {sessions.length > 0 && <>
         {/* Search */}
         <div className="cm-md-search">
           <Search size={13} className="cm-md-search-glyph" strokeWidth={1.8} />
@@ -447,9 +450,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
         {/* List scroll */}
         <div className="cm-md-list-scroll">
           {filtered.length === 0 ? (
-            <div style={{ padding: '24px 12px', color: 'var(--ink-3)', fontSize: 13, fontStyle: 'italic', textAlign: 'center' }}>
-              {search ? 'No sessions match your search.' : 'No sessions yet.'}
-            </div>
+            <div className="cm-empty is-inline">No sessions match.</div>
           ) : (
             filtered.map((s, i) => {
               const date = s.session_date ? formatSessionDate(s.session_date) : null;
@@ -485,6 +486,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
             })
           )}
         </div>
+        </>}
       </div>
 
       {/* Right: detail */}
@@ -497,17 +499,11 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
             onDeleted={() => setSelectedId(null)}
             onOpenSession={id => { setSearch(''); setSelectedId(id); }}
           />
+        ) : sessions.length === 0 ? (
+          <EmptyState glyph="❧" text="No sessions yet. Plan the first one: what you want to happen, the scenes, and who the party might meet."
+            actionLabel="Plan the first session" onAction={() => void handleAdd()} />
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <div style={{ textAlign: 'center', color: 'var(--ink-3)' }}>
-              <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.4 }}>✧</div>
-              <div style={{ fontStyle: 'italic', fontSize: 14 }}>
-                {sessions.length === 0 ? (
-                  <>No sessions yet. <Button variant="link" onClick={handleAdd}>Plan your first session.</Button></>
-                ) : 'Select a session to view its notes.'}
-              </div>
-            </div>
-          </div>
+          <EmptyDetail noun="session" />
         )}
       </div>
     </div>

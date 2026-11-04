@@ -1,6 +1,7 @@
 // The world's calendar, on its Overview: what its years are called ("DR") and
 // its months, each some number of days. A one-day month is a festival between
 // months. Presets fill it in; any month can be renamed, resized or removed.
+// Once set it folds to one line, with Edit calendar to open it again.
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
@@ -52,6 +53,7 @@ export function WorldCalendar() {
   const confirm = useConfirm();
   const toast = useToast();
   const [suffix, setSuffix] = useState(() => yearSuffix(activeWorld?.calendar));
+  const [editing, setEditing] = useState(false);
   if (!activeWorld) return null;
   const months = activeWorld.calendarMonths;
 
@@ -73,11 +75,23 @@ export function WorldCalendar() {
     if (ok) save(preset.months.map(m => ({ ...m })));
   };
 
+  const summary = [`${months.length} months`, `${daysInYear(months)} days a year`, suffix.trim() && `years counted as ${suffix.trim()}`].filter(Boolean).join(' · ');
+  if (!editing) {
+    return (
+      <section className="wc is-folded" aria-label="Calendar">
+        <span className="cm-card-title">Calendar</span>
+        <span className="wc-total">{summary}</span>
+        <Button size="xs" variant="secondary" onClick={() => setEditing(true)}>Edit calendar</Button>
+      </section>
+    );
+  }
+
   return (
     <section className="wc" aria-label="Calendar">
       <div className="wc-head">
         <span className="cm-card-title">Calendar</span>
-        <span className="wc-total">{months.length} months · {daysInYear(months)} days a year</span>
+        <span className="wc-total">{summary}</span>
+        <Button size="xs" variant="secondary" onClick={() => { saveSuffix(); setEditing(false); }}>Done</Button>
       </div>
       <div className="wc-row">
         <label className="as-ll" htmlFor={`wc-suffix-${activeWorld.id}`}>Years are counted as</label>

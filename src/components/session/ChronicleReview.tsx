@@ -33,7 +33,7 @@ import { PlayerBar } from './PlayerBar';
 const GROUPS: { key: ChronicleGroup; label: string; glyph: string; color: string }[] = [
   { key: 'session', label: 'Session record', glyph: '❧', color: entityKindColor.session },
   { key: 'pcs', label: 'Player characters', glyph: '❖', color: entityKindColor.pc },
-  { key: 'npcs', label: 'Non-Player Characters', glyph: '❦', color: entityKindColor.npc },
+  { key: 'npcs', label: 'NPCs', glyph: '❦', color: entityKindColor.npc },
   { key: 'locations', label: 'Locations', glyph: '✦', color: entityKindColor.location },
   { key: 'lore', label: 'Lore', glyph: '❡', color: entityKindColor.lore },
   { key: 'factions', label: 'Factions', glyph: '◈', color: entityKindColor.faction },
