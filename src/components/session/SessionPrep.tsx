@@ -11,6 +11,9 @@ import { SearchableSelect } from '../ui/SearchableSelect';
 import { IconButton } from '../ui/IconButton';
 import { HandoutGallery } from '../handouts/HandoutGallery';
 import { useHandouts } from '../../hooks/useHandouts';
+import { useThreadClock } from '../../hooks/useThreadClock';
+import { ClockControl } from '../ui/ThreadClock';
+import { clockOf } from '../../lib/threadClock';
 import { ReadAloud } from '../ui/ReadAloudBlock';
 import { PrepSheet } from './PrepSheet';
 import { Button } from '../ui/Button';
@@ -81,6 +84,7 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
   const openRecord = useOpenRecord();
   const open = (tab: Tab, id: string, kind?: string) => () => openRecord(tab, id, kind);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const moveClock = useThreadClock();
 
   // The agenda picks from every scene in the campaign, which the module
   // screens only load one branch at a time.
@@ -124,6 +128,11 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
     const n = npcs.find(x => x.id === id);
     return n ? [{ id, label: n.name || 'Unnamed NPC', detail: n.role ?? undefined, open: open('cast', id) }] : [];
   });
+
+  // Every live thread with a clock, fullest first, for "advance any clocks?".
+  const clocks = hooks
+    .filter(h => threadState(h) !== 'resolved' && clockOf(h))
+    .sort((a, b) => (b.clock_filled ?? 0) / (b.clock_size ?? 1) - (a.clock_filled ?? 0) / (a.clock_size ?? 1));
 
   const sceneOptions = scenes
     .filter(s => !ids('agenda').includes(s.id))
@@ -223,6 +232,28 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
       <PlanList id="threads" glyph="❂" title="Threads to dangle"
         items={pickedThreads} options={threadOptions} addLabel="+ Add a thread" onAdd={add('threads')} onRemove={remove('threads')}
         empty="No threads picked yet." />
+
+      {clocks.length > 0 && (
+        <section className="sp-part" id="prep-clocks">
+          <div className="cm-section-head">
+            <span className="cm-section-title"><span className="sp-glyph">✧</span> Clocks</span>
+            <div className="cm-section-rule" />
+          </div>
+          <p className="sp-hint">The world moves between sessions. Advance any clocks? A full one wakes its thread.</p>
+          {clocks.map(h => {
+            const c = clockOf(h)!;
+            return (
+              <div key={h.id} className="sp-clock">
+                <span className="sp-clock-text">
+                  <Button variant="link" className="sp-item-name" onClick={open('threads', h.id)}>{h.title || 'Untitled thread'}</Button>
+                  {c.label && <span className="sp-clock-label">{c.label}</span>}
+                </span>
+                <ClockControl size={c.size} filled={c.filled} name={`Clock on ${h.title || 'this thread'}`} onChange={n => void moveClock(h, n)} />
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       <PlanList id="encounters" glyph="⚔" title="Encounters"
         items={pickedEncounters} options={encounterOptions} addLabel="+ Add an encounter" onAdd={add('encounters')} onRemove={remove('encounters')}

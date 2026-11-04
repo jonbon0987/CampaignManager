@@ -37,7 +37,7 @@ function fixture(): CampaignExport {
       ],
       lore_entries: [row({ id: 'lo1', title: 'The Black Spider', category: 'Villains', content: 'A drow seeking Wave Echo Cave.', dm_only: true })],
       hooks: [
-        row({ id: 'h1', title: 'Find Gundren', state: 'active', is_active: true, category: 'main_plot', description: 'He never arrived.' }),
+        row({ id: 'h1', title: 'Find Gundren', state: 'active', is_active: true, category: 'main_plot', description: 'He never arrived.', clock_size: 6, clock_filled: 2, clock_label: 'The goblins sell him', location_ids: ['l2'] }),
         row({ id: 'h2', title: 'An old debt', state: null, is_active: false }),
       ],
       ideas: [row({ id: 'i1', text: 'A ghost in the mine', tag: 'npc' })],
@@ -155,6 +155,8 @@ describe('markdownFiles', () => {
     expect(files['Places.md']).toContain('> Smoke rises over the rooftops.');
     expect(files['Threads.md']).toMatch(/## Inbox\n\n- A ghost in the mine \(npc\)/);
     expect(files['Threads.md'].indexOf('## Active')).toBeLessThan(files['Threads.md'].indexOf('## Resolved'));
+    expect(files['Threads.md']).toContain('clock 2 of 6: The goblins sell him');
+    expect(files['Threads.md']).toMatch(/\*\*Linked\*\*\n\n- The Sleeping Giant/);
     expect(files['Modules.md']).toContain('## Chapter 1 · Phandelver');
     expect(files['Modules.md']).toContain('> Water rushes past.\n> The dark yawns.');
     expect(files['Modules.md']).toContain('![Handout: Map](pictures/handouts/map.webp)');

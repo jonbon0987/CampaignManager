@@ -8,9 +8,11 @@ import type { Encounter, SessionPlan } from '../../lib/database.types';
 const h = vi.hoisted(() => ({
   campaign: { value: null as Record<string, unknown> | null },
   open: vi.fn(),
+  toast: vi.fn(),
 }));
 vi.mock('../../context/CampaignContext', () => ({ useCampaign: () => h.campaign.value }));
 vi.mock('../../context/NavigationContext', () => ({ useOpenRecord: () => h.open }));
+vi.mock('../../context/ToastContext', () => ({ useToast: () => h.toast }));
 // Handouts load from the database; Prep's tests are about the plan.
 vi.mock('../../hooks/useHandouts', () => ({ useHandouts: () => ({ handouts: [], adding: false, add: vi.fn(), rename: vi.fn(), remove: vi.fn() }) }));
 // The sheet itself is tested on its own.
@@ -57,6 +59,44 @@ beforeEach(() => {
 });
 
 describe('SessionPrep', () => {
+  describe('clocks', () => {
+    const withClocks = () => {
+      const upsertHook = vi.fn().mockResolvedValue(undefined);
+      h.campaign.value = makeCampaignContext({
+        upsertHook,
+        encounters: [],
+        hooks: [
+          makeHook({ id: 'c1', title: 'The Tide Cult', state: 'seed', clock_size: 4, clock_filled: 3, clock_label: 'They raise the crown' }),
+          makeHook({ id: 'c2', title: 'Long done', state: 'resolved', is_active: false, clock_size: 4, clock_filled: 1 }),
+          makeHook({ id: 'c3', title: 'No clock', state: 'active' }),
+        ],
+      });
+      return upsertHook;
+    };
+
+    it('asks about live threads with a clock, and no others', () => {
+      withClocks();
+      renderPrep();
+      expect(screen.getByText(/Advance any clocks/)).toBeTruthy();
+      expect(screen.getByText('They raise the crown')).toBeTruthy();
+      expect(screen.queryByRole('group', { name: 'Clock on Long done' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Clock on No clock' })).toBeNull();
+    });
+
+    it('stays out of the way when no thread has a clock', () => {
+      renderPrep();
+      expect(screen.queryByText(/Advance any clocks/)).toBeNull();
+    });
+
+    it('filling the last segment wakes the thread and says so', async () => {
+      const upsertHook = withClocks();
+      renderPrep();
+      fireEvent.click(screen.getByRole('button', { name: 'Clock on The Tide Cult: fill to 4 of 4' }));
+      await vi.waitFor(() => expect(upsertHook).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1', clock_filled: 4, state: 'active', is_active: true })));
+      await vi.waitFor(() => expect(h.toast).toHaveBeenCalledWith('“They raise the crown” is full, so The Tide Cult is now Active.', 'success'));
+    });
+  });
+
   it('opens the prep sheet to print, and closes it', () => {
     renderPrep();
     expect(screen.queryByRole('dialog', { name: 'Prep sheet' })).toBeNull();

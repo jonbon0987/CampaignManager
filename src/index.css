@@ -920,6 +920,32 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .th-card-title { font-family: var(--serif); font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--ink); }
 .th-card-sum { font-family: var(--serif); font-size: 13px; line-height: 1.45; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .th-card-foot { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.th-card-foot { display: flex; align-items: center; gap: 8px; min-height: 22px; }
+.th-card-clock { display: flex; flex-direction: column; gap: 1px; font-size: 12px; font-style: italic; color: var(--ink-2); line-height: 1.35; }
+.th-card-where { font-size: 12px; color: var(--ink-3); line-height: 1.35; }
+.th-faces { display: inline-flex; align-items: center; }
+.th-face { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: -5px; border-radius: 50%; overflow: hidden; background: var(--paper-3); border: 1px solid var(--rule); color: var(--ink-2); font-family: var(--display); font-size: 11px; }
+.th-face:first-child { margin-left: 0; }
+.th-face .cm-row-thumb { width: 100%; height: 100%; border: none; }
+.th-face-more { background: var(--paper-2); color: var(--ink-3); font-family: var(--mono); font-size: 9px; }
+.th-links { display: flex; flex-direction: column; gap: 12px; }
+.th-link-label { font-size: 13px; color: var(--ink-2); margin-bottom: 4px; display: block; }
+.th-clock-field { display: flex; flex-direction: column; gap: 10px; }
+.th-clock-note { margin: 0; }
+/* A thread's clock (components/ui/ThreadClock) */
+.clk { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.clk-seg { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid var(--gold-line); background: transparent; cursor: pointer; transition: background .12s, border-color .12s; }
+.clk-seg:hover { border-color: var(--gold); }
+.clk-seg.is-on { background: var(--gold); border-color: var(--gold); }
+.clk-seg:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.clk-count { margin-left: 6px; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.clk-dots { font-size: 12px; letter-spacing: .08em; color: var(--gold); white-space: nowrap; font-style: normal; }
+.clk-dots.is-full { color: var(--red); }
+.sub-reserve { min-height: 64px; margin: 0 0 16px; }
+.sp-clock { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; padding: 8px 12px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: var(--radius); }
+.sp-clock-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 200px; }
+.sp-clock-text .sp-item-name { align-self: flex-start; }
+.sp-clock-label { font-size: 13px; font-style: italic; color: var(--ink-3); }
 .th-idea { padding: 12px; cursor: grab; }
 .th-add { align-self: flex-start; }
 .th-compose { display: flex; flex-direction: column; gap: 6px; }

@@ -94,6 +94,98 @@ describe('Threads board', () => {
     expect(column('Seed').querySelector('.cm-state-badge')).toBeNull();
   });
 
+  describe('cards', () => {
+    it('shows the clock, who and where it touches, and when it last came up', () => {
+      h.campaign.value = makeCampaignContext({
+        npcs: [{ id: 'n1', name: 'Sable Thorne', portrait_path: null }],
+        locations: [{ id: 'l1', name: 'The Drowned Wharf' }],
+        factions: [{ id: 'f1', name: 'The Grey Hand' }],
+        hooks: [makeHook({
+          id: 'a', title: 'The Tide Cult', state: 'active', last_updated_session: 4,
+          clock_size: 6, clock_filled: 2, clock_label: 'They raise the crown',
+          npc_ids: ['n1', 'deleted'], location_ids: ['l1'], faction_ids: ['f1'],
+        })],
+      });
+      render(<Threads />);
+      const card = within(column('Active'));
+      expect(card.getByRole('img', { name: '2 of 6 toward They raise the crown' }).textContent).toBe('●●○○○○');
+      expect(card.getByText('They raise the crown')).toBeTruthy();
+      expect(card.getByRole('img', { name: 'With Sable Thorne' })).toBeTruthy();
+      expect(card.getByText('The Drowned Wharf · The Grey Hand')).toBeTruthy();
+      expect(card.getByText('Last seen Session 4')).toBeTruthy();
+    });
+
+    it('says when a clock is full', () => {
+      h.campaign.value = makeCampaignContext({ hooks: [makeHook({ id: 'a', title: 'Done soon', state: 'active', clock_size: 4, clock_filled: 4, clock_label: 'The gate opens' })] });
+      render(<Threads />);
+      expect(within(column('Active')).getByText('Full: The gate opens')).toBeTruthy();
+    });
+
+    it('stays as it was for a thread with neither', () => {
+      h.campaign.value = makeCampaignContext({ hooks: [makeHook({ id: 'a', title: 'Plain', state: 'seed' })] });
+      render(<Threads />);
+      expect(within(column('Seed')).queryByRole('img')).toBeNull();
+    });
+  });
+
+  describe('the thread’s clock and links', () => {
+    const openThread = (over = {}) => {
+      const upsertHook = vi.fn().mockResolvedValue(undefined);
+      h.campaign.value = makeCampaignContext({
+        upsertHook,
+        npcs: [{ id: 'n1', name: 'Sable Thorne', role: 'Spymaster' }],
+        hooks: [makeHook({ id: 'a', title: 'The Tide Cult', state: 'seed', ...over })],
+      });
+      render(<Threads />);
+      fireEvent.click(screen.getByText('The Tide Cult'));
+      return upsertHook;
+    };
+
+    it('keeps both in the Add row until they are wanted', () => {
+      openThread();
+      expect(screen.getByRole('button', { name: '+ Clock' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: '+ Links' })).toBeTruthy();
+      expect(screen.queryByRole('radiogroup', { name: 'Clock size' })).toBeNull();
+    });
+
+    it('starts a clock, and saves its size and what it counts toward', async () => {
+      const upsertHook = openThread();
+      fireEvent.click(screen.getByRole('button', { name: '+ Clock' }));
+      fireEvent.click(screen.getByRole('radio', { name: '6 segments' }));
+      fireEvent.change(screen.getByLabelText('What happens when the clock fills'), { target: { value: 'They raise the crown' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Clock: fill to 2 of 6' }));
+      await vi.waitFor(() => expect(upsertHook).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'a', clock_size: 6, clock_filled: 2, clock_label: 'They raise the crown', state: 'seed',
+      })), { timeout: 3000 });
+    });
+
+    it('a full clock moves a seed thread to Active, with a note', async () => {
+      const upsertHook = openThread({ clock_size: 4, clock_filled: 3 });
+      fireEvent.click(screen.getByRole('button', { name: 'Clock: fill to 4 of 4' }));
+      expect(h.toast).toHaveBeenCalledWith('The clock on The Tide Cult is full, so The Tide Cult is now Active.', 'success');
+      await vi.waitFor(() => expect(upsertHook).toHaveBeenCalledWith(expect.objectContaining({ state: 'active', is_active: true, clock_filled: 4 })), { timeout: 3000 });
+    });
+
+    it('clicking the last filled segment empties it', async () => {
+      const upsertHook = openThread({ clock_size: 4, clock_filled: 2 });
+      fireEvent.click(screen.getByRole('button', { name: 'Clock: empty segment 2 of 4' }));
+      await vi.waitFor(() => expect(upsertHook).toHaveBeenCalledWith(expect.objectContaining({ clock_filled: 1 })), { timeout: 3000 });
+    });
+
+    it('removes a clock', async () => {
+      const upsertHook = openThread({ clock_size: 4, clock_filled: 2, clock_label: 'Soon' });
+      fireEvent.click(screen.getByRole('button', { name: 'Remove the clock' }));
+      await vi.waitFor(() => expect(upsertHook).toHaveBeenCalledWith(expect.objectContaining({ clock_size: null, clock_filled: 0, clock_label: null })), { timeout: 3000 });
+    });
+
+    it('shows and opens what it links to, and marks a deleted one', async () => {
+      openThread({ npc_ids: ['n1', 'gone'] });
+      expect(screen.getByText('A deleted entry')).toBeTruthy();
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Sable Thorne' }));
+      await vi.waitFor(() => expect(h.openRecord).toHaveBeenCalledWith('cast', 'n1'));
+    });
+  });
+
   it('filters threads and ideas by search text', () => {
     h.campaign.value = makeCampaignContext({
       hooks: [makeHook({ id: 'a', title: 'The Seventh Shard' }), makeHook({ id: 'b', title: 'Missing Caravan' })],

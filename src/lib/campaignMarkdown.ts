@@ -3,6 +3,7 @@
 // where they sit in the zip. Nothing here touches the network.
 
 import { refsToNames } from './slashMarkdown';
+import { clockOf } from './threadClock';
 import { dateOf, formatSpan, monthsOf, yearSuffix } from './calendar';
 import { formatSessionDate, localToday, planIds, sessionName, STATUS_LABEL } from './sessionLifecycle';
 import { holderName, itemLine } from './items';
@@ -283,7 +284,11 @@ function threads(data: CampaignExport, names: Names): string {
     if (rows.length === 0) continue;
     md.h(2, label);
     for (const h of rows.sort(byName<Hook>(x => x.title))) {
-      md.h(3, names.hook.get(h.id)!).meta([h.category?.replace(/_/g, ' ')]).para(h.description);
+      const clock = clockOf(h);
+      md.h(3, names.hook.get(h.id)!).meta([h.category?.replace(/_/g, ' '), clock && `clock ${clock.filled} of ${clock.size}${clock.label ? `: ${clock.label}` : ''}`]).para(h.description);
+      md.list('Linked', [
+        ...pick(names.npc, h.npc_ids), ...pick(names.place, h.location_ids), ...pick(names.faction, h.faction_ids), ...pick(names.module, [h.module_id]),
+      ]);
       history(md, t.entity_session_entries.filter(e => e.entity_type === 'hook' && e.entity_id === h.id), names);
       md.section('DM notes', h.dm_only_notes);
     }

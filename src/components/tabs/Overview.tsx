@@ -6,6 +6,8 @@ import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContex
 import { STAGE_LABEL } from '../../lib/recording/pipeline';
 import { Button } from '../ui/Button';
 import { PlayerPageCard } from '../player/PlayerPageCard';
+import { ClockDots } from '../ui/ThreadClock';
+import { clockOf } from '../../lib/threadClock';
 import { CampaignDateCard } from '../calendar/CampaignDate';
 import { PreviouslyOn } from '../session/PreviouslyOn';
 import { getHookCategoryStyle } from '../../lib/theme';
@@ -212,6 +214,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
                       style={{ backgroundColor: getHookCategoryStyle(h.category).badge }}
                     />
                     <span className="ov-list-name">{h.title}</span>
+                    {clockOf(h) && <ClockDots clock={clockOf(h)!} />}
                     {h.category && (
                       <span className="ov-list-meta">
                         {h.category.replace(/_/g, ' ')}

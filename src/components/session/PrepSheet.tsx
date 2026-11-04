@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useCampaign } from '../../context/CampaignContext';
 import { useCampaignDate } from '../../hooks/useCampaignDate';
+import { clockDots } from '../../lib/threadClock';
 import { dateOf, formatSpan, formatWorldDate } from '../../lib/calendar';
 import { refsToNames } from '../../lib/slashMarkdown';
 import { clip, formatSessionDate, lastPlayed, leftOpenLines, planIds, plainText, sessionName } from '../../lib/sessionLifecycle';
@@ -126,7 +127,7 @@ export function PrepSheet({ session, sessions, plan, prepNotes, onClose }: {
             <Part title="Threads to dangle">
               <ul className="psh-list">
                 {threads.map(h => (
-                  <li key={h.id}><b>{h.title}</b> <span className="psh-dim">({threadState(h)})</span>{h.description ? ` ${line(h.description, 160)}` : ''}</li>
+                  <li key={h.id}><b>{h.title}</b> <span className="psh-dim">({threadState(h)}{h.clock_size ? ` · ${clockDots({ size: h.clock_size, filled: h.clock_filled ?? 0 })}` : ''})</span>{h.description ? ` ${line(h.description, 160)}` : ''}</li>
                 ))}
               </ul>
             </Part>

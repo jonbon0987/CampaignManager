@@ -14,9 +14,15 @@ import { useOpenRecord } from '../../context/NavigationContext';
 
 interface Update { sessionId: string; sessionNumber: number; count: number; what: string }
 
-export function SessionUpdateBand({ entityType, entityId }: { entityType: SessionEntryEntityType; entityId: string }) {
+export function SessionUpdateBand({ entityType, entityId, reserve = false }: {
+  entityType: SessionEntryEntityType;
+  entityId: string;
+  /** Hold the band's height while it loads, for an entry likely to have one, so the page doesn't jump. */
+  reserve?: boolean;
+}) {
   const { sessions, selectedCampaignId } = useCampaign();
   const [update, setUpdate] = useState<Update | null>(null);
+  const [checked, setChecked] = useState(false);
   const openRecord = useOpenRecord();
 
   useEffect(() => {
@@ -29,7 +35,7 @@ export function SessionUpdateBand({ entityType, entityId }: { entityType: Sessio
         .map(e => ({ e, n: sessions.find(s => s.id === e.session_id)?.session_number ?? -1 }))
         .filter(r => r.n >= 0)
         .sort((a, b) => b.n - a.n)[0];
-      if (!latest) { if (!cancelled) setUpdate(null); return; }
+      if (!latest) { if (!cancelled) { setUpdate(null); setChecked(true); } return; }
       const recordingId = latest.e.recording_id!;
       const [proposals, log] = await Promise.all([ChronicleProposals.getByRecording(recordingId), ChronicleAppliedLog.getByRecording(recordingId)]);
       const item = buildChronicle(proposals, log).byKind[entityType].find(i => i.entityId === entityId);
@@ -40,11 +46,12 @@ export function SessionUpdateBand({ entityType, entityId }: { entityType: Sessio
         count: item ? changeCount(item) : 1,
         what: item ? whatChanged(item).toLowerCase().replace(/ · /g, ', ') : 'session history',
       });
-    })().catch(() => { if (!cancelled) setUpdate(null); });
+      setChecked(true);
+    })().catch(() => { if (!cancelled) { setUpdate(null); setChecked(true); } });
     return () => { cancelled = true; };
   }, [entityType, entityId, selectedCampaignId, sessions]);
 
-  if (!update) return null;
+  if (!update) return reserve && !checked ? <div className="sub-reserve" aria-hidden /> : null;
 
   // The chronicle is part of the session's Recap.
   const openChronicle = () => openRecord('sessions', update.sessionId);
