@@ -1,9 +1,11 @@
-// The table tools docked in the rail while a session is live: the scene in
-// play, initiative, dice, timestamped notes, the improv kit and the recorder.
+// The table tools docked in the rail while a session is live: dice, initiative,
+// the scene in play, timestamped notes, the improv kit and the recorder, with
+// the two the DM reaches for most first, and the house rules once there are some.
 // Everything saves on the session.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
+import { useCampaign } from '../../context/CampaignContext';
 import { usePlay, type PlayTab } from '../../context/PlayContext';
 import { useRecording } from '../../context/RecordingContext';
 import { RecorderPanel } from '../session/RecorderPanel';
@@ -12,15 +14,18 @@ import { IconButton } from '../ui/IconButton';
 import { PlayInitiative } from './PlayInitiative';
 import { PlayImprov } from './PlayImprov';
 import { PlayScene } from './PlayScene';
+import { HouseRulesList } from '../rules/HouseRules';
+import { rulesOf, writtenRules } from '../../lib/houseRules';
 import { d20Natural, parseDice, roll } from '../../lib/dice';
 import { noteStamp } from '../../lib/playTime';
 
 const TABS: { id: PlayTab; label: string; glyph: string }[] = [
-  { id: 'scene', label: 'Scene', glyph: '▸' },
-  { id: 'initiative', label: 'Initiative', glyph: '⚔' },
   { id: 'dice', label: 'Dice', glyph: '⚄' },
+  { id: 'initiative', label: 'Initiative', glyph: '⚔' },
+  { id: 'scene', label: 'Scene', glyph: '▸' },
   { id: 'notes', label: 'Notes', glyph: '✎' },
   { id: 'improv', label: 'Improv', glyph: '✶' },
+  { id: 'rules', label: 'Rules', glyph: '§' },
   { id: 'record', label: 'Record', glyph: '●' },
 ];
 
@@ -100,13 +105,18 @@ function TableNotes() {
 }
 
 export function PlayTools() {
-  const { live, tab, setTab } = usePlay();
+  const { live, tab: chosen, setTab } = usePlay();
+  const { selectedCampaign } = useCampaign();
+  const rules = useMemo(() => writtenRules(rulesOf(selectedCampaign?.house_rules)), [selectedCampaign?.house_rules]);
   if (!live) return null;
+  // The Rules tab is there once the table has some, so an empty one never takes up room.
+  const tabs = rules.length > 0 ? TABS : TABS.filter(t => t.id !== 'rules');
+  const tab = tabs.some(t => t.id === chosen) ? chosen : tabs[0].id;
 
   return (
     <aside className="pt" aria-label="Table tools">
-      <div className="cm-subtabs pt-tabs" role="tablist" aria-label="Table tools">
-        {TABS.map(t => (
+      <div className={`cm-subtabs pt-tabs${rules.length > 0 ? ' has-rules' : ''}`} role="tablist" aria-label="Table tools">
+        {tabs.map(t => (
           // eslint-disable-next-line no-restricted-syntax -- a tool tab, styled with its strip
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`cm-subtab${tab === t.id ? ' is-active' : ''}`}
             onClick={() => setTab(t.id)}>
@@ -116,11 +126,12 @@ export function PlayTools() {
       </div>
       {/* Every tool stays mounted, so undo history and half-typed input survive a tab switch. */}
       <div className="pt-body">
-        <div hidden={tab !== 'scene'}><PlayScene /></div>
-        <div hidden={tab !== 'initiative'}><PlayInitiative /></div>
         <div hidden={tab !== 'dice'}><DiceTray /></div>
+        <div hidden={tab !== 'initiative'}><PlayInitiative /></div>
+        <div hidden={tab !== 'scene'}><PlayScene /></div>
         <div hidden={tab !== 'notes'}><TableNotes /></div>
         <div hidden={tab !== 'improv'}><PlayImprov /></div>
+        {rules.length > 0 && <div hidden={tab !== 'rules'}><HouseRulesList rules={rules} /></div>}
         <div hidden={tab !== 'record'} className="pt-pane"><RecorderPanel session={live} /></div>
       </div>
     </aside>

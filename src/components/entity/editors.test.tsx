@@ -75,6 +75,16 @@ describe('NPCEditor', () => {
     await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ name: 'Brenna', role: 'Smuggler' })), { timeout: 2000 });
   });
 
+  it('leaves whether they’ve met and how they feel open when canon is locked: those are this table’s', () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<NPCEditor npc={npc({ met_by_pcs: false })} scope="campaign" factions={[]} locations={[]} statblocks={[]} save={save} remove={vi.fn()}
+      canon={{ origin: 'imported', onOpenInCanon: vi.fn(), onPublish: vi.fn(), onDetach: vi.fn() }} />);
+    expect((screen.getByLabelText('Name') as HTMLInputElement).closest('fieldset')!.disabled).toBe(true);
+    const toward = screen.getByLabelText('Toward the party') as HTMLInputElement;
+    expect(toward.closest('fieldset')).toBeNull();
+    expect(screen.getByRole('button', { name: 'No' }).closest('fieldset')).toBeNull();
+  });
+
   it('warns that deleting a canon NPC removes it everywhere', async () => {
     const remove = vi.fn().mockResolvedValue(undefined);
     render(<NPCEditor npc={npc()} scope="campaign" factions={[]} locations={[]} statblocks={[]} save={vi.fn()} remove={remove}

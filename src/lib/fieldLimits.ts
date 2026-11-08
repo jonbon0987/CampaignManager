@@ -89,6 +89,9 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     portrait_path: LIMIT.STATLINE,
     sheet_url: LIMIT.STATLINE,
   },
+  campaign_npcs: {
+    disposition: LIMIT.NAME,
+  },
   npcs: {
     name: LIMIT.NAME,
     role: LIMIT.NAME,

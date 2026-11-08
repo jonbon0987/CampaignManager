@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { kindMeta } from '../../lib/randomEncounter';
+import { NO_NPC_DETAILS } from '../../lib/npcDetails';
 
 interface WorldImportDrawerProps {
   open: boolean;
@@ -63,7 +64,7 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
         importItem: async (id, m) => {
           if (m === 'link') return campaign.linkNPCToCampaign(id);
           const n = campaign.globalNPCs.find(x => x.id === id);
-          if (n) await campaign.upsertNPC({ ...stripSystemFields(n), faction_ids: [], statblock_id: null } as Parameters<typeof campaign.upsertNPC>[0], 'campaign');
+          if (n) await campaign.upsertNPC({ ...stripSystemFields(n), ...NO_NPC_DETAILS, faction_ids: [], statblock_id: null } as Parameters<typeof campaign.upsertNPC>[0], 'campaign');
         },
       };
       case 'location': return {

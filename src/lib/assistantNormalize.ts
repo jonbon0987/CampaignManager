@@ -26,7 +26,7 @@ const COLUMNS: Record<string, string[]> = {
   upsertPC: ['character_name', 'player_name', 'race', 'class', 'background', 'story_hooks', 'key_npcs', 'key_npc_ids', 'dm_notes', 'is_active', 'faction_ids', 'statblock_id'],
   upsertLocation: ['name', 'region', 'location_type', 'population', 'status', 'history', 'description', 'dm_notes'],
   upsertFaction: ['name', 'faction_type', 'overview', 'key_figures', 'key_figure_ids', 'agenda', 'dm_notes'],
-  upsertHook: ['title', 'category', 'description', 'state', 'last_updated_session', 'is_active', 'dm_only_notes'],
+  upsertHook: ['title', 'category', 'description', 'state', 'last_updated_session', 'is_active', 'dm_only_notes', 'clock_size', 'clock_filled', 'clock_label', 'npc_ids', 'location_ids', 'faction_ids', 'module_id'],
   upsertLore: ['title', 'category', 'content', 'dm_only'],
   upsertModule: ['chapter', 'title', 'synopsis', 'status', 'played_session', 'encounters', 'rewards', 'dm_notes', 'faction_id', 'node_role'],
   upsertMonsterStatblock: ['name', 'creature_type', 'challenge_rating', 'armor_class', 'ac_descriptor', 'hit_points', 'hit_dice', 'speed', 'str', 'dex', 'con', 'int', 'wis', 'cha', 'saving_throws', 'skills', 'damage_immunities', 'damage_resistances', 'condition_immunities', 'senses', 'languages', 'content', 'dm_notes', 'tags', 'sort_order'],

@@ -141,7 +141,6 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
       </div>
 
       <fieldset className="as-fieldset" disabled={locked}>
-
         <div className="as-meta">
           <div className="as-mi">
             <span className="as-ml">Status</span>
@@ -154,16 +153,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
               ))}
             </div>
           </div>
-          {/* Whether the party has met them, and how they feel about it, is each table's own. */}
-          {scope === 'campaign' ? (
-            <div className="as-mi">
-              <span className="as-ml">Met by PCs</span>
-              {/* eslint-disable-next-line no-restricted-syntax -- an on/off toggle, styled .as-tog */}
-              <button type="button" className={`as-tog${form.met_by_pcs ? ' is-on' : ''}`} onClick={() => set('met_by_pcs', !form.met_by_pcs)}>
-                {form.met_by_pcs ? 'Yes' : 'No'}
-              </button>
-            </div>
-          ) : usedIn !== undefined && (
+          {scope === 'world' && usedIn !== undefined && (
             <div className="as-mi">
               <span className="as-ml">Used in</span>
               <span className="npc-used-in">
@@ -181,7 +171,28 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
             </div>
           )}
         </div>
+      </fieldset>
 
+      {/* Whether the party has met them, and how they feel about it, is each table's own, so canon's lock doesn't cover them. */}
+      {scope === 'campaign' && (
+        <div className="as-grid-2">
+          <div className="as-fl">
+            <span className="as-ll">Met by PCs</span>
+            <div>
+              {/* eslint-disable-next-line no-restricted-syntax -- an on/off toggle, styled .as-tog */}
+              <button type="button" className={`as-tog${form.met_by_pcs ? ' is-on' : ''}`} onClick={() => set('met_by_pcs', !form.met_by_pcs)}>
+                {form.met_by_pcs ? 'Yes' : 'No'}
+              </button>
+            </div>
+          </div>
+          <div className="as-fl">
+            <label className="as-ll" htmlFor={`npc-disp-${npc.id}`}>Toward the party</label>
+              <input id={`npc-disp-${npc.id}`} className="as-input" value={form.disposition ?? ''} onChange={e => set('disposition', e.target.value || null)} placeholder="Wary, friendly, owes them a favor…" maxLength={limitFor('npcs', 'disposition')} />
+          </div>
+        </div>
+      )}
+
+      <fieldset className="as-fieldset" disabled={locked}>
         <div className="as-grid-2">
           <div className="as-fl">
             <span className="as-ll">Found at</span>
@@ -190,12 +201,6 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
               onChange={id => set('location_id', id)} onOpen={onOpenLocation} disabled={locked} />
             <WasText text={form.location} onClear={() => set('location', null)} disabled={locked} />
           </div>
-          {scope === 'campaign' && (
-            <div className="as-fl">
-              <label className="as-ll" htmlFor={`npc-disp-${npc.id}`}>Toward the party</label>
-              <input id={`npc-disp-${npc.id}`} className="as-input" value={form.disposition ?? ''} onChange={e => set('disposition', e.target.value || null)} placeholder="Wary, friendly, owes them a favor…" maxLength={limitFor('npcs', 'disposition')} />
-            </div>
-          )}
           {scope === 'campaign' && (
             <div className="as-fl">
               <label className="as-ll" htmlFor={`npc-first-${npc.id}`}>First session #</label>

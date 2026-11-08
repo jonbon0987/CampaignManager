@@ -72,6 +72,28 @@ describe('PlayerPage', () => {
       expect(screen.queryByText('The party’s treasure')).toBeNull();
     });
 
+    it('shows the house rules under their topics when the DM adds them', async () => {
+      load.mockResolvedValue({ ...empty, house_rules: [
+        { id: 'r1', topic: 'Table', title: 'No PvP', text: 'Ask first.' },
+        { id: 'r2', topic: 'Combat', title: 'Flanking', text: 'Advantage.' },
+        { id: 'r3', topic: 'Combat', title: ' ', text: '' },
+      ] });
+      render(<PlayerPage token="tok" />);
+      const heading = await screen.findByRole('heading', { name: 'House rules' });
+      const section = heading.closest('section')!;
+      expect(section.textContent).toContain('Flanking');
+      expect(section.textContent).toContain('Ask first.');
+      expect(section.textContent!.indexOf('Combat')).toBeLessThan(section.textContent!.indexOf('Table'));
+      expect(screen.queryByText(/Nothing else has been shared/)).toBeNull();
+    });
+
+    it('has no house rules section when they’re off', async () => {
+      load.mockResolvedValue({ ...empty, house_rules: null });
+      render(<PlayerPage token="tok" />);
+      await screen.findByText(/Nothing else has been shared/);
+      expect(screen.queryByRole('heading', { name: 'House rules' })).toBeNull();
+    });
+
     it('says nothing about treasure when the purse is empty', async () => {
       load.mockResolvedValue({ ...full, treasury: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 } });
       render(<PlayerPage token={'x'.repeat(32)} />);

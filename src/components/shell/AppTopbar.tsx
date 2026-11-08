@@ -29,25 +29,34 @@ export default function AppTopbar({
   crumbs, isMobile, onOpenMobileMenu, viewOptions, viewMode, setViewMode, status,
   onOpenPalette, onToggleNote, noteOpen = false, onToggleAssistant, assistantOpen,
 }: AppTopbarProps) {
+  const parent = crumbs.slice(0, -1).reverse().find(c => c.onClick);
   return (
     <header className="cm-top">
       {isMobile && (
         <ToolbarButton onClick={onOpenMobileMenu} aria-label="Open menu">☰</ToolbarButton>
       )}
 
-      <nav className="cm-top-crumbs" aria-label="Breadcrumb">
-        {crumbs.map((c, i) => (
-          <span key={i} className="cm-top-crumb-wrap">
-            {i > 0 && <span className="cm-top-crumb-sep" aria-hidden="true">/</span>}
-            {c.onClick ? (
-              // eslint-disable-next-line no-restricted-syntax -- breadcrumb link
-              <button className="cm-top-crumb cm-top-crumb-link" onClick={c.onClick}>{c.label}</button>
-            ) : (
-              <span className="cm-top-crumb" aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.label}</span>
-            )}
-          </span>
-        ))}
-      </nav>
+      {isMobile ? (
+        // No room for the trail on a phone: the page's name, and a way back to the nearest place above it.
+        <nav className="cm-top-crumbs" aria-label="Breadcrumb">
+          {parent && <ToolbarButton onClick={parent.onClick!} aria-label={`Back to ${parent.label}`} title={`Back to ${parent.label}`}>‹</ToolbarButton>}
+          <span className="cm-top-crumb cm-top-crumb-page" aria-current="page">{crumbs[crumbs.length - 1]?.label}</span>
+        </nav>
+      ) : (
+        <nav className="cm-top-crumbs" aria-label="Breadcrumb">
+          {crumbs.map((c, i) => (
+            <span key={i} className="cm-top-crumb-wrap">
+              {i > 0 && <span className="cm-top-crumb-sep" aria-hidden="true">/</span>}
+              {c.onClick ? (
+                // eslint-disable-next-line no-restricted-syntax -- breadcrumb link
+                <button className="cm-top-crumb cm-top-crumb-link" onClick={c.onClick}>{c.label}</button>
+              ) : (
+                <span className="cm-top-crumb" aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.label}</span>
+              )}
+            </span>
+          ))}
+        </nav>
+      )}
 
       {viewOptions && viewOptions.length > 0 && setViewMode && (
         <div className="cm-vm" role="group" aria-label="View">

@@ -55,6 +55,7 @@ export type Campaign = {
   rules_edition: RulesEdition | null; // which rules rate encounters; null reads as 2014
   archived_at: string | null;        // when it was archived; null while in use
   session_repeat: SessionRepeat | null; // how often the table meets; null for no pattern
+  house_rules?: Json | null;         // what this table plays differently; see lib/houseRules
   created_at: string;
   updated_at: string;
 };
@@ -75,6 +76,8 @@ export type CampaignWithCount = Campaign & { session_count: number };
 
 // Join tables for linking global NPCs/Locations to campaigns
 export type CampaignNPC = {
+  met_by_pcs?: boolean | null;       // this campaign's party has met them
+  disposition?: string | null;       // their attitude toward this campaign's party
   campaign_id: string;
   npc_id: string;
   user_id: string;
@@ -570,7 +573,7 @@ export type DeletedItem = Pick<TrashRow, 'batch' | 'table_name' | 'record_id' | 
 export type ShareKind = 'npc' | 'location' | 'lore' | 'handout' | 'session' | 'thread';
 
 /** The parts of a player page beyond its shared records, each off until switched on. */
-export type PlayerPagePart = 'show_next_session' | 'show_world_date' | 'show_treasury';
+export type PlayerPagePart = 'show_next_session' | 'show_world_date' | 'show_treasury' | 'show_house_rules';
 
 /** A campaign's player page: the link players open, which can be turned off or replaced. */
 export type PlayerPageLink = {
@@ -581,6 +584,7 @@ export type PlayerPageLink = {
   show_next_session: boolean;
   show_world_date: boolean;
   show_treasury: boolean;
+  show_house_rules: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -608,6 +612,8 @@ export interface PlayerPageData {
   schedule: { number: number | null; date: string | null; time: string | null; repeat: SessionRepeat | null; last_date: string | null; last_time: string | null } | null;
   /** Null unless the DM shows the in-world date. */
   world_date: { date: Json; months: Json | null; suffix: string | null } | null;
+  /** Null unless the DM adds the house rules. */
+  house_rules?: Json | null;
   /** Null unless the DM shows the treasure. */
   treasury: { cp: number; sp: number; ep: number; gp: number; pp: number } | null;
 }
@@ -1164,8 +1170,8 @@ export interface Database {
       };
       player_pages: {
         Row: PlayerPageLink;
-        Insert: Omit<PlayerPageLink, 'created_at' | 'updated_at' | 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury'> & Partial<Pick<PlayerPageLink, 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury'>>;
-        Update: Partial<Pick<PlayerPageLink, 'token' | 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury'>>;
+        Insert: Omit<PlayerPageLink, 'created_at' | 'updated_at' | 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury' | 'show_house_rules'> & Partial<Pick<PlayerPageLink, 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury'>>;
+        Update: Partial<Pick<PlayerPageLink, 'token' | 'enabled' | 'show_next_session' | 'show_world_date' | 'show_treasury' | 'show_house_rules'>>;
         Relationships: [];
       };
       player_shares: {

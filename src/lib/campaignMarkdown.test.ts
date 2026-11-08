@@ -116,6 +116,12 @@ describe('markdownFiles', () => {
     expect(r).toContain('1 picture couldn’t be fetched and is missing.');
   });
 
+  it('lists the house rules in the README, and no section without any', () => {
+    expect(files['README.md']).not.toContain('House rules');
+    const out = markdownFiles({ ...data, campaign: { ...data.campaign, house_rules: [{ id: 'r1', topic: 'Combat', title: 'Flanking', text: 'Advantage.' }] } }, new Map());
+    expect(out['README.md']).toContain('Combat. Flanking: Advantage.');
+  });
+
   it('writes mentions as plain names, marks canon, and links fetched pictures only', () => {
     const cast = files['Cast.md'];
     expect(cast).toContain('Works for the Grey Hand.');

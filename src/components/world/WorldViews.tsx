@@ -12,6 +12,8 @@ import { Modal } from '../Modal';
 import { EncounterDetail } from '../ui/EncounterDetail';
 import { RandomEncounterDetail } from '../ui/RandomEncounterDetail';
 import { GenerateWorldEncounterModal } from '../ui/GenerateEncounterModal';
+import { SrdLibrary } from '../srd/SrdLibrary';
+import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd';
 import { GenerateWorldRandomTableModal } from '../ui/GenerateRandomTableModal';
 import { parseEntries, kindMeta } from '../../lib/randomEncounter';
 import { FormField, inputStyle, textareaStyle } from '../FormField';
@@ -394,6 +396,7 @@ export function WorldCombatView({ view: filter, setView: setFilter }: { view: Wo
   const { openStatBlock } = useStatBlockPanel();
 
   // ---- Generate modal state ----
+  const [srdOpen, setSrdOpen] = useState(false);           // the SRD library, for a stat sheet
   const [genOpen, setGenOpen] = useState(false);           // creature (stat sheet) generator
   const [genEncOpen, setGenEncOpen] = useState(false);     // full-encounter generator
   const [genTableOpen, setGenTableOpen] = useState(false); // whole random-table generator
@@ -517,6 +520,20 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
     if (id) setSelected('combat', id);
   };
 
+  // A world has no rules setting, so the library starts on 2014 and the DM can switch.
+  const addSheetFromSrd = async (m: SrdMonster, edition: SrdEdition) => {
+    const sb = await upsertWorldStatblock({ ...srdToStatblock(m, edition), sort_order: worldStatblocks.length });
+    setSearch('');
+    setSelected('combat', sb.id);
+  };
+  const haveSheet = (name: string) => worldStatblocks.some(s => s.name.trim().toLowerCase() === name.toLowerCase())
+    ? `The world already has a stat sheet called ${name}; this adds another.` : null;
+
+  // For an encounter: the world's sheet of that name if it has one, or a new copy to run it from.
+  const sheetFromSrd = async (m: SrdMonster, edition: SrdEdition) =>
+    worldStatblocks.find(s => s.name.trim().toLowerCase() === m.name.toLowerCase())
+    ?? upsertWorldStatblock({ ...srdToStatblock(m, edition), sort_order: worldStatblocks.length });
+
   const handleAddEncounter = async () => {
     const id = await createEncounter();
     if (id) setSelected('combat', id);
@@ -599,6 +616,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           onViewStatblock={sb => openStatBlock(sb.id)}
           upsertEncounter={upsertWorldEncounter}
           enableMentions={false}
+          sheetFromSrd={sheetFromSrd}
         />
       )
       : sel.kind === 'random' && selRawRandomTable
@@ -634,6 +652,10 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         onSearchChange={setSearch}
         onAdd={filter === 'encounter' ? handleAddEncounter : filter === 'random' ? handleAddRandomTable : handleAddCreature}
         addLabel={filter === 'encounter' ? '+ Add encounter' : filter === 'random' ? '+ Add table' : '+ Add stat sheet'}
+        addOptions={filter === 'bestiary' ? [
+          { label: 'Blank stat sheet', onClick: () => void handleAddCreature() },
+          { label: 'From the SRD library…', onClick: () => setSrdOpen(true) },
+        ] : undefined}
         onGenerate={filter === 'bestiary' ? openGenModal : filter === 'encounter' ? () => setGenEncOpen(true) : filter === 'random' ? () => setGenTableOpen(true) : undefined}
         empty={total > 0 ? null : filter === 'encounter' ? {
           glyph: '⚔', text: 'No encounters in canon yet. Build fights any campaign can import, or generate one.',
@@ -642,8 +664,8 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           glyph: '⚄', text: 'No random tables in canon yet. Roll for encounters, treasure or wild magic; add one or generate one.',
           actionLabel: 'Add a table', onAction: () => void handleAddRandomTable(),
         } : {
-          glyph: '✜', text: 'No stat sheets in canon yet. The world’s creatures live here, ready for any campaign’s encounters.',
-          actionLabel: 'Add a stat sheet', onAction: () => void handleAddCreature(),
+          glyph: '✜', text: 'No stat sheets in canon yet. The world’s creatures live here, ready for any campaign’s encounters. Copy one from the SRD library, write your own, or generate one.',
+          actionLabel: 'Browse the SRD library', onAction: () => setSrdOpen(true),
         }}
         list={
           <div>
@@ -675,6 +697,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
       />
 
       {/* ── Generate full encounter (AI) ── */}
+      <SrdLibrary kind="monsters" open={srdOpen} onClose={() => setSrdOpen(false)}
+        edition="2014" addLabel="Add to stat sheets" note={haveSheet} onAdd={addSheetFromSrd} />
+
       <GenerateWorldEncounterModal
         isOpen={genEncOpen}
         onClose={() => setGenEncOpen(false)}

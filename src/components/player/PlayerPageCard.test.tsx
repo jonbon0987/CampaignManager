@@ -46,6 +46,8 @@ describe('PlayerPageCard', () => {
     expect(value.setPart).toHaveBeenCalledWith('show_world_date', true);
     fireEvent.click(screen.getByRole('button', { name: 'Treasure' }));
     expect(value.setPart).toHaveBeenCalledWith('show_treasury', false);
+    fireEvent.click(screen.getByRole('button', { name: 'House rules' }));
+    expect(value.setPart).toHaveBeenCalledWith('show_house_rules', true);
   });
 
   it('counts the leads it shows', () => {

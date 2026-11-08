@@ -7,6 +7,7 @@ import type { Levelling, RulesEdition } from '../../lib/database.types';
 import { signOut } from '../../lib/auth';
 import { Button } from '../ui/Button';
 import { DiscordBotSettings } from '../session/DiscordBotSettings';
+import { HouseRulesEditor } from '../rules/HouseRules';
 import { ExportCampaignPanel } from '../export/ExportCampaign';
 import { SlashField } from '../ui/SlashField';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
@@ -48,7 +49,7 @@ function NameField({ name, onSave }: { name: string; onSave: (name: string) => P
   );
 }
 
-/** The pitch and the house notes: what the campaign is, and how this table plays it. Saved as you type. */
+/** The pitch and the table notes: what the campaign is, and what this table has agreed. Saved as you type. */
 function CampaignNotes() {
   const { overview, setOverview } = useCampaign();
   const [form, setForm] = useState({ plotSummary: overview.plotSummary, worldInfo: overview.worldInfo });
@@ -69,10 +70,10 @@ function CampaignNotes() {
           placeholder="The overarching story, main conflicts and themes…" minHeight="110px" maxLength={limitFor('campaigns', 'plot_summary')} />
       </div>
       <div className="set-field">
-        <span className="set-label">House notes</span>
-        <span className="set-help">House rules, tone, lines and veils, and anything else this table has agreed on.</span>
+        <span className="set-label">Table notes</span>
+        <span className="set-help">Tone, lines and veils, and anything else this table has agreed on. Rules go under House rules, below.</span>
         <SlashField value={form.worldInfo} onChange={v => setForm(f => ({ ...f, worldInfo: v }))}
-          placeholder="Flanking gives advantage. No PvP. Potions are a bonus action…" minHeight="90px" maxLength={limitFor('campaigns', 'world_info')} />
+          placeholder="Keep it PG-13. No spiders. Snacks first, then dice…" minHeight="90px" maxLength={limitFor('campaigns', 'world_info')} />
       </div>
     </>
   );
@@ -208,6 +209,7 @@ export default function SettingsView() {
                     ))}
                   </div>
                 </SettingRow>
+                <HouseRulesEditor key={selectedCampaign.id} />
               </section>
             )}
 

@@ -207,6 +207,25 @@ describe('formatCampaignContext', () => {
       expect(out).toContain('· Beat (other) [id:c]');
     });
 
+    it('tells the assistant the table’s house rules, and leaves the section out without any', () => {
+      const out = formatCampaignContext({ ...baseData, houseRules: [{ id: 'r1', topic: 'Combat', title: 'Flanking', text: 'Advantage.' }] });
+      expect(out).toContain('== HOUSE RULES ==');
+      expect(out).toContain('Combat. Flanking: Advantage.');
+      expect(formatCampaignContext(baseData)).not.toContain('HOUSE RULES');
+    });
+
+    it('names everything a thread links to', () => {
+      const out = formatCampaignContext({
+        ...baseData,
+        locations: [makeLocation({ id: 'l1', name: 'The Wharf' })],
+        modules: [makeModule('m1', 'active', { title: 'The Sunken Crown' })],
+        hooks: [{ id: 'h1', title: 'The Tide', category: 'faction', state: 'active', is_active: true, clock_size: 6, clock_filled: 2, clock_label: 'Floods', npc_ids: [], faction_ids: [], location_ids: ['l1'], module_id: 'm1' } as unknown as Hook],
+      });
+      expect(out).toContain('clock 2 of 6: Floods');
+      expect(out).toContain('places: The Wharf');
+      expect(out).toContain('chapter: The Sunken Crown');
+    });
+
     it('shows a module with no loaded submodules as a bare line', () => {
       const out = formatCampaignContext({ ...baseData, modules: [makeModule('mod-1', 'active', { title: 'Empty' })] });
       expect(out).toContain('[id:mod-1]');
