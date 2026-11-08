@@ -4,6 +4,23 @@ import { Button } from './Button';
 import { PageHeader } from './PageHeader';
 import { EmptyState, type EmptyStateProps } from './EmptyState';
 
+/** Below this, the list column narrows so the detail beside it keeps room to read. */
+const NARROW = 760;
+
+/** Whether the page is narrow: a wide rail beside it, or a small window. */
+function useNarrow() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [is, setIs] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(entries => setIs((entries[0]?.contentRect.width ?? NARROW) < NARROW));
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+  return [ref, is] as const;
+}
+
 export interface AddOption {
   label: string;
   onClick: () => void;
@@ -88,8 +105,9 @@ export function ListDetail({
   detail,
   empty,
 }: ListDetailProps) {
+  const [rootRef, narrow] = useNarrow();
   return (
-    <div className={`cm-md${empty ? ' is-empty' : ''}`}>
+    <div ref={rootRef} className={`cm-md${empty ? ' is-empty' : ''}${narrow ? ' is-narrow' : ''}`}>
       <div className="cm-md-list">
         <PageHeader className="cm-md-list-head" eyebrow={`${count} ${count === 1 ? 'entry' : 'entries'}`} title={title}>
             {onGenerate && (

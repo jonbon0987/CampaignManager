@@ -4,7 +4,7 @@
 // proposes (from chat or from a document import) collects as a card you can
 // include or leave out. Nothing reaches the database until Apply.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { entityMeta } from '../lib/documentImport';
 import type { useAIChat } from '../hooks/useAIChat';
 import type { ChatMessage, IngestState, PlanState, StagedChange } from '../hooks/useAIChat';
@@ -14,6 +14,12 @@ import { Button } from './ui/Button';
 import { ChangeCard, type ChangeState, type ChangeTone, type ChangeView } from './review/ChangeCard';
 import { ReviewTally } from './review/ReviewTally';
 import { entityKindColor } from '../lib/theme';
+
+const COMPOSER_MAX = 120;
+function fitToText(el: HTMLTextAreaElement) {
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX)}px`;
+}
 
 type Chat = ReturnType<typeof useAIChat>;
 
@@ -275,6 +281,19 @@ export default function Workbench({
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [pane, setPane] = useState<'chat' | 'stage'>('chat');
+  // The message box fits its text, up to a few lines: it shrinks back once a
+  // message is sent, and refits when the rail is made wider or narrower.
+  useLayoutEffect(() => { if (inputRef.current) fitToText(inputRef.current); }, [chat.input, pane]);
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let width = el.clientWidth;
+    const watch = new ResizeObserver(() => {
+      if (el.clientWidth !== width) { width = el.clientWidth; fitToText(el); }
+    });
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [pane]);
   const pending = chat.pendingStaged.length;
 
   // Keep the newest message in view as the response streams.
@@ -399,11 +418,7 @@ export default function Workbench({
                 placeholder={chat.composerPlaceholder}
                 aria-label="Message the assistant"
                 value={chat.input}
-                onChange={e => {
-                  chat.setInput(e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                }}
+                onChange={e => chat.setInput(e.target.value)}
                 onKeyDown={chat.handleKeyDown}
               />
               {chat.loading ? (

@@ -44,6 +44,8 @@ export default function AppTopbar({
         </nav>
       ) : (
         <nav className="cm-top-crumbs" aria-label="Breadcrumb">
+          {/* Shown only once the bar is too narrow for the trail (a wide rail beside it), like a phone's. */}
+          {parent && <ToolbarButton className="cm-top-back" onClick={parent.onClick!} aria-label={`Back to ${parent.label}`} title={`Back to ${parent.label}`}>‹</ToolbarButton>}
           {crumbs.map((c, i) => (
             <span key={i} className="cm-top-crumb-wrap">
               {i > 0 && <span className="cm-top-crumb-sep" aria-hidden="true">/</span>}

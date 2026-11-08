@@ -46,6 +46,8 @@ const SESSION_FIELD: Record<SessionField, string> = {
 };
 const NOUN: Record<EntityKind, string> = { pc: 'player character', npc: 'NPC', location: 'location', faction: 'faction', lore: 'lore entry', hook: 'thread' };
 const SET_LABEL: Record<string, string> = { disposition: 'Attitude toward the party', status: 'Status', state: 'Thread state' };
+// A thread's links, by the kind of record each list holds.
+const LINKS: Record<string, [EntityKind, string]> = { npc_ids: ['npc', 'People'], location_ids: ['location', 'Places'], faction_ids: ['faction', 'Factions'] };
 const MAIN_LABEL: Record<string, string> = { description: 'description', overview: 'overview', content: 'entry' };
 const NPC_STATUSES = ['active', 'deceased', 'unknown'];
 const THREAD_STATES = ['seed', 'active', 'cold', 'resolved'];
@@ -113,9 +115,13 @@ function describe(a: ChronicleAction, lookup: Lookup, before?: Record<string, un
   const found = lookup.get(a.entity_type, a.matched_id);
   const existing = found && before ? { ...found, row: before } : found;
   const main = MAIN_TEXT[a.entity_type];
+  // Linked records by name, never by id.
+  const names = (kind: EntityKind, ids: unknown) =>
+    (Array.isArray(ids) ? ids : []).map(id => lookup.get(kind, String(id))?.label).filter((n): n is string => !!n);
   if (!a.matched_id) {
     const tags = ['role', 'location_type', 'faction_type', 'category', 'state', 'disposition']
-      .map(f => a.set[f]).filter((v): v is string => typeof v === 'string' && !!v);
+      .map(f => a.set[f]).filter((v): v is string => typeof v === 'string' && !!v)
+      .concat(Object.entries(LINKS).flatMap(([f, [k]]) => names(k, a.set[f])));
     return {
       glyph: kind.glyph, color: kind.color, kindLabel: kind.label, name: a.name, tone: 'new',
       changes: [], tags,
@@ -123,9 +129,20 @@ function describe(a: ChronicleAction, lookup: Lookup, before?: Record<string, un
       history: a.entry,
     };
   }
+  const listed = (kind: EntityKind, ids: unknown) => names(kind, ids).join(', ') || '—';
   const changes = Object.entries(a.set)
     .filter(([f, v]) => SET_LABEL[f] && existing?.row[f] !== v)
-    .map(([f, v]) => ({ label: SET_LABEL[f], before: String(existing?.row[f] ?? '—'), after: String(v) }));
+    .map(([f, v]) => ({ label: SET_LABEL[f], before: String(existing?.row[f] ?? '—'), after: String(v) }))
+    .concat(Object.entries(a.set).flatMap(([f, v]) => {
+      if (f === 'clock_filled' && typeof v === 'number') {
+        // "2 of 6 → 3 of 6"; a thread whose clock has since gone just shows the count.
+        const size = typeof existing?.row.clock_size === 'number' ? existing.row.clock_size : null;
+        const of = (n: unknown) => (size ? `${n ?? 0} of ${size}` : String(n ?? 0));
+        return [{ label: 'Clock', before: of(existing?.row.clock_filled), after: of(v) }];
+      }
+      const link = LINKS[f];
+      return link ? [{ label: link[1], before: listed(link[0], existing?.row[f]), after: listed(link[0], v) }] : [];
+    }));
   const appendField = Object.keys(a.append).find(f => a.append[f]);
   const tags = a.set.met_by_pcs === true && existing?.row.met_by_pcs === false ? ['Marks as met'] : [];
   return {

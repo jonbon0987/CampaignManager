@@ -166,3 +166,57 @@ describe('chronicle parts', () => {
     expect(mergeEntityChange({ ...a }, b)).toMatchObject({ entry: 'Named. Seen at the docks.', set: { role: 'Spy', disposition: 'Cold' }, append: { description: 'Scarred.' }, confidence: 0.6 });
   });
 });
+
+describe('itemsToProposals — a thread’s clock and links', () => {
+  const withThread = (thread: Record<string, unknown>) => (items: unknown[]) =>
+    itemsToProposals(items, {
+      sessionId: 's1', lines, known: known(), pcNames: new Map(),
+      current: new Map([['hook-gorval', { state: 'cold', is_active: true, clock_size: 6, clock_filled: 4, npc_ids: ['npc-brenna'], location_ids: [], faction_ids: [], ...thread }]]),
+    });
+  const thread = (extra: object) => ({ kind: 'thread', matched_id: 'hook-gorval', title: 'Where is Gorval?', development: 'The trail went cold at the docks.', source_line: 3, ...extra });
+  const setOf = (out: ReturnType<typeof run>) => (out[0].action as EntityChange).set;
+
+  it('moves the clock on by what the session did', () => {
+    expect(setOf(withThread({})([thread({ clock_advance: 1 })]))).toMatchObject({ clock_filled: 5 });
+  });
+
+  it('wakes a cold thread whose clock it fills, and stops at full', () => {
+    // It was already counted as live (cold isn't resolved), so is_active needs no change.
+    expect(setOf(withThread({})([thread({ clock_advance: 5 })]))).toEqual({ clock_filled: 6, state: 'active' });
+    expect(setOf(withThread({ state: 'seed', is_active: false })([thread({ clock_advance: 2 })]))).toMatchObject({ state: 'active', is_active: true });
+  });
+
+  it('leaves a thread with no clock, or nothing moving it, alone', () => {
+    expect(setOf(withThread({ clock_size: null })([thread({ clock_advance: 2 })]))).not.toHaveProperty('clock_filled');
+    expect(setOf(withThread({})([thread({ clock_advance: 0 })]))).not.toHaveProperty('clock_filled');
+    expect(setOf(withThread({})([thread({ clock_advance: -2 })]))).not.toHaveProperty('clock_filled');
+  });
+
+  it('only adds links, to real records, keeping the ones already there', () => {
+    const set = setOf(withThread({})([thread({ npc_ids: ['npc-gorval', 'made-up', 'npc-brenna'], location_ids: ['loc-docks'], faction_ids: ['nope'] })]));
+    expect(set.npc_ids).toEqual(['npc-brenna', 'npc-gorval']);
+    expect(set.location_ids).toEqual(['loc-docks']);
+    expect(set).not.toHaveProperty('faction_ids');
+  });
+
+  it('links a new thread to what it involves', () => {
+    const [p] = run([{ kind: 'thread', matched_id: null, title: 'The Grey Hand stirs', development: 'A letter.', npc_ids: ['npc-gorval', 'ghost'], faction_ids: ['fac-hand'], source_line: 1 }]);
+    const set = (p.action as EntityChange).set;
+    expect(set).toMatchObject({ npc_ids: ['npc-gorval'], faction_ids: ['fac-hand'] });
+    expect(set).not.toHaveProperty('location_ids');
+  });
+
+  it('adds up two moves of one thread', () => {
+    const out = withThread({})([thread({ clock_advance: 1, npc_ids: ['npc-gorval'] }), thread({ clock_advance: 1, location_ids: ['loc-docks'] })]);
+    expect(out).toHaveLength(1);
+    expect(setOf(out)).toMatchObject({ clock_filled: 5, npc_ids: ['npc-brenna', 'npc-gorval'], location_ids: ['loc-docks'] });
+  });
+});
+
+describe('mergeEntityChange — lists and clocks', () => {
+  it('joins lists and keeps the further clock', () => {
+    const base = (set: EntityChange['set']): EntityChange => ({ kind: 'entity', entity_type: 'hook', matched_id: 'h', name: 'H', set, append: {}, entry: null, reasoning: '', confidence: 1 });
+    const merged = mergeEntityChange(base({ npc_ids: ['a'], clock_filled: 3 }), base({ npc_ids: ['a', 'b'], clock_filled: 2 }));
+    expect(merged.set).toEqual({ npc_ids: ['a', 'b'], clock_filled: 3 });
+  });
+});

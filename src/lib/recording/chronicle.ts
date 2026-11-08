@@ -40,7 +40,7 @@ export interface EntityChange {
   entity_type: EntityKind;
   matched_id: string | null;      // null = create a new entry
   name: string;                   // what the DM sees on the card
-  set: Record<string, string | boolean | null>; // fields replaced (disposition, state, a new entry's fields)
+  set: Record<string, string | boolean | number | string[] | null>; // fields replaced (disposition, state, a clock's count, links, a new entry's fields)
   append: Record<string, string>; // text added to the end of a field (new details in a description)
   entry: string | null;           // this entity's Session History line
   reasoning: string;
@@ -112,7 +112,8 @@ export type ChronicleItem =
        happened: string } & Sourced)
   | ({ kind: 'lore'; matched_id: string | null; title: string; category?: string | null; revealed: string } & Sourced)
   | ({ kind: 'thread'; matched_id: string | null; title: string; category?: string | null;
-       new_state?: 'seed' | 'active' | 'cold' | 'resolved' | null; development: string } & Sourced);
+       new_state?: 'seed' | 'active' | 'cold' | 'resolved' | null; development: string;
+       clock_advance?: number | null; npc_ids?: string[] | null; location_ids?: string[] | null; faction_ids?: string[] | null } & Sourced);
 
 /** Ids that exist in this campaign, per kind — anything else the AI cites is treated as new (or dropped, for PCs). */
 export type KnownIds = Record<EntityKind, Set<string>>;
@@ -124,6 +125,53 @@ const NPC_STATUSES = new Set(['active', 'deceased', 'unknown']);
 const HOOK_CATEGORIES = new Set(['main_plot', 'side_quest', 'character_arc', 'faction']);
 
 const clean = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+\n/g, '\n').trim() : '');
+
+/** The ids in `v` that are real records of one kind: anything made up, repeated or malformed is dropped. */
+const realIds = (v: unknown, known: Set<string>): string[] =>
+  Array.isArray(v) ? [...new Set(v.filter((id): id is string => typeof id === 'string' && known.has(id)))] : [];
+
+/** A new thread's links, leaving out any list with nothing real in it. */
+function linksOf(it: { npc_ids?: unknown; location_ids?: unknown; faction_ids?: unknown }, known: KnownIds): Record<string, string[]> {
+  const lists: [string, string[]][] = [
+    ['npc_ids', realIds(it.npc_ids, known.npc)], ['location_ids', realIds(it.location_ids, known.location)], ['faction_ids', realIds(it.faction_ids, known.faction)],
+  ];
+  return Object.fromEntries(lists.filter(([, ids]) => ids.length > 0));
+}
+
+/**
+ * What a thread's clock and links become after a session: the clock moves on by
+ * what happened (a full one wakes a seed or cold thread), and links are only
+ * ever added. Changes nothing the thread doesn't need.
+ */
+function threadMoves(
+  it: { clock_advance?: unknown; npc_ids?: unknown; location_ids?: unknown; faction_ids?: unknown },
+  now: Record<string, unknown> | undefined,
+  known: KnownIds,
+  state: string | null,
+): Record<string, string | boolean | number | string[]> {
+  const out: Record<string, string | boolean | number | string[]> = {};
+  const links: [string, Set<string>][] = [['npc_ids', known.npc], ['location_ids', known.location], ['faction_ids', known.faction]];
+  for (const [field, ids] of links) {
+    const had = Array.isArray(now?.[field]) ? (now![field] as string[]) : [];
+    const added = realIds((it as Record<string, unknown>)[field], ids).filter(id => !had.includes(id));
+    if (added.length) out[field] = [...had, ...added];
+  }
+  const size = typeof now?.clock_size === 'number' ? now.clock_size : 0;
+  const advance = typeof it.clock_advance === 'number' && Number.isFinite(it.clock_advance) ? Math.trunc(it.clock_advance) : 0;
+  if (size && advance > 0) {
+    const was = typeof now?.clock_filled === 'number' ? now.clock_filled : 0;
+    const filled = Math.min(size, was + advance);
+    if (filled > was) {
+      out.clock_filled = filled;
+      const current = state ?? (typeof now?.state === 'string' ? now.state : null);
+      if (filled >= size && was < size && (current === 'seed' || current === 'cold')) {
+        out.state = 'active';
+        out.is_active = true;
+      }
+    }
+  }
+  return out;
+}
 const orNull = (v: unknown): string | null => clean(v) || null;
 
 export function normalizeConfidence(raw: unknown): number {
@@ -141,7 +189,14 @@ export function entityKey(change: EntityChange): string {
 /** Folds a second change to the same entity into the first (mutates `into`). */
 export function mergeEntityChange(into: EntityChange, extra: EntityChange): EntityChange {
   into.entry = [into.entry, extra.entry].filter(Boolean).join(' ') || null;
-  into.set = { ...into.set, ...extra.set };
+  const set = { ...into.set, ...extra.set };
+  // Two moves of one thread: its links add up, and its clock goes as far as the further one.
+  for (const [f, v] of Object.entries(extra.set)) {
+    const was = into.set[f];
+    if (Array.isArray(was) && Array.isArray(v)) set[f] = [...new Set([...was, ...v])];
+    else if (f === 'clock_filled' && typeof was === 'number' && typeof v === 'number') set[f] = Math.max(was, v);
+  }
+  into.set = set;
   into.append = { ...into.append };
   for (const [f, t] of Object.entries(extra.append)) into.append[f] = into.append[f] ? `${into.append[f]}\n\n${t}` : t;
   into.confidence = Math.min(into.confidence, extra.confidence);
@@ -277,8 +332,11 @@ export function itemsToProposals(
         mergeInto(id && `hook:${id}`, () => entity('threads', it, {
           entity_type: 'hook', matched_id: id, name: clean(it.title), entry: orNull(it.development),
           set: id
-            ? { state, ...(state ? { is_active: state !== 'resolved' } : {}) }
-            : { title: clean(it.title), category, description: orNull(it.development), state: state ?? 'seed', is_active: state !== 'resolved' },
+            ? { state, ...(state ? { is_active: state !== 'resolved' } : {}), ...threadMoves(it, ctx.current?.get(id), ctx.known, state) }
+            : {
+                title: clean(it.title), category, description: orNull(it.development), state: state ?? 'seed', is_active: state !== 'resolved',
+                ...linksOf(it, ctx.known),
+              },
           append: id ? { description: clean(it.development) } : {},
         }));
         break;
