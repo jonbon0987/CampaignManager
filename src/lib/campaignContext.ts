@@ -3,6 +3,7 @@
 // and the document-import parse endpoint flow (src/lib/documentImport), so the
 // AI always sees the same entity listing / ids regardless of entry point.
 
+import { ruleLine, type HouseRule } from './houseRules';
 import type {
   Session, PlayerCharacter, NPC, Location,
   Faction, Hook, LoreEntry, Module, MonsterStatblock, Submodule, Scene,
@@ -169,6 +170,7 @@ export function formatCampaignContext(data: {
   monsterStatblocks?: MonsterStatblock[];
   overviewTitle: string;
   overviewPlot: string;
+  houseRules?: HouseRule[];
 }): string {
   const submodules = data.submodules ?? [];
   const scenes = data.scenes ?? [];
@@ -180,11 +182,16 @@ export function formatCampaignContext(data: {
   const npcName = byId(data.npcs, n => n.name);
   const factionName = byId(data.factions, f => f.name);
   const placeName = byId(data.locations, l => l.name);
+  const moduleName = byId(data.modules, m => m.title);
   const names = (ids: string[] | null | undefined, name: (id: string) => string | null) =>
     (ids ?? []).map(name).filter(Boolean).join(', ');
   return `Campaign: ${data.overviewTitle || 'Unnamed Campaign'}
 Plot summary: ${data.overviewPlot || '(none)'}
-
+${data.houseRules?.length ? `
+== HOUSE RULES ==
+This table plays these instead of the book. Follow them when you answer a rules question or build anything to be played, and say so when one changes the answer.
+${data.houseRules.map(r => `  ${r.topic}. ${ruleLine(r)}`).join('\n')}
+` : ''}
 == CURRENT CAMPAIGN DATA ==
 
 SESSIONS (${data.sessions.length}):
@@ -203,7 +210,7 @@ FACTIONS (${data.factions.length}):
 ${data.factions.map(f => `  ${f.name} (${f.faction_type ?? '?'})${names(f.key_figure_ids, npcName) ? `; key figures: ${names(f.key_figure_ids, npcName)}` : ''} [id:${f.id}]${textFields(f as unknown as Record<string, unknown>, ['overview', 'key_figures', 'agenda', 'dm_notes'])}`).join('\n') || '  (none)'}
 
 HOOKS & IDEAS (${data.hooks.length}):
-${data.hooks.map(h => `  [${h.state ?? (h.is_active ? 'active' : 'resolved')}] ${h.title} (${h.category ?? '?'})${h.clock_size ? `; clock ${h.clock_filled ?? 0} of ${h.clock_size}${h.clock_label ? `: ${h.clock_label}` : ''}` : ''}${names(h.npc_ids, npcName) ? `; NPCs: ${names(h.npc_ids, npcName)}` : ''}${names(h.faction_ids, factionName) ? `; factions: ${names(h.faction_ids, factionName)}` : ''} [id:${h.id}]${textFields(h as unknown as Record<string, unknown>, ['description', 'dm_only_notes'])}`).join('\n') || '  (none)'}
+${data.hooks.map(h => `  [${h.state ?? (h.is_active ? 'active' : 'resolved')}] ${h.title} (${h.category ?? '?'})${h.clock_size ? `; clock ${h.clock_filled ?? 0} of ${h.clock_size}${h.clock_label ? `: ${h.clock_label}` : ''}` : ''}${names(h.npc_ids, npcName) ? `; NPCs: ${names(h.npc_ids, npcName)}` : ''}${names(h.faction_ids, factionName) ? `; factions: ${names(h.faction_ids, factionName)}` : ''}${names(h.location_ids, placeName) ? `; places: ${names(h.location_ids, placeName)}` : ''}${h.module_id && moduleName(h.module_id) ? `; chapter: ${moduleName(h.module_id)}` : ''} [id:${h.id}]${textFields(h as unknown as Record<string, unknown>, ['description', 'dm_only_notes'])}`).join('\n') || '  (none)'}
 
 LORE ENTRIES (${data.lore.length}):
 ${data.lore.map(l => `  ${l.title} (${l.category ?? '?'}) [id:${l.id}]${textFields(l as unknown as Record<string, unknown>, ['content'])}`).join('\n') || '  (none)'}

@@ -14,6 +14,7 @@ const PARTS: [PlayerPagePart, string][] = [
   ['show_next_session', 'Next session'],
   ['show_world_date', 'In-world date'],
   ['show_treasury', 'Treasure'],
+  ['show_house_rules', 'House rules'],
 ];
 
 export function PlayerPageCard() {

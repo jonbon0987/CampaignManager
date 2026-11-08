@@ -7,6 +7,7 @@ import { supabase } from './supabase';
 import { ENTITY_IMAGES_BUCKET } from './db';
 import { localToday } from './sessionLifecycle';
 import { exportJson, markdownFiles, picturePaths, slug, type CampaignExport, type ExportTables } from './campaignMarkdown';
+import { detailsOfLink, withCampaignDetails } from './npcDetails';
 import type { Campaign } from './database.types';
 
 // Tables are read by name in a loop, which the typed client can't follow.
@@ -72,8 +73,14 @@ export async function gatherCampaign(campaignId: string, onProgress?: (p: Export
     const links = await rowsWhere<Record<string, string>>(linkTable, 'campaign_id', [campaignId], idColumn);
     return rowsWhere(table, 'id', links.map(l => l[idColumn]));
   };
+  const npcLinks = async () => {
+    const links = await rowsWhere<{ npc_id: string; met_by_pcs?: boolean | null; disposition?: string | null }>('campaign_npcs', 'campaign_id', [campaignId], 'npc_id');
+    const rows = await rowsWhere<CampaignExport['canon']['npcs'][number]>('npcs', 'id', links.map(l => l.npc_id));
+    // As this campaign sees them: the party's history is on the link.
+    return withCampaignDetails(rows, new Map(links.map(l => [l.npc_id, detailsOfLink(l)])));
+  };
   const [canonNpcs, canonLocations, canonLore] = await Promise.all([
-    linked('campaign_npcs', 'npc_id', 'npcs'),
+    npcLinks(),
     linked('campaign_locations', 'location_id', 'locations'),
     linked('campaign_lore', 'lore_id', 'lore_entries'),
   ]);

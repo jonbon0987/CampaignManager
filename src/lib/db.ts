@@ -43,7 +43,7 @@ import type {
   Handout, HandoutInsert,
   PlayerPageLink, PlayerShare, PlayerPageData, ShareKind,
   DeletedItem,
-  Item, ItemInsert, ItemHolding, ItemHoldingInsert, TreasuryEntry, TreasuryEntryInsert, PlayerPagePart,
+  Item, ItemInsert, ItemHolding, ItemHoldingInsert, TreasuryEntry, TreasuryEntryInsert, PlayerPagePart, CampaignNPC,
   EntitySessionEntry, EntitySessionEntryInsert, SessionEntryEntityType,
 } from './database.types';
 
@@ -163,6 +163,27 @@ export const CampaignNPCs = {
     return (data ?? []).map(row => row.npc_id);
   },
 
+  /** This campaign's canon NPCs, with what it alone knows about each. */
+  async getLinks(campaignId: string): Promise<Pick<CampaignNPC, 'npc_id' | 'met_by_pcs' | 'disposition'>[]> {
+    const { data, error } = await supabase
+      .from('campaign_npcs')
+      .select('npc_id, met_by_pcs, disposition')
+      .eq('campaign_id', campaignId);
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  /** Whether this campaign's party has met a canon NPC, and how they feel about it. */
+  async setDetails(campaignId: string, npcId: string, details: { met_by_pcs: boolean; disposition: string | null }): Promise<void> {
+    validateFieldLimits('campaign_npcs', details);
+    const { error } = await supabase
+      .from('campaign_npcs')
+      .update(details)
+      .eq('campaign_id', campaignId)
+      .eq('npc_id', npcId);
+    if (error) throw error;
+  },
+
   /** The campaigns that have imported a canon NPC. */
   async getCampaignIds(npcId: string): Promise<string[]> {
     const { data, error } = await supabase
@@ -173,11 +194,12 @@ export const CampaignNPCs = {
     return (data ?? []).map(row => row.campaign_id);
   },
 
-  async link(campaignId: string, npcId: string): Promise<void> {
+  async link(campaignId: string, npcId: string, details?: { met_by_pcs: boolean; disposition: string | null }): Promise<void> {
+    if (details) validateFieldLimits('campaign_npcs', details);
     const user_id = await getUserId();
     const { error } = await supabase
       .from('campaign_npcs')
-      .upsert({ campaign_id: campaignId, npc_id: npcId, user_id });
+      .upsert({ campaign_id: campaignId, npc_id: npcId, user_id, ...details });
     if (error) throw error;
   },
 

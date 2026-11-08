@@ -398,6 +398,7 @@ input:focus, textarea:focus, select:focus {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.cm-top-crumb-page { color: var(--ink); align-self: center; }
 .cm-top-crumb-root { color: var(--ink-3); }
 .cm-top-crumb-sep { color: var(--ink-3); }
 .cm-top-spacer { flex: 1; }
@@ -1925,6 +1926,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 /* Six tools don't fit one row of a 340px rail, so they sit in two rows of three. */
 /* (.cm-subtabs is defined later and sets flex, hence the doubled class) */
 .cm-subtabs.pt-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0 6px; }
+.cm-subtabs.pt-tabs.has-rules { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .pt-tabs .cm-subtab { padding: 10px 6px; font-size: 13px; text-align: center; overflow: hidden; text-overflow: ellipsis; }
 .pt-body { flex: 1; min-height: 0; overflow-y: auto; }
 .pt-body > [hidden] { display: none; }
@@ -2474,6 +2476,8 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 /* ── bodies ── */
 .orr-node { cursor: grab; transition: opacity .3s; }
 .orr-node.is-dim { opacity: .2; }
+.orr-node:focus { outline: none; }
+.orr-node:focus-visible .orr-disc, .orr-node:focus-visible .orr-dot { stroke: var(--gold); stroke-opacity: 1; stroke-width: 2.2; }
 /* the stroke halo is what keeps labels legible over links */
 .orr-node text { text-anchor: middle; paint-order: stroke fill; stroke: #15120e; stroke-width: 3.5px; stroke-linejoin: round; pointer-events: none; }
 .orr-halo { fill: transparent; transition: fill .3s; }
@@ -4094,12 +4098,32 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .tr-line-text { flex: 1; min-width: 0; font-size: 14px; color: var(--ink-2); }
 .tr-session-coin { margin-top: 10px; }
 .th-known { resize: vertical; font-family: var(--serif); font-size: 15px; line-height: 1.5; }
+
+/* House rules */
+.hrule-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.hrule-item { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: var(--radius); }
+.hrule-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hrule-top .hrule-title { flex: 1 1 200px; width: auto; min-width: 0; }
+.hrule-topic { flex: 0 1 160px; min-width: 120px; }
+.hrule-text { resize: vertical; font-family: var(--serif); font-size: 15px; line-height: 1.5; }
+.hrule-add { margin-top: 10px; }
+.hrule-common { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.hrule-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.hrule-offer-topic { flex-basis: 100%; font-size: 13px; font-style: italic; color: var(--ink-3); }
+.hrule-read + .hrule-read { margin-top: 14px; }
+.hrule-read-topic { margin: 0 0 6px; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+.hrule-read dl { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.hrule-read dt { font-family: var(--serif); font-size: 14px; font-weight: 600; color: var(--ink); }
+.hrule-read dd { margin: 0; font-family: var(--serif); font-size: 14px; line-height: 1.45; color: var(--ink-2); }
 .th-card-known { font-size: 10px; letter-spacing: .04em; color: var(--sky); margin-left: auto; }
 .ov-next-when { margin: 0 0 6px; }
 .ov-share-parts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .ov-share-parts .ov-card-sub { margin: 0; }
 .pp-facts { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 10px 0 0; }
 .pp-facts dd { margin: 2px 0 0; font-size: 16px; color: var(--ink); }
+.pp-rules { margin: 0 0 14px; }
+.pp-rules dt { font-size: 16px; font-weight: 600; color: var(--ink); }
+.pp-rules dd { margin: 0 0 10px; font-size: 16px; line-height: 1.5; color: var(--ink-2); }
 .pp-treasure { margin: 14px 0 0; font-size: 16px; color: var(--ink); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .pp-quests-done { margin: 22px 0 4px; }
 .pp-item.is-done .pp-h3 { color: var(--ink-3); }

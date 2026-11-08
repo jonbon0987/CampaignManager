@@ -40,10 +40,10 @@ beforeEach(() => {
     ],
     npcs: [
       { id: 'n1', campaign_id: 'c1', name: 'Sable', portrait_path: 'u/gone.webp' },
-      { id: 'n9', campaign_id: null, world_id: 'w1', name: 'Elminster' },
+      { id: 'n9', campaign_id: null, world_id: 'w1', name: 'Elminster', met_by_pcs: false, disposition: 'Another table’s' },
       { id: 'n8', campaign_id: null, world_id: 'w1', name: 'Not linked' },
     ],
-    campaign_npcs: [{ campaign_id: 'c1', npc_id: 'n9' }],
+    campaign_npcs: [{ campaign_id: 'c1', npc_id: 'n9', met_by_pcs: true, disposition: 'Wary' }],
     modules: [{ id: 'mo1', campaign_id: 'c1', title: 'Phandelver' }],
     submodules: [{ id: 'sm1', module_id: 'mo1', title: 'Cragmaw', sort_order: 0 }, { id: 'sm9', module_id: 'other', title: 'No' }],
     scenes: [{ id: 'sc1', submodule_id: 'sm1', title: 'Cave', sort_order: 0 }],
@@ -63,6 +63,11 @@ describe('gatherCampaign', () => {
     expect(data.tables.scenes.map(s => s.id)).toEqual(['sc1']);
     expect(data.canon.npcs.map(n => n.name)).toEqual(['Elminster']);
     expect(data.tables.items).toEqual([]);
+  });
+
+  it('exports a canon NPC as this campaign knows them', async () => {
+    const data = await gatherCampaign('c1');
+    expect(data.canon.npcs[0]).toMatchObject({ met_by_pcs: true, disposition: 'Wary' });
   });
 
   it('pages through more than a thousand rows', async () => {

@@ -15,6 +15,7 @@ import { ImageThumb } from '../ui/ImageThumb';
 import { NPCEditor } from '../entity/NPCEditor';
 import { FactionEditor } from '../entity/FactionEditor';
 import { PCEditor } from '../entity/PCEditor';
+import { NO_NPC_DETAILS } from '../../lib/npcDetails';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 
 type CastKind = 'pc' | 'npc' | 'faction';
@@ -50,6 +51,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
     upsertFaction,
     monsterStatblocks,
     linkedNPCIds,
+    selectedCampaignId,
   } = useCampaign();
   const { openStatBlock } = useStatBlockPanel();
 
@@ -216,7 +218,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       detail={
         selected ? (
           <CastDetail
-            key={selected.id}
+            key={`${selectedCampaignId}:${selected.id}`}
             item={selected}
             factions={factions}
             statblocks={monsterStatblocks}
@@ -288,8 +290,10 @@ function CampaignNPC({ npc, factions, statblocks, openStatBlock, onDeselect }: {
         onOpenInCanon: () => { setWorldSelected('npcs', npc.id); setWorldTab('npcs'); backToWorld(); },
         // Publish promotes it into canon, then keeps it visible here.
         onPublish: async fields => {
-          await upsertNPC({ id: npc.id, ...fields, world_id: activeWorldId || npc.world_id || null } as Insert, 'global');
-          await linkNPCToCampaign(npc.id);
+          // The party's history with them stays with this campaign, not the world.
+          const details = { met_by_pcs: fields.met_by_pcs, disposition: fields.disposition };
+          await upsertNPC({ id: npc.id, ...fields, ...NO_NPC_DETAILS, world_id: activeWorldId || npc.world_id || null } as Insert, 'global');
+          await linkNPCToCampaign(npc.id, details);
         },
         onDetach: async () => { await unlinkNPCFromCampaign(npc.id); onDeselect(); },
       }}

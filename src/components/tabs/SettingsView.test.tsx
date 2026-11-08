@@ -65,10 +65,10 @@ describe('Campaign settings', () => {
     await waitFor(() => expect(updateCampaign).toHaveBeenCalledWith('c1', { archived: false }));
   });
 
-  it('saves the pitch and house notes as they are typed', async () => {
+  it('saves the pitch and table notes as they are typed', async () => {
     const { setOverview } = setup();
     expect(screen.getByDisplayValue('A heist.')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(/Flanking gives advantage/), { target: { value: 'No PvP.' } });
+    fireEvent.change(screen.getByLabelText(/Keep it PG-13/), { target: { value: 'No PvP.' } });
     await waitFor(() => expect(setOverview).toHaveBeenCalled(), { timeout: 2000 });
     const update = setOverview.mock.calls.at(-1)![0] as (prev: object) => object;
     expect(update({ title: 'Test', plotSummary: 'A heist.', worldInfo: '' })).toMatchObject({ plotSummary: 'A heist.', worldInfo: 'No PvP.' });

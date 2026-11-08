@@ -21,6 +21,28 @@ export const toRoman = (n: number) => ROMAN[n] || String(n || '');
 export const clip = (s: string | null | undefined, n: number) =>
   (s ?? '').length > n ? (s as string).slice(0, n - 1) + '…' : (s ?? '');
 
+/**
+ * A node's name split at word breaks: two lines at most, or as many as it takes
+ * when `full`, for a node that's hovered, focused or selected.
+ */
+export function labelLines(title: string | null | undefined, perLine: number, full = false): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of (title ?? '').trim().split(/\s+/).filter(Boolean)) {
+    if (line && `${line} ${word}`.length > perLine) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(line);
+  if (full) return lines;
+  return lines.length <= 1
+    ? lines.map(l => clip(l, perLine))
+    : [clip(lines[0], perLine), clip(lines.slice(1).join(' '), perLine)];
+}
+
 export const kindLabel: Record<BodyKind, string> = { module: 'Module', sub: 'Part', scene: 'Scene' };
 
 export interface Selection { id: string; kind: BodyKind }

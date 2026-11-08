@@ -71,6 +71,8 @@ describe('WorldImportDrawer', () => {
     fireEvent.click(importBtn(container));
     await waitFor(() => expect(cc().upsertNPC).toHaveBeenCalledTimes(1));
     const [payload, scope] = (cc().upsertNPC as ReturnType<typeof vi.fn>).mock.calls[0];
+    // A copy starts fresh here: the canon row's history is another table's.
+    expect(payload).toMatchObject({ met_by_pcs: false, disposition: null });
     expect(scope).toBe('campaign');
     expect(payload).toMatchObject({ name: 'Aldric', faction_ids: [], statblock_id: null });
     // System fields from the canon row must not carry over into the new record.

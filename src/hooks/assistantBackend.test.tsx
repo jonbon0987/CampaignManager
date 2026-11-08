@@ -247,6 +247,64 @@ describe('campaign assistant — submodule & scene writes', () => {
     });
   });
 
+  describe('a thread’s clock and links', () => {
+    const thread = {
+      id: 't-1', title: 'The Tide', category: 'faction', description: 'It rises.', state: 'cold', is_active: true,
+      last_updated_session: null, dm_only_notes: null, clock_size: 6, clock_filled: 2, clock_label: 'The wharf floods',
+      npc_ids: ['npc-7'], location_ids: [], faction_ids: [], module_id: null,
+    };
+    const hookAction = (payload: object) => ({ type: 'upsertHook', payload }) as unknown as PendingAction;
+    const written = () => (cc().upsertHook as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    beforeEach(() => {
+      h.campaign.value = makeCampaignContext({
+        selectedCampaign: { id: 'camp-1', name: 'Test' },
+        hooks: [thread], npcs: [makeNPC({ id: 'npc-7', name: 'Gorval' }), makeNPC({ id: 'npc-8', name: 'Sable' })],
+        modules: [makeModule('mod-1')], locations: [], factions: [],
+        upsertHook: vi.fn().mockResolvedValue({ id: 't-1' }),
+      });
+    });
+
+    it('advances a clock, keeping the rest of the thread', async () => {
+      await backend().applyChatAction(hookAction({ id: 't-1', clock_filled: 3 }));
+      expect(written()).toMatchObject({ id: 't-1', title: 'The Tide', description: 'It rises.', clock_size: 6, clock_filled: 3, clock_label: 'The wharf floods', npc_ids: ['npc-7'] });
+    });
+
+    it('starts a clock on a new thread, with links to what’s real', async () => {
+      await backend().applyChatAction(hookAction({ title: 'New', clock_size: 4, clock_label: 'Boom', npc_ids: ['npc-8', 'made-up'], module_id: 'mod-1' }));
+      expect(written()).toMatchObject({ title: 'New', clock_size: 4, clock_filled: 0, clock_label: 'Boom', npc_ids: ['npc-8'], module_id: 'mod-1' });
+    });
+
+    it('wakes a cold thread whose clock it fills', async () => {
+      await backend().applyChatAction(hookAction({ id: 't-1', clock_filled: 6 }));
+      expect(written()).toMatchObject({ clock_filled: 6, state: 'active', is_active: true });
+    });
+
+    it('refuses a chapter that doesn’t exist instead of failing the write', async () => {
+      await backend().applyChatAction(hookAction({ id: 't-1', module_id: 'made-up' }));
+      expect(written().module_id).toBeNull();
+    });
+
+    it('says on the card when filling a clock will wake its thread', () => {
+      const rows = backend().threadRows!(thread, { clock_filled: 6 });
+      expect(rows).toEqual(expect.arrayContaining([{ label: 'State', old: 'cold', value: 'active' }]));
+    });
+
+    it('describes a change to them by name for its card', () => {
+      const rows = backend().threadRows!(thread, { npc_ids: ['npc-7', 'npc-8'], clock_filled: 3 });
+      expect(rows).toEqual(expect.arrayContaining([
+        { label: 'Clock', old: '2 of 6: The wharf floods', value: '3 of 6: The wharf floods' },
+        { label: 'People', old: 'Gorval', value: 'Gorval, Sable' },
+      ]));
+    });
+  });
+
+  it('tells the model where an NPC’s attitude and meeting the party belong', () => {
+    const prompt = backend().buildSystemPrompt();
+    expect(prompt).toContain('"disposition"');
+    expect(prompt).toContain('"met_by_pcs"');
+    expect(prompt).toContain('never a note or the description');
+  });
+
   it('creates an NPC verbatim when there is no id to merge onto', async () => {
     const b = backend();
     await b.applyChatAction(npcAction({ name: 'Sable Thorne', role: 'Smuggler' }));

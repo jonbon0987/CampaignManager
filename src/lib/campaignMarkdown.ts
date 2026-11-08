@@ -2,6 +2,7 @@
 // for the backup zip. Mentions become plain names and pictures are linked by
 // where they sit in the zip. Nothing here touches the network.
 
+import { ruleLine, rulesOf, writtenRules } from './houseRules';
 import { refsToNames } from './slashMarkdown';
 import { clockOf } from './threadClock';
 import { formatCoins, formatLine, sumCoins } from './treasury';
@@ -169,6 +170,7 @@ function readme(data: CampaignExport, counts: [string, string, number][], pictur
   const md = new Md().h(1, c.title?.trim() || c.name || 'Campaign');
   md.meta([data.world ? `In ${data.world.name}` : null, c.status, `Exported ${localToday(new Date(data.exportedAt))}`]);
   md.para(c.description).section('The story so far', c.plot_summary).section('The world', c.world_info).section('Major characters', c.major_characters);
+  md.list('House rules', writtenRules(rulesOf(c.house_rules)).map(r => `${r.topic}. ${ruleLine(r)}`));
   md.list('In this backup', [
     ...counts.filter(([, , n]) => n > 0).map(([file, label, n]) => `[${label}](${file}): ${n}`),
     '`campaign.json`: every field of every record, as stored, for programs and a later restore.',

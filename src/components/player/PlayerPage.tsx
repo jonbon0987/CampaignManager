@@ -12,6 +12,7 @@ import { formatSessionDate, localToday } from '../../lib/sessionLifecycle';
 import { dateOf, formatWorldDate, monthsOf, yearSuffix } from '../../lib/calendar';
 import { expectedNext, formatWhen } from '../../lib/schedule';
 import { formatCoins, hasCoins } from '../../lib/treasury';
+import { byTopic, rulesOf, writtenRules } from '../../lib/houseRules';
 import { useImageUrl } from '../../hooks/useImageUrl';
 import { Button } from '../ui/Button';
 import { Lightbox } from '../ui/Lightbox';
@@ -97,6 +98,7 @@ function Page({ data }: { data: PlayerPageData }) {
   const worldDate = data.world_date ? dateOf(data.world_date.date) : null;
   const inWorld = worldDate && data.world_date ? formatWorldDate(worldDate, monthsOf(data.world_date.months), yearSuffix(data.world_date.suffix)) : null;
   const treasure = data.treasury && hasCoins(data.treasury) ? formatCoins(data.treasury) : null;
+  const houseRules = byTopic(writtenRules(rulesOf(data.house_rules)));
 
   useEffect(() => { document.title = `${name} · Player page`; }, [name]);
 
@@ -114,6 +116,7 @@ function Page({ data }: { data: PlayerPageData }) {
         {present.length > 1 && (
           <nav className="pp-nav" aria-label="Sections">
             {present.map(([, id, label]) => <a key={id} className="pp-nav-link" href={`#${id}`}>{label}</a>)}
+            {houseRules.length > 0 && <a className="pp-nav-link" href="#house-rules">House rules</a>}
           </nav>
         )}
       </header>
@@ -139,7 +142,7 @@ function Page({ data }: { data: PlayerPageData }) {
         </section>
       )}
 
-      {present.length === 0 && (
+      {present.length === 0 && houseRules.length === 0 && (
         <p className="pp-empty">Nothing else has been shared yet. Your DM adds leads, recaps, handouts, people, places and lore here as the campaign goes on.</p>
       )}
 
@@ -242,6 +245,25 @@ function Page({ data }: { data: PlayerPageData }) {
               <h3 className="pp-h3">{e.title}</h3>
               <Prose text={e.content} />
             </article>
+          ))}
+        </section>
+      )}
+
+      {houseRules.length > 0 && (
+        <section className="pp-sec" id="house-rules" aria-labelledby="pp-house-rules">
+          <h2 className="pp-h2" id="pp-house-rules">House rules</h2>
+          {houseRules.map(([topic, rules]) => (
+            <div key={topic}>
+              <div className="pp-label">{topic}</div>
+              <dl className="pp-rules">
+                {rules.map(r => (
+                  <div key={r.id}>
+                    {r.title.trim() && <dt>{r.title}</dt>}
+                    {r.text.trim() && <dd>{r.text}</dd>}
+                  </div>
+                ))}
+              </dl>
+            </div>
           ))}
         </section>
       )}

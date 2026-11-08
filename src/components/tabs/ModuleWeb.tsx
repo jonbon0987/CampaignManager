@@ -21,7 +21,7 @@ import { wouldCreateModuleCycle, wouldCreateSubmoduleCycle } from '../../lib/mod
 import { typeInfo } from './moduleDetail/pickers';
 import type { Module, Submodule, Scene, SubmoduleDependency } from '../../lib/database.types';
 import { WebSim, type BodyKind, type BodySpec, type LinkSpec, type Body } from './moduleWeb/sim';
-import { COL_X, CENTER_Y, SPEC, toRoman, clip, type Selection } from './moduleWeb/shared';
+import { COL_X, CENTER_Y, SPEC, toRoman, labelLines, type Selection } from './moduleWeb/shared';
 import { StageBar, type Depth, type Status } from './moduleWeb/StageBar';
 import { Inspector } from './moduleWeb/Inspector';
 import { AddBubble } from './moduleWeb/AddForm';
@@ -622,14 +622,27 @@ export default function ModuleWeb({ onOpen, initialModuleId }: {
                 ].filter(Boolean).join(' ');
                 const aff = n.kind === 'module' ? { b: 21, h: 44, r: 10 } : { b: 12, h: 26, r: 8 };
                 const at = simRef.current!.byId.get(n.id) ?? { x: n.targetX, y: CENTER_Y };
+                // The whole name while it's being looked at; two lines otherwise.
+                const lines = labelLines(rec.title, n.kind === 'module' ? 24 : n.kind === 'sub' ? 22 : 20, isSel || hover === n.id);
+                const label = (className: string, y: number, step: number) => (
+                  <text className={className} y={y}>
+                    {lines.map((l, i) => <tspan key={i} x={0} dy={i === 0 ? 0 : step}>{l}</tspan>)}
+                  </text>
+                );
                 return (
-                  <g key={n.id} className={cls}
+                  <g key={n.id} className={cls} tabIndex={0} role="button" aria-label={rec.title}
                     style={info ? ({ '--tc': info.color } as React.CSSProperties) : undefined}
                     transform={`translate(${at.x.toFixed(1)},${at.y.toFixed(1)})`}
                     ref={el => { if (el) nodeEls.current.set(n.id, el); else nodeEls.current.delete(n.id); }}
                     onPointerDown={e => onNodeDown(e, n)}
                     onPointerEnter={() => setHover(n.id)}
                     onPointerLeave={() => setHover(h => (h === n.id ? null : h))}
+                    onFocus={() => setHover(n.id)}
+                    onBlur={() => setHover(h => (h === n.id ? null : h))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleOpen(n.id, n.kind); }
+                      if (e.key === ' ') { e.preventDefault(); setSel({ id: n.id, kind: n.kind }); }
+                    }}
                     onDoubleClick={e => { e.stopPropagation(); handleOpen(n.id, n.kind); }}>
 
                     {n.kind === 'module' && <>
@@ -637,17 +650,17 @@ export default function ModuleWeb({ onOpen, initialModuleId }: {
                       <circle className="orr-disc" r={28} />
                       <circle className="orr-ring" r={34} />
                       <text className="orr-roman" y={8}>{toRoman(parseInt((rec as Module).chapter ?? '', 10))}</text>
-                      <text className="orr-label" y={58}>{clip(rec.title, 24)}</text>
-                      <text className="orr-meta" y={73}>{(rec as Module).status} · {kids} {kids === 1 ? 'part' : 'parts'}</text>
+                      {label('orr-label', 58, 15)}
+                      <text className="orr-meta" y={73 + 15 * Math.max(0, lines.length - 1)}>{(rec as Module).status} · {kids} {kids === 1 ? 'part' : 'parts'}</text>
                     </>}
                     {n.kind === 'sub' && <>
                       <circle className="orr-disc" r={15} />
                       <text className="orr-glyph" y={5}>{info!.glyph}</text>
-                      <text className="orr-label orr-label-sm" y={33}>{clip(rec.title, 22)}</text>
+                      {label('orr-label orr-label-sm', 33, 13)}
                     </>}
                     {n.kind === 'scene' && <>
                       <circle className="orr-dot" r={6} />
-                      <text className="orr-label orr-label-xs" y={21}>{clip(rec.title, 20)}</text>
+                      {label('orr-label orr-label-xs', 21, 10)}
                     </>}
 
                     {n.kind !== 'scene' && <>

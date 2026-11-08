@@ -16,7 +16,7 @@ const SAVE_DELAY = 600;
 const MAX_ROLLS = 50;
 
 /** The table tools docked in the rail during play. */
-export type PlayTab = 'scene' | 'initiative' | 'dice' | 'notes' | 'improv' | 'record';
+export type PlayTab = 'scene' | 'initiative' | 'dice' | 'notes' | 'improv' | 'rules' | 'record';
 
 interface PlayContextValue {
   /** The session being played, if one is live. */
@@ -69,7 +69,7 @@ export function PlayProvider({ children }: { children: ReactNode }) {
   const [play, setPlay] = useState<SessionPlay>(() => live?.play ?? {});
   const [startOpen, setStartOpen] = useState(false);
   const [recordFor, setRecordFor] = useState<Session | null>(null);
-  const [tab, setTab] = useState<PlayTab>('initiative');
+  const [tab, setTab] = useState<PlayTab>('dice');
   const [toolRequest, setToolRequest] = useState(0);
   const [wrapFor, setWrapFor] = useState<string | null>(null);
 

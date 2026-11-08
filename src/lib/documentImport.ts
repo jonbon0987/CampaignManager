@@ -108,6 +108,8 @@ const hiddenFields = new Set([
   // Parent pointers the assistant uses to hang a submodule/scene off something
   // it is proposing in the same batch — plumbing, resolved away on commit.
   'ref', 'module_ref', 'submodule_ref',
+  // A thread's clock and links get rows of their own, by name (threadCardRows).
+  'clock_size', 'clock_filled', 'clock_label', 'npc_ids', 'location_ids',
 ]);
 
 export function fieldLabel(key: string): string {

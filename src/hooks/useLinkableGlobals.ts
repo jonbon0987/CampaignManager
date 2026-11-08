@@ -107,12 +107,17 @@ export function useLinkableGlobals<
     [campaignItems, globalItems, linkedIds]
   );
 
+  // Only the latest refresh counts: an older one finishing late, for a campaign
+  // that's since been left, mustn't overwrite it.
+  const refreshSeq = useRef(0);
   const refresh = useCallback(async (campaignId: string) => {
+    const seq = ++refreshSeq.current;
     const [ci, gi, ids] = await Promise.all([
       cfgRef.current.getByCampaign(campaignId),
       cfgRef.current.getGlobal(),
       cfgRef.current.getLinkedIds(campaignId),
     ]);
+    if (seq !== refreshSeq.current) return;
     setCampaignItems(ci);
     setGlobalItems(gi);
     setLinkedIds(ids);

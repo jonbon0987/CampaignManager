@@ -217,6 +217,10 @@ export function useAIChat(backend: AssistantBackend) {
         value: row.newValue == null ? '—' : String(row.newValue),
         add: !existing,
       }));
+    if (!isDelete && importAction.type === 'upsertHook') {
+      const rows = backend.threadRows?.(existing, importAction.payload as Record<string, unknown>) ?? [];
+      fields.push(...rows.map(r => ({ ...r, add: !existing })));
+    }
 
     const name = isDelete
       ? (chatAction as { label?: string }).label ?? '(unknown)'

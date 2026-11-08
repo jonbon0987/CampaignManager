@@ -14,6 +14,8 @@ import {
   type ImportAction, type ImportActionType,
 } from '../lib/documentImport';
 import { normalizeAssistantPayload } from '../lib/assistantNormalize';
+import { cleanThreadPayload, threadCardRows, type ThreadCardRow, type ThreadLinkIds } from '../lib/threadActions';
+import { rulesOf, writtenRules } from '../lib/houseRules';
 import type { PendingAction } from './useAIChat';
 import type { WorldTimelineEvent } from '../types/world';
 
@@ -40,6 +42,8 @@ export interface AssistantBackend {
   formatContext: () => string;
   /** The existing record a proposed action would touch, for diffs + merge. */
   lookupExisting: (type: ImportActionType, id: string | null) => Record<string, unknown> | null;
+  /** The card rows for a thread's clock and links, as they'd be saved. Campaign only. */
+  threadRows?: (existing: Record<string, unknown> | null, payload: Record<string, unknown>) => ThreadCardRow[];
   /** Apply a chat-authored action (may be a delete) exactly as written. */
   applyChatAction: (action: PendingAction) => Promise<void>;
   /** Apply an import/chat-upsert action, merging onto the existing record. */
@@ -90,6 +94,7 @@ export function useCampaignAssistantBackend(): AssistantBackend {
       submodules, scenes, monsterStatblocks,
       overviewTitle: overview.title,
       overviewPlot: overview.plotSummary,
+      houseRules: writtenRules(rulesOf(campaign.selectedCampaign?.house_rules)),
     });
   }
 
@@ -149,12 +154,12 @@ Every action carries three UI fields alongside its payload:
   "step": the plan step number, when you emitted a plan.
 
 Upsert (to update an existing record, add an "id" field set to its id from the data above; omit "id" to create new):
-  { "type": "upsertNPC", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "role": "...", "status": "active|deceased|unknown", "description": "...", "hooks_motivations": "...", "dm_notes": "...", "faction_ids": ["<id of a FACTION it belongs to>"], "location_id": "<id of the LOCATION it's found at, or null>", "first_session": null } }
+  { "type": "upsertNPC", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "role": "...", "status": "active|deceased|unknown", "disposition": "their attitude toward the party, in a few words", "met_by_pcs": true, "description": "...", "hooks_motivations": "...", "dm_notes": "...", "faction_ids": ["<id of a FACTION it belongs to>"], "location_id": "<id of the LOCATION it's found at, or null>", "first_session": null } }
   { "type": "upsertSession", "reasoning": "...", "confidence": 0.9, "payload": { "session_number": 1, "session_date": "2024-01-01", "summary": "...", "combats": "...", "loot_rewards": "...", "hooks_notes": "...", "dm_notes": "..." } }
   { "type": "upsertPC", "reasoning": "...", "confidence": 0.9, "payload": { "character_name": "...", "player_name": "...", "race": "...", "class": "...", "background": "...", "story_hooks": "...", "key_npc_ids": ["<id of an NPC who matters to them>"], "dm_notes": "...", "is_active": true } }
   { "type": "upsertLocation", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "region": "...", "location_type": "continent|city|town|dungeon|faction_hq|landmark", "population": "...", "status": "...", "history": "...", "description": "...", "dm_notes": "..." } }
   { "type": "upsertFaction", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "faction_type": "...", "overview": "...", "key_figure_ids": ["<id of an NPC who leads or matters in it>"], "agenda": "...", "dm_notes": "..." } }
-  { "type": "upsertHook", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "..." } }
+  { "type": "upsertHook", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "...", "clock_size": null, "clock_filled": 0, "clock_label": "what happens when it fills", "npc_ids": ["<id of an NPC it touches>"], "location_ids": ["<id of a LOCATION it touches>"], "faction_ids": ["<id of a FACTION it touches>"], "module_id": "<id of the chapter it belongs to, or null>" } }
   { "type": "upsertLore", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "history|artifact|creature|magic|religion", "content": "...", "dm_only": false } }
   { "type": "upsertModule", "reasoning": "...", "confidence": 0.9, "payload": { "chapter": "1", "title": "...", "synopsis": "...", "status": "planned|active|completed", "played_session": null, "encounters": "...", "rewards": "...", "dm_notes": "..." } }
   { "type": "upsertSubmodule", "reasoning": "...", "confidence": 0.9, "payload": { "module_id": "<id of the parent module>", "ref": "a short name for this submodule, e.g. \\"vault\\"", "title": "...", "submodule_type": "${SUBMODULE_TYPES.join('|')}", "summary": "one line for the outline rail", "content": "the full write-up — several paragraphs the DM could run from cold", "dm_notes": "secrets, contingencies, what to do if the party skips it" } }
@@ -176,6 +181,16 @@ PARENTS. Every submodule needs a parent module and every scene needs a parent su
 
 Scenes are ordered as you emit them, so write each submodule's beats in the order they are most likely to come up. To UPDATE an existing submodule or scene, set "id" to its id from the listing (you can then omit the parent field).
 
+== NPCS AND THE PARTY ==
+
+How an NPC feels about the party goes in "disposition", and whether the party has met them goes in "met_by_pcs". Always use these two fields for that, never a note or the description: an NPC can be shared with other campaigns through the world's canon, and these two are the only fields kept separately for each campaign. To record a change, send only "id" and the field that changed.
+
+== THREAD CLOCKS AND LINKS ==
+
+A clock tracks something moving on its own, like a villain's plan, a ritual or a rising tide. Set "clock_size" to 4, 6 or 8 segments (longer for a slower threat), "clock_label" to what happens when it fills, and "clock_filled" to how many segments are done. To advance a clock, send only "id" and the new "clock_filled" total. Send "clock_size": null to remove a clock. Give a thread a clock only when the DM asks for one or the material describes a real countdown; most threads don't need one. In the listing above, a thread's clock reads "clock 2 of 6: label".
+
+Links say what a thread touches: "npc_ids", "location_ids", "faction_ids", and "module_id" for its chapter. Link what the thread really involves, using real ids from the listings above and never an invented one. Each list replaces the one already there, so when adding to a linked thread, include the ids of what it already links (the listing names them). Omit a list to leave it alone.
+
 == REVISING EXISTING RECORDS ==
 
 Always use existing record IDs when updating, and treat an update as a REVISION of the record, not a replacement.
@@ -187,6 +202,32 @@ Example of revising an existing hook (note the real "id" copied from the data ab
   { "type": "upsertHook", "reasoning": "Merging tonight's developments into the existing Sunken Crown thread.", "confidence": 0.88, "payload": { "id": "1f2e3d4c-0000-0000-0000-000000000000", "description": "...the existing thread text, with tonight's developments woven in..." } }
 
 Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record describing the same thing and reuse its id to update it instead of making a duplicate. This matters most for plot hooks: if the DM mentions a quest, storyline, or hook that resembles one already in HOOKS & IDEAS — even when the title is reworded, shortened, or phrased differently — set that hook's id and merge the new developments into its description. Only omit the id when the hook is a genuinely new storyline with no match above.`;
+  }
+
+  const threadIds: ThreadLinkIds = {
+    npcs: campaign.npcs.map(n => n.id),
+    locations: campaign.locations.map(l => l.id),
+    factions: campaign.factions.map(f => f.id),
+    modules: campaign.modules.map(m => m.id),
+  };
+
+  function threadRows(existing: Record<string, unknown> | null, payload: Record<string, unknown>): ThreadCardRow[] {
+    const named = <T extends { id: string }>(rows: T[], label: (r: T) => string) => {
+      const map = new Map(rows.map(r => [r.id, label(r)]));
+      return (id: string) => map.get(id);
+    };
+    const clean = cleanThreadPayload(payload, existing, threadIds);
+    const rows = threadCardRows(existing, clean, {
+      npc: named(campaign.npcs, n => n.name),
+      place: named(campaign.locations, l => l.name),
+      faction: named(campaign.factions, f => f.name),
+      module: named(campaign.modules, m => m.title),
+    });
+    // A clock that fills wakes its thread, so the card says that's part of the deal.
+    if (typeof clean.state === 'string' && clean.state !== payload.state) {
+      rows.push({ label: 'State', old: typeof existing?.state === 'string' ? existing.state : undefined, value: clean.state });
+    }
+    return rows;
   }
 
   function lookupExisting(type: ImportActionType, id: string | null): Record<string, unknown> | null {
@@ -316,6 +357,12 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       }
     }
 
+    if (action.type === 'upsertHook') {
+      const id = (rawPayload as { id?: string }).id;
+      const existing = id ? (lookupExistingEntity(campaign, 'upsertHook', id) as unknown as Record<string, unknown> | null) : null;
+      action = { ...action, payload: cleanThreadPayload(action.payload as unknown as Record<string, unknown>, existing ?? null, threadIds) as never };
+    }
+
     switch (action.type) {
       case 'upsertSubmodule': await writeSubmodule(action.payload as unknown as Record<string, unknown>, rawPayload); break;
       case 'upsertScene':     await writeScene(action.payload as unknown as Record<string, unknown>, rawPayload); break;
@@ -354,7 +401,10 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     const merged = existing
       ? { ...stripInternalFields(existing), ...(action.payload as Record<string, unknown>), id: action.matched_id }
       : { ...(action.payload as Record<string, unknown>) };
-    const payload = normalizeAssistantPayload(action.type, merged);
+    const normal = normalizeAssistantPayload(action.type, merged);
+    const payload = action.type === 'upsertHook'
+      ? cleanThreadPayload(normal as Record<string, unknown>, (existing as unknown as Record<string, unknown> | null) ?? null, threadIds)
+      : normal;
     switch (action.type) {
       // Same writers as the chat path, so an imported submodule/scene gets the
       // same parent resolution, sort-order append, and title fallback.
@@ -390,6 +440,7 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     buildSystemPrompt,
     formatContext,
     lookupExisting,
+    threadRows,
     applyChatAction,
     applyImportAction,
   };

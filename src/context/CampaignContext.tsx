@@ -7,6 +7,7 @@ import { useDeletedToast } from '../hooks/useDeletedToast';
 import { RESTORED_EVENT } from '../lib/trash';
 import type { CampaignOverview } from '../types';
 import { errorMessage } from '../lib/errors';
+import { NO_NPC_DETAILS, detailsOfLink, splitNpcDetails, withCampaignDetails, type NpcDetails } from '../lib/npcDetails';
 import {
   Campaigns as CampaignsDB,
   CampaignNPCs as CampaignNPCsDB,
@@ -106,7 +107,8 @@ interface CampaignContextType {
   // NPCs — scope: 'campaign' creates campaign-specific, 'global' creates in global pool
   upsertNPC: (npc: Omit<NPCInsert, 'campaign_id'> & { id?: string }, scope?: 'campaign' | 'global') => Promise<NPC>;
   deleteNPC: (id: string) => Promise<void>;
-  linkNPCToCampaign: (npcId: string) => Promise<void>;
+  /** `details`: what this campaign already knows about them, for an NPC it's just published to canon. */
+  linkNPCToCampaign: (npcId: string, details?: NpcDetails) => Promise<void>;
   unlinkNPCFromCampaign: (npcId: string) => Promise<void>;
 
   // Locations
@@ -235,7 +237,12 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
 
   // Campaign list + selected campaign (persisted in localStorage)
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [selectedCampaignId, setSelectedCampaignId] = useLocalStorage<string | null>('dnd-selected-campaign-id', null);
+  const [storedCampaignId, setSelectedCampaignId] = useLocalStorage<string | null>('dnd-selected-campaign-id', null);
+  // The URL's campaign wins from the first render. Starting on the last-used one and
+  // switching a moment later loads both, and whichever answer lands last gets shown.
+  const selectedCampaignId = campaignId ?? storedCampaignId;
+  const selectedIdRef = useRef(selectedCampaignId);
+  useEffect(() => { selectedIdRef.current = selectedCampaignId; });
 
   // Campaign-scoped entities
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -278,10 +285,17 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
 
   // NPCs and Locations share the "linkable globals" pattern: campaign-specific
   // rows + a global pool that campaigns opt into. One generic hook backs both.
+  // Whether the party has met a canon NPC, and how they feel about it, is each
+  // campaign's own, so it's kept on the link and laid over the shared row.
+  const [npcDetails, setNpcDetails] = useState<ReadonlyMap<string, NpcDetails>>(new Map());
   const npcStore = useLinkableGlobals<NPC, NPCInsert>({
     getByCampaign: NPCsDB.getByCampaign,
     getGlobal: () => selectedWorldId ? NPCsDB.getGlobal(selectedWorldId) : Promise.resolve([]),
-    getLinkedIds: CampaignNPCsDB.getLinkedNPCIds,
+    getLinkedIds: async campaignId => {
+      const links = await CampaignNPCsDB.getLinks(campaignId);
+      if (campaignId === selectedIdRef.current) setNpcDetails(new Map(links.map(l => [l.npc_id, detailsOfLink(l)])));
+      return links.map(l => l.npc_id);
+    },
     upsert: NPCsDB.upsert,
     remove: NPCsDB.delete,
     link: CampaignNPCsDB.link,
@@ -316,7 +330,8 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   const refreshLoreStore = loreStore.refresh;
 
   // Merged arrays for backwards-compatible consumers: campaign-specific + linked global
-  const npcs = npcStore.items;
+  const npcItems = npcStore.items;
+  const npcs = useMemo(() => withCampaignDetails(npcItems, npcDetails), [npcItems, npcDetails]);
   const globalNPCs = npcStore.globalItems;
   const linkedNPCIds = npcStore.linkedIds;
   const locations = locationStore.items;
@@ -375,7 +390,15 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
 
   // Phase 2: load all campaign-scoped data
   /** Loads the campaign's data. Quietly (no loading screen) when reloading what's already shown. */
+  const loadSeq = useRef(0);
   const loadAll = useCallback(async (campaignId: string, quiet = false) => {
+    // Only the latest load counts: an older one finishing late mustn't overwrite it.
+    const seq = ++loadSeq.current;
+    const current = () => seq === loadSeq.current;
+    const keep = async <T,>(read: Promise<T>, set: (v: T) => void) => {
+      const value = await read;
+      if (current()) set(value);
+    };
     if (!quiet) setLoading(true);
     setError(null);
     try {
@@ -389,6 +412,7 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
         ModulesDB.getAll(campaignId),
         RelationshipsDB.getAll(campaignId),
       ]);
+      if (!current()) return;
       setSessions(s);
       setPCs(p);
       setFactions(f);
@@ -402,34 +426,35 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
         // campaign_lore table doesn't exist yet — apply migration 0025
       }
       try {
-        setIdeas(await IdeasDB.getAll(campaignId));
+        await keep(IdeasDB.getAll(campaignId), setIdeas);
       } catch {
         // ideas table doesn't exist yet — apply migration 0026
       }
       try {
-        setMonsterStatblocks(await MonsterStatblocksDB.getAll(campaignId));
+        await keep(MonsterStatblocksDB.getAll(campaignId), setMonsterStatblocks);
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
       }
       try {
-        setEncounters(await EncountersDB.getAll(campaignId));
+        await keep(EncountersDB.getAll(campaignId), setEncounters);
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
       }
       try {
-        setRandomEncounterTables(await RandomEncounterTablesDB.getAll(campaignId));
+        await keep(RandomEncounterTablesDB.getAll(campaignId), setRandomEncounterTables);
       } catch {
         // random_encounter_tables doesn't exist yet — apply migration 0029
       }
       try {
-        setModuleDeps(await ModuleDepsDB.getByCampaign(campaignId));
+        await keep(ModuleDepsDB.getByCampaign(campaignId), setModuleDeps);
       } catch {
         // table doesn't exist yet — silently ignore until migration is applied
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load data');
+      if (current()) setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
-      if (!quiet) setLoading(false);
+      // A newer load takes over the spinner, so it's the one to end it.
+      if (current()) setLoading(false);
     }
   }, [refreshNPCStore, refreshLocationStore, refreshLoreStore]);
 
@@ -594,9 +619,30 @@ export function CampaignProvider({ children, campaignId, worldId }: { children: 
   // ---- NPCs & Locations ----
   // Backed by the generic useLinkableGlobals stores declared above; these
   // aliases preserve the existing CampaignContext API surface.
-  const upsertNPC = npcStore.upsert;
+  const saveNPC = npcStore.upsert;
+  const upsertNPC = useCallback(async (npc: Omit<NPCInsert, 'campaign_id'> & { id?: string }, scope: 'campaign' | 'global' = 'campaign'): Promise<NPC> => {
+    if (!npc.id || !selectedCampaignId || !linkedNPCIds.includes(npc.id)) return saveNPC(npc, scope);
+    // A canon NPC stays canon, whoever's saving it, and what this campaign alone
+    // knows about them goes on its link. The link goes first: the save reloads it.
+    const current = npcDetails.get(npc.id) ?? NO_NPC_DETAILS;
+    const { details, shared } = splitNpcDetails(npc, current);
+    if (details.met_by_pcs !== current.met_by_pcs || details.disposition !== current.disposition) {
+      await CampaignNPCsDB.setDetails(selectedCampaignId, npc.id, details);
+    }
+    const saved = await saveNPC(shared as typeof npc, 'global');
+    return { ...saved, ...details };
+  }, [selectedCampaignId, linkedNPCIds, npcDetails, saveNPC]);
   const deleteNPC = npcStore.remove;
-  const linkNPCToCampaign = npcStore.link;
+  const linkNPC = npcStore.link;
+  const linkNPCToCampaign = useCallback(async (npcId: string, details?: NpcDetails) => {
+    // Details first: the NPC appears in the list the moment it's linked, and an
+    // editor opening on it reads them once, as it mounts.
+    if (details && selectedCampaignId) {
+      await CampaignNPCsDB.link(selectedCampaignId, npcId, details);
+      setNpcDetails(prev => new Map(prev).set(npcId, details));
+    }
+    await linkNPC(npcId);
+  }, [linkNPC, selectedCampaignId]);
   const unlinkNPCFromCampaign = npcStore.unlink;
 
   const upsertLocation = locationStore.upsert;
