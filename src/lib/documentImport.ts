@@ -21,7 +21,12 @@ import type {
   CharacterRelationshipInsert,
   MonsterStatblockInsert,
   TimelineEventInsert,
+  ItemInsert,
+  TreasuryEntryInsert,
+  CampaignInsert,
 } from './database.types';
+import type { HouseRule } from './houseRules';
+import { treasuryName } from './assistantCampaign';
 
 // ── ImportAction discriminated union ───────────────────────────────────────
 // The server returns a list of these. Each has matched_id (existing entity
@@ -53,7 +58,12 @@ export type ImportAction =
   | ImportActionBase<'upsertScene', SceneInsert>
   | ImportActionBase<'upsertRelationship', Omit<CharacterRelationshipInsert, 'campaign_id'>>
   | ImportActionBase<'upsertMonsterStatblock', Omit<MonsterStatblockInsert, 'campaign_id'>>
-  | ImportActionBase<'upsertTimelineEvent', Omit<TimelineEventInsert, 'world_id'>>;
+  | ImportActionBase<'upsertTimelineEvent', Omit<TimelineEventInsert, 'world_id'>>
+  // Only the chat assistant proposes these; document import never does.
+  | ImportActionBase<'upsertItem', Omit<ItemInsert, 'campaign_id'> & { holders: unknown }>
+  | ImportActionBase<'upsertTreasury', Omit<TreasuryEntryInsert, 'campaign_id'>>
+  | ImportActionBase<'upsertHouseRule', HouseRule>
+  | ImportActionBase<'upsertCampaign', Pick<CampaignInsert, 'rules_edition' | 'levelling' | 'session_repeat' | 'world_date'>>;
 
 export type ImportActionType = ImportAction['type'];
 
@@ -96,6 +106,10 @@ export const entityMeta: Record<ImportActionType, {
   upsertRelationship:      { label: 'Relationship', badgeColor: 'muted',  glyph: '⧉', nameField: 'label' },
   upsertMonsterStatblock:  { label: 'Stat sheet',   badgeColor: 'blue',   glyph: '◆', nameField: 'name' },
   upsertTimelineEvent:     { label: 'Timeline event', badgeColor: 'muted', glyph: '❂', nameField: 'title' },
+  upsertItem:              { label: 'Item',         badgeColor: 'gold',   glyph: '⚱', nameField: 'name' },
+  upsertTreasury:          { label: 'Coin',         badgeColor: 'yellow', glyph: '¤', nameField: 'note' },
+  upsertHouseRule:         { label: 'House rule',   badgeColor: 'muted',  glyph: '§', nameField: 'title' },
+  upsertCampaign:          { label: 'Campaign',     badgeColor: 'blue',   glyph: '⚑', nameField: 'name' },
 };
 
 // ── Field diffing for the staging tray ────────────────────────────────────
@@ -110,10 +124,29 @@ const hiddenFields = new Set([
   'ref', 'module_ref', 'submodule_ref',
   // A thread's clock and links get rows of their own, by name (threadCardRows).
   'clock_size', 'clock_filled', 'clock_label', 'npc_ids', 'location_ids',
+  // So do the newer kinds' ids, lists and codes (assistantCampaign's card rows).
+  'holders', 'item_type', 'rarity', 'attunement', 'attunement_note',
+  'pp', 'gp', 'ep', 'sp', 'cp', 'pc_id', 'session_id',
+  'rules_edition', 'levelling', 'session_repeat', 'world_date',
+  'plan', 'session_time', 'parent_id',
 ]);
 
+// Where the plain title-casing of a column reads wrong.
+const FIELD_LABELS: Record<string, string> = {
+  max_hp: 'Max HP',
+  spell_save_dc: 'Spell save DC',
+  xp: 'XP',
+  sheet_url: 'Sheet link',
+  read_aloud: 'Read aloud',
+  player_text: 'What the players know',
+  prep_notes: 'Prep notes',
+  dm_notes: 'DM notes',
+  dm_only_notes: 'DM-only notes',
+  is_active: 'Active',
+};
+
 export function fieldLabel(key: string): string {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return FIELD_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export interface DiffRow {
@@ -141,6 +174,7 @@ export function computeDiffRows(
 }
 
 export function actionName(a: ImportAction, existing: Record<string, unknown> | null): string {
+  if (a.type === 'upsertTreasury') return treasuryName(a.payload as Parameters<typeof treasuryName>[0]);
   const meta = entityMeta[a.type];
   const payload = a.payload as Record<string, unknown>;
   const raw = payload[meta.nameField] ?? existing?.[meta.nameField];
@@ -460,6 +494,12 @@ export function lookupExistingEntity(
     // Timeline events are world-scoped only; the campaign context has no list
     // to match against, so a campaign lookup always reads as a create.
     upsertTimelineEvent: [],
+    // These live outside CampaignContext's lists; the campaign assistant
+    // backend looks them up itself.
+    upsertItem: [],
+    upsertTreasury: [],
+    upsertHouseRule: [],
+    upsertCampaign: [],
   };
 
   const list = listMap[actionType];

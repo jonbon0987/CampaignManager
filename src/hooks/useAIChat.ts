@@ -6,7 +6,9 @@ import type {
   FactionInsert, HookInsert, LoreEntryInsert, ModuleInsert,
   SubmoduleInsert, SceneInsert,
   MonsterStatblockInsert, TimelineEventInsert,
+  ItemInsert, TreasuryEntryInsert,
 } from '../lib/database.types';
+import type { HouseRule } from '../lib/houseRules';
 import {
   submitDocument, entityMeta, computeDiffRows, fieldLabel, actionName, normalizeConfidence,
   type ImportAction, type ImportActionType, type DocumentInput,
@@ -47,6 +49,12 @@ export type PendingAction =
   | { type: 'upsertScene';     payload: Omit<SceneInsert, 'submodule_id'> & { id?: string; submodule_id?: string; submodule_ref?: string } }
   | { type: 'upsertMonsterStatblock'; payload: MonsterStatblockInsert & { id?: string } }
   | { type: 'upsertTimelineEvent'; payload: TimelineEventInsert & { id?: string } }
+  // `holders` lists who has the item: [{ pc_id (null for the party), quantity, attuned }].
+  | { type: 'upsertItem';      payload: Partial<ItemInsert> & { id?: string; holders?: unknown } }
+  | { type: 'addTreasury';     payload: Partial<TreasuryEntryInsert> }
+  | { type: 'upsertHouseRule'; payload: Partial<HouseRule> }
+  // world_date may be written in the world's calendar ("14 Mirtul 1492").
+  | { type: 'updateCampaign';  payload: { rules_edition?: unknown; levelling?: unknown; session_repeat?: unknown; world_date?: unknown } }
   | { type: 'deleteSession';   id: string; label: string }
   | { type: 'deleteNPC';       id: string; label: string }
   | { type: 'deletePC';        id: string; label: string }
@@ -56,7 +64,10 @@ export type PendingAction =
   | { type: 'deleteLore';      id: string; label: string }
   | { type: 'deleteModule';    id: string; label: string }
   | { type: 'deleteMonsterStatblock'; id: string; label: string }
-  | { type: 'deleteTimelineEvent'; id: string; label: string };
+  | { type: 'deleteTimelineEvent'; id: string; label: string }
+  | { type: 'deleteItem';      id: string; label: string }
+  | { type: 'deleteTreasury';  id: string; label: string }
+  | { type: 'deleteHouseRule'; id: string; label: string };
 
 export type StageVerb = 'create' | 'update' | 'delete';
 
@@ -124,6 +135,10 @@ const CHAT_ACTION_TYPES: Record<string, ImportActionType> = {
   deleteMonsterStatblock: 'upsertMonsterStatblock',
   upsertTimelineEvent: 'upsertTimelineEvent',
   deleteTimelineEvent: 'upsertTimelineEvent',
+  upsertItem: 'upsertItem',       deleteItem: 'upsertItem',
+  addTreasury: 'upsertTreasury',  deleteTreasury: 'upsertTreasury',
+  upsertHouseRule: 'upsertHouseRule', deleteHouseRule: 'upsertHouseRule',
+  updateCampaign: 'upsertCampaign',
 };
 
 // Returns null for anything the model invented. An unrecognised type would
@@ -205,9 +220,8 @@ export function useAIChat(backend: AssistantBackend) {
     chatAction?: PendingAction,
   ): StagedChange {
     const isDelete = !!chatAction?.type.startsWith('delete');
-    const existing = importAction.matched_id
-      ? backend.lookupExisting(importAction.type, importAction.matched_id)
-      : null;
+    // Asked even without an id: the campaign's own settings have no id to name.
+    const existing = backend.lookupExisting(importAction.type, importAction.matched_id);
 
     const verb: StageVerb = isDelete ? 'delete' : existing ? 'update' : 'create';
     const fields: StagedField[] = isDelete ? [] : computeDiffRows(existing, importAction.payload as Record<string, unknown>)
@@ -217,8 +231,8 @@ export function useAIChat(backend: AssistantBackend) {
         value: row.newValue == null ? '—' : String(row.newValue),
         add: !existing,
       }));
-    if (!isDelete && importAction.type === 'upsertHook') {
-      const rows = backend.threadRows?.(existing, importAction.payload as Record<string, unknown>) ?? [];
+    if (!isDelete) {
+      const rows = backend.cardRows?.(importAction.type, existing, importAction.payload as Record<string, unknown>) ?? [];
       fields.push(...rows.map(r => ({ ...r, add: !existing })));
     }
 

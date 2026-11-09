@@ -15,7 +15,16 @@ import {
 } from '../lib/documentImport';
 import { normalizeAssistantPayload } from '../lib/assistantNormalize';
 import { cleanThreadPayload, threadCardRows, type ThreadCardRow, type ThreadLinkIds } from '../lib/threadActions';
-import { rulesOf, writtenRules } from '../lib/houseRules';
+import { RULE_TOPICS, rulesOf, writtenRules, type HouseRule } from '../lib/houseRules';
+import {
+  applyRule, campaignCardRows, cleanCampaignPayload, cleanParent, cleanSessionPayload, cleanTreasuryPayload,
+  holderChanges, holdersOf, itemCardRows, sessionCardRows, treasuryCardRows,
+} from '../lib/assistantCampaign';
+import { ITEM_TYPES, RARITIES, blankItem } from '../lib/items';
+import { DEFAULT_MONTHS, yearSuffix } from '../lib/calendar';
+import { hasCoins } from '../lib/treasury';
+import { useItems, type ItemsValue } from '../context/items';
+import type { Item, Json } from '../lib/database.types';
 import type { PendingAction } from './useAIChat';
 import type { WorldTimelineEvent } from '../types/world';
 
@@ -40,10 +49,14 @@ export interface AssistantBackend {
   buildSystemPrompt: () => string;
   /** Entity listing for document import (campaign only today). */
   formatContext: () => string;
-  /** The existing record a proposed action would touch, for diffs + merge. */
+  /** The existing record a proposed action would touch, for diffs + merge. Asked with a null id too: the campaign's settings have none. */
   lookupExisting: (type: ImportActionType, id: string | null) => Record<string, unknown> | null;
-  /** The card rows for a thread's clock and links, as they'd be saved. Campaign only. */
-  threadRows?: (existing: Record<string, unknown> | null, payload: Record<string, unknown>) => ThreadCardRow[];
+  /**
+   * Card rows a plain field diff can't show: a thread's clock and links, an
+   * item's holders, a coin line, a session's prep plan, and the like, by name
+   * and as they'd be saved. Campaign only.
+   */
+  cardRows?: (kind: ImportActionType, existing: Record<string, unknown> | null, payload: Record<string, unknown>) => ThreadCardRow[];
   /** Apply a chat-authored action (may be a delete) exactly as written. */
   applyChatAction: (action: PendingAction) => Promise<void>;
   /** Apply an import/chat-upsert action, merging onto the existing record. */
@@ -74,6 +87,21 @@ export function useCampaignAssistantBackend(): AssistantBackend {
   // cards afterwards — the scenes still find their parents.
   const refIds = useRef(new Map<string, string>());
 
+  // Items, coin and the world's calendar live outside CampaignContext.
+  const store = useItems();
+  const { activeWorld } = useWorld();
+  const months = activeWorld?.calendarMonths ?? DEFAULT_MONTHS;
+  const suffix = yearSuffix(activeWorld?.calendar);
+
+  // House rules are one list on the campaign, so each card rewrites the whole
+  // list. The commit loop writes card after card from one render, so two rule
+  // cards committed together would each start from the list as it was and the
+  // second would undo the first. This holds the list as last written, and
+  // follows the campaign whenever its rules change from anywhere else.
+  const savedRules = campaign.selectedCampaign?.house_rules;
+  const rulesNow = useRef<HouseRule[]>(rulesOf(savedRules));
+  useEffect(() => { rulesNow.current = rulesOf(savedRules); }, [savedRules]);
+
   // Highest sort_order handed out per parent. The commit loop writes card after
   // card without React re-rendering in between, so the sibling count read off
   // context is stale for every write after the first — three submodules
@@ -95,6 +123,10 @@ export function useCampaignAssistantBackend(): AssistantBackend {
       overviewTitle: overview.title,
       overviewPlot: overview.plotSummary,
       houseRules: writtenRules(rulesOf(campaign.selectedCampaign?.house_rules)),
+      settings: campaign.selectedCampaign ? { campaign: campaign.selectedCampaign, months, suffix } : undefined,
+      items: store?.items,
+      holdings: store?.holdings,
+      treasury: store?.treasury,
     });
   }
 
@@ -155,18 +187,23 @@ Every action carries three UI fields alongside its payload:
 
 Upsert (to update an existing record, add an "id" field set to its id from the data above; omit "id" to create new):
   { "type": "upsertNPC", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "role": "...", "status": "active|deceased|unknown", "disposition": "their attitude toward the party, in a few words", "met_by_pcs": true, "description": "...", "hooks_motivations": "...", "dm_notes": "...", "faction_ids": ["<id of a FACTION it belongs to>"], "location_id": "<id of the LOCATION it's found at, or null>", "first_session": null } }
-  { "type": "upsertSession", "reasoning": "...", "confidence": 0.9, "payload": { "session_number": 1, "session_date": "2024-01-01", "summary": "...", "combats": "...", "loot_rewards": "...", "hooks_notes": "...", "dm_notes": "..." } }
-  { "type": "upsertPC", "reasoning": "...", "confidence": 0.9, "payload": { "character_name": "...", "player_name": "...", "race": "...", "class": "...", "background": "...", "story_hooks": "...", "key_npc_ids": ["<id of an NPC who matters to them>"], "dm_notes": "...", "is_active": true } }
-  { "type": "upsertLocation", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "region": "...", "location_type": "continent|city|town|dungeon|faction_hq|landmark", "population": "...", "status": "...", "history": "...", "description": "...", "dm_notes": "..." } }
+  { "type": "upsertSession", "reasoning": "...", "confidence": 0.9, "payload": { "session_number": 1, "title": "a short name for the session", "status": "planned|done", "session_date": "2024-01-01", "session_time": "19:00", "summary": "...", "combats": "...", "loot_rewards": "...", "hooks_notes": "...", "dm_notes": "...", "prep_notes": "...", "plan": { "hook_ids": ["<id of a THREAD to bring in>"], "npc_ids": ["<id of an NPC who appears>"], "scene_ids": ["<id of a SCENE to run>"] } } }
+  { "type": "upsertPC", "reasoning": "...", "confidence": 0.9, "payload": { "character_name": "...", "player_name": "...", "race": "...", "class": "...", "level": 5, "armor_class": 16, "max_hp": 42, "passive_perception": 14, "passive_insight": 12, "passive_investigation": 11, "spell_save_dc": null, "xp": null, "sheet_url": "https://...", "background": "...", "story_hooks": "...", "key_npc_ids": ["<id of an NPC who matters to them>"], "dm_notes": "...", "is_active": true } }
+  { "type": "upsertLocation", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "region": "...", "location_type": "continent|city|town|dungeon|faction_hq|landmark", "parent_id": "<id of the LOCATION it sits inside, or null>", "population": "...", "status": "...", "history": "...", "description": "...", "read_aloud": "boxed text the DM reads aloud as the party arrives", "dm_notes": "..." } }
   { "type": "upsertFaction", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "faction_type": "...", "overview": "...", "key_figure_ids": ["<id of an NPC who leads or matters in it>"], "agenda": "...", "dm_notes": "..." } }
-  { "type": "upsertHook", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "...", "clock_size": null, "clock_filled": 0, "clock_label": "what happens when it fills", "npc_ids": ["<id of an NPC it touches>"], "location_ids": ["<id of a LOCATION it touches>"], "faction_ids": ["<id of a FACTION it touches>"], "module_id": "<id of the chapter it belongs to, or null>" } }
+  { "type": "upsertHook", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "main_plot|side_quest|character_arc|faction", "description": "...", "last_updated_session": null, "is_active": true, "dm_only_notes": "...", "clock_size": null, "clock_filled": 0, "clock_label": "what happens when it fills", "npc_ids": ["<id of an NPC it touches>"], "location_ids": ["<id of a LOCATION it touches>"], "faction_ids": ["<id of a FACTION it touches>"], "module_id": "<id of the chapter it belongs to, or null>", "player_text": "the thread as the players know it, in their words, with no secrets" } }
   { "type": "upsertLore", "reasoning": "...", "confidence": 0.9, "payload": { "title": "...", "category": "history|artifact|creature|magic|religion", "content": "...", "dm_only": false } }
   { "type": "upsertModule", "reasoning": "...", "confidence": 0.9, "payload": { "chapter": "1", "title": "...", "synopsis": "...", "status": "planned|active|completed", "played_session": null, "encounters": "...", "rewards": "...", "dm_notes": "..." } }
   { "type": "upsertSubmodule", "reasoning": "...", "confidence": 0.9, "payload": { "module_id": "<id of the parent module>", "ref": "a short name for this submodule, e.g. \\"vault\\"", "title": "...", "submodule_type": "${SUBMODULE_TYPES.join('|')}", "summary": "one line for the outline rail", "content": "the full write-up — several paragraphs the DM could run from cold", "dm_notes": "secrets, contingencies, what to do if the party skips it" } }
-  { "type": "upsertScene", "reasoning": "...", "confidence": 0.9, "payload": { "submodule_ref": "vault", "title": "...", "scene_type": "${SCENE_TYPES.join('|')}", "summary": "the beat in a sentence", "content": "how to run it: the sensory hook, what the party faces, the checks or tactics, the outcomes that matter", "dm_notes": "hidden info, alternate outcomes, a fallback if it stalls" } }
+  { "type": "upsertScene", "reasoning": "...", "confidence": 0.9, "payload": { "submodule_ref": "vault", "title": "...", "scene_type": "${SCENE_TYPES.join('|')}", "summary": "the beat in a sentence", "content": "how to run it: the sensory hook, what the party faces, the checks or tactics, the outcomes that matter", "read_aloud": "boxed text to read aloud as the beat opens, or omit", "dm_notes": "hidden info, alternate outcomes, a fallback if it stalls" } }
   { "type": "upsertMonsterStatblock", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "creature_type": "Medium humanoid", "challenge_rating": "5", "armor_class": 15, "ac_descriptor": "chain shirt", "hit_points": 65, "hit_dice": "10d8+20", "speed": "30 ft.", "str": 16, "dex": 14, "con": 14, "int": 10, "wis": 12, "cha": 8, "saving_throws": "Str +6, Con +5", "skills": "Athletics +6", "damage_immunities": null, "damage_resistances": null, "condition_immunities": null, "senses": "passive Perception 11", "languages": "Common", "content": "### Traits\\n**Brave.** Advantage on saves vs frightened.\\n\\n### Actions\\n**Multiattack.** Two longsword attacks.\\n\\n**Longsword.** +6 to hit, 1d8+3 slashing.", "dm_notes": "...", "tags": "humanoid, soldier" } }
 
-Delete: { "type": "deleteNPC", "reasoning": "...", "confidence": 0.9, "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule, deleteMonsterStatblock). There is no delete for submodules or scenes — the DM removes those from the module screen.
+  { "type": "upsertItem", "reasoning": "...", "confidence": 0.9, "payload": { "name": "...", "item_type": "${ITEM_TYPES.map(t => t.id).join('|')}", "rarity": "${RARITIES.map(r => r.id).join('|')}, or null for an item that isn't magic", "attunement": false, "attunement_note": "by a wizard, or null", "value": "50 gp", "description": "what the players know about it", "dm_notes": "hidden properties, curses, where it came from", "holders": [{ "pc_id": "<id of the PC who has it, or null for the party's stash>", "quantity": 1, "attuned": false }] } }
+  { "type": "addTreasury", "reasoning": "...", "confidence": 0.9, "payload": { "gp": 250, "sp": 0, "cp": 0, "ep": 0, "pp": 0, "note": "what it was", "pc_id": "<id of the PC it went to or came from, or null>", "session_id": "<id of the SESSION it happened in, or null>" } }
+  { "type": "upsertHouseRule", "reasoning": "...", "confidence": 0.9, "payload": { "topic": "${RULE_TOPICS.join('|')}", "title": "a short name", "text": "the rule, in a sentence or two" } }
+  { "type": "updateCampaign", "reasoning": "...", "confidence": 0.9, "payload": { "rules_edition": "2014|2024", "levelling": "xp|milestone", "session_repeat": "weekly|fortnightly|null", "world_date": "14 Mirtul 1492" } }
+
+Delete: { "type": "deleteNPC", "reasoning": "...", "confidence": 0.9, "id": "<id>", "label": "<name>" } (same for deleteSession, deletePC, deleteLocation, deleteFaction, deleteHook, deleteLore, deleteModule, deleteMonsterStatblock, deleteItem, deleteTreasury, deleteHouseRule). There is no delete for submodules or scenes — the DM removes those from the module screen.
 
 == BUILDING OUT A MODULE ==
 
@@ -190,6 +227,28 @@ How an NPC feels about the party goes in "disposition", and whether the party ha
 A clock tracks something moving on its own, like a villain's plan, a ritual or a rising tide. Set "clock_size" to 4, 6 or 8 segments (longer for a slower threat), "clock_label" to what happens when it fills, and "clock_filled" to how many segments are done. To advance a clock, send only "id" and the new "clock_filled" total. Send "clock_size": null to remove a clock. Give a thread a clock only when the DM asks for one or the material describes a real countdown; most threads don't need one. In the listing above, a thread's clock reads "clock 2 of 6: label".
 
 Links say what a thread touches: "npc_ids", "location_ids", "faction_ids", and "module_id" for its chapter. Link what the thread really involves, using real ids from the listings above and never an invented one. Each list replaces the one already there, so when adding to a linked thread, include the ids of what it already links (the listing names them). Omit a list to leave it alone.
+
+== SESSIONS AND PREP ==
+
+A session is "planned" until it's played and "done" after. Logging a recap of a session that was played: "done". Prepping or scheduling one that hasn't happened yet: "planned". Never set "live": the DM starts a session from Play.
+
+A planned session's "plan" is what the prep pulls in: threads to bring up ("hook_ids"), NPCs who appear ("npc_ids") and scenes to run ("scene_ids"), using real ids from the listings above. Each list replaces the one already there, so include what's already planned (the SESSIONS listing names it) when adding to it. Omit a list to leave it alone. "prep_notes" is the DM's own free-form prep. "session_time" is when the table starts, like "19:00".
+
+== PLAYER CHARACTER NUMBERS ==
+
+A PC's level, armor_class, max_hp, the three passives, spell_save_dc and xp come off the player's sheet. Set them only when the DM gives them or asks you to work them out; never invent them. "sheet_url" must be a full https:// link to the player's sheet.
+
+== ITEMS AND COIN ==
+
+Items are things worth tracking on their own: magic items, quest objects, notable gear. "holders" says who has one: each entry is a PC's id, or "pc_id": null for the party's stash, with a "quantity" and whether they're "attuned". The list replaces who holds it now, so when one PC hands an item to another, send the whole new list. Omit "holders" to leave them alone, and send [] when nobody has it any more (sold, lost, used up). To change an item, use its id from ITEMS above.
+
+Coin goes in the party's ledger, one addTreasury line per event with all of that event's coins on it ("gp": 250, "sp": 40 for one haul): positive for coin gained, negative for coin spent or lost ("gp": -40). Count the coins as the material does and never convert between them. A line can name the PC it went to or came from and the session it happened in. Lines can't be edited: to fix one, delete it (deleteTreasury with its id from TREASURY above) and add the right one. Loot from a session usually means both: an item for anything notable, and a treasury line for the coin.
+
+== HOUSE RULES AND CAMPAIGN SETTINGS ==
+
+A house rule is something this table plays differently from the book. Add one only when the DM says the table plays that way, under one of these topics: ${RULE_TOPICS.join(', ')}. To change or remove a rule, use its id from HOUSE RULES above.
+
+updateCampaign changes the campaign's own settings, shown under CAMPAIGN SETTINGS; send only the ones that change. "rules_edition" is "2014" or "2024". "levelling" is "xp" or "milestone". "session_repeat" is how often the table meets: "weekly", "fortnightly", or null for no set pattern. "world_date" is where the story stands in the world's time, written in the world's calendar like the date shown there. When days pass in the story, work the new date out from the month lengths listed under CAMPAIGN SETTINGS.
 
 == REVISING EXISTING RECORDS ==
 
@@ -230,9 +289,111 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     return rows;
   }
 
+  const known = () => ({ pcs: campaign.pcs.map(p => p.id), sessions: campaign.sessions.map(s => s.id) });
+  const sessionIds = () => ({ threads: campaign.hooks.map(h => h.id), npcs: campaign.npcs.map(n => n.id), scenes: campaign.scenes.map(s => s.id) });
+  const nameOf = <T extends { id: string }>(rows: T[], label: (r: T) => string) => {
+    const map = new Map(rows.map(r => [r.id, label(r)]));
+    return (id: string) => map.get(id);
+  };
+
+  function cardRows(kind: ImportActionType, existing: Record<string, unknown> | null, payload: Record<string, unknown>): ThreadCardRow[] {
+    switch (kind) {
+      case 'upsertHook': return threadRows(existing, payload);
+      case 'upsertItem':
+        return itemCardRows(existing as Partial<Item> | null, normalizeAssistantPayload('upsertItem', payload),
+          existing && store ? store.holdings.filter(h => h.item_id === existing.id) : [], { pcs: campaign.pcs, sessions: known().sessions });
+      case 'upsertTreasury':
+        return treasuryCardRows(cleanTreasuryPayload(payload, known()), {
+          pc: nameOf(campaign.pcs, p => p.character_name), session: nameOf(campaign.sessions, s => `Session ${s.session_number}`),
+        });
+      case 'upsertCampaign': return campaignCardRows(existing, cleanCampaignPayload(payload, months), { months, suffix });
+      case 'upsertSession':
+        return sessionCardRows(existing, cleanSessionPayload(payload, existing, sessionIds()), {
+          thread: nameOf(campaign.hooks, h => h.title), npc: nameOf(campaign.npcs, n => n.name), scene: nameOf(campaign.scenes, sc => sc.title),
+        });
+      case 'upsertLocation': {
+        if (!('parent_id' in payload)) return [];
+        const clean = cleanParent({ ...payload, id: existing?.id ?? payload.id }, campaign.locations);
+        if (!('parent_id' in clean)) return [];
+        const place = nameOf(campaign.locations, l => l.name);
+        const was = typeof existing?.parent_id === 'string' ? place(existing.parent_id) : undefined;
+        const now = typeof clean.parent_id === 'string' ? place(clean.parent_id) : undefined;
+        return was === now ? [] : [{ label: 'Inside', old: was, value: now ?? 'Nowhere (top level)' }];
+      }
+      default: return [];
+    }
+  }
+
   function lookupExisting(type: ImportActionType, id: string | null): Record<string, unknown> | null {
+    // The campaign's settings: there's one, so the card needs no id to find it.
+    if (type === 'upsertCampaign') return (campaign.selectedCampaign as unknown as Record<string, unknown>) ?? null;
     if (!id) return null;
+    if (type === 'upsertItem') return (store?.items.find(i => i.id === id) as unknown as Record<string, unknown>) ?? null;
+    if (type === 'upsertHouseRule') return (rulesNow.current.find(r => r.id === id) as unknown as Record<string, unknown>) ?? null;
+    // A ledger line is only ever added, never changed.
+    if (type === 'upsertTreasury') return null;
     return (lookupExistingEntity(campaign, type, id) as Record<string, unknown> | null) ?? null;
+  }
+
+  function needStore(): ItemsValue {
+    if (!store) throw new Error('items and coin aren’t loaded for this campaign');
+    return store;
+  }
+
+  /** Saves an item, then makes its holders the ones the card lists (when it lists any). */
+  async function writeItem(raw: Record<string, unknown>) {
+    const items = needStore();
+    const clean = normalizeAssistantPayload('upsertItem', raw) as Record<string, unknown>;
+    const { id, holders, ...fields } = clean;
+    // An id that isn't one of this campaign's items reads as a new item, as its card showed.
+    const existing = typeof id === 'string' ? items.items.find(i => i.id === id) : undefined;
+    const name = (typeof fields.name === 'string' && fields.name.trim()) || existing?.name;
+    if (!name) throw new Error('no name was given');
+    const base = existing ? stripInternalFields(existing as unknown as Record<string, unknown>) : blankItem();
+    const saved = await items.saveItem({ ...base, ...fields, name, ...(existing ? { id: existing.id } : {}) } as Parameters<ItemsValue['saveItem']>[0]);
+    if (!('holders' in clean)) return;
+    const changes = holderChanges(existing ? items.holdings.filter(h => h.item_id === existing.id) : [], holdersOf(holders, known()));
+    for (const h of changes.remove) await items.removeHolding(h);
+    for (const u of changes.update) await items.updateHolding(u.holding, u.patch);
+    for (const g of changes.give) {
+      await items.give({ item_id: saved.id, pc_id: g.pc_id, quantity: g.quantity, attuned: g.attuned, session_id: g.session_id ?? null, ...(g.note ? { note: g.note } : {}) });
+    }
+  }
+
+  async function writeTreasury(raw: Record<string, unknown>) {
+    const line = cleanTreasuryPayload(raw, known());
+    if (!hasCoins(line)) throw new Error('no coin was given');
+    await needStore().addTreasury([line]);
+  }
+
+  async function deleteTreasury(id: string) {
+    const items = needStore();
+    const line = items.treasury.find(l => l.id === id);
+    if (!line) throw new Error('that ledger line isn’t in this campaign');
+    await items.removeTreasury(line);
+  }
+
+  /** Writes the whole rules list; on failure, the list goes back to what it was. */
+  async function writeRules(next: (rules: HouseRule[]) => HouseRule[]) {
+    const id = campaign.selectedCampaign?.id;
+    if (!id) throw new Error('no campaign is open');
+    const before = rulesNow.current;
+    const rules = next(before);
+    rulesNow.current = rules;
+    try {
+      await campaign.updateCampaign(id, { house_rules: rules as unknown as Json });
+    } catch (e) {
+      rulesNow.current = before;
+      throw e;
+    }
+  }
+
+  async function writeCampaign(raw: Record<string, unknown>) {
+    const id = campaign.selectedCampaign?.id;
+    if (!id) throw new Error('no campaign is open');
+    const patch = cleanCampaignPayload(raw, months);
+    if (Object.keys(patch).length === 0) throw new Error('none of those settings could be read');
+    await campaign.updateCampaign(id, patch as Parameters<typeof campaign.updateCampaign>[1]);
   }
 
   /**
@@ -335,6 +496,20 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
 
   async function applyChatAction(rawAction: PendingAction): Promise<void> {
     const rawPayload = ('payload' in rawAction ? rawAction.payload : {}) as Record<string, unknown>;
+
+    // Items, coin, house rules and the campaign's settings have writers of their own.
+    switch (rawAction.type) {
+      case 'upsertItem':      return writeItem(rawPayload);
+      case 'deleteItem':      return needStore().deleteItem(rawAction.id);
+      case 'addTreasury':     return writeTreasury(rawPayload);
+      case 'deleteTreasury':  return deleteTreasury(rawAction.id);
+      case 'upsertHouseRule': return writeRules(rules => applyRule(rules, rawPayload, () => crypto.randomUUID()));
+      case 'deleteHouseRule': return writeRules(rules => {
+        if (!rules.some(r => r.id === rawAction.id)) throw new Error('that house rule isn’t in this campaign');
+        return rules.filter(r => r.id !== rawAction.id);
+      });
+      case 'updateCampaign':  return writeCampaign(rawPayload);
+    }
     let action = ('payload' in rawAction
       ? { ...rawAction, payload: normalizeAssistantPayload(rawAction.type, rawAction.payload) }
       : rawAction) as PendingAction;
@@ -349,7 +524,8 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     if ('payload' in action && action.type !== 'upsertSubmodule' && action.type !== 'upsertScene') {
       const id = (rawPayload as { id?: string }).id;
       if (id) {
-        const existing = lookupExistingEntity(campaign, action.type, id);
+        // The kinds with writers of their own returned above, so this is a record kind.
+        const existing = lookupExistingEntity(campaign, action.type as ImportActionType, id);
         if (existing) {
           const merged = { ...stripInternalFields(existing), ...rawPayload, id };
           action = { ...action, payload: normalizeAssistantPayload(action.type, merged) } as PendingAction;
@@ -357,10 +533,18 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
       }
     }
 
-    if (action.type === 'upsertHook') {
+    if (action.type === 'upsertHook' || action.type === 'upsertSession') {
       const id = (rawPayload as { id?: string }).id;
-      const existing = id ? (lookupExistingEntity(campaign, 'upsertHook', id) as unknown as Record<string, unknown> | null) : null;
-      action = { ...action, payload: cleanThreadPayload(action.payload as unknown as Record<string, unknown>, existing ?? null, threadIds) as never };
+      const existing = id ? (lookupExistingEntity(campaign, action.type, id) as unknown as Record<string, unknown> | null) : null;
+      const payload = action.payload as unknown as Record<string, unknown>;
+      action = {
+        ...action,
+        payload: (action.type === 'upsertHook'
+          ? cleanThreadPayload(payload, existing ?? null, threadIds)
+          : cleanSessionPayload(payload, existing ?? null, sessionIds())) as never,
+      };
+    } else if (action.type === 'upsertLocation') {
+      action = { ...action, payload: cleanParent(action.payload as unknown as Record<string, unknown>, campaign.locations) as never };
     }
 
     switch (action.type) {
@@ -401,9 +585,11 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     const merged = existing
       ? { ...stripInternalFields(existing), ...(action.payload as Record<string, unknown>), id: action.matched_id }
       : { ...(action.payload as Record<string, unknown>) };
-    const normal = normalizeAssistantPayload(action.type, merged);
-    const payload = action.type === 'upsertHook'
-      ? cleanThreadPayload(normal as Record<string, unknown>, (existing as unknown as Record<string, unknown> | null) ?? null, threadIds)
+    const normal = normalizeAssistantPayload(action.type, merged) as Record<string, unknown>;
+    const was = (existing as unknown as Record<string, unknown> | null) ?? null;
+    const payload = action.type === 'upsertHook' ? cleanThreadPayload(normal, was, threadIds)
+      : action.type === 'upsertSession' ? cleanSessionPayload(normal, was, sessionIds())
+      : action.type === 'upsertLocation' ? cleanParent(normal, campaign.locations)
       : normal;
     switch (action.type) {
       // Same writers as the chat path, so an imported submodule/scene gets the
@@ -440,7 +626,7 @@ Before creating ANY record, scan the CURRENT CAMPAIGN DATA above for a record de
     buildSystemPrompt,
     formatContext,
     lookupExisting,
-    threadRows,
+    cardRows,
     applyChatAction,
     applyImportAction,
   };
