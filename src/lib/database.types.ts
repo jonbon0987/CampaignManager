@@ -750,12 +750,27 @@ export interface DiscordVoiceChannel { id: string; name: string; members: Discor
 export interface DiscordTextChannel { id: string; name: string }
 export interface DiscordGuild { id: string; name: string; voice: DiscordVoiceChannel[]; text: DiscordTextChannel[] }
 
+export type DiscordBotStatus = 'offline' | 'connecting' | 'online' | 'error';
+
 export type DiscordBotPresence = {
   id: string;
   user_id: string;
   bot_tag: string | null;
-  heartbeat_at: string;
+  heartbeat_at: string;                  // refreshed while signed in to Discord
   guilds: DiscordGuild[];
+  helper_at?: string | null;             // the helper's last report, signed in or not (0053); null once it quits
+  discord_status?: DiscordBotStatus | null;
+  voice?: DiscordTarget | null;          // the voice channel it's sitting in outside a recording
+  detail?: string | null;                // what it's doing, or why it couldn't
+  created_at: string;
+  updated_at: string;
+};
+
+/** What the DM wants the bot to do, written by the app and obeyed by the bot wherever it runs (0053). */
+export type DiscordBotControl = {
+  user_id: string;
+  online: boolean;
+  voice: DiscordTarget | null;
   created_at: string;
   updated_at: string;
 };
@@ -1202,6 +1217,12 @@ export interface Database {
         Row: DiscordBotPresence;
         Insert: Omit<DiscordBotPresence, 'id' | 'created_at' | 'updated_at'> & { id?: string };
         Update: Partial<Omit<DiscordBotPresence, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
+      };
+      discord_bot_control: {
+        Row: DiscordBotControl;
+        Insert: { user_id: string; online?: boolean; voice?: DiscordTarget | null };
+        Update: Partial<Pick<DiscordBotControl, 'online' | 'voice'>>;
         Relationships: [];
       };
       discord_posts: {

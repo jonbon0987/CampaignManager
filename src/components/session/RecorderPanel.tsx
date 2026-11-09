@@ -25,7 +25,7 @@ import { PostRecapModal } from './PostRecapModal';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContext';
 import { STAGE_LABEL, type PipelineStage } from '../../lib/recording/pipeline';
-import { DiscordMembers, DiscordStateLine } from './DiscordVoice';
+import { BotNotReady, DiscordMembers, DiscordStateLine } from './DiscordVoice';
 import { useDiscordBot, useDiscordCapture } from '../../hooks/useDiscordBot';
 import { rememberChannel, rememberedChannel, voiceChannels } from '../../lib/discord';
 import { Modal } from '../Modal';
@@ -247,9 +247,7 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
           {!bot.loaded ? (
             <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Checking for the Discord bot…</p>
           ) : !bot.online ? (
-            <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>
-              To record players on Discord, start the DM Lair bot on this computer (<span className="cm-kbd">npm run bot</span>). Setup is in Settings → Discord.
-            </p>
+            <BotNotReady bot={bot} purpose="Sign it in to record players on Discord." />
           ) : (
             <div className="flex flex-col gap-3">
               <select className="as-select" aria-label="Discord voice channel" value={channel?.channelId ?? ''} onChange={e => setChannelId(e.target.value || null)}>

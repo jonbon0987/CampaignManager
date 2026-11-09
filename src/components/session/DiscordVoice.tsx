@@ -10,6 +10,8 @@ import { useEffect, useEffectEvent, useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useToast } from '../../context/ToastContext';
 import { SpeakerLinks } from '../../lib/db';
+import type { DiscordBot } from '../../hooks/useDiscordBot';
+import { Button } from '../ui/Button';
 import type { DiscordMember, PlayerConsent, SpeakerLink } from '../../lib/database.types';
 import { Badge } from '../ui/Badge';
 
@@ -114,10 +116,37 @@ export function DiscordStateLine({ state, detail, botOnline }: { state: string |
   const waiting = (state === 'connecting' || state === 'recording') && !botOnline;
   return (
     <div className="flex items-center gap-2 flex-wrap text-xs">
-      <Badge color={waiting ? 'yellow' : badge.color}>{waiting ? 'Bot not running' : badge.label}</Badge>
+      <Badge color={waiting ? 'yellow' : badge.color}>{waiting ? 'Bot not signed in' : badge.label}</Badge>
       <span style={{ color: state === 'failed' || waiting ? 'var(--warn)' : 'var(--ink-2)' }}>
-        {waiting ? 'Start it with npm run bot. It joins as soon as it’s up.' : detail}
+        {waiting ? 'It signs in by itself for the recording once it’s running (Settings → Discord), and joins as soon as it’s up.' : detail}
       </span>
     </div>
+  );
+}
+
+/**
+ * In place of the channel list while the bot isn't signed in: a button to sign
+ * it in when it's running, or where to set it up when it isn't.
+ */
+export function BotNotReady({ bot, purpose }: { bot: DiscordBot; purpose: string }) {
+  const toast = useToast();
+  const signIn = () => void bot.setControl({ online: true }).catch(e => toast(errorMessage(e), 'error'));
+  if (bot.status === 'connecting' || (bot.running && bot.control?.online && bot.status === 'offline')) {
+    return <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Signing the bot in to Discord…</p>;
+  }
+  if (bot.running) {
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm" style={{ color: bot.status === 'error' ? 'var(--warn)' : 'var(--ink-2)' }}>
+          {bot.status === 'error' ? bot.presence?.detail ?? 'The bot couldn’t sign in to Discord.' : `The bot is signed out of Discord. ${purpose}`}
+        </span>
+        <Button size="xs" variant="secondary" onClick={signIn}>{bot.status === 'error' ? 'Try again' : 'Sign it in'}</Button>
+      </div>
+    );
+  }
+  return (
+    <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>
+      The DM Lair bot isn’t running on this computer. {purpose} Set it up once in Settings → Discord.
+    </p>
   );
 }
