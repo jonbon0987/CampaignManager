@@ -22,5 +22,5 @@ export function splitMessage(text: string, limit = DISCORD_LIMIT): string[] {
   return out;
 }
 
-export const ANNOUNCE_START = '🔴 **DM Lair is recording this session** for the campaign notes. Only players who’ve agreed are recorded; ask the DM to stop at any time.';
+export const ANNOUNCE_START = '🔴 **DM Lair is recording this session** for the campaign notes.';
 export const ANNOUNCE_STOP = '⏹️ Recording stopped.';
