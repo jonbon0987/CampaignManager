@@ -6,14 +6,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { makeCampaignContext } from '../test/contextMocks';
-import { makeModule, makeSubmodule, makeScene, makeNPC } from '../test/fixtures';
+import { makeModule, makeSubmodule, makeScene, makeNPC, makePC, makeSession, makeHook, makeLocation } from '../test/fixtures';
 import type { PendingAction } from './useAIChat';
+import type { ItemsValue } from '../context/items';
+import type { Item, ItemHolding, TreasuryEntry } from '../lib/database.types';
 
 const h = vi.hoisted(() => ({
   campaign: { value: null as ReturnType<typeof makeCampaignContext> | null },
+  items: { value: null as ItemsValue | null },
 }));
 vi.mock('../context/CampaignContext', () => ({ useCampaign: () => h.campaign.value }));
 vi.mock('../context/WorldContext', () => ({ useWorld: () => ({}) }));
+vi.mock('../context/items', () => ({ useItems: () => h.items.value }));
 
 import { useCampaignAssistantBackend } from './assistantBackend';
 
@@ -22,6 +26,7 @@ const cc = () => h.campaign.value!;
 let subSeq = 0;
 beforeEach(() => {
   subSeq = 0;
+  h.items.value = null;
   h.campaign.value = makeCampaignContext({
     selectedCampaign: { id: 'camp-1', name: 'Test' },
     // The parents these tests point at have to actually exist — resolveParent
@@ -285,12 +290,12 @@ describe('campaign assistant — submodule & scene writes', () => {
     });
 
     it('says on the card when filling a clock will wake its thread', () => {
-      const rows = backend().threadRows!(thread, { clock_filled: 6 });
+      const rows = backend().cardRows!('upsertHook', thread, { clock_filled: 6 });
       expect(rows).toEqual(expect.arrayContaining([{ label: 'State', old: 'cold', value: 'active' }]));
     });
 
     it('describes a change to them by name for its card', () => {
-      const rows = backend().threadRows!(thread, { npc_ids: ['npc-7', 'npc-8'], clock_filled: 3 });
+      const rows = backend().cardRows!('upsertHook', thread, { npc_ids: ['npc-7', 'npc-8'], clock_filled: 3 });
       expect(rows).toEqual(expect.arrayContaining([
         { label: 'Clock', old: '2 of 6: The wharf floods', value: '3 of 6: The wharf floods' },
         { label: 'People', old: 'Gorval', value: 'Gorval, Sable' },
@@ -329,5 +334,142 @@ describe('campaign assistant — submodule & scene writes', () => {
     expect(prompt).toContain('REVISION of the record, not a replacement');
     // The truncation guard keys off the trailing ellipsis marker.
     expect(prompt).toContain('ending in "…"');
+  });
+});
+
+// --------------- Items, coin, house rules, settings and the newer fields ---------------
+
+describe('campaign assistant — items, coin, rules and settings', () => {
+  const act = (type: string, payload: Record<string, unknown>) => ({ type, payload }) as unknown as PendingAction;
+  const del = (type: string, id: string) => ({ type, id, label: 'x' }) as unknown as PendingAction;
+  const cloak = { id: 'i-1', name: 'Cloak', item_type: 'wondrous', rarity: 'uncommon', attunement: true, attunement_note: null, value: null, description: 'Grey.', dm_notes: null, image_path: null } as Item;
+  const kaelHas = { id: 'h-1', item_id: 'i-1', pc_id: 'pc-1', quantity: 1, attuned: true, session_id: null, note: null } as ItemHolding;
+  const line = { id: 'l-1', gp: 250, sp: 0, ep: 0, cp: 0, pp: 0, note: 'Vault', pc_id: null, session_id: null } as TreasuryEntry;
+
+  beforeEach(() => {
+    h.items.value = {
+      items: [cloak], holdings: [kaelHas], treasury: [line], loaded: true,
+      saveItem: vi.fn().mockImplementation(i => Promise.resolve({ ...i, id: i.id ?? 'i-new' })),
+      deleteItem: vi.fn().mockResolvedValue(undefined),
+      give: vi.fn().mockResolvedValue({}),
+      updateHolding: vi.fn().mockResolvedValue(undefined),
+      removeHolding: vi.fn().mockResolvedValue(undefined),
+      addTreasury: vi.fn().mockResolvedValue(undefined),
+      removeTreasury: vi.fn().mockResolvedValue(undefined),
+    };
+    h.campaign.value = makeCampaignContext({
+      selectedCampaign: { id: 'camp-1', name: 'Test', house_rules: [{ id: 'r-1', topic: 'Combat', title: 'Flanking', text: 'Advantage.' }], rules_edition: null, world_date: { year: 1492, day: 10 } },
+      pcs: [makePC({ id: 'pc-1', character_name: 'Kael' }), makePC({ id: 'pc-2', character_name: 'Mira' })],
+      sessions: [makeSession({ id: 's-1', session_number: 4, status: 'planned', plan: { hook_ids: ['t-1'], checklist: { recap: true } } })],
+      hooks: [makeHook({ id: 't-1', title: 'The Tide' }), makeHook({ id: 't-2', title: 'The Debt' })],
+      locations: [makeLocation({ id: 'city', name: 'Waterdeep', parent_id: null }), makeLocation({ id: 'inn', name: 'Yawning Portal', parent_id: 'city' })],
+      updateCampaign: vi.fn().mockResolvedValue(undefined),
+      upsertSession: vi.fn().mockResolvedValue({ id: 's-1' }),
+      upsertPC: vi.fn().mockResolvedValue({ id: 'pc-1' }),
+      upsertLocation: vi.fn().mockResolvedValue({ id: 'inn' }),
+    });
+  });
+  const items = () => h.items.value!;
+  const call = (fn: unknown) => (fn as ReturnType<typeof vi.fn>).mock.calls[0];
+
+  it('creates an item and hands it to a PC and the party', async () => {
+    await backend().applyChatAction(act('upsertItem', { name: 'Potion of Healing', item_type: 'Potion', rarity: 'common', holders: [{ pc_id: 'pc-2' }, { pc_id: null, quantity: 2 }] }));
+    expect(call(items().saveItem)[0]).toMatchObject({ name: 'Potion of Healing', item_type: 'potion', rarity: 'common', attunement: false });
+    expect(call(items().saveItem)[0]).not.toHaveProperty('holders');
+    expect(items().give).toHaveBeenCalledWith(expect.objectContaining({ item_id: 'i-new', pc_id: 'pc-2', quantity: 1 }));
+    expect(items().give).toHaveBeenCalledWith(expect.objectContaining({ item_id: 'i-new', pc_id: null, quantity: 2 }));
+  });
+
+  it('moves an item from one PC to another, keeping the rest of it', async () => {
+    await backend().applyChatAction(act('upsertItem', { id: 'i-1', holders: [{ pc_id: 'pc-2', attuned: true }] }));
+    expect(call(items().saveItem)[0]).toMatchObject({ id: 'i-1', name: 'Cloak', description: 'Grey.', rarity: 'uncommon' });
+    expect(items().removeHolding).toHaveBeenCalledWith(kaelHas);
+    expect(items().give).toHaveBeenCalledWith(expect.objectContaining({ item_id: 'i-1', pc_id: 'pc-2', attuned: true }));
+  });
+
+  it('leaves holders alone when the card doesn’t list them', async () => {
+    await backend().applyChatAction(act('upsertItem', { id: 'i-1', value: '600 gp' }));
+    expect(items().give).not.toHaveBeenCalled();
+    expect(items().removeHolding).not.toHaveBeenCalled();
+  });
+
+  it('deletes an item', async () => {
+    await backend().applyChatAction(del('deleteItem', 'i-1'));
+    expect(items().deleteItem).toHaveBeenCalledWith('i-1');
+  });
+
+  it('adds a signed ledger line and refuses one with no coin', async () => {
+    await backend().applyChatAction(act('addTreasury', { id: 'l-1', gp: -40, note: 'Bribe', pc_id: 'pc-1' }));
+    expect(items().addTreasury).toHaveBeenCalledWith([expect.objectContaining({ gp: -40, note: 'Bribe', pc_id: 'pc-1' })]);
+    await expect(backend().applyChatAction(act('addTreasury', { note: 'Nothing' }))).rejects.toThrow(/no coin/);
+  });
+
+  it('removes a ledger line by its id', async () => {
+    await backend().applyChatAction(del('deleteTreasury', 'l-1'));
+    expect(items().removeTreasury).toHaveBeenCalledWith(line);
+    await expect(backend().applyChatAction(del('deleteTreasury', 'ghost'))).rejects.toThrow(/isn’t in this campaign/);
+  });
+
+  it('keeps both of two house rules committed together', async () => {
+    const b = backend();
+    await b.applyChatAction(act('upsertHouseRule', { topic: 'rest', title: 'Gritty rests', text: 'A week to rest.' }));
+    await b.applyChatAction(act('upsertHouseRule', { id: 'r-1', text: 'Melee only.' }));
+    const last = (cc().updateCampaign as ReturnType<typeof vi.fn>).mock.calls[1];
+    expect(last[0]).toBe('camp-1');
+    expect(last[1].house_rules).toEqual([
+      { id: 'r-1', topic: 'Combat', title: 'Flanking', text: 'Melee only.' },
+      expect.objectContaining({ topic: 'Rest and healing', title: 'Gritty rests', text: 'A week to rest.' }),
+    ]);
+  });
+
+  it('removes a house rule', async () => {
+    await backend().applyChatAction(del('deleteHouseRule', 'r-1'));
+    expect(call(cc().updateCampaign)[1]).toEqual({ house_rules: [] });
+  });
+
+  it('changes the campaign’s settings, reading the date in its calendar', async () => {
+    await backend().applyChatAction(act('updateCampaign', { rules_edition: '2024', session_repeat: 'weekly', world_date: '15 Month 1 1492' }));
+    expect(call(cc().updateCampaign)).toEqual(['camp-1', { rules_edition: '2024', session_repeat: 'weekly', world_date: { year: 1492, day: 15 } }]);
+    await expect(backend().applyChatAction(act('updateCampaign', { levelling: 'vibes' }))).rejects.toThrow(/could be read/);
+  });
+
+  it('shows the campaign card as a change to the campaign, by name', () => {
+    expect(backend().lookupExisting('upsertCampaign', null)).toMatchObject({ id: 'camp-1', name: 'Test' });
+    expect(backend().cardRows!('upsertCampaign', backend().lookupExisting('upsertCampaign', null), { world_date: '12 Month 1 1492' }))
+      .toEqual([{ label: 'In-world date', old: '10 Month 1 1492', value: '12 Month 1 1492' }]);
+  });
+
+  it('adds threads to a session’s prep, keeping what was planned', async () => {
+    await backend().applyChatAction(act('upsertSession', { id: 's-1', plan: { hook_ids: ['t-1', 't-2', 'ghost'] }, session_time: '7pm', status: 'live' }));
+    const written = call(cc().upsertSession)[0];
+    expect(written).toMatchObject({ id: 's-1', session_number: 4, session_time: '19:00', plan: { hook_ids: ['t-1', 't-2'], checklist: { recap: true } } });
+    // The assistant can't start a session: "live" is dropped, and an update by id leaves the status it has.
+    expect(written).not.toHaveProperty('status');
+  });
+
+  it('keeps a PC’s numbers inside what the sheet allows', async () => {
+    await backend().applyChatAction(act('upsertPC', { id: 'pc-1', level: '25', armor_class: 16, passive_perception: 'high', sheet_url: 'dndbeyond' }));
+    const written = call(cc().upsertPC)[0];
+    expect(written).toMatchObject({ id: 'pc-1', character_name: 'Kael', level: 20, armor_class: 16 });
+    expect(written).not.toHaveProperty('passive_perception');
+    expect(written).not.toHaveProperty('sheet_url');
+  });
+
+  it('nests a place, but never inside one of its own', async () => {
+    await backend().applyChatAction(act('upsertLocation', { id: 'city', parent_id: 'inn' }));
+    expect(call(cc().upsertLocation)[0]).not.toHaveProperty('parent_id', 'inn');
+    expect(backend().cardRows!('upsertLocation', { id: 'inn', parent_id: 'city' }, { parent_id: null }))
+      .toEqual([{ label: 'Inside', old: 'Waterdeep', value: 'Nowhere (top level)' }]);
+  });
+
+  it('tells the model about the new kinds and lists them with their ids', () => {
+    const prompt = backend().buildSystemPrompt();
+    for (const type of ['upsertItem', 'addTreasury', 'upsertHouseRule', 'updateCampaign']) expect(prompt).toContain(`"type": "${type}"`);
+    expect(prompt).toContain('deleteItem, deleteTreasury, deleteHouseRule');
+    expect(prompt).toContain('Never set "live"');
+    expect(prompt).toContain('Cloak — Uncommon wondrous item, requires attunement; held by Kael (attuned) [id:i-1]');
+    expect(prompt).toContain('+250 gp — Vault [id:l-1]');
+    expect(prompt).toContain('Flanking: Advantage. [id:r-1]');
+    expect(prompt).toContain('In-world date: 10 Month 1 1492');
   });
 });

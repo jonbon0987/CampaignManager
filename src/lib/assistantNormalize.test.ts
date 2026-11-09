@@ -60,6 +60,42 @@ describe('normalizeAssistantPayload', () => {
       .toEqual({ event_type: 'custom' });
   });
 
+  it('reads a PC’s numbers off text and keeps them in range', () => {
+    expect(normalizeAssistantPayload('upsertPC', { level: '5th', max_hp: '1,200', armor_class: 16.4, xp: -10, passive_insight: null, spell_save_dc: 'n/a' }))
+      .toEqual({ level: 5, max_hp: 999, armor_class: 16, xp: 0, passive_insight: null });
+  });
+
+  it('keeps only a web link for a PC’s sheet', () => {
+    expect(normalizeAssistantPayload('upsertPC', { sheet_url: ' https://www.dndbeyond.com/characters/1 ' }))
+      .toEqual({ sheet_url: 'https://www.dndbeyond.com/characters/1' });
+    expect(normalizeAssistantPayload('upsertPC', { sheet_url: 'on D&D Beyond' })).toEqual({});
+    expect(normalizeAssistantPayload('upsertPC', { sheet_url: null })).toEqual({ sheet_url: null });
+  });
+
+  it('reads a session’s status, and never sets one live', () => {
+    expect(normalizeAssistantPayload('upsertSession', { status: 'Upcoming', title: 'The Vault', plan: {} }))
+      .toEqual({ status: 'planned', title: 'The Vault', plan: {} });
+    expect(normalizeAssistantPayload('upsertSession', { status: 'played' })).toEqual({ status: 'done' });
+    expect(normalizeAssistantPayload('upsertSession', { status: 'live' })).toEqual({});
+  });
+
+  it('reads an item’s type and rarity by id or name', () => {
+    expect(normalizeAssistantPayload('upsertItem', { name: 'Cloak', item_type: 'Wondrous item', rarity: 'Very Rare', attunement: 'true', holders: [], bogus: 1 }))
+      .toEqual({ name: 'Cloak', item_type: 'wondrous', rarity: 'very_rare', attunement: true, holders: [] });
+    expect(normalizeAssistantPayload('upsertItem', { item_type: 'trinket', rarity: 'mundane' }))
+      .toEqual({ item_type: 'other', rarity: null });
+  });
+
+  it('keeps the newer columns on places, threads and scenes', () => {
+    expect(normalizeAssistantPayload('upsertLocation', { parent_id: 'p', read_aloud: 'Smoke.', map_pins: [] })).toEqual({ parent_id: 'p', read_aloud: 'Smoke.' });
+    expect(normalizeAssistantPayload('upsertHook', { player_text: 'He wants it back.' })).toEqual({ player_text: 'He wants it back.' });
+    expect(normalizeAssistantPayload('upsertScene', { read_aloud: 'Cold air.' })).toEqual({ read_aloud: 'Cold air.' });
+  });
+
+  it('drops the id from a ledger line, which is only ever added', () => {
+    expect(normalizeAssistantPayload('addTreasury', { id: 'l-1', gp: 5, note: 'Tip' })).toEqual({ gp: 5, note: 'Tip' });
+  });
+
   it('passes non-object payloads and unknown types through', () => {
     expect(normalizeAssistantPayload('deleteNPC', undefined)).toBeUndefined();
     const unknown = { anything: true };
