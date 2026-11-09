@@ -51,7 +51,8 @@ import CommandPalette from './components/shell/CommandPalette';
 import QuickNote from './components/shell/QuickNote';
 import { useMigrateScratchpad } from './components/shell/useMigrateScratchpad';
 import { useCampaignPaletteItems, useWorldPaletteItems } from './components/shell/paletteItems';
-import { useShellChrome, shellClass } from './components/shell/useShellChrome';
+import { useShellChrome, shellClass, railStyle } from './components/shell/useShellChrome';
+import { RailResizer } from './components/shell/RailResizer';
 import { useRouteSync, currentRoute } from './hooks/useRouteSync';
 import { setRecentScope } from './lib/recent';
 import type { Route } from './lib/route';
@@ -257,7 +258,7 @@ function AppInner() {
   return (
     <NavigationProvider setActiveTab={setActiveTab} openRecord={openRecord} reportRecord={reportRecord}>
       <CampaignEntityRefProvider>
-      <div className={shellClass({ collapsed: chrome.sidebarCollapsed, rail: !!rail, isMobile: chrome.isMobile, extra: runMode ? 'cm-run' : '' })}>
+      <div className={shellClass({ collapsed: chrome.sidebarCollapsed, rail: !!rail, isMobile: chrome.isMobile, extra: runMode ? 'cm-run' : '' })} style={railStyle(chrome.railWidth)}>
         <AppSidebar
           scope="campaign"
           activeId={activeTab}
@@ -326,7 +327,12 @@ function AppInner() {
             onSessionNote={runMode ? play.addNote : undefined} sessionNumber={play.live?.session_number} />
         </div>
 
-        {rail && <div className={RAIL_OVERLAY_CLASS}>{rail}</div>}
+        {rail && (
+          <div className={RAIL_OVERLAY_CLASS}>
+            {!chrome.isMobile && <RailResizer width={chrome.railWidth} onResize={chrome.resizeRail} />}
+            {rail}
+          </div>
+        )}
 
         <CommandPalette
           open={chrome.paletteOpen}
@@ -659,7 +665,7 @@ function WorldShell() {
 
   return (
     <WorldEntityRefProvider>
-    <div className={shellClass({ collapsed: chrome.sidebarCollapsed, rail: !!rail, isMobile: chrome.isMobile })}>
+    <div className={shellClass({ collapsed: chrome.sidebarCollapsed, rail: !!rail, isMobile: chrome.isMobile })} style={railStyle(chrome.railWidth)}>
       <AppSidebar
         scope="world"
         activeId={world.worldTab}
@@ -687,7 +693,12 @@ function WorldShell() {
           <WorldContent combatView={combatView} setCombatView={setCombatView} />
         </div>
       </div>
-      {rail && <div className={RAIL_OVERLAY_CLASS}>{rail}</div>}
+      {rail && (
+        <div className={RAIL_OVERLAY_CLASS}>
+          {!chrome.isMobile && <RailResizer width={chrome.railWidth} onResize={chrome.resizeRail} />}
+          {rail}
+        </div>
+      )}
       <CommandPalette
         open={chrome.paletteOpen}
         onClose={chrome.closePalette}

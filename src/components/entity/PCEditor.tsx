@@ -147,7 +147,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
         {form.sheet_url && !sheetHref && <span className="as-hint">Starts with https://, as copied from the browser.</span>}
       </div>
 
-      <div className="as-grid-4">
+      <div className="pc-passives">
         {([
           ['passive_perception', 'Passive Perception'],
           ['passive_insight', 'Passive Insight'],

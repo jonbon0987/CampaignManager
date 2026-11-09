@@ -144,8 +144,10 @@ input:focus, textarea:focus, select:focus {
   width: 100%;
   overflow: hidden;
 }
+/* The rail's width is the DM's (--rail-w, set on the shell), but never so wide
+   that the page beside it drops under 640px: the window can shrink after. */
 .cm-shell.has-rail {
-  grid-template-columns: 260px 1fr 340px;
+  grid-template-columns: 260px 1fr clamp(300px, var(--rail-w, 340px), max(300px, min(760px, calc(100vw - 900px))));
 }
 .cm-shell.has-strip {
   grid-template-columns: 260px 1fr 44px;
@@ -159,7 +161,7 @@ input:focus, textarea:focus, select:focus {
   grid-template-columns: 56px 1fr;
 }
 .cm-shell.side-collapsed.has-rail {
-  grid-template-columns: 56px 1fr 340px;
+  grid-template-columns: 56px 1fr clamp(300px, var(--rail-w, 340px), max(300px, min(760px, calc(100vw - 696px))));
 }
 .cm-shell.side-collapsed.has-strip {
   grid-template-columns: 56px 1fr 44px;
@@ -375,6 +377,7 @@ input:focus, textarea:focus, select:focus {
 
 /* ═══ Topbar ═══ */
 .cm-top {
+  container: top / inline-size;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -399,6 +402,19 @@ input:focus, textarea:focus, select:focus {
   text-overflow: ellipsis;
 }
 .cm-top-crumb-page { color: var(--ink); align-self: center; }
+/* As the bar narrows (a wide rail beside it), the buttons lose their words first,
+   then the trail folds to the page's name with a way back, as on a phone. */
+/* Scoped so it outranks .cm-top-btn's own display, which comes later. */
+.cm-top-crumbs .cm-top-back { display: none; }
+@container top (max-width: 760px) {
+  .cm-top-actions .cm-top-btn > span:not(.cm-top-btn-glyph), .cm-top-actions .cm-top-btn > kbd { display: none; }
+}
+@container top (max-width: 600px) {
+  .cm-top-crumbs .cm-top-back { display: inline-flex; align-self: center; }
+  .cm-top-crumbs .cm-top-crumb-wrap:not(:last-child),
+  .cm-top-crumbs .cm-top-crumb-wrap:last-child .cm-top-crumb-sep { display: none; }
+  .cm-top-crumbs .cm-top-crumb-wrap:last-child .cm-top-crumb { color: var(--ink); }
+}
 .cm-top-crumb-root { color: var(--ink-3); }
 .cm-top-crumb-sep { color: var(--ink-3); }
 .cm-top-spacer { flex: 1; }
@@ -1136,6 +1152,11 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .cm-md-detail:has(> .cm-detail) {
   padding: 0;
 }
+/* A narrow page (a wide rail beside it, or a small window): the list gives up
+   room to the detail, which tightens its margins. */
+.cm-md.is-narrow { grid-template-columns: minmax(200px, 240px) 1fr; }
+.cm-md.is-narrow .cm-md-detail { padding: 24px; }
+.cm-md.is-narrow .cm-md-detail > .cm-detail { padding: 28px 24px 72px; }
 
 /* ═══ Settings ═══ */
 .set-row {
@@ -2932,6 +2953,12 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   margin-bottom: 4px;
 }
 @media (max-width: 767px) { .as-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* A PC's passives: four across when there's room, two when there isn't, so a
+   label like PASSIVE INVESTIGATION wraps at its space instead of running into the next. */
+.pc-passives {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px; margin-bottom: 4px; align-items: end;
+}
 .as-hint { font-size: 12px; font-style: italic; color: var(--ink-3); }
 .pc-sheet-row { display: flex; align-items: center; gap: 10px; }
 .pc-sheet-row .as-input { flex: 1; min-width: 0; }
@@ -3733,11 +3760,25 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 
 /* The docked rail: the assistant, or a stat block */
 .cm-rail {
+  position: relative;
   min-width: 0; height: 100vh; overflow: hidden;
   display: flex; flex-direction: column;
   background: var(--bg);
 }
 .cm-rail > * { flex: 1; min-height: 0; }
+/* Its grip: a strip along the left edge that lights up when it can be dragged. */
+.cm-rail > .cm-rail-resize {
+  position: absolute; top: 0; bottom: 0; left: 0; z-index: 5;
+  flex: none; width: 8px; cursor: col-resize; touch-action: none;
+}
+.cm-rail-resize::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 2px;
+  background: transparent; transition: background .15s;
+}
+.cm-rail-resize:hover::after, .cm-rail-resize.is-dragging::after, .cm-rail-resize:focus-visible::after { background: var(--gold); }
+.cm-rail-resize:focus { outline: none; }
+/* While dragging, the pointer stays a resize arrow and nothing gets selected. */
+body.is-resizing-rail, body.is-resizing-rail * { cursor: col-resize; user-select: none; }
 .wb.wb-docked {
   width: 100%; height: 100%;
   border: none; border-left: 1px solid var(--rule); border-radius: 0;
@@ -3913,8 +3954,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 
 /* ═══ Images: portraits, maps, handouts ═══ */
 /* An entity's head: name and subtitle, with its portrait beside them */
-.ent-head { display: flex; align-items: flex-start; gap: 18px; }
-.ent-head-text { flex: 1; min-width: 0; }
+.ent-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px; }
+/* The portrait drops below the name before the name gets too narrow to read. */
+.ent-head-text { flex: 1 1 260px; min-width: 0; }
 .img-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
 .img-slot-frame {
   display: grid; place-items: center; overflow: hidden; padding: 0; cursor: pointer;

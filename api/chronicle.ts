@@ -135,6 +135,10 @@ function passes(settings: Settings): Pass[] {
           category: { type: ['string', 'null'], enum: ['main_plot', 'side_quest', 'character_arc', 'faction', null], description: 'New threads only.' },
           new_state: { type: ['string', 'null'], enum: ['seed', 'active', 'cold', 'resolved', null], description: 'Only if its state changed from the one shown in the campaign data: active when the party takes it up, resolved when it concludes, cold when dropped. Else null.' },
           development: text('How this thread developed this session. 1–2 sentences.'),
+          clock_advance: { type: ['integer', 'null'], description: 'Existing threads with a clock only (the campaign data shows it as “clock 2 of 6: …”): how many segments this session’s events moved it on, usually 1, more for a big step toward what it counts down to. Null if it has no clock or nothing moved it.' },
+          npc_ids: { type: ['array', 'null'], items: { type: 'string' }, description: 'Ids of NPCs from the campaign data who became part of this thread this session. Null if none. Only ids from the campaign data.' },
+          location_ids: { type: ['array', 'null'], items: { type: 'string' }, description: 'Ids of places from the campaign data that became part of this thread this session. Null if none.' },
+          faction_ids: { type: ['array', 'null'], items: { type: 'string' }, description: 'Ids of factions from the campaign data that became part of this thread this session. Null if none.' },
         }, ['matched_id', 'title', 'development']),
       ],
     },
@@ -204,12 +208,18 @@ async function campaignState(sb: Supa, campaignId: string): Promise<{ known: Kno
     return ids.length ? (((await sb.from(table).select(cols).in('id', ids)).data ?? []) as unknown as Record<string, unknown>[]) : [];
   };
   const npcCols = 'id, status, disposition, met_by_pcs';
-  const [pc, npc, npcLinked, location, locationLinked, faction, lore, loreLinked, hook] = await Promise.all([
-    rows('player_characters', 'id'), rows('npcs', npcCols), linked('campaign_npcs', 'npc_id', 'npcs', npcCols),
+  const [pc, npc, npcLinkRows, location, locationLinked, faction, lore, loreLinked, hook] = await Promise.all([
+    rows('player_characters', 'id'), rows('npcs', npcCols), rows('campaign_npcs', 'npc_id, met_by_pcs, disposition'),
     rows('locations', 'id'), linked('campaign_locations', 'location_id', 'locations', 'id'),
     rows('factions', 'id'), rows('lore_entries', 'id'), linked('campaign_lore', 'lore_id', 'lore_entries', 'id'),
-    rows('hooks', 'id, state, is_active'),
+    rows('hooks', 'id, state, is_active, clock_size, clock_filled, npc_ids, location_ids, faction_ids'),
   ]);
+  // A canon NPC's status is shared, but whether this party has met them, and how
+  // they feel about it, is on this campaign's link: the shared row's are another table's.
+  const linkIds = npcLinkRows.map(l => String(l.npc_id));
+  const npcShared = linkIds.length ? (((await sb.from('npcs').select('id, status').in('id', linkIds)).data ?? []) as unknown as Record<string, unknown>[]) : [];
+  const linkOf = new Map(npcLinkRows.map(l => [String(l.npc_id), l]));
+  const npcLinked: Record<string, unknown>[] = npcShared.map(r => ({ ...r, met_by_pcs: !!linkOf.get(String(r.id))?.met_by_pcs, disposition: linkOf.get(String(r.id))?.disposition ?? null }));
   const ids = (...lists: Record<string, unknown>[][]) => new Set(lists.flat().map(r => String(r.id)));
   const current = new Map<string, Record<string, unknown>>();
   for (const r of [...npc, ...npcLinked, ...hook]) current.set(String(r.id), r);

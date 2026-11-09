@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
+import { RAIL_DEFAULT } from './railWidth';
 
 const PHONE = '(max-width: 767px)';
 
@@ -15,6 +16,12 @@ const isTyping = (t: EventTarget | null) => {
 export function useShellChrome({ hasNote }: { hasNote: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useLocalStorage<boolean>('dnd-sidebar-open', true);
   const [assistantOpen, setAssistantOpen] = useLocalStorage<boolean>('dnd-assistant-open', false);
+  // The rail's width is kept once a drag ends; while dragging, only the screen follows.
+  const [savedRailWidth, saveRailWidth] = useLocalStorage<number>('dnd-rail-width', RAIL_DEFAULT);
+  const [draggedRailWidth, setDraggedRailWidth] = useState<number | null>(null);
+  const resizeRail = useCallback((width: number, done: boolean) => {
+    if (done) { saveRailWidth(width); setDraggedRailWidth(null); } else setDraggedRailWidth(width);
+  }, [saveRailWidth]);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia(PHONE).matches);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -56,8 +63,12 @@ export function useShellChrome({ hasNote }: { hasNote: boolean }) {
     noteOpen, toggleNote: () => setNoteOpen(o => !o), openNote: () => setNoteOpen(true), closeNote,
     shortcutsOpen, toggleShortcuts: () => setShortcutsOpen(o => !o), closeShortcuts: () => setShortcutsOpen(false),
     assistantOpen, setAssistantOpen, toggleAssistant: () => setAssistantOpen(o => !o),
+    railWidth: draggedRailWidth ?? savedRailWidth, resizeRail,
   };
 }
+
+/** The rail's width for the shell's grid, which keeps it inside the window as that changes. */
+export const railStyle = (width: number) => ({ '--rail-w': `${width}px` }) as React.CSSProperties;
 
 /** The shell's grid classes: a collapsed sidebar and an open rail change the columns. */
 export function shellClass(o: { collapsed: boolean; rail: boolean; isMobile: boolean; extra?: string }) {
