@@ -36,7 +36,7 @@ import type {
   TranscriptSegment, TranscriptSegmentInsert,
   RecordingMoment, RecordingMomentInsert,
   SpeakerLink, SpeakerLinkInsert,
-  DiscordBotPresence, DiscordPost, DiscordPostInsert,
+  DiscordBotPresence, DiscordBotControl, DiscordPost, DiscordPostInsert, DiscordTarget,
   PlayerConsent, PlayerConsentInsert,
   ChronicleProposal, ChronicleProposalInsert,
   ChronicleApplied, ChronicleAppliedInsert,
@@ -1489,6 +1489,22 @@ export const DiscordBotPresenceRows = {
   /** The bot's last report, or null if it has never run for this user. */
   async get(): Promise<DiscordBotPresence | null> {
     const { data, error } = await supabase.from('discord_bot_presence').select('*').maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+};
+
+/** What the app asks of the bot. The bot reads it wherever it runs. */
+export const DiscordBotControlRows = {
+  async get(): Promise<DiscordBotControl | null> {
+    const { data, error } = await supabase.from('discord_bot_control').select('*').maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async set(patch: { online?: boolean; voice?: DiscordTarget | null }): Promise<DiscordBotControl> {
+    const user_id = await getUserId();
+    const { data, error } = await supabase.from('discord_bot_control').upsert({ user_id, ...patch }, { onConflict: 'user_id' }).select().single();
     if (error) throw error;
     return data;
   },

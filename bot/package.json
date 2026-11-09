@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Records a Discord voice channel, one track per player, for DM Lair's session recordings.",
   "scripts": {
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "helper": "tsx src/service.ts"
   },
   "engines": {
     "node": ">=22.12"

@@ -4139,6 +4139,11 @@ body.is-resizing-rail, body.is-resizing-rail * { cursor: col-resize; user-select
 .tr-line-coins.is-out { color: var(--ink-2); }
 .tr-line-text { flex: 1; min-width: 0; font-size: 14px; color: var(--ink-2); }
 .tr-session-coin { margin-top: 10px; }
+/* Settings → Discord: the bot's controls */
+.dbot-controls { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: var(--radius); }
+.dbot-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dbot-label { flex: 0 0 64px; font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.dbot-select { flex: 1 1 220px; width: auto; min-width: 0; }
 .th-known { resize: vertical; font-family: var(--serif); font-size: 15px; line-height: 1.5; }
 
 /* House rules */

@@ -13,6 +13,10 @@
     "test:coverage": "vitest run --coverage",
     "migrate": "tsx scripts/migrate.ts",
     "bot": "npm --prefix bot start",
+    "bot:install": "npm --prefix bot run helper -- install",
+    "bot:uninstall": "npm --prefix bot run helper -- uninstall",
+    "bot:restart": "npm --prefix bot run helper -- restart",
+    "bot:status": "npm --prefix bot run helper -- status",
     "migrate:gen-constraints": "tsx scripts/genFieldConstraints.ts"
   },
   "dependencies": {

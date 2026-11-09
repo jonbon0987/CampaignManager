@@ -16,6 +16,7 @@ import { limitFor } from '../../lib/fieldLimits';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { BotNotReady } from './DiscordVoice';
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const LAST_TEXT = (campaignId: string) => `cm-discord-recap-channel:${campaignId}`;
@@ -50,7 +51,7 @@ export function PostRecapModal({ recording, session, onClose }: { recording: Ses
       try { localStorage.setItem(LAST_TEXT(recording.campaign_id), chosen.id); } catch { /* not remembered */ }
       const post = await DiscordPosts.queue({ campaign_id: recording.campaign_id, recording_id: recording.id, channel_id: chosen.id, content: text.trim() });
       setPosts(prev => [post, ...prev]);
-      toast(bot.online ? 'Sending to Discord…' : 'Queued. It’s sent when the bot is running.', 'success');
+      toast(bot.online ? 'Sending to Discord…' : 'Queued. It’s sent once the bot is signed in.', 'success');
     } catch (e) {
       toast(errorMessage(e), 'error');
     } finally {
@@ -75,11 +76,7 @@ export function PostRecapModal({ recording, session, onClose }: { recording: Ses
       }
     >
       <div className="flex flex-col gap-4">
-        {!bot.online && (
-          <p className="text-sm" style={{ margin: 0, color: 'var(--warn)' }}>
-            The Discord bot isn’t running. Start it with <span className="cm-kbd">npm run bot</span>{channels.length ? '; a post waits until then.' : ' to choose a channel.'}
-          </p>
-        )}
+        {!bot.online && <BotNotReady bot={bot} purpose={channels.length ? 'A post waits until it’s signed in.' : 'Sign it in to choose a channel.'} />}
         <div className="as-fl">
           <label className="as-ll" htmlFor="recap-channel">Channel</label>
           <select id="recap-channel" className="as-select" value={chosen?.id ?? ''} onChange={e => setChannelId(e.target.value)}>

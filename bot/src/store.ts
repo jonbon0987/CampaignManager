@@ -8,12 +8,14 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { BotConfig } from './config.js';
+import { readControl, type Control, type VoiceTarget } from './helper.js';
 import type { WrittenChunk } from './trackWriter.js';
 
 export const BUCKET = 'session-audio';
 export const OGG = 'audio/ogg';
 
 export type DiscordState = 'connecting' | 'recording' | 'finishing' | 'done' | 'failed';
+export type PresenceStatus = 'offline' | 'connecting' | 'online' | 'error';
 
 export interface DiscordTarget { guildId: string; channelId: string; channelName: string }
 
@@ -70,13 +72,30 @@ export class Store {
     return `${this.owner}/${recordingId}/${trackId}/${file}`;
   }
 
-  // --------------- Presence ---------------
+  // --------------- Control and presence ---------------
 
-  async heartbeat(botTag: string, guilds: GuildSnapshot[]) {
-    await must(this.sb.from('discord_bot_presence').upsert(
-      { user_id: this.owner, bot_tag: botTag.slice(0, 120), heartbeat_at: new Date().toISOString(), guilds },
-      { onConflict: 'user_id' },
-    ).select('id'));
+  /** What the DM has asked for from the app (migration 0053). */
+  async control(): Promise<Control> {
+    return readControl(await must(this.sb.from('discord_bot_control').select('online, voice, updated_at').eq('user_id', this.owner).maybeSingle()));
+  }
+
+  /**
+   * Tells the app how the helper stands. Signed in, it also refreshes the
+   * heartbeat, its name and the channels it can see; signed out, it keeps the
+   * last list it saw, so the app still has channels to offer.
+   */
+  async report(r: { status: PresenceStatus; voice: VoiceTarget | null; detail: string | null; signedIn?: { botTag: string; guilds: GuildSnapshot[] } }) {
+    const now = new Date().toISOString();
+    await must(this.sb.from('discord_bot_presence').upsert({
+      user_id: this.owner, helper_at: now, discord_status: r.status, voice: r.voice, detail: r.detail?.slice(0, 500) ?? null,
+      ...(r.signedIn ? { heartbeat_at: now, bot_tag: r.signedIn.botTag.slice(0, 120), guilds: r.signedIn.guilds } : {}),
+    }, { onConflict: 'user_id' }).select('id'));
+  }
+
+  /** The helper is quitting: nothing's left to take orders. */
+  async quit() {
+    await must(this.sb.from('discord_bot_presence').update({ helper_at: null, discord_status: 'offline', voice: null, detail: null })
+      .eq('user_id', this.owner).select('id'));
   }
 
   // --------------- Recordings ---------------
