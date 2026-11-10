@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './ui/Button';
 
@@ -26,6 +26,11 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'Save', wide = false, size, footer, onBeforeClose }: ModalProps) {
   const resolvedSize: ModalSize = size ?? (wide ? 'wide' : 'default');
+  // A click outside closes the modal only if the press started outside too. A
+  // press on a button can end over the backdrop when the layout moves under the
+  // pointer (a dropdown closing on mousedown shrinks the modal), and the browser
+  // then sends the click to the backdrop; so can dragging a text selection out.
+  const pressedBackdrop = useRef(false);
 
   const handleClose = useCallback(async () => {
     if (onBeforeClose) await onBeforeClose();
@@ -46,7 +51,12 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      onMouseDown={(e) => { pressedBackdrop.current = e.target === e.currentTarget; }}
+      onClick={(e) => {
+        const outside = pressedBackdrop.current && e.target === e.currentTarget;
+        pressedBackdrop.current = false;
+        if (outside) handleClose();
+      }}
     >
       <div
         className={`rounded-lg border flex flex-col ${sizeClasses[resolvedSize]}`}

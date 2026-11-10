@@ -13,6 +13,7 @@ vi.mock('../ui/SlashField', () => ({
 }));
 vi.mock('../ui/ImageSlot', () => ({ ImageSlot: () => null }));
 vi.mock('../ui/ImageThumb', () => ({ ImageThumb: () => null }));
+vi.mock('../../lib/apiClient', () => ({ authHeaders: async () => ({ 'Content-Type': 'application/json' }) }));
 
 import Items from './Items';
 
@@ -88,6 +89,43 @@ describe('Items', () => {
       name: 'Cloak of Elvenkind', item_type: 'wondrous', rarity: 'uncommon', attunement: true,
     })));
     await waitFor(() => expect(screen.queryByText('SRD magic items')).toBeNull());
+  });
+
+  it('generates an item with the assistant and opens it', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ text: JSON.stringify({ name: 'Tidecaller’s Ring', item_type: 'ring', rarity: 'uncommon', attunement: true, description: 'Salt-crusted.' }) }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const value = items();
+    show(value);
+    fireEvent.click(screen.getByRole('button', { name: '✦ Generate' }));
+    fireEvent.change(screen.getByDisplayValue('Any rarity'), { target: { value: 'rare' } });
+    fireEvent.change(screen.getByPlaceholderText(/a dagger the Grey Hand/), { target: { value: 'a ring the sea witch gave away' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
+
+    await waitFor(() => expect(value.saveItem).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Tidecaller’s Ring', item_type: 'ring', rarity: 'rare', attunement: true, description: 'Salt-crusted.',
+    })));
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/generate-item');
+    const prompt = JSON.parse(init.body).prompt as string;
+    expect(prompt).toContain('a ring the sea witch gave away');
+    expect(prompt).toContain('Flame Tongue, Crown of the Drowned King');
+    await waitFor(() => expect(screen.queryByText('Generate an item')).toBeNull());
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the form open and says why when generating fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({ error: 'The model is busy.' }) }));
+    const value = items();
+    show(value);
+    fireEvent.click(screen.getByRole('button', { name: '✦ Generate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
+    expect(await screen.findByText('Couldn’t make the item: The model is busy.')).toBeTruthy();
+    expect(value.saveItem).not.toHaveBeenCalled();
+    expect(screen.getByText('Generate an item')).toBeTruthy();
+    vi.unstubAllGlobals();
   });
 
   it('says what to do when there are none', () => {

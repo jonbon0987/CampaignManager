@@ -17,6 +17,7 @@ import { ItemEditor } from '../entity/ItemEditor';
 import { TreasuryPanel } from '../items/Treasury';
 import { formatCoins, sumCoins } from '../../lib/treasury';
 import { SrdLibrary } from '../srd/SrdLibrary';
+import { GenerateItemModal } from '../items/GenerateItemModal';
 import { srdToItem, type SrdItem } from '../../lib/srd';
 import type { Item } from '../../lib/database.types';
 
@@ -29,6 +30,7 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
   const { pcs, selectedCampaign } = useCampaign();
   const [search, setSearch] = useState('');
   const [srdOpen, setSrdOpen] = useState(false);
+  const [genOpen, setGenOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useReportRecord('items', selectedId);
 
@@ -75,6 +77,12 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
     setSearch('');
     setSelectedId(item.id);
   };
+  // A made-up item, saved already and named, so it isn't a draft.
+  const addGenerated = (item: Item) => {
+    setGenOpen(false);
+    setSearch('');
+    setSelectedId(item.id);
+  };
   const haveItem = (name: string) => items.some(i => i.name.trim().toLowerCase() === name.toLowerCase())
     ? `You already have an item called ${name}; this adds another.` : null;
 
@@ -108,8 +116,9 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
         { label: 'From the SRD library…', onClick: () => setSrdOpen(true) },
         { label: 'Coin to the treasury', onClick: () => setSelectedId(TREASURY) },
       ]}
+      onGenerate={() => setGenOpen(true)}
       empty={items.length === 0 && ledger.length === 0 && !onTreasury ? {
-        glyph: GLYPH, text: 'No items yet. Copy magic items from the SRD library, or add your own treasure and gear, then give them out from here, a PC’s page or a session’s loot.',
+        glyph: GLYPH, text: 'No items yet. Copy magic items from the SRD library, generate one with the assistant, or add your own treasure and gear, then give them out from here, a PC’s page or a session’s loot.',
         actionLabel: 'Browse the SRD library', onAction: () => setSrdOpen(true),
       } : null}
       list={
@@ -150,6 +159,7 @@ export default function Items({ openId, onOpenConsumed }: { openId?: string | nu
         )
       }
     />
+    <GenerateItemModal isOpen={genOpen} onClose={() => setGenOpen(false)} onCreated={addGenerated} />
     <SrdLibrary kind="items" open={srdOpen} onClose={() => setSrdOpen(false)}
       edition={selectedCampaign?.rules_edition ?? '2014'} addLabel="Add to items" note={haveItem} onAdd={addFromSrd} />
     </>

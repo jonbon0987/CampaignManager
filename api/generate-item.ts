@@ -1,0 +1,31 @@
+import { resolveProvider, generateText, friendlyError } from './_ai.js';
+import { requireAuth } from './_auth.js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+// Makes up one item for the Items page. The page builds the prompt
+// (src/lib/itemGeneration.ts) and reads the JSON that comes back.
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+
+  const { prompt, provider: bodyProvider } = req.body as {
+    prompt: string;
+    provider?: string;
+  };
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'Missing prompt' });
+  }
+
+  try {
+    const provider = resolveProvider(bodyProvider);
+    const raw = await generateText({ provider, prompt, maxTokens: 2048, json: true });
+    return res.status(200).json({ text: raw });
+  } catch (err) {
+    return res.status(500).json({ error: friendlyError(err) });
+  }
+}
