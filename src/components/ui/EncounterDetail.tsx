@@ -16,6 +16,7 @@ import { difficultyColor } from '../../lib/theme';
 import { CHALLENGE_RATINGS } from '../../lib/statblocks';
 import { parseCombatants } from '../../lib/encounters';
 import { type EncounterSaveData } from '../../lib/encounters';
+import './encounters.css';
 
 // ================================================================
 // Constants
@@ -26,14 +27,6 @@ const STATUSES = ['draft', 'ready', 'completed'] as const;
 
 const VALID_CRS = CHALLENGE_RATINGS;
 
-const sectionLabel: React.CSSProperties = {
-  color: 'var(--gold)',
-  fontSize: 'var(--fs-micro)',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.12em',
-  marginBottom: '0.5rem',
-};
 
 // ================================================================
 // Types
@@ -85,27 +78,25 @@ export function CombatantRow({
 }) {
   return (
     <div
-      className="rounded p-3 flex flex-col gap-2"
-      style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}
+      className="rounded p-3 flex flex-col gap-2 enc-box"
     >
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-md" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
+          <span className="font-semibold text-md enc-cmb-name">
             {c.name}
           </span>
           {c.challenge_rating && (
-            <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--cr)' }}>
+            <span className="ml-2 text-xs px-1.5 py-0.5 rounded enc-cmb-cr">
               CR {c.challenge_rating}
             </span>
           )}
           {c.creature_type && (
-            <span className="ml-1 text-xs capitalize" style={{ color: 'var(--ink-3)' }}>{c.creature_type}</span>
+            <span className="ml-1 text-xs capitalize enc-dim">{c.creature_type}</span>
           )}
           {c.source === 'saved' && statblockName && onViewSheet && (
             <button
               onClick={onViewSheet}
-              className="ml-1 text-xs px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}
+              className="ml-1 text-xs px-1.5 py-0.5 rounded enc-btn-info"
             >
               Sheet
             </button>
@@ -114,20 +105,17 @@ export function CombatantRow({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => onCountChange(-1)}
-            className="w-6 h-6 rounded text-md font-bold flex items-center justify-center"
-            style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
+            className="w-6 h-6 rounded text-md font-bold flex items-center justify-center enc-step"
           >−</button>
-          <span className="text-md font-semibold w-5 text-center" style={{ color: 'var(--ink)' }}>{c.count}</span>
+          <span className="text-md font-semibold w-5 text-center enc-cmb-count">{c.count}</span>
           <button
             onClick={() => onCountChange(1)}
-            className="w-6 h-6 rounded text-md font-bold flex items-center justify-center"
-            style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
+            className="w-6 h-6 rounded text-md font-bold flex items-center justify-center enc-step"
           >+</button>
         </div>
         <button
           onClick={onRemove}
-          className="text-xs px-2 py-1 rounded shrink-0"
-          style={{ backgroundColor: 'var(--bg-2)', color: 'var(--red)', border: '1px solid var(--rule)' }}
+          className="text-xs px-2 py-1 rounded shrink-0 enc-cmb-remove"
         >✕</button>
       </div>
       <input
@@ -135,8 +123,7 @@ export function CombatantRow({
         value={c.notes ?? ''}
         onChange={e => onNotesChange(e.target.value)}
         placeholder="Notes for this combatant…"
-        className="text-xs w-full px-2 py-1 rounded outline-none"
-        style={{ backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)' }}
+        className="text-xs w-full px-2 py-1 rounded outline-none enc-cmb-notes"
       />
     </div>
   );
@@ -278,21 +265,16 @@ export function EncounterDetail({
   const unlevelled = fromPCs ? party!.filter(p => p.level == null).length : 0;
 
   return (
-    <div style={{ maxWidth: '700px' }}>
+    <div className="enc-detail">
 
       {/* ── Action bar ── */}
-      <div className="as-bar" style={{ marginBottom: '20px' }}>
+      <div className="as-bar enc-toolbar">
         <SaveStatusIndicator status={saveStatus} onRetry={saveNow} />
         <div className="as-spacer" />
         {canRun && (
           <button
             onClick={onRun}
-            style={{
-              fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--bg)',
-              backgroundColor: 'var(--gold)', border: '1px solid var(--gold)',
-              borderRadius: 'var(--radius)', padding: '6px 16px', cursor: 'pointer',
-              fontFamily: 'var(--serif)',
-            }}
+            className="enc-run"
           >
             ▶ Run Encounter
           </button>
@@ -303,10 +285,7 @@ export function EncounterDetail({
       </div>
 
       {/* ── Eyebrow ── */}
-      <div style={{
-        color: 'var(--ink-3)', fontSize: 'var(--fs-micro)', fontWeight: 700,
-        letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px',
-      }}>
+      <div className="enc-eyebrow">
         Encounter{diffVal ? ` · ${RATING_LABEL[diffVal as Rating] ?? diffVal}` : ''}
       </div>
 
@@ -316,11 +295,11 @@ export function EncounterDetail({
         onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
         placeholder="Encounter name…"
         maxLength={limitFor('encounters', 'name')}
-        style={{ marginBottom: '20px', display: 'block', width: '100%' }}
+        className="as-title enc-title"
       />
 
       {/* ── Meta strip ── */}
-      <div className="as-meta" style={{ marginBottom: '24px' }}>
+      <div className="as-meta enc-block">
         <div className="as-mi">
           <div className="as-ml">Status</div>
           <select className="as-select" value={form.status}
@@ -330,7 +309,7 @@ export function EncounterDetail({
         </div>
         <div className="as-mi">
           <div className="as-ml">Environment</div>
-          <input className="as-input" list="env-list-ed" value={form.environment}
+          <input className="as-input enc-env" list="env-list-ed" value={form.environment}
             onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))} placeholder="—" maxLength={limitFor('encounters', 'environment')} />
           <datalist id="env-list-ed">
             {ENVIRONMENTS.map(env => <option key={env} value={env} />)}
@@ -344,21 +323,21 @@ export function EncounterDetail({
         ) : (<>
         <div className="as-mi">
           <div className="as-ml">Party Size</div>
-          <input className="as-input" type="number" min={1} max={10} value={form.party_size}
+          <input className="as-input enc-num" type="number" min={1} max={10} value={form.party_size}
             onChange={e => setForm(prev => ({ ...prev, party_size: e.target.value }))}
-            placeholder="—" style={{ width: '56px' }} />
+            placeholder="—" />
         </div>
         <div className="as-mi">
           <div className="as-ml">Avg Level</div>
-          <input className="as-input" type="number" min={1} max={20} value={form.party_level}
+          <input className="as-input enc-num" type="number" min={1} max={20} value={form.party_level}
             onChange={e => setForm(prev => ({ ...prev, party_level: e.target.value }))}
-            placeholder="—" style={{ width: '56px' }} />
+            placeholder="—" />
         </div>
         </>)}
       </div>
 
       {/* ── Difficulty, worked out from the creatures and the party ── */}
-      <div className="as-fl" style={{ marginBottom: '24px' }}>
+      <div className="as-fl enc-block">
         <div className="as-ll">Difficulty</div>
         {rating ? (
           <div className="enc-rate">
@@ -391,7 +370,7 @@ export function EncounterDetail({
       </div>
 
       {/* ── Description ── */}
-      <div className="as-fl" style={{ marginBottom: '24px' }}>
+      <div className="as-fl enc-block">
         <div className="as-ll">Description</div>
         <SlashField
           value={form.description ?? ''}
@@ -402,11 +381,11 @@ export function EncounterDetail({
       </div>
 
       {/* ── Combatants ── */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={sectionLabel}>Combatants</div>
+      <div className="enc-block">
+        <div className="enc-section-label">Combatants</div>
         <div className="space-y-2 mb-3">
           {combatants.length === 0 && (
-            <p className="text-xs" style={{ color: 'var(--ink-3)' }}>No combatants added yet.</p>
+            <p className="text-xs enc-dim">No combatants added yet.</p>
           )}
           {combatants.map(c => {
             const sb = c.statblock_id ? monsterStatblocks.find(m => m.id === c.statblock_id) : null;
@@ -427,46 +406,41 @@ export function EncounterDetail({
         {addCreatureMode === null && (
           <div className="flex gap-2">
             {monsterStatblocks.length > 0 && (
-              <button onClick={() => setAddCreatureMode('saved')} className="text-xs px-3 py-1.5 rounded"
-                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}>
+              <button onClick={() => setAddCreatureMode('saved')} className="text-xs px-3 py-1.5 rounded enc-btn-info">
                 + From stat sheets
               </button>
             )}
             {sheetFromSrd && (
-              <button onClick={() => setSrdOpen(true)} className="text-xs px-3 py-1.5 rounded"
-                style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info)', border: '1px solid var(--info-line)' }}>
+              <button onClick={() => setSrdOpen(true)} className="text-xs px-3 py-1.5 rounded enc-btn-info">
                 + From SRD
               </button>
             )}
-            <button onClick={() => setAddCreatureMode('custom')} className="text-xs px-3 py-1.5 rounded"
-              style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}>
+            <button onClick={() => setAddCreatureMode('custom')} className="text-xs px-3 py-1.5 rounded enc-step">
               + Custom Creature
             </button>
           </div>
         )}
 
         {addCreatureMode === 'saved' && (
-          <div className="rounded p-3 space-y-2" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-            <p className="text-xs font-semibold" style={{ color: 'var(--gold)' }}>Your stat sheets</p>
+          <div className="rounded p-3 space-y-2 enc-box">
+            <p className="text-xs font-semibold enc-gold">Your stat sheets</p>
             <div className="max-h-48 overflow-y-auto space-y-1">
               {monsterStatblocks.map(m => (
                 <button key={m.id} onClick={() => addSavedCombatant(m)}
-                  className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2"
-                  style={{ backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule-soft)' }}>
+                  className="w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2 enc-pick">
                   <span className="flex-1">{m.name}</span>
-                  {m.challenge_rating && <span style={{ color: 'var(--cr)' }}>CR {m.challenge_rating}</span>}
-                  {m.creature_type && <span className="capitalize" style={{ color: 'var(--ink-3)' }}>{m.creature_type}</span>}
+                  {m.challenge_rating && <span className="enc-cr">CR {m.challenge_rating}</span>}
+                  {m.creature_type && <span className="capitalize enc-dim">{m.creature_type}</span>}
                 </button>
               ))}
             </div>
-            <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
-              style={{ color: 'var(--ink-3)', border: '1px solid var(--rule)' }}>Cancel</button>
+            <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded enc-btn-cancel">Cancel</button>
           </div>
         )}
 
         {addCreatureMode === 'custom' && (
-          <div className="rounded p-3 space-y-2" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-            <p className="text-xs font-semibold" style={{ color: 'var(--gold)' }}>Add Custom Creature</p>
+          <div className="rounded p-3 space-y-2 enc-box">
+            <p className="text-xs font-semibold enc-gold">Add Custom Creature</p>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-3">
                 <input type="text" value={customCreatureName}
@@ -482,10 +456,8 @@ export function EncounterDetail({
                 placeholder="CR (optional)" className="as-input" />
             </div>
             <div className="flex gap-2">
-              <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded"
-                style={{ backgroundColor: 'var(--gold-hover)', color: 'var(--ink)' }}>Add</button>
-              <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded"
-                style={{ color: 'var(--ink-3)', border: '1px solid var(--rule)' }}>Cancel</button>
+              <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded enc-btn-add">Add</button>
+              <button onClick={() => setAddCreatureMode(null)} className="text-xs px-2 py-1 rounded enc-btn-cancel">Cancel</button>
             </div>
           </div>
         )}
@@ -498,14 +470,14 @@ export function EncounterDetail({
         )}
 
         {totalCreatures > 0 && (
-          <div style={{ marginTop: '8px', color: 'var(--ink-3)', fontSize: 'var(--fs-xs)', fontFamily: 'var(--mono)' }}>
+          <div className="enc-total">
             {totalCreatures} {totalCreatures === 1 ? 'creature' : 'creatures'} total
           </div>
         )}
       </div>
 
       {/* ── DM Notes ── */}
-      <div className="as-fl" style={{ marginBottom: '24px' }}>
+      <div className="as-fl enc-block">
         <div className="as-ll">DM Notes</div>
         <SlashField
           value={form.dm_notes ?? ''}
@@ -519,12 +491,7 @@ export function EncounterDetail({
       {canRun && (
         <button
           onClick={onRun}
-          style={{
-            width: '100%', backgroundColor: 'var(--gold)', color: 'var(--bg)',
-            border: 'none', borderRadius: 'var(--radius)', padding: '12px',
-            fontSize: 'var(--fs-md)', fontWeight: 700, fontFamily: 'var(--serif)',
-            cursor: 'pointer', letterSpacing: '0.02em',
-          }}
+          className="enc-run-wide"
         >
           ▶ Run Encounter · {totalCreatures} {totalCreatures === 1 ? 'creature' : 'creatures'}
         </button>

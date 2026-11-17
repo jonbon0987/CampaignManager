@@ -31,6 +31,7 @@ import { rememberChannel, rememberedChannel, voiceChannels } from '../../lib/dis
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import './session.css';
 
 function formatClock(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -47,7 +48,7 @@ const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e)
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div className="cm-section-head" style={{ marginBottom: 8 }}>
+    <div className="cm-section-head rec-section-head">
       <span className="cm-section-title">{label}</span>
       <div className="cm-section-rule" />
     </div>
@@ -55,13 +56,13 @@ function SectionLabel({ label }: { label: string }) {
 }
 
 /** Elapsed time on the session clock, ticking once a second. */
-function Elapsed({ startedAt, style }: { startedAt: string; style?: React.CSSProperties }) {
+function Elapsed({ startedAt, className }: { startedAt: string; className?: string }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  return <span style={style}>{formatClock(now - Date.parse(startedAt))}</span>;
+  return <span className={className}>{formatClock(now - Date.parse(startedAt))}</span>;
 }
 
 /** Input level, drawn straight to the DOM so it doesn't re-render the page. */
@@ -81,8 +82,8 @@ function LevelMeter({ getLevel }: { getLevel: () => number }) {
     return () => cancelAnimationFrame(raf);
   }, [getLevel]);
   return (
-    <div aria-hidden="true" style={{ flex: '1 1 160px', minWidth: 120, height: 6, borderRadius: 999, background: 'var(--paper-3)', overflow: 'hidden' }}>
-      <div ref={bar} style={{ width: 0, height: '100%', background: 'var(--gold)', transition: 'width 60ms linear' }} />
+    <div aria-hidden="true" className="rec-meter">
+      <div ref={bar} className="rec-meter-bar" />
     </div>
   );
 }
@@ -108,9 +109,9 @@ function Waveform({ getLevel, paused }: { getLevel: () => number; paused: boolea
     return () => clearInterval(t);
   }, [getLevel, paused]);
   return (
-    <div ref={box} aria-hidden="true" style={{ flex: '1 1 280px', minWidth: 200, height: 44, display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+    <div ref={box} aria-hidden="true" className="rec-wave">
       {Array.from({ length: WAVE_BARS }, (_, i) => (
-        <span key={i} style={{ flex: '0 0 4px', height: 4, borderRadius: 2, background: paused ? 'var(--ink-4)' : 'var(--gold)', transition: 'height 100ms linear' }} />
+        <span key={i} className="rec-wave-bar" style={{ background: paused ? 'var(--ink-4)' : 'var(--gold)' }} />
       ))}
     </div>
   );
@@ -211,18 +212,18 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
         <div>
           <SectionLabel label="Players at the table" />
           {activePcs.length === 0 ? (
-            <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>No active player characters in this campaign yet.</p>
+            <p className="text-md rec-note">No active player characters in this campaign yet.</p>
           ) : (
-            <ul className="flex flex-col" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            <ul className="flex flex-col rec-list">
               {activePcs.map(pc => {
                 const consent = consentFor(pc.id);
                 const here = atTable.has(pc.id);
                 return (
-                  <li key={pc.id} className="flex items-center gap-3 flex-wrap" style={{ padding: '8px 0', borderBottom: '1px solid var(--rule-soft)' }}>
-                    <label className="flex items-center gap-2" style={{ flex: '1 1 200px', color: here ? 'var(--ink)' : 'var(--ink-3)' }}>
+                  <li key={pc.id} className="flex items-center gap-3 flex-wrap rec-pc">
+                    <label className="flex items-center gap-2 rec-pc-check" style={{ color: here ? 'var(--ink)' : 'var(--ink-3)' }}>
                       <input type="checkbox" checked={here} onChange={() => toggleTable(pc.id)} />
-                      <span style={{ fontWeight: 500 }}>{pc.character_name}</span>
-                      {pc.player_name && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{pc.player_name}</span>}
+                      <span className="rec-strong">{pc.character_name}</span>
+                      {pc.player_name && <span className="text-xs rec-dim">{pc.player_name}</span>}
                     </label>
                     <label className="flex items-center gap-2 text-xs" style={{ color: consent ? 'var(--success)' : 'var(--ink-2)' }}>
                       <input type="checkbox" checked={!!consent} disabled={consents === null} onChange={() => void toggleConsent(pc.id)} />
@@ -233,7 +234,7 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
               })}
             </ul>
           )}
-          <p className="text-xs" style={{ color: missingConsent.length ? 'var(--warn)' : 'var(--ink-3)', margin: '10px 0 0' }}>
+          <p className="text-xs rec-consent" style={{ color: missingConsent.length ? 'var(--warn)' : 'var(--ink-3)' }}>
             {consents === null && activePcs.length > 0
               ? 'Checking who has agreed to recording…'
               : missingConsent.length
@@ -245,7 +246,7 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
         <div>
           <SectionLabel label="Players on Discord" />
           {!bot.loaded ? (
-            <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>Checking for the Discord bot…</p>
+            <p className="text-md rec-note">Checking for the Discord bot…</p>
           ) : !bot.online ? (
             <BotNotReady bot={bot} purpose="Sign it in to record players on Discord." />
           ) : (
@@ -258,7 +259,7 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
               </select>
               {channel && <DiscordMembers members={channel.members} consents={consents} onLinksChange={onLinks} />}
               {channel && (
-                <p className="text-xs" style={{ color: 'var(--ink-3)', margin: 0 }}>
+                <p className="text-xs rec-note">
                   The bot records each person on their own track and posts a notice in the channel. Tick “Agreed to recording” above for players on Discord too.
                 </p>
               )}
@@ -266,7 +267,7 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
           )}
         </div>
 
-        <p className="text-xs" style={{ color: 'var(--ink-3)', margin: 0 }}>
+        <p className="text-xs rec-note">
           Audio is saved on this device every minute and uploaded to your private storage as you go. Keep this tab open; switching tabs in the app is fine.
         </p>
       </div>
@@ -281,10 +282,9 @@ function MomentRow({ moment, onRename, onDelete }: { moment: RecordingMoment; on
   const [label, setLabel] = useState(moment.label ?? '');
   return (
     <li className="flex items-center gap-2">
-      <span className="cm-kbd" style={{ color: 'var(--gold)', minWidth: 56 }}>{formatClock(moment.at_ms)}</span>
+      <span className="cm-kbd rec-moment-at">{formatClock(moment.at_ms)}</span>
       <input
-        className="as-input"
-        style={{ flex: 1, padding: '3px 8px', fontSize: 'var(--fs-sm)' }}
+        className="as-input rec-moment-input"
         value={label}
         placeholder="What happened? (optional)"
         aria-label={`Label for moment at ${formatClock(moment.at_ms)}`}
@@ -334,15 +334,14 @@ function LiveRecorder() {
   };
 
   const atTable = (recording.settings.tablePcIds ?? []).map(id => pcs.find(p => p.id === id)?.character_name).filter(Boolean) as string[];
-  const sourceCard: React.CSSProperties = { background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 };
 
   return (
-    <section aria-label="Recorder" style={{ background: 'var(--paper-2)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div className="flex items-center flex-wrap" style={{ gap: 18 }}>
+    <section aria-label="Recorder" className="rec-panel">
+      <div className="flex items-center flex-wrap rec-panel-top">
         <div className="flex items-center gap-3">
-          <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: '50%', background: paused ? 'var(--ink-3)' : 'var(--red)', boxShadow: paused ? 'none' : '0 0 0 4px var(--red-dim)' }} />
+          <span aria-hidden="true" className="rec-dot" style={{ background: paused ? 'var(--ink-3)' : 'var(--red)', boxShadow: paused ? 'none' : '0 0 0 4px var(--red-dim)' }} />
           <Badge color={paused ? 'muted' : 'red'}>{paused ? 'Paused' : 'Recording'}</Badge>
-          <Elapsed startedAt={recording.started_at} style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-h2)', fontWeight: 500, color: 'var(--ink)', letterSpacing: '0.04em' }} />
+          <Elapsed startedAt={recording.started_at} className="rec-clock" />
         </div>
         <Waveform getLevel={getLevel} paused={paused} />
         <div className="flex items-center gap-2 flex-wrap">
@@ -358,32 +357,32 @@ function LiveRecorder() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, borderTop: '1px solid var(--rule-soft)', paddingTop: 14 }}>
-        <div style={sourceCard}>
+      <div className="rec-sources">
+        <div className="rec-source">
           <div className="flex items-center gap-2 flex-wrap">
-            <span aria-hidden="true" style={{ color: 'var(--gold)' }}>✦</span>
-            <span style={{ fontWeight: 500 }}>At the table</span>
+            <span aria-hidden="true" className="rec-gold">✦</span>
+            <span className="rec-strong">At the table</span>
             <Badge color={paused ? 'muted' : 'green'}>{paused ? 'Paused' : 'Live'}</Badge>
-            <span style={{ flex: 1 }} />
-            {mic && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{mic}</span>}
+            <span className="rec-grow" />
+            {mic && <span className="text-xs rec-dim">{mic}</span>}
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs" style={{ color: 'var(--ink-2)', width: 110 }}>Room level</span>
+            <span className="text-xs rec-level-label">Room level</span>
             <LevelMeter getLevel={getLevel} />
           </div>
-          <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+          <span className="text-xs rec-dim">
             {atTable.length ? `You${atTable.length > 1 ? ', ' : ' and '}${atTable.length > 1 ? `${atTable.slice(0, -1).join(', ')} and ${atTable[atTable.length - 1]}` : atTable[0]} · consent recorded` : 'You'}
           </span>
         </div>
 
         {target && (
-          <div style={sourceCard}>
+          <div className="rec-source">
             <div className="flex items-center gap-2 flex-wrap">
-              <span aria-hidden="true" style={{ color: 'var(--link-faction)' }}>◈</span>
-              <span style={{ fontWeight: 500 }}>On Discord</span>
+              <span aria-hidden="true" className="rec-faction">◈</span>
+              <span className="rec-strong">On Discord</span>
               <DiscordStateLine state={discord?.discord_state} detail={null} botOnline={bot.online} />
-              <span style={{ flex: 1 }} />
-              <span className="text-xs" style={{ color: 'var(--ink-3)' }}>#{target.channelName}{bot.presence?.bot_tag ? ` · ${bot.presence.bot_tag.replace(/#\d+$/, '')}` : ''}</span>
+              <span className="rec-grow" />
+              <span className="text-xs rec-dim">#{target.channelName}{bot.presence?.bot_tag ? ` · ${bot.presence.bot_tag.replace(/#\d+$/, '')}` : ''}</span>
             </div>
             {discord?.discord_detail && (
               <span className="text-xs" style={{ color: discord.discord_state === 'failed' ? 'var(--warn)' : 'var(--ink-2)' }}>
@@ -391,22 +390,22 @@ function LiveRecorder() {
               </span>
             )}
             <details>
-              <summary className="text-xs" style={{ cursor: 'pointer', color: 'var(--gold)' }}>Who’s who on Discord</summary>
-              <div style={{ marginTop: 8 }}>
+              <summary className="text-xs rec-whos-who">Who’s who on Discord</summary>
+              <div className="rec-whos-who-body">
                 {channel
                   ? <DiscordMembers members={channel.members} consents={consents} />
-                  : <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>The bot can’t see this channel right now.</p>}
+                  : <p className="text-md rec-note">The bot can’t see this channel right now.</p>}
               </div>
             </details>
           </div>
         )}
       </div>
 
-      <div className="flex items-center flex-wrap text-xs" style={{ gap: '8px 20px', color: 'var(--ink-3)' }}>
+      <div className="flex items-center flex-wrap text-xs rec-voices">
         <span>Saved every minute{upload.pending > 0 ? ` · ${upload.pending} waiting to upload` : ' · all uploaded'}</span>
-        {target && <span style={{ color: 'var(--ink-2)' }}><span aria-hidden="true" style={{ color: 'var(--gold)' }}>✧</span> Wear headphones so the table mic doesn’t hear Discord twice</span>}
+        {target && <span className="rec-voice"><span aria-hidden="true" className="rec-gold">✧</span> Wear headphones so the table mic doesn’t hear Discord twice</span>}
         {upload.error && (
-          <span style={{ color: 'var(--warn)' }}>
+          <span className="rec-warn">
             Upload paused: {upload.error} <Button variant="link" onClick={retryUploads}>Retry now</Button>
           </span>
         )}
@@ -415,7 +414,7 @@ function LiveRecorder() {
       {moments.length > 0 && (
         <div>
           <SectionLabel label={`Marked moments · ${moments.length}`} />
-          <ul className="flex flex-col gap-2" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className="flex flex-col gap-2 rec-list">
             {moments.map(m => (
               <MomentRow
                 key={m.id}
@@ -538,7 +537,7 @@ function SavedRecordingRow({ recording: initial, session, onDiscard }: { recordi
           {new Date(recording.started_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
           {recording.duration_ms ? <span className="rr-len"> · {formatDuration(recording.duration_ms)}</span> : null}
         </span>
-        <span style={{ flex: 1 }} />
+        <span className="rec-grow" />
         {next}
         <OverflowMenu items={menu} />
       </div>
@@ -565,8 +564,8 @@ function SavedRecordingRow({ recording: initial, session, onDiscard }: { recordi
       {showPost && <PostRecapModal recording={recording} session={session} onClose={() => setShowPost(false)} />}
       {audio?.map(a => (
         <div key={a.url} className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs" style={{ color: 'var(--ink-2)', minWidth: 120 }}>{a.label}</span>
-          <audio controls preload="metadata" src={a.url} style={{ flex: 1, minWidth: 220, height: 32 }} />
+          <span className="text-xs rec-audio-label">{a.label}</span>
+          <audio controls preload="metadata" src={a.url} className="rec-audio" />
         </div>
       ))}
     </li>
@@ -622,8 +621,8 @@ export function RecorderPanel({ session }: { session: Session }) {
         {isLiveHere && <LiveRecorder />}
 
         {interruptedHere.map(r => (
-          <div key={r.id} role="status" style={{ background: 'var(--warn-bg)', border: '1px solid var(--warn-line)', borderRadius: 'var(--radius-lg)', padding: '12px 14px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <span className="text-md" style={{ flex: '1 1 260px', color: 'var(--ink)' }}>
+          <div key={r.id} role="status" className="rec-resume">
+            <span className="text-md rec-resume-text">
               {r.status === 'uploading'
                 ? 'This recording ended but didn’t finish saving.'
                 : `A recording started ${new Date(r.started_at).toLocaleTimeString(undefined, { timeStyle: 'short' })} was interrupted. Audio up to the interruption is kept.`}
@@ -643,18 +642,18 @@ export function RecorderPanel({ session }: { session: Session }) {
               <Upload size={13} /> {uploading ? 'Uploading…' : 'Upload a recording'}
             </Button>
             <input ref={fileInput} type="file" accept="audio/*,.m4a,.webm,.ogg,.opus,.flac" hidden onChange={e => void onFile(e.target.files?.[0])} />
-            <span className="text-xs" style={{ color: 'var(--ink-3)' }}>The recording is transcribed and turned into proposed updates you review before anything changes.</span>
+            <span className="text-xs rec-dim">The recording is transcribed and turned into proposed updates you review before anything changes.</span>
           </div>
         )}
 
         {liveElsewhere && (
-          <p className="text-xs" style={{ color: 'var(--ink-3)', margin: 0 }}>
+          <p className="text-xs rec-note">
             Session {liveElsewhere.session_number} is being recorded. End that recording to record this one.
           </p>
         )}
 
         {saved.length > 0 && (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className="rec-list">
             {saved.map(r => <SavedRecordingRow key={r.id} recording={r} session={session} onDiscard={() => void confirmDiscard(r)} />)}
           </ul>
         )}
@@ -673,9 +672,9 @@ export function RecordingIndicator({ onOpen }: { onOpen: (sessionId: string) => 
       size="xs"
       onClick={() => onOpen(live.recording.session_id)}
       aria-label={live.paused ? 'Recording paused — open the session being recorded' : 'Recording — open the session being recorded'}
-      style={{ borderRadius: 999, borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)', fontFamily: 'var(--mono)', letterSpacing: '0.06em' }}
+      className="rec-pill" style={{ borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)' }}
     >
-      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: live.paused ? 'var(--ink-3)' : 'var(--red)' }} />
+      <span aria-hidden="true" className="rec-pill-dot" style={{ background: live.paused ? 'var(--ink-3)' : 'var(--red)' }} />
       {live.paused ? 'PAUSED' : 'REC'} <Elapsed startedAt={live.recording.started_at} />
     </Button>
   );

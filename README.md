@@ -82,7 +82,8 @@ src/
   context/    React contexts: campaign, world, play, recording, navigation
   hooks/      Data and behaviour hooks, including the assistant backend
   lib/        Database access, theme maps, combat rules, routing, utilities
-  index.css   Design tokens (:root) and component styles
+  index.css   Design tokens (:root), Tailwind and shared component styles
+              (feature stylesheets sit beside their components, e.g. session/session.css)
 ```
 
 ## Design system (Scriptorium)
@@ -94,9 +95,19 @@ src/
 - **Taxonomy colours** (creature types, thread states, difficulty, timeline event
   types and so on) live in `src/lib/theme.ts`, not in components.
 - **Buttons** go through `<Button>` and `<IconButton>` from `src/components/ui`.
-  ESLint warns on a styled raw `<button>` outside `ui/`, and on `onClick` on an element
+  ESLint fails on a styled raw `<button>` outside `ui/`, and on `onClick` on an element
   the keyboard cannot reach. A control that is deliberately bespoke carries an
   `eslint-disable-next-line no-restricted-syntax -- reason` comment.
-- **Styling:** prefixed classes in the stylesheets for feature surfaces, Tailwind
-  utilities for one-off layout, inline `style` only for values computed at runtime.
+- **Styling:**
+  - *Feature surfaces* get prefixed classes (`.rnd-` random tables, `.enc-` encounters,
+    `.rec-` recorder, `.rcp-` recap, `.chg-` Chronicle review, `.itk-` tracker, …) in a
+    stylesheet beside the components that use it, imported by them
+    (`ui/randomTables.css`, `ui/encounters.css`, `session/session.css`,
+    `components/initiativeTracker.css`, `world/firstWorldGate.css`). Shared building blocks stay
+    in `index.css`.
+  - *One-off layout* (a flex row, a gap, a margin) uses Tailwind utilities.
+  - *Inline `style`* only for values computed at runtime: a colour from a map, a
+    measured width, a state that switches colours.
+  - Write values with the tokens (`var(--fs-sm)`, `var(--ink-3)`, `var(--z-popover)`),
+    never as literals.
 - **Breakpoints** by convention: 640px (phone), 900px (narrow), 1240px (wide).
