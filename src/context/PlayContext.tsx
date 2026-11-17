@@ -238,12 +238,10 @@ export function PlayProvider({ children }: { children: ReactNode }) {
   return <PlayContext.Provider value={value}>{children}</PlayContext.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- the hook belongs with its provider, as in the other contexts
 export function usePlayMaybe(): PlayContextValue | null {
   return useContext(PlayContext);
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- the hook belongs with its provider, as in the other contexts
 export function usePlay(): PlayContextValue {
   const ctx = useContext(PlayContext);
   if (!ctx) throw new Error('usePlay must be inside PlayProvider');

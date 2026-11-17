@@ -151,7 +151,6 @@ export function ChroniclePipelineProvider({ children }: { children: ReactNode })
   return <PipelineContext.Provider value={value}>{children}</PipelineContext.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- the hook belongs with its provider, as in the other contexts
 export function useChroniclePipeline(): PipelineValue {
   const ctx = useContext(PipelineContext);
   if (!ctx) throw new Error('useChroniclePipeline must be inside ChroniclePipelineProvider');
@@ -161,7 +160,6 @@ export function useChroniclePipeline(): PipelineValue {
 const EMPTY: PipelineValue = { entries: [], entryFor: () => undefined, refresh: () => {} };
 
 /** The pipeline, or nothing outside the campaign shell (tests, the world). */
-// eslint-disable-next-line react-refresh/only-export-components -- the hook belongs with its provider
 export function useChroniclePipelineMaybe(): PipelineValue {
   return useContext(PipelineContext) ?? EMPTY;
 }
