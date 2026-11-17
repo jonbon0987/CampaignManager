@@ -256,7 +256,7 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
           {focus && (
             <>
               <span className="cm-filter-sep" />
-              <button className="cw-clear" onClick={() => setFocus(null)}>Clear focus ✕</button>
+              <Button variant="secondary" size="sm" onClick={() => setFocus(null)}>Clear focus ✕</Button>
             </>
           )}
           <span className="cm-filter-sep" />
@@ -540,21 +540,12 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button
-              onClick={handleSave}
-              disabled={!relForm.from_id || !relForm.to_id || relForm.from_id === relForm.to_id}
-              className="flex-1 py-2 rounded text-sm font-semibold disabled:opacity-40"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
-            >
+            <Button variant="primary" className="flex-1" onClick={handleSave} disabled={!relForm.from_id || !relForm.to_id || relForm.from_id === relForm.to_id}>
               {editingId ? 'Save Changes' : 'Add Relationship'}
-            </button>
-            <button
-              onClick={() => setModalOpen(false)}
-              className="px-4 py-2 rounded text-sm"
-              style={{ color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
-            >
+            </Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>

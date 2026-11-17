@@ -17,6 +17,7 @@ export function IconButton({ children, active = false, className = '', style, ..
         transition-colors duration-150
         ${active ? 'text-gold bg-surface-high' : 'text-muted'}
         hover:text-parchment hover:bg-surface-high
+        disabled:opacity-50 disabled:cursor-not-allowed
         ${className}
       `.trim().replace(/\s+/g, ' ')}
       style={{ width: 30, height: 30, fontFamily: 'var(--serif)', fontSize: 16, lineHeight: 1, ...style }}

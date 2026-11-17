@@ -10,6 +10,8 @@ import { useStatBlockPanel } from '../context/StatBlockPanelContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { plural } from '../lib/plural';
 import StatBlockPanel from './StatBlockPanel';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 
 interface InitiativeTrackerProps {
   encounter: Encounter;
@@ -138,33 +140,24 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
 
         {/* Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          <button
-            onClick={undo}
-            disabled={historyLen === 0}
-            title="Undo last HP change"
-            style={{ ...ghostBtn, opacity: historyLen > 0 ? 1 : 0.4, cursor: historyLen > 0 ? 'pointer' : 'default' }}
-          >
+          <Button variant="secondary" size="sm" onClick={undo} disabled={historyLen === 0} title="Undo last HP change">
             ↺ Undo{historyLen > 0 ? ` (${historyLen})` : ''}
-          </button>
+          </Button>
           {!started ? (
             <>
-              <button onClick={f.rollNPCs} style={ghostBtn}>Roll NPCs</button>
-              <button onClick={f.rollAll} style={ghostBtn}>Roll All</button>
-              <button
-                onClick={f.start}
-                disabled={!allHaveInitiative}
-                style={{ ...primaryBtn, opacity: allHaveInitiative ? 1 : 0.4 }}
-              >
+              <Button variant="secondary" size="sm" onClick={f.rollNPCs}>Roll NPCs</Button>
+              <Button variant="secondary" size="sm" onClick={f.rollAll}>Roll All</Button>
+              <Button variant="primary" size="sm" onClick={f.start} disabled={!allHaveInitiative}>
                 Start Combat
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <button onClick={f.reset} style={ghostBtn}>Reset</button>
-              <button onClick={f.next} style={primaryBtn}>Next turn ▶</button>
+              <Button variant="secondary" size="sm" onClick={f.reset}>Reset</Button>
+              <Button variant="primary" size="sm" onClick={f.next}>Next turn ▶</Button>
             </>
           )}
-          <button onClick={() => void endFight()} style={exitBtn}>✕ End</button>
+          <Button variant="danger" size="sm" onClick={() => void endFight()}>✕ End</Button>
         </div>
       </div>
 
@@ -224,27 +217,13 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
                   if (e.key === 'Escape') setAddingCombatant(false);
                 }}
               />
-              <button onClick={addNewCombatant} style={primaryBtn}>Add</button>
-              <button onClick={() => setAddingCombatant(false)} style={ghostBtn}>Cancel</button>
+              <Button variant="primary" size="sm" onClick={addNewCombatant}>Add</Button>
+              <Button variant="secondary" size="sm" onClick={() => setAddingCombatant(false)}>Cancel</Button>
             </div>
           ) : (
-            <button
-              onClick={() => setAddingCombatant(true)}
-              style={{
-                color: 'var(--ink-3)',
-                fontSize: '0.72rem',
-                fontFamily: 'var(--mono)',
-                backgroundColor: 'transparent',
-                border: '1px dashed var(--rule-soft)',
-                borderRadius: 'var(--radius)',
-                padding: '6px 16px',
-                cursor: 'pointer',
-                width: '100%',
-                letterSpacing: '0.08em',
-              }}
-            >
+            <Button variant="secondary" size="sm" className="w-full border-dashed" onClick={() => setAddingCombatant(true)}>
               + Add Combatant
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -261,41 +240,6 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
 }
 
 // ─── Button style helpers ─────────────────────────────────────────────────────
-const primaryBtn: React.CSSProperties = {
-  fontSize: '0.78rem',
-  fontWeight: 600,
-  color: 'var(--bg)',
-  backgroundColor: 'var(--gold)',
-  border: '1px solid var(--gold)',
-  borderRadius: 'var(--radius)',
-  padding: '6px 14px',
-  cursor: 'pointer',
-  fontFamily: 'var(--serif)',
-};
-
-const ghostBtn: React.CSSProperties = {
-  fontSize: '0.78rem',
-  fontWeight: 500,
-  color: 'var(--ink-2)',
-  backgroundColor: 'transparent',
-  border: '1px solid var(--rule)',
-  borderRadius: 'var(--radius)',
-  padding: '6px 12px',
-  cursor: 'pointer',
-  fontFamily: 'var(--serif)',
-};
-
-const exitBtn: React.CSSProperties = {
-  fontSize: '0.78rem',
-  color: 'var(--red)',
-  backgroundColor: 'transparent',
-  border: '1px solid var(--red-line)',
-  borderRadius: 'var(--radius)',
-  cursor: 'pointer',
-  padding: '6px 12px',
-  fontFamily: 'var(--serif)',
-  marginLeft: '4px',
-};
 
 // ─── Combatant row ────────────────────────────────────────────────────────────
 interface CombatantRowProps {
@@ -601,36 +545,12 @@ function CombatantRow({
 
         {/* Trailing controls: condition toggle + remove */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
-          <button
-            onClick={onToggleConditionMenu}
-            title="Conditions"
-            style={{
-              color: c.conditions.length > 0 ? 'var(--gold)' : 'var(--ink-3)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              padding: '2px 4px',
-              lineHeight: 1,
-            }}
-          >
+          <IconButton active={c.conditions.length > 0} aria-label="Conditions" onClick={onToggleConditionMenu} title="Conditions" style={{ width: 26, height: 26, fontSize: 14 }}>
             ◉
-          </button>
-          <button
-            onClick={() => onRemove(c.id)}
-            title="Remove"
-            style={{
-              color: 'var(--rule-hover)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              padding: '2px 4px',
-              lineHeight: 1,
-            }}
-          >
+          </IconButton>
+          <IconButton aria-label="Remove combatant" onClick={() => onRemove(c.id)} title="Remove" style={{ width: 26, height: 26, fontSize: 12 }}>
             ✕
-          </button>
+          </IconButton>
         </div>
       </div>
 

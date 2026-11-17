@@ -2,6 +2,7 @@ import { useStatBlockPanel } from '../context/StatBlockPanelContext';
 import { StatBlockBody, isStatBlockEmpty } from './tabs/CreatureStatblocks';
 import { getTypeStyle } from '../lib/theme';
 import type { MonsterStatblock } from '../lib/database.types';
+import { IconButton } from './ui/IconButton';
 
 /**
  * The one place a stat sheet is read, docked in the rail, in a campaign or the
@@ -98,23 +99,9 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
             <div style={{ color: 'var(--ink-3)', fontSize: '0.9rem' }}>Stat Block</div>
           )}
         </div>
-        <button
-          onClick={closeStatBlock}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--ink-3)',
-            fontSize: '1.2rem',
-            cursor: 'pointer',
-            padding: '0 4px',
-            lineHeight: 1,
-            flexShrink: 0,
-          }}
-          title="Close"
-          aria-label="Close stat block"
-        >
+        <IconButton className="shrink-0" onClick={closeStatBlock} title="Close" aria-label="Close stat block">
           ✕
-        </button>
+        </IconButton>
       </div>
 
       {/* Content */}

@@ -15,6 +15,7 @@ export type { TypeInfo };
    generators and this picker offer exactly the same set — re-export to keep
    this module's API. */
 import { SUBMODULE_TYPES, SCENE_TYPES } from '../../../lib/moduleStructure';
+import { Button } from '../../ui/Button';
 export { SUBMODULE_TYPES, SCENE_TYPES };
 
 export const typeInfo = (t: string | null | undefined): TypeInfo => TYPE_META[t ?? 'other'] ?? TYPE_META.other;
@@ -88,7 +89,7 @@ export function InlinePicker({ label, options, onPick, header, radio }: {
   const ref = useClickAway<HTMLSpanElement>(open, () => setOpen(false));
   return (
     <span className="md-pop-wrap" ref={ref}>
-      <button className="md-add" onClick={() => setOpen(o => !o)}>＋ {label}</button>
+      <Button variant="secondary" size="xs" onClick={() => setOpen(o => !o)}>＋ {label}</Button>
       {open && (
         <div className="md-pop">
           {header && <div className="md-pop-empty" style={{ fontStyle: 'normal', color: 'var(--ink-2)' }}>{header}</div>}

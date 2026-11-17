@@ -3,6 +3,8 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { kindMeta } from '../../lib/randomEncounter';
 import { NO_NPC_DETAILS } from '../../lib/npcDetails';
+import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
 
 interface WorldImportDrawerProps {
   open: boolean;
@@ -190,7 +192,7 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
             <div className="wi-head-scope">⊕ Import from World</div>
             <div className="wi-head-title">{TYPE_LABEL[entityType] || 'Entities'}</div>
           </div>
-          <button className="wi-close" onClick={handleClose}>✕</button>
+          <IconButton aria-label="Close" onClick={handleClose}>✕</IconButton>
         </div>
 
         <div className="wi-search">
@@ -262,13 +264,9 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
               </button>
             </div>
           )}
-          <button
-            className="wi-import-btn"
-            disabled={selected.size === 0 || busy}
-            onClick={handleImport}
-          >
+          <Button variant="primary" disabled={selected.size === 0 || busy} onClick={handleImport}>
             {busy ? `${verb}ing…` : `${verb} ${selected.size > 0 ? `(${selected.size})` : ''}`}
-          </button>
+          </Button>
         </div>
       </div>
     </>

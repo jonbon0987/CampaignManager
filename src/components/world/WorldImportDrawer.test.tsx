@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { makeCampaignContext, makeWorldContext } from '../../test/contextMocks';
 import WorldImportDrawer from './WorldImportDrawer';
 
@@ -28,7 +28,8 @@ beforeEach(() => {
   });
 });
 
-const importBtn = (c: HTMLElement) => c.querySelector('.wi-import-btn') as HTMLButtonElement;
+// The footer's action button reads "Link (n)" or "Copy (n)" depending on the mode.
+const importBtn = (c: HTMLElement) => within(c).getByRole('button', { name: /^(Link|Copy)\b/ });
 
 describe('WorldImportDrawer', () => {
   it('renders nothing when closed', () => {
@@ -48,7 +49,7 @@ describe('WorldImportDrawer', () => {
     render(<WorldImportDrawer open onClose={onClose} entityType="npc" />);
     fireEvent.click(screen.getByText('Aldric'));
     expect(screen.getByText('1 selected')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '✕' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalled();
     // The selection is reset synchronously, so a reopen starts fresh.
     expect(screen.getByText('0 selected')).toBeTruthy();

@@ -14,6 +14,7 @@ import { OverflowMenu, type OverflowMenuEntry } from '../ui/OverflowMenu';
 import ScopeSwitcher from './ScopeSwitcher';
 import CampaignCreationGate from '../world/CampaignCreationGate';
 import { RecentlyDeleted } from '../trash/RecentlyDeleted';
+import { IconButton } from '../ui/IconButton';
 
 interface NavItem { id: string; label: string; glyph: string; count?: number }
 interface NavGroup { label: string; items: NavItem[] }
@@ -134,10 +135,10 @@ export default function AppSidebar({
         <div className="cm-side-head">
           <ScopeSwitcher collapsed={collapsed} onExpand={onToggleCollapsed} />
           {!isMobile && !collapsed && (
-            <button className="cm-side-toggle" onClick={onToggleCollapsed} title="Collapse sidebar (⌘\)" aria-label="Collapse sidebar">‹</button>
+            <IconButton className="ml-auto shrink-0" onClick={onToggleCollapsed} title="Collapse sidebar (⌘\)" aria-label="Collapse sidebar">‹</IconButton>
           )}
           {isMobile && (
-            <button className="cm-side-toggle" onClick={onCloseMobile} title="Close menu" aria-label="Close menu">✕</button>
+            <IconButton className="ml-auto shrink-0" onClick={onCloseMobile} title="Close menu" aria-label="Close menu">✕</IconButton>
           )}
         </div>
 

@@ -10,6 +10,7 @@ import { formatWorldDate, fromMonthDay, toMonthDay, yearSuffix, type Month } fro
 import { plural } from '../../lib/plural';
 import { SlashField } from '../ui/SlashField';
 import { MarkdownContent } from '../ui/MarkdownContent';
+import { IconButton } from '../ui/IconButton';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -394,7 +395,7 @@ function NewEventModal({
       <div className="ne-modal" onClick={e => e.stopPropagation()}>
         <div className="ne-head">
           <div className="ne-title">New timeline event</div>
-          <button className="ne-close" onClick={onClose}>✕</button>
+          <IconButton aria-label="Close" onClick={onClose}>✕</IconButton>
         </div>
         <div className="ne-body">
           <div className="ne-field">

@@ -241,9 +241,6 @@ input:focus, textarea:focus, select:focus {
   justify-content: center;
   padding: 16px 8px;
 }
-.cm-side.is-collapsed .cm-side-toggle {
-  display: none;
-}
 .cm-side-head {
   display: flex;
   align-items: center;
@@ -277,28 +274,6 @@ input:focus, textarea:focus, select:focus {
   line-height: 1.2;
   color: var(--ink);
   margin-top: 1px;
-}
-.cm-side-toggle {
-  background: none;
-  border: 1px solid var(--rule);
-  color: var(--ink-2);
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: auto;
-  flex-shrink: 0;
-  transition: all 0.15s;
-}
-.cm-side-toggle:hover {
-  color: var(--ink);
-  border-color: var(--ink-3);
-  background: var(--paper-2);
 }
 
 /* Nav */
@@ -1821,11 +1796,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .cw-legend.is-off { opacity: 0.4; text-decoration: line-through; }
 .cw-legend-line { display: inline-block; width: 18px; height: 2px; border-radius: 1px; }
-.cw-clear {
-  background: none; border: 1px solid var(--rule); color: var(--ink-3);
-  padding: 4px 10px; border-radius: var(--radius); cursor: pointer; font-size: 12px;
-  font-family: var(--serif);
-}
 .cw-body { display: grid; grid-template-columns: 1fr 320px; gap: 1px; flex: 1; min-height: 0; background: var(--rule); }
 .cw-canvas { background: var(--bg); padding: 16px; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .cw-svg { width: 100%; height: 100%; max-height: 600px; display: block; }
@@ -2543,15 +2513,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border-radius: var(--radius);
   background: var(--bg-2);
 }
-.v6-ks-close {
-  background: transparent;
-  border: none;
-  color: var(--ink-3);
-  cursor: pointer;
-  font-size: 14px;
-  padding: 2px 4px;
-}
-.v6-ks-close:hover { color: var(--ink); }
 .v6-ks-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2724,17 +2685,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .md-mini-in:focus { border-color: var(--gold); }
 
 /* dashed "add" button */
-.md-add {
-  appearance: none; cursor: pointer;
-  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
-  text-transform: uppercase;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 999px;
-  border: 1px dashed var(--rule); background: transparent; color: var(--ink-3);
-  transition: all .14s;
-}
-.md-add:hover { color: var(--gold); border-color: var(--gold); background: rgba(201,168,76,.06); }
-.md-add-block { width: 100%; justify-content: center; padding: 11px 14px; }
 /* ── Editor pane shared ── */
 .md-editor { max-width: 760px; }
 .md-eyebrow {
@@ -2780,13 +2730,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .md-scene-kind { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
 .md-scene-walk { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--rule-soft); }
 .md-eyebrow-link { font: inherit; letter-spacing: inherit; text-transform: inherit; }
-.md-iconbtn {
-  appearance: none; cursor: pointer; border: 1px solid transparent; background: transparent;
-  color: var(--ink-3); width: 26px; height: 26px; border-radius: var(--radius); line-height: 1;
-  display: inline-grid; place-items: center; font-size: 13px; transition: all .12s;
-}
-.md-iconbtn:hover { color: var(--ink); background: var(--paper-2); border-color: var(--rule); }
-.md-iconbtn.is-danger:hover { color: var(--red); border-color: rgba(224,92,92,.4); }
 
 /* ── linked-thing chip rows ── */
 .md-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
