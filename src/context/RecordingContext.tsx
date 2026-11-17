@@ -96,7 +96,6 @@ interface RecordingContextValue {
 
 const RecordingContext = createContext<RecordingContextValue | null>(null);
 
-// eslint-disable-next-line react-refresh/only-export-components -- the hook belongs with its provider, as in the other contexts
 export function useRecording(): RecordingContextValue {
   const ctx = useContext(RecordingContext);
   if (!ctx) throw new Error('useRecording must be inside RecordingProvider');

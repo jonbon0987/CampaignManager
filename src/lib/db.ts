@@ -118,9 +118,12 @@ export const Campaigns = {
     if (worldId) query = query.eq('world_id', worldId);
     const { data, error } = await query;
     if (error) throw error;
-    return (data ?? []).map((c: any) => ({
+    // The embedded count comes back as [{ count }]; the generated types can't
+    // see the relationship, so the row shape is stated here.
+    const rows = (data ?? []) as unknown as (Campaign & { sessions?: { count: number }[] })[];
+    return rows.map(c => ({
       ...c,
-      session_count: (c.sessions as { count: number }[])?.[0]?.count ?? 0,
+      session_count: c.sessions?.[0]?.count ?? 0,
     }));
   },
 

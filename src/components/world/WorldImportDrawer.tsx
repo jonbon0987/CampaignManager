@@ -40,10 +40,11 @@ const TYPE_LABEL: Record<string, string> = {
 
 // Drop DB-managed / scope fields so a spread of a full canon row can be re-inserted
 // as a fresh campaign-scoped record (the store re-assigns campaign_id via scope).
-function stripSystemFields<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
-  const rest: Record<string, unknown> = { ...row };
+type SystemField = 'id' | 'campaign_id' | 'world_id' | 'user_id' | 'created_at' | 'updated_at';
+function stripSystemFields<T extends object>(row: T): Omit<T, SystemField> {
+  const rest = { ...row } as Record<string, unknown>;
   for (const k of ['id', 'campaign_id', 'world_id', 'user_id', 'created_at', 'updated_at']) delete rest[k];
-  return rest;
+  return rest as Omit<T, SystemField>;
 }
 
 export default function WorldImportDrawer({ open, onClose, entityType }: WorldImportDrawerProps) {
@@ -64,7 +65,7 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
         importItem: async (id, m) => {
           if (m === 'link') return campaign.linkNPCToCampaign(id);
           const n = campaign.globalNPCs.find(x => x.id === id);
-          if (n) await campaign.upsertNPC({ ...stripSystemFields(n), ...NO_NPC_DETAILS, faction_ids: [], statblock_id: null } as Parameters<typeof campaign.upsertNPC>[0], 'campaign');
+          if (n) await campaign.upsertNPC({ ...stripSystemFields(n), ...NO_NPC_DETAILS, faction_ids: [], statblock_id: null }, 'campaign');
         },
       };
       case 'location': return {

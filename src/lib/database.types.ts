@@ -69,7 +69,21 @@ export type Levelling = 'xp' | 'milestone';
 /** Which edition's rules a campaign plays by. */
 export type RulesEdition = '2014' | '2024';
 
-export type CampaignInsert = Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at' | 'session_repeat'> & { world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null; session_repeat?: SessionRepeat | null };
+/**
+ * Makes every nullable column optional. A nullable column left out of an insert
+ * is stored as null, and left out of an upsert keeps what's stored, so a save
+ * that sets only a few fields (quick-create, an import, one overview edit) is
+ * valid without spelling out the rest.
+ */
+export type NullableOptional<T> =
+  { [K in keyof T as null extends T[K] ? never : K]: T[K] }
+  & { [K in keyof T as null extends T[K] ? K : never]?: T[K] };
+
+// party, status and last_played are NOT NULL with database defaults (migration
+// 0015), so a save that leaves them out keeps what's stored.
+type CampaignDefaulted = 'party' | 'status' | 'last_played';
+export type CampaignInsert = NullableOptional<Omit<Campaign, 'id' | 'user_id' | 'created_at' | 'updated_at' | CampaignDefaulted>>
+  & Partial<Pick<Campaign, CampaignDefaulted>>;
 
 // Campaigns fetched with an embedded session count (via PostgREST select)
 export type CampaignWithCount = Campaign & { session_count: number };
@@ -403,14 +417,16 @@ type SessionLifecycle = 'title' | 'status' | 'prep_notes' | 'plan' | 'play' | 'w
 export type SessionInsert = Omit<Session, 'id' | 'user_id' | 'created_at' | 'updated_at' | SessionLifecycle>
   & Partial<Pick<Session, SessionLifecycle>>;
 // Link columns have database defaults, so a save that leaves them out keeps what's stored.
-export type PlayerCharacterInsert = Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_npc_ids' | 'portrait_path' | PCTableFields> & { key_npc_ids?: string[]; portrait_path?: string | null } & Partial<Pick<PlayerCharacter, PCTableFields>>;
+export type PlayerCharacterInsert = NullableOptional<Omit<PlayerCharacter, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_npc_ids' | PCTableFields>> & { key_npc_ids?: string[] } & Partial<Pick<PlayerCharacter, PCTableFields>>;
 // The numbers off the player's sheet are optional on a save, so one that leaves them out keeps them.
 export type PCTableFields = 'sheet_url' | 'passive_perception' | 'passive_insight' | 'passive_investigation' | 'spell_save_dc' | 'xp';
 // disposition is optional: it's written by the session-recording review, and an
 // NPC save that omits it (every edit form) leaves the stored value untouched.
-export type NPCInsert = Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'disposition' | 'location_id' | 'portrait_path'> & { disposition?: string | null; location_id?: string | null; portrait_path?: string | null };
+// Every other nullable column is optional too (see NullableOptional): quick-create
+// and world import save an NPC from a handful of fields.
+export type NPCInsert = NullableOptional<Omit<NPC, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;
 export type LocationInsert = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'read_aloud' | 'map_path' | 'map_pins'> & { read_aloud?: string | null; map_path?: string | null; map_pins?: Json | null };
-export type FactionInsert = Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'> & { key_figure_ids?: string[] };
+export type FactionInsert = NullableOptional<Omit<Faction, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'key_figure_ids'>> & { key_figure_ids?: string[] };
 type HookExtras = 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id' | 'player_text';
 export type HookInsert = Omit<Hook, 'id' | 'user_id' | 'created_at' | 'updated_at' | HookExtras> & Partial<Pick<Hook, HookExtras>>;
 export type LoreEntryInsert = Omit<LoreEntry, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
@@ -975,7 +991,7 @@ export interface Database {
       };
       campaigns: {
         Row: Campaign;
-        Insert: Omit<Campaign, 'id' | 'created_at' | 'updated_at' | 'world_date' | 'levelling' | 'rules_edition' | 'archived_at' | 'session_repeat'> & { id?: string; world_date?: Json | null; levelling?: Levelling | null; rules_edition?: RulesEdition | null; archived_at?: string | null; session_repeat?: SessionRepeat | null };
+        Insert: CampaignInsert & { id?: string; user_id: string };
         Update: Partial<Omit<Campaign, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };

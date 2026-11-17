@@ -100,7 +100,6 @@ export function useReportRecord(tab: Tab, id: string | null | undefined, sub?: s
 const noOpen = () => {};
 
 /** Opens a record in its tab. Outside the campaign shell, such as in tests, it does nothing. */
-// eslint-disable-next-line react-refresh/only-export-components -- a hook kept beside its provider
 export function useOpenRecord(): (tab: Tab, id: string, kind?: string) => void {
   return useContext(NavigationContext)?.openRecord ?? noOpen;
 }

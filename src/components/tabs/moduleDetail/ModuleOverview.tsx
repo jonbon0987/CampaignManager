@@ -144,9 +144,9 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
             ? (
               <div className="md-pop-empty" style={{ padding: '2px 0' }}>
                 No submodules yet — add them from the rail, or{' '}
-                {/* eslint-disable-next-line no-restricted-syntax -- inline text link inside a sentence, not a standalone control */}
                 <button
                   onClick={() => setBuildOut(true)}
+                  // eslint-disable-next-line no-restricted-syntax -- inline text link inside a sentence, not a standalone control
                   style={{ color: 'var(--gold)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
                 >
                   build them out from the synopsis

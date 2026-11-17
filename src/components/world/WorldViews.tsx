@@ -120,12 +120,12 @@ export function WorldNPCsView() {
               glyph={x.kind === 'faction' ? '❖' : '◇'}
               thumb={x.portrait ? <ImageThumb path={x.portrait} glyph="◇" /> : undefined}
               title={x.name || (x.kind === 'faction' ? 'Unnamed faction' : 'Unnamed NPC')}
-              subtitle={x.kind === 'npc' ? x.role : formatType(x.type)}
+              subtitle={x.kind === 'npc' ? x.role : formatType(x.type ?? null)}
               badges={
                 <>
                   {x.kind === 'npc' && x.status && <Tag kind={x.status}>{x.status}</Tag>}
                   {x.kind === 'npc' && x.era && <SubtleTag>{x.era}</SubtleTag>}
-                  {x.kind === 'faction' && <SubtleTag>{formatType(x.type)}</SubtleTag>}
+                  {x.kind === 'faction' && <SubtleTag>{formatType(x.type ?? null)}</SubtleTag>}
                 </>
               }
             />

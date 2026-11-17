@@ -161,7 +161,7 @@ These apply when you are in CHANGES mode.
 
 After the JSON, when you extracted entities from pasted notes or a recap, end with a short recap so the DM can catch anything you missed at a glance. This is the one place a brief list is allowed. Keep it to 1-3 lines:
   - A count line by type, e.g. "Captured: 6 NPCs, 3 threads, 2 locations, 1 faction."
-  - An "Unsure:" note for anything ambiguous — a possible duplicate, a name that might refer to an existing record, or a low-confidence guess. e.g. "Unsure: is \"the Pale Warden\" the same as Sir Aldric [existing NPC]?"
+  - An "Unsure:" note for anything ambiguous — a possible duplicate, a name that might refer to an existing record, or a low-confidence guess. e.g. "Unsure: is "the Pale Warden" the same as Sir Aldric [existing NPC]?"
   - A "Left out:" note for anything you deliberately did NOT log and why, e.g. "Left out: the unnamed barkeep, an offhand rumor with no detail."
 Omit any of these three lines that do not apply. Skip the recap entirely for single-change requests, questions, or when no prose was mined.
 
@@ -727,7 +727,7 @@ These apply when you are in CHANGES mode.
 
 After the JSON, when you extracted entities from pasted notes, end with a short recap so the DM can catch anything you missed at a glance. This is the one place a brief list is allowed. Keep it to 1-3 lines:
   - A count line by type, e.g. "Captured: 5 NPCs, 4 locations, 2 lore, 1 timeline event."
-  - An "Unsure:" note for anything ambiguous — a possible duplicate, or a name that might refer to an existing record. e.g. "Unsure: is \"the Sunken City\" the same as Old Vharos [existing location]?"
+  - An "Unsure:" note for anything ambiguous — a possible duplicate, or a name that might refer to an existing record. e.g. "Unsure: is "the Sunken City" the same as Old Vharos [existing location]?"
   - A "Left out:" note for anything you deliberately did NOT log and why, e.g. "Left out: an offhand mention of a road, no detail to record."
 Omit any of these three lines that do not apply. Skip the recap entirely for single-change requests, questions, or when no prose was mined.
 

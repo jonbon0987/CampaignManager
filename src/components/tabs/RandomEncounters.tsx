@@ -34,13 +34,14 @@ export default function RandomEncounters({ onImportFromWorld, openId, onOpenCons
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useReportRecord('combat', selectedId);
 
+  const [search, setSearch] = useState('');
+  const [kindFilter, setKindFilter] = useState<string>('all');
+
   // Open a table requested from outside the tab (search, the URL).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (openId) { setSelectedId(openId); setSearch(''); setKindFilter('all'); onOpenConsumed?.(); }
   }, [openId, onOpenConsumed]);
-  const [search, setSearch] = useState('');
-  const [kindFilter, setKindFilter] = useState<string>('all');
   const { openStatBlock } = useStatBlockPanel();
   const [runningEncounter, setRunningEncounter] = useState<Encounter | null>(null);
   const [genTableOpen, setGenTableOpen] = useState(false);
