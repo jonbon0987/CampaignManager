@@ -74,7 +74,7 @@
 
 /* ── menu (fixed to viewport) ── */
 .sf-menu {
-  position: fixed; z-index: 1400; width: 320px;
+  position: fixed; z-index: var(--z-popover); width: 320px;
   background: var(--paper); border: 1px solid var(--rule);
   border-radius: var(--radius); box-shadow: 0 16px 48px rgba(0,0,0,.5);
   overflow: hidden; font-family: var(--serif);
@@ -99,7 +99,7 @@
 
 /* ── hover preview ── */
 .sf-hovercard {
-  position: fixed; z-index: 1500; width: 280px;
+  position: fixed; z-index: calc(var(--z-popover) + 1); width: 280px;
   background: var(--paper); border: 1px solid var(--rule);
   border-radius: var(--radius); box-shadow: 0 16px 50px rgba(0,0,0,.55);
   padding: 13px 14px 12px; font-family: var(--serif); animation: sfpop .12s ease;

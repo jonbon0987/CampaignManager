@@ -5,6 +5,8 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    // The three breakpoints from the design tokens (phone, narrow, wide).
+    screens: { sm: '640px', md: '900px', lg: '1240px' },
     extend: {
       // Single source of truth: CSS custom properties in src/index.css :root.
       // These reference the tokens so Tailwind utilities and the runtime palette never drift.
@@ -56,6 +58,16 @@ export default {
         h2:      ['var(--fs-h2)',      { lineHeight: '2rem' }],
         h1:      ['var(--fs-h1)',      { lineHeight: '2.5rem' }],
         display: ['var(--fs-display)', { lineHeight: '1' }],
+      },
+      // Layers from src/index.css :root (--z-*): z-drawer, z-modal, …
+      zIndex: {
+        raised:  'var(--z-raised)',
+        sticky:  'var(--z-sticky)',
+        drawer:  'var(--z-drawer)',
+        modal:   'var(--z-modal)',
+        overlay: 'var(--z-overlay)',
+        popover: 'var(--z-popover)',
+        toast:   'var(--z-toast)',
       },
       // One control radius from the token scale; rounded-full stays a pill.
       borderRadius: {

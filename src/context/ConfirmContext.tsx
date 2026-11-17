@@ -75,7 +75,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               position: 'fixed',
               inset: 0,
               backgroundColor: 'rgba(0,0,0,0.6)',
-              zIndex: 9998,
+              zIndex: 'var(--z-overlay)',
             }}
           />
           <div
@@ -92,7 +92,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              zIndex: 9999,
+              zIndex: 'calc(var(--z-overlay) + 1)',
               backgroundColor: 'var(--paper)',
               border: '1px solid var(--rule)',
               borderRadius: 'var(--radius-lg)',

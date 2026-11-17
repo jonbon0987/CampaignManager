@@ -117,7 +117,7 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
             border: '1px solid var(--rule)',
             borderRadius: 'var(--radius)',
             padding: 4,
-            zIndex: 50,
+            zIndex: 'var(--z-popover)',
             maxHeight: 240,
             overflowY: 'auto',
             minWidth: 180,

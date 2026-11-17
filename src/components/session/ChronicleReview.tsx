@@ -467,7 +467,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
   const session = lookup.session(recording.session_id);
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Review the Chronicle" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'var(--bg)', color: 'var(--ink)', display: 'flex', flexDirection: 'column' }}>
+    <div role="dialog" aria-modal="true" aria-label="Review the Chronicle" style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)', background: 'var(--bg)', color: 'var(--ink)', display: 'flex', flexDirection: 'column' }}>
       <header style={{ flex: '0 0 auto', background: 'var(--bg)', borderBottom: '1px solid var(--rule)', padding: '14px 28px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '12px 24px' }}>
         <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Back</Button>

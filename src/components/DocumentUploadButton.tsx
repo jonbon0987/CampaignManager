@@ -65,7 +65,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
           <div
             // eslint-disable-next-line no-restricted-syntax -- click-outside catcher for the popover; Escape and the trigger close it
             onClick={() => setOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 1001 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-popover)' }}
           />
 
           {/* Popover */}
@@ -79,7 +79,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               border: '1px solid var(--rule)',
               borderRadius: 'var(--radius-lg)',
               padding: '14px',
-              zIndex: 1002,
+              zIndex: 'calc(var(--z-popover) + 1)',
               boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
             }}
           >

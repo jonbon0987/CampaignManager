@@ -742,7 +742,7 @@ function CreaturePicker({ statblocks, onPick, onClose }: {
   }, [onClose]);
   const list = statblocks.filter(s => `${s.name} ${s.creature_type ?? ''}`.toLowerCase().includes(q.toLowerCase()));
   return (
-    <div ref={ref} style={{ position: 'absolute', left: 0, top: '115%', zIndex: 30, width: '230px', background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', boxShadow: '0 12px 30px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+    <div ref={ref} style={{ position: 'absolute', left: 0, top: '115%', zIndex: 'var(--z-popover)', width: '230px', background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', boxShadow: '0 12px 30px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
       <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search stat sheets…"
         style={{ width: '100%', padding: '8px 10px', background: 'var(--bg)', border: 'none', borderBottom: '1px solid var(--rule)', color: 'var(--ink)', outline: 'none', fontSize: 'var(--fs-xs)' }} />
       <div style={{ maxHeight: '200px', overflowY: 'auto' }}>

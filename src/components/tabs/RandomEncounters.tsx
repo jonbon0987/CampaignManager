@@ -175,7 +175,7 @@ export default function RandomEncounters({ onImportFromWorld, openId, onOpenCons
 
       {/* Initiative tracker */}
       {runningEncounter && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
+        <div className="fixed inset-0 z-modal flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
           <InitiativeTracker
             encounter={runningEncounter}
             statblocks={monsterStatblocks}

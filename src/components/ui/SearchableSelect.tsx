@@ -148,7 +148,7 @@ export function SearchableSelect({
             backgroundColor: 'var(--paper)',
             border: '1px solid var(--rule)',
             borderRadius: 'var(--radius)',
-            zIndex: 60,
+            zIndex: 'var(--z-popover)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
             overflow: 'hidden',
           }}
