@@ -60,8 +60,8 @@ export function SessionUpdateBand({ entityType, entityId, reserve = false }: {
     <>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 14px', alignItems: 'center', padding: '11px 14px', margin: '0 0 16px', borderRadius: 'var(--radius-lg)', background: 'var(--gold-dim)', border: '1px solid var(--gold-line)' }}>
         <span aria-hidden="true" style={{ color: 'var(--gold)' }}>❧</span>
-        <span style={{ flex: '1 1 300px', fontSize: 14, color: 'var(--ink)' }}>
-          <span style={{ color: 'var(--gold-2)', fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', marginRight: 8 }}>
+        <span style={{ flex: '1 1 300px', fontSize: 'var(--fs-md)', color: 'var(--ink)' }}>
+          <span style={{ color: 'var(--gold-2)', fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)', letterSpacing: '.08em', textTransform: 'uppercase', marginRight: 8 }}>
             Updated from Session {update.sessionNumber}
           </span>
           {update.count} change{update.count === 1 ? '' : 's'} from the recording — {update.what}.

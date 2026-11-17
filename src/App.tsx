@@ -303,7 +303,7 @@ function AppInner() {
 
           <div className="cm-canvas">
             {error && (
-              <div style={{ margin: '16px 28px', padding: '12px 16px', borderRadius: 'var(--radius)', fontSize: '14px', backgroundColor: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-line)' }}>
+              <div style={{ margin: '16px 28px', padding: '12px 16px', borderRadius: 'var(--radius)', fontSize: 'var(--fs-md)', backgroundColor: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-line)' }}>
                 Failed to load data: {error}
               </div>
             )}
@@ -417,14 +417,14 @@ function LoginScreen() {
       style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)' }}
     >
       <div className="text-center">
-        <div className="text-5xl mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
+        <div className="text-display mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
         <h1
-          className="text-3xl font-bold mb-2"
+          className="text-h1 font-bold mb-2"
           style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
         >
           DM Lair
         </h1>
-        <p className="text-sm" style={{ color: 'var(--ink-3)' }}>Where every campaign comes to life</p>
+        <p className="text-md" style={{ color: 'var(--ink-3)' }}>Where every campaign comes to life</p>
       </div>
 
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
@@ -436,7 +436,7 @@ function LoginScreen() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="px-4 py-2 rounded text-sm outline-none"
+              className="px-4 py-2 rounded text-md outline-none"
               style={inputStyle}
               data-testid="login-email"
             />
@@ -446,7 +446,7 @@ function LoginScreen() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="px-4 py-2 rounded text-sm outline-none"
+              className="px-4 py-2 rounded text-md outline-none"
               style={inputStyle}
               data-testid="login-password"
             />
@@ -473,7 +473,7 @@ function LoginScreen() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="px-4 py-2 rounded text-sm outline-none"
+              className="px-4 py-2 rounded text-md outline-none"
               style={inputStyle}
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
@@ -490,7 +490,7 @@ function LoginScreen() {
 
         {mode === 'forgot-sent' && (
           <div className="flex flex-col gap-3 text-center">
-            <p className="text-sm" style={{ color: 'var(--ink)' }}>
+            <p className="text-md" style={{ color: 'var(--ink)' }}>
               Check your email — a reset link is on its way.
             </p>
             <Button variant="link" className="self-center" type="button" onClick={() => { setError(''); setMode('signin'); }}>
@@ -537,9 +537,9 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
       style={{ backgroundColor: 'var(--bg)', color: 'var(--ink)' }}
     >
       <div className="text-center">
-        <div className="text-5xl mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
+        <div className="text-display mb-4 select-none" style={{ color: 'var(--gold)' }}>❖</div>
         <h1
-          className="text-3xl font-bold mb-2"
+          className="text-h1 font-bold mb-2"
           style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}
         >
           Set New Password
@@ -547,7 +547,7 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
       </div>
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
         {done ? (
-          <p className="text-sm text-center" style={{ color: 'var(--success)' }}>Password updated! Signing you in…</p>
+          <p className="text-md text-center" style={{ color: 'var(--success)' }}>Password updated! Signing you in…</p>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
@@ -557,7 +557,7 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
               onChange={e => setPassword(e.target.value)}
               required
               minLength={6}
-              className="px-4 py-2 rounded text-sm outline-none"
+              className="px-4 py-2 rounded text-md outline-none"
               style={inputStyle}
             />
             <input
@@ -566,7 +566,7 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               required
-              className="px-4 py-2 rounded text-sm outline-none"
+              className="px-4 py-2 rounded text-md outline-none"
               style={inputStyle}
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}

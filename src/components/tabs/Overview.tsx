@@ -229,7 +229,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
           </div>
           <div className="ov-card-body">
             {activeHooks.length === 0 ? (
-              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
+              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 'var(--fs-sm)' }}>
                 No active threads
               </div>
             ) : (
@@ -250,7 +250,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
                   </div>
                 ))}
                 {activeHooks.length > 5 && (
-                  <div style={{ color: 'var(--ink-3)', fontSize: '12px', marginTop: '4px' }}>
+                  <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-xs)', marginTop: '4px' }}>
                     +{activeHooks.length - 5} more
                   </div>
                 )}
@@ -271,11 +271,11 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
             {activePCs.length === 0 ? (
               overview.party ? (
                 <div>
-                  <div style={{ color: 'var(--ink-2)', fontSize: '13px', lineHeight: 1.5 }}>{overview.party}</div>
-                  <div style={{ color: 'var(--ink-3)', fontSize: '12px', marginTop: '6px' }}>Add full character sheets in Cast ›</div>
+                  <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-sm)', lineHeight: 1.5 }}>{overview.party}</div>
+                  <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-xs)', marginTop: '6px' }}>Add full character sheets in Cast ›</div>
                 </div>
               ) : (
-                <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
+                <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 'var(--fs-sm)' }}>
                   No active PCs
                 </div>
               )
@@ -315,7 +315,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
                 )}
               </>
             ) : (
-              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>
+              <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 'var(--fs-sm)' }}>
                 No active module
               </div>
             )}

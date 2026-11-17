@@ -105,7 +105,7 @@ function RollParamsControls({ params, onChange }: { params: RollParams; onChange
             return (
               <button key={d} onClick={() => onChange({ ...params, difficulty: d })}
                 style={{
-                  fontSize: '0.68rem', fontWeight: 600, textTransform: 'capitalize', padding: '3px 8px',
+                  fontSize: 'var(--fs-label)', fontWeight: 600, textTransform: 'capitalize', padding: '3px 8px',
                   borderRadius: 'var(--radius)', cursor: 'pointer',
                   color: on ? 'var(--bg)' : 'var(--ink-3)',
                   backgroundColor: on ? difficultyColor(d) : 'transparent',
@@ -122,7 +122,7 @@ function RollParamsControls({ params, onChange }: { params: RollParams; onChange
         <input type="range" min={0} max={100} value={Math.round(params.socialBias * 100)}
           onChange={e => onChange({ ...params, socialBias: (parseInt(e.target.value, 10) || 0) / 100 })}
           style={{ accentColor: 'var(--gold)' }} />
-        <span style={{ fontSize: '0.62rem', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>
+        <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>
           ≈ {Math.round(params.socialBias * 100)}% chance of a social encounter
         </span>
       </div>
@@ -133,7 +133,7 @@ function RollParamsControls({ params, onChange }: { params: RollParams; onChange
           onChange={e => onChange({ ...params, autoGenerate: e.target.checked })}
           style={{ accentColor: 'var(--gold)' }}
         />
-        <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)' }}>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-2)' }}>
           Auto-generate a creature for entries with none linked
         </span>
       </label>
@@ -372,7 +372,7 @@ export function RandomEncounterDetail({
           disabled={entries.length === 0}
           title={entries.length === 0 ? 'Add rows first' : `Roll d${form.die_size}`}
           style={{
-            fontSize: '0.75rem', fontWeight: 600,
+            fontSize: 'var(--fs-xs)', fontWeight: 600,
             color: entries.length === 0 ? 'var(--ink-4)' : 'var(--bg)',
             backgroundColor: entries.length === 0 ? 'var(--bg-2)' : 'var(--gold)',
             border: `1px solid ${entries.length === 0 ? 'var(--rule)' : 'var(--gold)'}`,
@@ -390,7 +390,7 @@ export function RandomEncounterDetail({
 
       {/* ── Eyebrow ── */}
       <div style={{
-        color: 'var(--ink-3)', fontSize: '0.6rem', fontWeight: 700,
+        color: 'var(--ink-3)', fontSize: 'var(--fs-micro)', fontWeight: 700,
         letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px',
       }}>
         {meta.label} Table · {scope === 'world' ? 'World' : 'Campaign'}
@@ -437,7 +437,7 @@ export function RandomEncounterDetail({
         </div>
         <div className="as-mi">
           <div className="as-ml">Weighting</div>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: '0.78rem', color: 'var(--gold)' }}>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-xs)', color: 'var(--gold)' }}>
             d{form.die_size} · weighted
           </span>
         </div>
@@ -456,11 +456,11 @@ export function RandomEncounterDetail({
       {/* ── Entries ── */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-          <div style={{ color: 'var(--gold)', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+          <div style={{ color: 'var(--gold)', fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
             Entries
           </div>
           <div style={{ flex: 1 }} />
-          <div style={{ color: 'var(--ink-3)', fontSize: '0.62rem', fontFamily: 'var(--mono)', letterSpacing: '0.08em' }}>
+          <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-micro)', fontFamily: 'var(--mono)', letterSpacing: '0.08em' }}>
             weights → roll odds
           </div>
         </div>
@@ -511,7 +511,7 @@ export function RandomEncounterDetail({
           >
             {suggesting ? 'Suggesting…' : '✦ Suggest an entry'}
           </button>
-          {suggestError && <span style={{ fontSize: '0.72rem', color: 'var(--red)' }}>{suggestError}</span>}
+          {suggestError && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red)' }}>{suggestError}</span>}
         </div>
       </div>
 
@@ -577,21 +577,21 @@ function EntryRow({
         border: `1px solid ${rolled ? 'var(--arcane-line)' : 'var(--rule)'}`,
       }}
     >
-      <div style={{ color: 'var(--gold)', fontFamily: 'var(--mono)', fontSize: '0.82rem', fontWeight: 700, paddingTop: '5px' }}>{idx}</div>
+      <div style={{ color: 'var(--gold)', fontFamily: 'var(--mono)', fontSize: 'var(--fs-sm)', fontWeight: 700, paddingTop: '5px' }}>{idx}</div>
 
       <div style={{ minWidth: 0 }}>
         <input
           type="text" value={entry.name}
           onChange={e => onPatch({ name: e.target.value })}
           placeholder="Result name…"
-          style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--ink)', fontFamily: 'var(--display)', fontSize: '1rem', fontWeight: 600 }}
+          style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--ink)', fontFamily: 'var(--display)', fontSize: 'var(--fs-body)', fontWeight: 600 }}
           aria-label="Result name"
         />
         <textarea
           value={entry.description} rows={2}
           onChange={e => onPatch({ description: e.target.value })}
           placeholder="A brief description the DM reads or paraphrases…"
-          style={{ width: '100%', marginTop: '4px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: '0.8rem', outline: 'none', lineHeight: 1.45 }}
+          style={{ width: '100%', marginTop: '4px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: 'var(--fs-sm)', outline: 'none', lineHeight: 1.45 }}
           aria-label="Result description"
         />
 
@@ -602,7 +602,7 @@ function EntryRow({
               onClick={cycleType}
               title="Click to cycle combat / social / either"
               style={{
-                fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
                 padding: '2px 7px', borderRadius: '999px', cursor: 'pointer',
                 color: randomEntryTypeColors[entryKind], backgroundColor: 'transparent',
                 border: `1px solid ${randomEntryTypeColors[entryKind]}`,
@@ -616,13 +616,13 @@ function EntryRow({
                 <span key={c.id}
                   onClick={() => onViewStatblock?.(sb)}
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.68rem',
+                    display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: 'var(--fs-label)',
                     padding: '2px 7px', borderRadius: '999px', cursor: onViewStatblock ? 'pointer' : 'default',
                     color: 'var(--ink)', backgroundColor: 'var(--bg-2)', border: '1px solid var(--rule)',
                   }}
                 >
                   {sb.name}
-                  {sb.challenge_rating && <span style={{ color: 'var(--cr, var(--ink-4))', fontFamily: 'var(--mono)', fontSize: '0.6rem' }}>CR {sb.challenge_rating}</span>}
+                  {sb.challenge_rating && <span style={{ color: 'var(--cr, var(--ink-4))', fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)' }}>CR {sb.challenge_rating}</span>}
                   <span onClick={e => { e.stopPropagation(); unlink(c.id); }} style={{ color: 'var(--ink-3)', cursor: 'pointer' }}>✕</span>
                 </span>
               );
@@ -631,7 +631,7 @@ function EntryRow({
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setPickerOpen(o => !o)}
-                style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', cursor: 'pointer', color: 'var(--ink-2)', backgroundColor: 'transparent', border: '1px dashed var(--rule-hover)' }}
+                style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', cursor: 'pointer', color: 'var(--ink-2)', backgroundColor: 'transparent', border: '1px dashed var(--rule-hover)' }}
               >+ link creature</button>
               {pickerOpen && (
                 <CreaturePicker statblocks={statblocks} onPick={linkCreature} onClose={() => setPickerOpen(false)} />
@@ -645,11 +645,11 @@ function EntryRow({
         {kind === 'treasure' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' }}>
             <input type="text" value={entry.coins ?? ''} onChange={e => onPatch({ coins: e.target.value })}
-              placeholder="Coin — e.g. 4d6 × 100 gp" className="as-input" style={{ fontSize: '0.72rem' }} aria-label="Coin" />
+              placeholder="Coin — e.g. 4d6 × 100 gp" className="as-input" style={{ fontSize: 'var(--fs-xs)' }} aria-label="Coin" />
             <input type="text" value={entry.valuables ?? ''} onChange={e => onPatch({ valuables: e.target.value })}
-              placeholder="Valuables" className="as-input" style={{ fontSize: '0.72rem' }} aria-label="Valuables" />
+              placeholder="Valuables" className="as-input" style={{ fontSize: 'var(--fs-xs)' }} aria-label="Valuables" />
             <input type="text" value={entry.magicItem ?? ''} onChange={e => onPatch({ magicItem: e.target.value })}
-              placeholder="Magic item" className="as-input" style={{ fontSize: '0.72rem' }} aria-label="Magic item" />
+              placeholder="Magic item" className="as-input" style={{ fontSize: 'var(--fs-xs)' }} aria-label="Magic item" />
           </div>
         )}
 
@@ -658,15 +658,15 @@ function EntryRow({
           <div style={{ marginTop: '8px' }}>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <input type="text" value={entry.itemType ?? ''} onChange={e => onPatch({ itemType: e.target.value })}
-                placeholder="Item type — e.g. Wondrous item" className="as-input" style={{ fontSize: '0.72rem', flex: 1 }} aria-label="Item type" />
-              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
+                placeholder="Item type — e.g. Wondrous item" className="as-input" style={{ fontSize: 'var(--fs-xs)', flex: 1 }} aria-label="Item type" />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-label)', color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
                 <input type="checkbox" checked={!!entry.attunement} onChange={e => onPatch({ attunement: e.target.checked })} />
                 Attunement
               </label>
             </div>
             <textarea value={entry.itemText ?? ''} rows={2} onChange={e => onPatch({ itemText: e.target.value })}
               placeholder="Item text — what it does…"
-              style={{ width: '100%', marginTop: '6px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: '0.78rem', outline: 'none', lineHeight: 1.45 }}
+              style={{ width: '100%', marginTop: '6px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: 'var(--fs-xs)', outline: 'none', lineHeight: 1.45 }}
               aria-label="Item text" />
           </div>
         )}
@@ -675,7 +675,7 @@ function EntryRow({
         {kind === 'wild' && (
           <textarea value={entry.effect ?? ''} rows={2} onChange={e => onPatch({ effect: e.target.value })}
             placeholder="Surge effect…"
-            style={{ width: '100%', marginTop: '8px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--arcane)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: '0.78rem', fontFamily: 'var(--mono)', outline: 'none', lineHeight: 1.45 }}
+            style={{ width: '100%', marginTop: '8px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--arcane)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: 'var(--fs-xs)', fontFamily: 'var(--mono)', outline: 'none', lineHeight: 1.45 }}
             aria-label="Surge effect" />
         )}
 
@@ -685,7 +685,7 @@ function EntryRow({
             <span className="as-ml">Card</span>
             <select className="as-select" value={entry.cardKind ?? ''}
               onChange={e => onPatch({ cardKind: (e.target.value || undefined) as RandomEncounterEntry['cardKind'] })}
-              style={{ fontSize: '0.72rem', padding: '2px 6px' }} aria-label="Card kind">
+              style={{ fontSize: 'var(--fs-xs)', padding: '2px 6px' }} aria-label="Card kind">
               <option value="">Read-aloud (no card)</option>
               <option value="fortune">Fortune (good)</option>
               <option value="doom">Doom (bad)</option>
@@ -699,31 +699,31 @@ function EntryRow({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
           {rarityMode ? (
             <select className="as-select" value={entry.rarity ?? 'common'} onChange={e => onSetRarity(e.target.value)}
-              style={{ fontSize: '0.72rem', padding: '2px 6px' }} aria-label="Rarity">
+              style={{ fontSize: 'var(--fs-xs)', padding: '2px 6px' }} aria-label="Rarity">
               {RARITIES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: '0.62rem', color: 'var(--ink-3)' }}>weight</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)', color: 'var(--ink-3)' }}>weight</span>
               <input type="number" min={1} value={entry.weight}
                 onChange={e => onPatch({ weight: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                 className="as-input" style={{ width: '48px', textAlign: 'center', padding: '2px 4px' }} aria-label="Weight" />
             </div>
           )}
-          <span style={{ fontFamily: 'var(--mono)', fontSize: '0.72rem', color: 'var(--gold)', fontWeight: 700 }}>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-xs)', color: 'var(--gold)', fontWeight: 700 }}>
             {range ? Math.round(range.pct * 100) : 0}%
           </span>
         </div>
         <div style={{ height: '4px', backgroundColor: 'var(--rule)', borderRadius: '2px', marginTop: '6px', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${range ? range.pct * 100 : 0}%`, backgroundColor: 'var(--gold)' }} />
         </div>
-        <div style={{ marginTop: '4px', fontFamily: 'var(--mono)', fontSize: '0.62rem', color: 'var(--ink-3)' }}>
+        <div style={{ marginTop: '4px', fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)', color: 'var(--ink-3)' }}>
           rolls {range ? `${range.lo}–${range.hi}` : '—'}
         </div>
       </div>
 
       <button onClick={onRemove} title="Remove entry" aria-label="Remove entry"
-        style={{ background: 'var(--bg-2)', color: 'var(--red)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', width: '26px', height: '26px', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
+        style={{ background: 'var(--bg-2)', color: 'var(--red)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', width: '26px', height: '26px', cursor: 'pointer', fontSize: 'var(--fs-xs)' }}>✕</button>
     </div>
   );
 }
@@ -744,18 +744,18 @@ function CreaturePicker({ statblocks, onPick, onClose }: {
   return (
     <div ref={ref} style={{ position: 'absolute', left: 0, top: '115%', zIndex: 30, width: '230px', background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', boxShadow: '0 12px 30px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
       <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search stat sheets…"
-        style={{ width: '100%', padding: '8px 10px', background: 'var(--bg)', border: 'none', borderBottom: '1px solid var(--rule)', color: 'var(--ink)', outline: 'none', fontSize: '0.78rem' }} />
+        style={{ width: '100%', padding: '8px 10px', background: 'var(--bg)', border: 'none', borderBottom: '1px solid var(--rule)', color: 'var(--ink)', outline: 'none', fontSize: 'var(--fs-xs)' }} />
       <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
         {list.map(s => (
           <button key={s.id} onClick={() => onPick(s)}
-            style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '7px 10px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--rule-soft)', cursor: 'pointer', color: 'var(--ink)', fontSize: '0.78rem', textAlign: 'left' }}
+            style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '7px 10px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--rule-soft)', cursor: 'pointer', color: 'var(--ink)', fontSize: 'var(--fs-xs)', textAlign: 'left' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-2)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
             <span>{s.name}</span>
-            {s.challenge_rating && <span style={{ color: 'var(--cr, var(--ink-4))', fontFamily: 'var(--mono)', fontSize: '0.65rem' }}>CR {s.challenge_rating}</span>}
+            {s.challenge_rating && <span style={{ color: 'var(--cr, var(--ink-4))', fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)' }}>CR {s.challenge_rating}</span>}
           </button>
         ))}
-        {list.length === 0 && <div style={{ padding: '12px', color: 'var(--ink-3)', fontSize: '0.72rem' }}>No stat sheets to link.</div>}
+        {list.length === 0 && <div style={{ padding: '12px', color: 'var(--ink-3)', fontSize: 'var(--fs-xs)' }}>No stat sheets to link.</div>}
       </div>
     </div>
   );
@@ -766,12 +766,12 @@ function CreaturePicker({ statblocks, onPick, onClose }: {
 // ════════════════════════════════════════════════════════════
 
 const chipStyle: React.CSSProperties = {
-  fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+  fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
   padding: '3px 9px', borderRadius: '999px', backgroundColor: 'var(--chip-bg, var(--bg-2))',
   color: 'var(--ink-2)', border: '1px solid var(--chip-line, var(--rule))',
 };
 const layerLabel: React.CSSProperties = {
-  color: 'var(--gold)', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px',
+  color: 'var(--gold)', fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px',
 };
 
 function RollResultView({
@@ -802,8 +802,8 @@ function RollResultView({
       {/* Back + eyebrow */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
         <button onClick={onBack}
-          style={{ fontSize: '0.72rem', color: 'var(--ink-2)', background: 'transparent', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '4px 10px', cursor: 'pointer' }}>‹ Table</button>
-        <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>
+          style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-2)', background: 'transparent', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '4px 10px', cursor: 'pointer' }}>‹ Table</button>
+        <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>
           Rolled · {title || 'result'}
         </span>
       </div>
@@ -811,13 +811,13 @@ function RollResultView({
       {/* Die banner */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '18px', padding: '16px 20px', borderRadius: 'var(--radius-lg, 10px)', border: '1px solid var(--arcane-line)', backgroundColor: 'var(--arcane-bg)', marginBottom: '18px' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2.4rem', fontWeight: 700, color: 'var(--arcane)', fontFamily: 'var(--display)', lineHeight: 1 }}>{roll}</div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: '0.7rem', color: 'var(--ink-3)' }}>d{die}</div>
+          <div style={{ fontSize: 'var(--fs-h1)', fontWeight: 700, color: 'var(--arcane)', fontFamily: 'var(--display)', lineHeight: 1 }}>{roll}</div>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-label)', color: 'var(--ink-3)' }}>d{die}</div>
         </div>
         <div>
-          <div style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>landed {landed}</div>
-          <div style={{ fontSize: '1.35rem', fontWeight: 700, color: title ? 'var(--ink)' : 'var(--ink-3)', fontFamily: 'var(--display)' }}>{title || (entry ? 'Unnamed result' : 'No entry covers this roll')}</div>
-          {scene && <div style={{ color: 'var(--ink-2)', fontSize: '0.85rem', fontStyle: 'italic', marginTop: '2px' }}>{scene}</div>}
+          <div style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>landed {landed}</div>
+          <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700, color: title ? 'var(--ink)' : 'var(--ink-3)', fontFamily: 'var(--display)' }}>{title || (entry ? 'Unnamed result' : 'No entry covers this roll')}</div>
+          {scene && <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', fontStyle: 'italic', marginTop: '2px' }}>{scene}</div>}
         </div>
       </div>
 
@@ -839,24 +839,24 @@ function RollResultView({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--rule)' }}>
         {onRun && (
           <button onClick={onRun}
-            style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--bg)', backgroundColor: 'var(--gold)', border: '1px solid var(--gold)', borderRadius: 'var(--radius)', padding: '8px 16px', cursor: 'pointer', fontFamily: 'var(--serif)' }}>
+            style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--bg)', backgroundColor: 'var(--gold)', border: '1px solid var(--gold)', borderRadius: 'var(--radius)', padding: '8px 16px', cursor: 'pointer', fontFamily: 'var(--serif)' }}>
             ▶ Run in Initiative Tracker
           </button>
         )}
         {onSave && (
           <button onClick={onSave} disabled={saved}
-            style={{ fontSize: '0.78rem', fontWeight: 600, color: saved ? 'var(--success)' : 'var(--ink-2)', backgroundColor: 'transparent', border: `1px solid ${saved ? 'var(--success-line, var(--rule))' : 'var(--rule)'}`, borderRadius: 'var(--radius)', padding: '8px 14px', cursor: saved ? 'default' : 'pointer' }}>
+            style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: saved ? 'var(--success)' : 'var(--ink-2)', backgroundColor: 'transparent', border: `1px solid ${saved ? 'var(--success-line, var(--rule))' : 'var(--rule)'}`, borderRadius: 'var(--radius)', padding: '8px 14px', cursor: saved ? 'default' : 'pointer' }}>
             {saved ? '✓ Saved to Encounters' : '＋ Save to Encounters'}
           </button>
         )}
         {showAdjust && (
           <button onClick={() => setAdjustOpen(o => !o)}
-            style={{ fontSize: '0.78rem', fontWeight: 600, color: adjustOpen ? 'var(--gold)' : 'var(--ink-2)', backgroundColor: 'transparent', border: `1px solid ${adjustOpen ? 'var(--gold-line, var(--rule))' : 'var(--rule)'}`, borderRadius: 'var(--radius)', padding: '8px 14px', cursor: 'pointer' }}>
+            style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: adjustOpen ? 'var(--gold)' : 'var(--ink-2)', backgroundColor: 'transparent', border: `1px solid ${adjustOpen ? 'var(--gold-line, var(--rule))' : 'var(--rule)'}`, borderRadius: 'var(--radius)', padding: '8px 14px', cursor: 'pointer' }}>
             ⚙ Adjust{adjustOpen ? ' ▴' : ' ▾'}
           </button>
         )}
         <button onClick={onReroll}
-          style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-2)', backgroundColor: 'transparent', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '8px 14px', cursor: 'pointer' }}>
+          style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--ink-2)', backgroundColor: 'transparent', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '8px 14px', cursor: 'pointer' }}>
           ⟳ Re-roll
         </button>
       </div>
@@ -884,7 +884,7 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
       <div style={{ marginBottom: '18px' }}>
         <div style={layerLabel}>Roster</div>
         {result.roster.length === 0 && (
-          <p style={{ color: 'var(--ink-3)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+          <p style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-sm)', fontStyle: 'italic' }}>
             No creatures — link some on the entry, or enable “Auto-generate” in the roll settings to have one improvised.
           </p>
         )}
@@ -893,14 +893,14 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
             const sb = sbById.get(r.creature.id);
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-                <span style={{ fontFamily: 'var(--mono)', color: 'var(--gold)', fontWeight: 700, fontSize: '0.85rem' }}>{r.count}×</span>
-                <span style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: '0.92rem' }}>{r.creature.name}</span>
+                <span style={{ fontFamily: 'var(--mono)', color: 'var(--gold)', fontWeight: 700, fontSize: 'var(--fs-md)' }}>{r.count}×</span>
+                <span style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-body)' }}>{r.creature.name}</span>
                 {r.creature.cr && <span style={{ ...chipStyle, padding: '1px 7px' }}>CR {r.creature.cr}</span>}
-                {r.isNew && <span style={{ fontSize: '0.6rem', color: 'var(--arcane)', fontWeight: 700 }}>✦ new</span>}
+                {r.isNew && <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--arcane)', fontWeight: 700 }}>✦ new</span>}
                 <div style={{ flex: 1 }} />
                 {sb && onViewStatblock && (
                   <button onClick={() => onViewStatblock(sb)}
-                    style={{ fontSize: '0.65rem', color: 'var(--info, var(--sky))', background: 'var(--info-bg, var(--bg-2))', border: '1px solid var(--info-line, var(--rule))', borderRadius: 'var(--radius)', padding: '2px 8px', cursor: 'pointer' }}>Sheet</button>
+                    style={{ fontSize: 'var(--fs-micro)', color: 'var(--info, var(--sky))', background: 'var(--info-bg, var(--bg-2))', border: '1px solid var(--info-line, var(--rule))', borderRadius: 'var(--radius)', padding: '2px 8px', cursor: 'pointer' }}>Sheet</button>
                 )}
               </div>
             );
@@ -913,7 +913,7 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
       <ResultLayer label="Complication" name={result.complication.name} text={result.complication.text} />
       <div style={{ marginBottom: '16px' }}>
         <div style={layerLabel}>Loot</div>
-        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)', color: 'var(--ink-2)', fontSize: '0.85rem', lineHeight: 1.5 }}>
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)', color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.5 }}>
           <div><strong style={{ color: 'var(--gold)' }}>Coin:</strong> {result.loot.coins}</div>
           <div><strong style={{ color: 'var(--gold)' }}>On the bodies:</strong> {result.loot.find}</div>
           {result.loot.item && <div><strong style={{ color: 'var(--gold)' }}>Magic:</strong> {result.loot.item}</div>}
@@ -923,7 +923,7 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
       {result.tactics && (
         <div style={{ marginBottom: '4px' }}>
           <div style={layerLabel}>DM Tactics</div>
-          <p style={{ color: 'var(--ink-2)', fontSize: '0.85rem', lineHeight: 1.55, fontStyle: 'italic' }}>{result.tactics}</p>
+          <p style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55, fontStyle: 'italic' }}>{result.tactics}</p>
         </div>
       )}
     </>
@@ -935,8 +935,8 @@ function ResultLayer({ label, name, text }: { label: string; name: string; text:
     <div style={{ marginBottom: '16px' }}>
       <div style={layerLabel}>{label}</div>
       <div style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-        <div style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: '0.9rem', marginBottom: '3px' }}>{name}</div>
-        <div style={{ color: 'var(--ink-2)', fontSize: '0.83rem', lineHeight: 1.5 }}>{text}</div>
+        <div style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-md)', marginBottom: '3px' }}>{name}</div>
+        <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-sm)', lineHeight: 1.5 }}>{text}</div>
       </div>
     </div>
   );
@@ -955,9 +955,9 @@ function SocialBody({ result }: { result: SocialResult }) {
         <div className="space-y-2">
           {result.npcs.map((n, i) => (
             <div key={i} style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-              <div style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: '0.92rem' }}>{n.name}</div>
-              <div style={{ color: 'var(--ink-3)', fontSize: '0.72rem', marginBottom: '4px' }}>{n.role}</div>
-              <div style={{ color: 'var(--ink-2)', fontSize: '0.83rem' }}><strong style={{ color: 'var(--gold)' }}>Wants:</strong> {n.want}</div>
+              <div style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-body)' }}>{n.name}</div>
+              <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-xs)', marginBottom: '4px' }}>{n.role}</div>
+              <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-sm)' }}><strong style={{ color: 'var(--gold)' }}>Wants:</strong> {n.want}</div>
             </div>
           ))}
         </div>
@@ -969,11 +969,11 @@ function SocialBody({ result }: { result: SocialResult }) {
           {result.checks.map((c, i) => (
             <div key={i} style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: '0.88rem' }}>{c.skill}</span>
+                <span style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-md)' }}>{c.skill}</span>
                 <span style={{ ...chipStyle, padding: '1px 7px' }}>DC {c.dc}</span>
               </div>
-              <div style={{ color: 'var(--success)', fontSize: '0.8rem', lineHeight: 1.45 }}>✓ {c.success}</div>
-              <div style={{ color: 'var(--red)', fontSize: '0.8rem', lineHeight: 1.45 }}>✗ {c.fail}</div>
+              <div style={{ color: 'var(--success)', fontSize: 'var(--fs-sm)', lineHeight: 1.45 }}>✓ {c.success}</div>
+              <div style={{ color: 'var(--red)', fontSize: 'var(--fs-sm)', lineHeight: 1.45 }}>✗ {c.fail}</div>
             </div>
           ))}
         </div>
@@ -981,7 +981,7 @@ function SocialBody({ result }: { result: SocialResult }) {
 
       <div>
         <div style={layerLabel}>Running it</div>
-        <p style={{ color: 'var(--ink-2)', fontSize: '0.85rem', lineHeight: 1.55, fontStyle: 'italic' }}>{result.tactics}</p>
+        <p style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55, fontStyle: 'italic' }}>{result.tactics}</p>
       </div>
     </>
   );
@@ -1007,7 +1007,7 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
     return payloadCard(
       <>
         <div style={{ ...layerLabel, marginBottom: '10px' }}>The haul</div>
-        {nothing && <div style={{ color: 'var(--ink-3)', fontSize: '0.82rem', fontStyle: 'italic' }}>No hoard authored — add coin, valuables, or a magic item to this entry.</div>}
+        {nothing && <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-sm)', fontStyle: 'italic' }}>No hoard authored — add coin, valuables, or a magic item to this entry.</div>}
         {entry.coins && <HaulRow label="Coin" value={entry.coins} />}
         {entry.valuables && <HaulRow label="Valuables" value={entry.valuables} />}
         {entry.magicItem && <HaulRow label="Magic" value={entry.magicItem} />}
@@ -1025,8 +1025,8 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
           <span style={chipStyle}>{entry.attunement ? 'Requires attunement' : 'No attunement'}</span>
         </div>
         {entry.itemText
-          ? <div style={{ color: 'var(--ink-2)', fontSize: '0.85rem', lineHeight: 1.55 }}>{entry.itemText}</div>
-          : <div style={{ color: 'var(--ink-3)', fontSize: '0.82rem', fontStyle: 'italic' }}>No item text yet.</div>}
+          ? <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55 }}>{entry.itemText}</div>
+          : <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-sm)', fontStyle: 'italic' }}>No item text yet.</div>}
       </>,
     );
   }
@@ -1034,8 +1034,8 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
   if (kind === 'wild') {
     return payloadCard(
       <>
-        <div style={{ color: 'var(--arcane)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: '1rem', marginBottom: '6px' }}>✦ {entry.name || 'Surge'}</div>
-        <div style={{ color: 'var(--ink-2)', fontSize: '0.85rem', lineHeight: 1.55, fontFamily: entry.effect ? 'var(--mono)' : undefined }}>
+        <div style={{ color: 'var(--arcane)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-body)', marginBottom: '6px' }}>✦ {entry.name || 'Surge'}</div>
+        <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55, fontFamily: entry.effect ? 'var(--mono)' : undefined }}>
           {entry.effect || entry.description || <em style={{ color: 'var(--ink-3)' }}>No surge effect authored.</em>}
         </div>
       </>,
@@ -1053,7 +1053,7 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
               {good ? 'Fortune' : 'Doom'}
             </span>
           </div>
-          <div style={{ color: 'var(--ink-2)', fontSize: '0.85rem', lineHeight: 1.55 }}>{entry.description || <em style={{ color: 'var(--ink-3)' }}>No card text.</em>}</div>
+          <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55 }}>{entry.description || <em style={{ color: 'var(--ink-3)' }}>No card text.</em>}</div>
         </>,
         good ? 'var(--success-line, var(--rule))' : 'var(--red-line, var(--rule))',
       );
@@ -1068,8 +1068,8 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
 function HaulRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '12px', padding: '6px 0', borderTop: '1px solid var(--rule-soft, var(--rule))' }}>
-      <span style={{ fontFamily: 'var(--mono)', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold)', paddingTop: '2px' }}>{label}</span>
-      <span style={{ color: 'var(--ink)', fontSize: '0.9rem' }}>{value}</span>
+      <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold)', paddingTop: '2px' }}>{label}</span>
+      <span style={{ color: 'var(--ink)', fontSize: 'var(--fs-md)' }}>{value}</span>
     </div>
   );
 }

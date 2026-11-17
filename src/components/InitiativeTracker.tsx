@@ -107,7 +107,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
         <div>
           <div style={{
             color: 'var(--ink-3)',
-            fontSize: '0.6rem',
+            fontSize: 'var(--fs-micro)',
             fontWeight: 700,
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
@@ -118,7 +118,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
           </div>
           <h2 style={{
             color: 'var(--ink)',
-            fontSize: '1.5rem',
+            fontSize: 'var(--fs-h2)',
             fontWeight: 700,
             fontFamily: 'var(--display)',
             margin: 0,
@@ -129,12 +129,12 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
               : encounter.name}
           </h2>
           {started && currentCombatant && (
-            <div style={{ color: 'var(--ink-3)', fontSize: '0.78rem', marginTop: '4px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
+            <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-xs)', marginTop: '4px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
               {currentCombatant.name}'s turn
             </div>
           )}
           {!!fight.expired?.length && (
-            <div role="status" style={{ color: 'var(--gold)', fontSize: '0.78rem', marginTop: '2px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
+            <div role="status" style={{ color: 'var(--gold)', fontSize: 'var(--fs-xs)', marginTop: '2px', fontFamily: 'var(--serif)', fontStyle: 'italic' }}>
               {fight.expired.map(e => `${e.name} is no longer ${e.conditions.join(' or ')}`).join(' · ')}
             </div>
           )}
@@ -205,7 +205,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
                 autoFocus
                 style={{
                   flex: 1,
-                  fontSize: '0.85rem',
+                  fontSize: 'var(--fs-md)',
                   color: 'var(--ink)',
                   backgroundColor: 'var(--bg-2)',
                   border: '1px solid var(--rule)',
@@ -340,7 +340,7 @@ function CombatantRow({
               style={{
                 width: '44px',
                 textAlign: 'center',
-                fontSize: '1rem',
+                fontSize: 'var(--fs-body)',
                 fontWeight: 700,
                 color: 'var(--gold)',
                 backgroundColor: 'var(--bg-2)',
@@ -354,7 +354,7 @@ function CombatantRow({
             />
           ) : (
             <span style={{
-              fontSize: '1.1rem',
+              fontSize: 'var(--fs-lg)',
               fontWeight: 700,
               color: isCurrent ? 'var(--gold)' : 'var(--ink-3)',
               fontFamily: 'var(--mono)',
@@ -367,13 +367,13 @@ function CombatantRow({
         {/* Name + meta + conditions */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', color: c.isPC ? 'var(--moss)' : 'var(--accent)' }}>
+            <span style={{ fontSize: 'var(--fs-xs)', color: c.isPC ? 'var(--moss)' : 'var(--accent)' }}>
               {kindGlyph(c.isPC)}
             </span>
             <span
               style={{
                 color: isCurrent ? 'var(--ink)' : down ? 'var(--ink-3)' : 'var(--ink-2)',
-                fontSize: '0.95rem',
+                fontSize: 'var(--fs-body)',
                 fontWeight: 600,
                 fontFamily: 'var(--display)',
                 cursor: statblock ? 'pointer' : 'default',
@@ -387,7 +387,7 @@ function CombatantRow({
               {c.name}
             </span>
           </div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: '0.66rem', color: 'var(--ink-3)', marginTop: '3px', display: 'flex', gap: '12px' }}>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-label)', color: 'var(--ink-3)', marginTop: '3px', display: 'flex', gap: '12px' }}>
             <span>{c.isPC ? 'Player' : 'Monster'}</span>
             {c.ac != null && <span>AC {c.ac}</span>}
           </div>
@@ -399,7 +399,7 @@ function CombatantRow({
                   // eslint-disable-next-line no-restricted-syntax -- condition chip removes on click; the Conditions menu toggles the same from the keyboard. Shared ConditionChips in phase 8
                   onClick={() => onToggleCondition(c.id, cond)}
                   style={{
-                    fontSize: '0.56rem',
+                    fontSize: 'var(--fs-micro)',
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.1em',
@@ -563,10 +563,10 @@ function CombatantRow({
 
         {/* Trailing controls: condition toggle + remove */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
-          <IconButton active={c.conditions.length > 0} aria-label="Conditions" onClick={onToggleConditionMenu} title="Conditions" style={{ width: 26, height: 26, fontSize: 14 }}>
+          <IconButton active={c.conditions.length > 0} aria-label="Conditions" onClick={onToggleConditionMenu} title="Conditions" style={{ width: 26, height: 26, fontSize: 'var(--fs-md)' }}>
             ◉
           </IconButton>
-          <IconButton aria-label="Remove combatant" onClick={() => onRemove(c.id)} title="Remove" style={{ width: 26, height: 26, fontSize: 12 }}>
+          <IconButton aria-label="Remove combatant" onClick={() => onRemove(c.id)} title="Remove" style={{ width: 26, height: 26, fontSize: 'var(--fs-xs)' }}>
             ✕
           </IconButton>
         </div>
@@ -595,7 +595,7 @@ function CombatantRow({
                 onClick={() => { if (!active && n > 0) onSetConditionRounds(c.id, cond, n); else onToggleCondition(c.id, cond); }}
                 // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
                 style={{
-                  fontSize: '0.62rem',
+                  fontSize: 'var(--fs-micro)',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
@@ -621,23 +621,23 @@ function CombatantRow({
 
 // ─── HP zone scoped styles (ported from the design prototype) ─────────────────
 const HP_ZONE_CSS = `
-.itk-rounds{display:inline-flex;align-items:center;gap:5px;margin-right:6px;font-family:var(--mono);font-size:.62rem;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
-.itk-rounds input{width:48px;font-family:var(--mono);font-size:.7rem;color:var(--ink);background:var(--bg-2);border:1px solid var(--rule);border-radius:3px;padding:2px 4px;color-scheme:dark}
-.itk-con{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px;padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:.66rem;color:var(--info);background:var(--info-bg);border:1px solid var(--info-line)}
-.itk-con button{font-family:var(--mono);font-size:.62rem;color:var(--ink-2);background:transparent;border:1px solid var(--rule);border-radius:3px;padding:1px 7px;cursor:pointer}
+.itk-rounds{display:inline-flex;align-items:center;gap:5px;margin-right:6px;font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.itk-rounds input{width:48px;font-family:var(--mono);font-size:var(--fs-label);color:var(--ink);background:var(--bg-2);border:1px solid var(--rule);border-radius:3px;padding:2px 4px;color-scheme:dark}
+.itk-con{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px;padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:var(--fs-label);color:var(--info);background:var(--info-bg);border:1px solid var(--info-line)}
+.itk-con button{font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-2);background:transparent;border:1px solid var(--rule);border-radius:3px;padding:1px 7px;cursor:pointer}
 .itk-con button:hover{color:var(--ink);border-color:var(--rule-hover)}
 .itk-hp{flex-shrink:0;width:334px}
 .itk-hp-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
 .itk-hp-read{display:flex;align-items:baseline;gap:2px}
-.itk-hp-num{font-family:var(--mono);font-weight:700;font-size:28px;line-height:1;letter-spacing:-.01em}
-.itk-hp-max{font-family:var(--mono);font-size:14px;color:var(--ink-3)}
+.itk-hp-num{font-family:var(--mono);font-weight:700;font-size:var(--fs-h2);line-height:1;letter-spacing:-.01em}
+.itk-hp-max{font-family:var(--mono);font-size:var(--fs-md);color:var(--ink-3)}
 .itk-hp-editable{cursor:pointer;border-radius:4px;transition:background .1s}
 .itk-hp-editable:hover{background:var(--gold-dim);text-decoration:underline dotted;text-underline-offset:3px}
 .itk-hp-edit{font-family:var(--mono);font-weight:700;background:var(--bg-2);border:1px solid var(--gold-line);border-radius:5px;color:var(--ink);outline:none;text-align:center;padding:0 2px}
-.itk-hp-edit.num{font-size:24px;width:64px;height:32px;line-height:1}
-.itk-hp-edit.max{font-size:14px;width:48px;height:24px;color:var(--ink-3);margin-left:2px}
-.itk-hp-temp{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--info);background:rgba(112,160,224,.12);border:1px solid rgba(112,160,224,.4);border-radius:999px;padding:2px 8px;margin-left:10px;white-space:nowrap}
-.itk-hp-status{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.itk-hp-edit.num{font-size:var(--fs-h2);width:64px;height:32px;line-height:1}
+.itk-hp-edit.max{font-size:var(--fs-md);width:48px;height:24px;color:var(--ink-3);margin-left:2px}
+.itk-hp-temp{font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.04em;color:var(--info);background:rgba(112,160,224,.12);border:1px solid rgba(112,160,224,.4);border-radius:999px;padding:2px 8px;margin-left:10px;white-space:nowrap}
+.itk-hp-status{font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
 .itk-hp-status.bloodied{color:var(--orange)}
 .itk-hp-status.down{color:var(--red)}
 .itk-bar{position:relative;height:9px;border-radius:5px;background:var(--rule-soft);overflow:hidden;margin-bottom:9px}
@@ -645,28 +645,28 @@ const HP_ZONE_CSS = `
 .itk-bar.hastemp{box-shadow:0 0 0 1px rgba(112,160,224,.5)}
 .itk-hp-ctrl{display:flex;align-items:stretch;gap:7px}
 .itk-dh{flex:1;display:flex;align-items:center;border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;background:var(--paper);min-width:0}
-.itk-dh button{flex-shrink:0;width:52px;border:none;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:0;height:40px;transition:.12s}
+.itk-dh button{flex-shrink:0;width:52px;border:none;cursor:pointer;font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:0;height:40px;transition:.12s}
 .itk-dh .dmg{background:rgba(224,92,92,.14);color:var(--red)}
 .itk-dh .dmg:hover{background:rgba(224,92,92,.26)}
 .itk-dh .heal{background:rgba(106,184,122,.14);color:var(--success)}
 .itk-dh .heal:hover{background:rgba(106,184,122,.26)}
-.itk-dh input{flex:1;min-width:0;width:100%;border:none;background:var(--bg-2);color:var(--ink);font-family:var(--mono);font-size:17px;font-weight:700;text-align:center;outline:none;height:40px;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
+.itk-dh input{flex:1;min-width:0;width:100%;border:none;background:var(--bg-2);color:var(--ink);font-family:var(--mono);font-size:var(--fs-lg);font-weight:700;text-align:center;outline:none;height:40px;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
 .itk-dh input::placeholder{color:var(--ink-3);font-weight:400}
 .itk-nudge{display:flex;flex-direction:column;gap:4px}
-.itk-nudge button{font-family:var(--mono);font-size:10px;color:var(--ink-2);background:var(--paper);border:1px solid var(--rule);border-radius:5px;cursor:pointer;transition:.12s;line-height:1;width:34px;height:18px}
+.itk-nudge button{font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-2);background:var(--paper);border:1px solid var(--rule);border-radius:5px;cursor:pointer;transition:.12s;line-height:1;width:34px;height:18px}
 .itk-nudge button:hover{border-color:var(--gold-line);color:var(--gold)}
-.itk-tempbtn{font-family:var(--mono);font-size:10px;background:var(--paper);border:1px solid rgba(112,160,224,.3);border-radius:5px;cursor:pointer;transition:.12s;width:44px;height:40px;display:grid;place-items:center;color:var(--info)}
+.itk-tempbtn{font-family:var(--mono);font-size:var(--fs-micro);background:var(--paper);border:1px solid rgba(112,160,224,.3);border-radius:5px;cursor:pointer;transition:.12s;width:44px;height:40px;display:grid;place-items:center;color:var(--info)}
 .itk-tempbtn:hover{background:rgba(112,160,224,.12);border-color:var(--info)}
 .itk-death{display:flex;align-items:center;gap:14px;margin-top:9px}
-.itk-death .lab{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.itk-death .lab{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
 .itk-pips{display:flex;gap:5px;align-items:center}
 .itk-pip{width:14px;height:14px;border-radius:50%;border:1px solid var(--rule-hover);cursor:pointer;background:transparent;transition:.1s;padding:0}
 .itk-pip.s.on{background:var(--success);border-color:var(--success)}
 .itk-pip.f.on{background:var(--red);border-color:var(--red)}
-.itk-verdict{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.itk-verdict{font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .itk-temppop{display:flex;gap:6px;align-items:center;margin-top:8px;padding:8px 10px;border:1px solid rgba(112,160,224,.35);background:rgba(112,160,224,.06);border-radius:var(--radius)}
 .itk-temppop input{width:56px;height:30px;text-align:center;font-family:var(--mono);font-weight:700;background:var(--bg-2);border:1px solid var(--rule);border-radius:5px;color:var(--ink);outline:none}
-.itk-temppop button{font-family:var(--mono);font-size:10px;padding:6px 10px;border-radius:5px;border:1px solid var(--info);background:rgba(112,160,224,.14);color:var(--info);cursor:pointer}
+.itk-temppop button{font-family:var(--mono);font-size:var(--fs-micro);padding:6px 10px;border-radius:5px;border:1px solid var(--info);background:rgba(112,160,224,.14);color:var(--info);cursor:pointer}
 .itk-temppop .x{border-color:var(--rule);background:none;color:var(--ink-3)}
-.itk-temppop .hint{font-family:var(--serif);font-style:italic;font-size:12px;color:var(--ink-3)}
+.itk-temppop .hint{font-family:var(--serif);font-style:italic;font-size:var(--fs-xs);color:var(--ink-3)}
 `;

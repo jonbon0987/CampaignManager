@@ -75,10 +75,10 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
         style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', maxHeight: '90vh' }}
       >
         <div className="flex items-center justify-between p-4 border-b shrink-0" style={{ borderColor: 'var(--rule)' }}>
-          <h2 id={titleId} className="text-xl font-bold" style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}>
+          <h2 id={titleId} className="text-h3 font-bold" style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}>
             {title}
           </h2>
-          <IconButton onClick={handleClose} aria-label="Close dialog" title="Close" style={{ fontSize: 22 }}>
+          <IconButton onClick={handleClose} aria-label="Close dialog" title="Close" style={{ fontSize: 'var(--fs-h3)' }}>
             ×
           </IconButton>
         </div>

@@ -418,7 +418,7 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
           aria-live="polite"
           style={{
             textAlign: 'right',
-            fontSize: '11px',
+            fontSize: 'var(--fs-label)',
             fontFamily: 'var(--serif)',
             marginTop: '2px',
             color: charCount > maxLength ? 'var(--red)' : 'var(--ink-3)',

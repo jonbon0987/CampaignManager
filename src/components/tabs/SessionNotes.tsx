@@ -107,12 +107,12 @@ function SessionSection({
         // eslint-disable-next-line no-restricted-syntax -- full-width section disclosure
         style={{ color: 'var(--gold)', letterSpacing: '0.06em' }}
       >
-        <span style={{ color: 'var(--ink-3)', fontSize: '10px' }}>{open ? '▾' : '▸'}</span>
+        <span style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-micro)' }}>{open ? '▾' : '▸'}</span>
         <Icon size={12} strokeWidth={1.8} />
-        <span style={{ textTransform: 'uppercase', fontSize: '0.65rem' }}>{label}</span>
+        <span style={{ textTransform: 'uppercase', fontSize: 'var(--fs-micro)' }}>{label}</span>
         {dmOnly && (
           <span
-            className="ml-auto text-[9px] px-1.5 py-0.5 rounded"
+            className="ml-auto text-micro px-1.5 py-0.5 rounded"
             style={{ backgroundColor: 'rgba(201,168,76,0.08)', color: 'var(--gold)', border: '1px solid var(--rule)' }}
           >
             DM Only
@@ -479,7 +479,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
                   className={`cm-row ${selected?.id === s.id ? 'is-active' : ''}`}
                   onClick={() => setSelectedId(s.id)}
                 >
-                  <span className="cm-row-glyph" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                  <span className="cm-row-glyph" style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-label)' }}>
                     #{s.session_number}
                   </span>
                   <div className="cm-row-body">
@@ -536,7 +536,7 @@ function SessionTimeline() {
       </div>
 
       {sorted.length === 0 ? (
-        <div style={{ textAlign: 'center', color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 13, paddingTop: 24 }}>
+        <div style={{ textAlign: 'center', color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 'var(--fs-sm)', paddingTop: 24 }}>
           No sessions yet.
         </div>
       ) : (

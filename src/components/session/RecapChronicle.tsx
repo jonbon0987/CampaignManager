@@ -158,7 +158,7 @@ export function RecapChronicle({ recording: initial, onChanged }: {
   ));
   const text = (item: WrittenItem) => item.entry ?? item.added;
 
-  if (proposals === null) return <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Loading the chronicle…</p>;
+  if (proposals === null) return <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>Loading the chronicle…</p>;
 
   const k = model.byKind;
   const written: { key: string; kind: EntityKind | 'session'; name: string; what: string; meta: string; item?: WrittenItem }[] = [
@@ -183,14 +183,14 @@ export function RecapChronicle({ recording: initial, onChanged }: {
               return (
                 <article key={pc.id} style={{ ...card, borderColor: isQuiet ? 'var(--orange-line)' : 'var(--rule)', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <Button variant="link" onClick={() => open('pc', pc.id)} style={{ fontSize: 16, fontWeight: 500, color: 'var(--ink)', textDecoration: 'none', justifyContent: 'flex-start' }}>{pc.character_name}</Button>
+                    <Button variant="link" onClick={() => open('pc', pc.id)} style={{ fontSize: 'var(--fs-body)', fontWeight: 500, color: 'var(--ink)', textDecoration: 'none', justifyContent: 'flex-start' }}>{pc.character_name}</Button>
                     <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{[[pc.race, pc.class].filter(Boolean).join(' '), pc.player_name].filter(Boolean).join(' · ')}</span>
                     {onDiscord.has(pc.id) && <span className="cm-tag" style={{ color: 'var(--link-faction)', borderColor: 'var(--link-faction-line)' }}>◈ Discord</span>}
                     {isQuiet && <Badge color="orange">Quiet night</Badge>}
                   </div>
                   {did.length > 0
                     ? <ul style={{ margin: 0, paddingLeft: 18, listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 4 }}>{did.map(i => <li key={i.proposalId}>{i.entry}</li>)}</ul>
-                    : <span className="text-sm" style={{ color: 'var(--ink-3)' }}>Nothing written down for this character.</span>}
+                    : <span className="text-md" style={{ color: 'var(--ink-3)' }}>Nothing written down for this character.</span>}
                   {s != null && (
                     <div className="flex items-center gap-2" style={{ marginTop: 'auto' }}>
                       <div aria-hidden="true" style={{ flex: 1, height: 4, background: 'var(--paper-3)', borderRadius: 999 }}>
@@ -255,7 +255,7 @@ export function RecapChronicle({ recording: initial, onChanged }: {
                 <span aria-hidden="true" style={{ color: 'var(--link-location)', paddingTop: 2 }}>✦</span>
                 <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
                   <div className="flex flex-wrap items-center gap-2">{nameLink(item, { color: 'var(--ink)' })}{item.created && <Badge color="orange">New</Badge>}</div>
-                  {text(item) && <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
+                  {text(item) && <span className="text-md" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
                 </div>
                 {time(item.sourceMs)}
               </li>
@@ -279,7 +279,7 @@ export function RecapChronicle({ recording: initial, onChanged }: {
                     {!change && !item.created && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>advanced</span>}
                   </div>
                   {nameLink(item, { color: 'var(--ink)', size: 16 })}
-                  {text(item) && <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
+                  {text(item) && <span className="text-md" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
                 </div>
               );
             })}
@@ -295,7 +295,7 @@ export function RecapChronicle({ recording: initial, onChanged }: {
                 <Button variant="ghost" size="xs" onClick={() => play(m.at_ms)} title="Play from here" style={{ padding: '0 4px', justifySelf: 'start' }}>
                   <span className="cm-kbd" style={{ color: 'var(--gold)' }}>{clockLabel(m.at_ms)}</span>
                 </Button>
-                <span style={{ fontSize: 14, color: m.label ? 'var(--ink)' : 'var(--ink-3)' }}>{m.label || 'Marked moment'}</span>
+                <span style={{ fontSize: 'var(--fs-md)', color: m.label ? 'var(--ink)' : 'var(--ink-3)' }}>{m.label || 'Marked moment'}</span>
               </div>
             ))}
           </div>

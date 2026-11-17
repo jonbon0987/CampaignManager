@@ -447,7 +447,7 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
                             variant="ghost"
                             size="sm"
                             onClick={ev => { ev.stopPropagation(); openEdit(e.id); }}
-                            style={{ padding: '2px 8px', fontSize: 11, borderRadius: 'var(--radius)' }}
+                            style={{ padding: '2px 8px', fontSize: 'var(--fs-label)', borderRadius: 'var(--radius)' }}
                           >
                             Edit
                           </Button>
@@ -455,7 +455,7 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
                             variant="ghost"
                             size="sm"
                             onClick={ev => { ev.stopPropagation(); handleDelete(e.id); }}
-                            style={{ padding: '2px 6px', fontSize: 11, borderRadius: 'var(--radius)', color: 'var(--accent)' }}
+                            style={{ padding: '2px 6px', fontSize: 'var(--fs-label)', borderRadius: 'var(--radius)', color: 'var(--accent)' }}
                           >
                             ✕
                           </Button>

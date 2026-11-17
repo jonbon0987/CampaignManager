@@ -55,7 +55,7 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
                 border: `1px solid ${style.border}`,
                 borderRadius: 'var(--radius)',
                 padding: '2px 6px',
-                fontSize: 12,
+                fontSize: 'var(--fs-xs)',
                 lineHeight: 1.2,
               }}
             >
@@ -92,7 +92,7 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
               border: '1px dashed var(--rule)',
               borderRadius: 'var(--radius)',
               padding: '2px 6px',
-              fontSize: 12,
+              fontSize: 'var(--fs-xs)',
               lineHeight: 1.2,
               cursor: 'pointer',
             }}
@@ -101,7 +101,7 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
           </button>
         )}
         {selected.length === 0 && unselected.length === 0 && (
-          <span style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-3)', fontStyle: 'italic' }}>
             No factions available
           </span>
         )}
@@ -141,7 +141,7 @@ export function FactionPillSelector({ selectedIds, onChange, factions }: Faction
                   color: 'var(--ink)',
                   textAlign: 'left',
                   padding: '6px 8px',
-                  fontSize: 13,
+                  fontSize: 'var(--fs-sm)',
                   cursor: 'pointer',
                   borderRadius: 'var(--radius)',
                 }}

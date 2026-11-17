@@ -236,7 +236,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
                     {dep.dependency_type === 'required' ? 'AND' : 'OR'}
                   </span>
                   <span className="md-dep-name">{ps.title}</span>
-                  <IconButton aria-label="Remove dependency" title="Remove" onClick={() => deleteSubmoduleDep(dep.id)} style={{ width: 26, height: 26, fontSize: 13 }}>✕</IconButton>
+                  <IconButton aria-label="Remove dependency" title="Remove" onClick={() => deleteSubmoduleDep(dep.id)} style={{ width: 26, height: 26, fontSize: 'var(--fs-sm)' }}>✕</IconButton>
                 </div>
               );
             })}

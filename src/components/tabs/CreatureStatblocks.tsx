@@ -48,7 +48,7 @@ function profBonus(cr: string | null): string | null {
 
 const sectionLabel = {
   color: 'var(--gold)',
-  fontSize: '0.7rem',
+  fontSize: 'var(--fs-label)',
   fontWeight: 600,
   textTransform: 'uppercase' as const,
   letterSpacing: '0.08em',
@@ -71,7 +71,7 @@ export function AbilityInput({ label, value, onChange }: {
   const mod = !isNaN(score) ? abilityModLabel(score) : null;
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
+      <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
       <input
         type="number"
         min={1}
@@ -81,7 +81,7 @@ export function AbilityInput({ label, value, onChange }: {
         placeholder="—"
         style={{ ...inputStyle, textAlign: 'center', padding: '4px 2px', width: '100%' }}
       />
-      <div style={{ fontSize: '0.65rem', color: 'var(--ink-2)', marginTop: '3px', minHeight: '1em' }}>
+      <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-2)', marginTop: '3px', minHeight: '1em' }}>
         {mod ?? ''}
       </div>
     </div>
@@ -103,7 +103,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
 
   const traitRow = (label: string, value: string | null, rollable?: 'checks') =>
     value ? (
-      <div key={label} style={{ fontSize: '0.8rem', color: 'var(--ink)', lineHeight: '1.5' }}>
+      <div key={label} style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink)', lineHeight: '1.5' }}>
         <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{label}: </span>
         {rollable ? <RollableText text={value} checks source={m.name} /> : value}
       </div>
@@ -116,24 +116,24 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
           {m.armor_class != null && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>{m.armor_class}</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--ink)' }}>{m.armor_class}</div>
+              <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 AC{m.ac_descriptor ? ` (${m.ac_descriptor})` : ''}
               </div>
             </div>
           )}
           {m.hit_points != null && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>
+              <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--ink)' }}>
                 {m.hit_points}{m.hit_dice ? ` (${m.hit_dice})` : ''}
               </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>HP</div>
+              <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>HP</div>
             </div>
           )}
           {m.speed && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>{m.speed}</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Speed</div>
+              <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--ink)' }}>{m.speed}</div>
+              <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Speed</div>
             </div>
           )}
         </div>
@@ -146,14 +146,14 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
             const score = m[key];
             return (
               <div key={key} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>
+                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>
                   {key.toUpperCase()}
                 </div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--ink)' }}>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--ink)' }}>
                   {score ?? '—'}
                 </div>
                 {score != null && (
-                  <div style={{ fontSize: '0.7rem', color: 'var(--ink-2)' }}>
+                  <div style={{ fontSize: 'var(--fs-label)', color: 'var(--ink-2)' }}>
                     <RollableText text={`${key[0].toUpperCase()}${key.slice(1)} ${abilityModLabel(score)}`} checks source={m.name} />
                   </div>
                 )}
@@ -190,7 +190,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
               color: 'var(--ink)',
               lineHeight: '1.7',
               fontFamily: 'var(--display)',
-              fontSize: '0.85rem',
+              fontSize: 'var(--fs-md)',
               backgroundColor: 'var(--bg)',
               border: '1px solid var(--rule)',
               borderRadius: 'var(--radius)',
@@ -211,7 +211,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
             text={m.dm_notes}
             style={{
               color: 'var(--ink-2)',
-              fontSize: '0.875rem',
+              fontSize: 'var(--fs-md)',
               lineHeight: '1.6',
               fontStyle: 'italic',
               margin: 0,
@@ -468,7 +468,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
           {genMode === 'cr' ? (
             <>
-              <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+              <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
                 Optionally enter a CR, or leave blank for a random difficulty.
               </p>
               <FormField label="Challenge Rating (optional)">
@@ -489,7 +489,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             </>
           ) : (
             <>
-              <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+              <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
                 Enter your party details and the DM Assistant will build a boss stat sheet scaled to challenge them.
               </p>
               <div className="grid grid-cols-2 gap-4">
@@ -547,10 +547,10 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           </FormField>
 
           {genError && (
-            <p className="text-sm" style={{ color: 'var(--red)' }}>{genError}</p>
+            <p className="text-md" style={{ color: 'var(--red)' }}>{genError}</p>
           )}
           {genLoading && (
-            <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
+            <p className="text-md" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
               Generating stat block…
             </p>
           )}

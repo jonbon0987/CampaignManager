@@ -292,9 +292,9 @@ function SourcePanel({ proposal, segments, player, onOpenTranscript }: {
         {player}
       </div>
       {proposal == null ? (
-        <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 14 }}>Pick a change to see where it came from.</p>
+        <p className="text-md" style={{ color: 'var(--ink-3)', margin: 14 }}>Pick a change to see where it came from.</p>
       ) : at == null ? (
-        <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 14 }}>This change sums up the whole session rather than one moment.</p>
+        <p className="text-md" style={{ color: 'var(--ink-3)', margin: 14 }}>This change sums up the whole session rather than one moment.</p>
       ) : (
         <ol style={{ listStyle: 'none', margin: 0, padding: '8px 12px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {context.map(s => {
@@ -302,7 +302,7 @@ function SourcePanel({ proposal, segments, player, onOpenTranscript }: {
             return (
               <li key={s.id} style={{ padding: '6px 8px', borderRadius: 'var(--radius)', border: `1px solid ${hl ? 'var(--gold-line)' : 'transparent'}`, background: hl ? 'var(--gold-dim)' : 'transparent' }}>
                 <div className="flex gap-2 items-baseline"><span className="cm-kbd" style={{ color: 'var(--ink-3)' }}>{clock(s.start_ms)}</span><span className="text-xs" style={{ color: 'var(--gold)', fontWeight: 500 }}>{who(s)}</span></div>
-                <p className="text-sm" style={{ margin: '2px 0 0', color: 'var(--ink)' }}>{s.text}</p>
+                <p className="text-md" style={{ margin: '2px 0 0', color: 'var(--ink)' }}>{s.text}</p>
               </li>
             );
           })}
@@ -472,7 +472,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
         <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Back</Button>
           <div className="cm-section-title" style={{ color: 'var(--gold)' }}>Session {session?.session_number ?? ''} · Review</div>
-          <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 30, lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
+          <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 'var(--fs-h1)', lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
           <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--ink-2)' }}>
             {settled && counts.applied
               ? `${counts.applied} change${counts.applied === 1 ? '' : 's'} applied to the campaign. Undo the write-back to send them back to review.`
@@ -498,7 +498,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
       <div style={{ flex: '1 1 auto', overflowY: 'auto' }}>
       {failures.length > 0 && (
         <div role="alert" style={{ margin: '16px 28px 0', padding: '10px 14px', borderRadius: 'var(--radius)', background: 'var(--red-bg)', border: '1px solid var(--red-line)' }}>
-          {failures.map((f, i) => <div key={i} className="text-sm" style={{ color: 'var(--ink)' }}><strong style={{ color: 'var(--red)' }}>{f.name}:</strong> {f.message}</div>)}
+          {failures.map((f, i) => <div key={i} className="text-md" style={{ color: 'var(--ink)' }}><strong style={{ color: 'var(--red)' }}>{f.name}:</strong> {f.message}</div>)}
         </div>
       )}
 

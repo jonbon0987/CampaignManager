@@ -23,10 +23,10 @@ const variantStyles: Record<ButtonVariant, { base: string; hover: string }> = {
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  xs: 'px-2 py-0.5 text-[11px]',
+  xs: 'px-2 py-0.5 text-label',
   sm: 'px-2.5 py-1 text-xs',
-  md: 'px-4 py-1.5 text-sm',
-  lg: 'px-5 py-2.5 text-[15px]',   // full-page flows: the creation gates
+  md: 'px-4 py-1.5 text-md',
+  lg: 'px-5 py-2.5 text-body',   // full-page flows: the creation gates
 };
 
 export function Button({

@@ -53,7 +53,7 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
                 style={{
                   fontFamily: 'var(--display)',
                   fontWeight: 600,
-                  fontSize: '1.05rem',
+                  fontSize: 'var(--fs-lg)',
                   color: 'var(--gold)',
                   lineHeight: '1.3',
                   marginBottom: '6px',
@@ -64,7 +64,7 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
                 <span
                   style={{
-                    fontSize: '0.7rem',
+                    fontSize: 'var(--fs-label)',
                     padding: '1px 8px',
                     borderRadius: 'var(--radius)',
                     border: `1px solid ${ts.border}`,
@@ -78,7 +78,7 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
                 {statblock.challenge_rating && (
                   <span
                     style={{
-                      fontSize: '0.7rem',
+                      fontSize: 'var(--fs-label)',
                       padding: '1px 8px',
                       borderRadius: 'var(--radius)',
                       backgroundColor: 'var(--chip-bg)',
@@ -90,14 +90,14 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
                   </span>
                 )}
                 {statblock.tags && (
-                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-3)', width: '100%' }}>{statblock.tags}</span>
+                  <span style={{ fontSize: 'var(--fs-label)', color: 'var(--ink-3)', width: '100%' }}>{statblock.tags}</span>
                 )}
               </div>
             </>
           ) : open ? (
-            <div style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>Stat sheet not found</div>
+            <div style={{ color: 'var(--accent)', fontSize: 'var(--fs-md)' }}>Stat sheet not found</div>
           ) : (
-            <div style={{ color: 'var(--ink-3)', fontSize: '0.9rem' }}>Stat Block</div>
+            <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-md)' }}>Stat Block</div>
           )}
         </div>
         <IconButton className="shrink-0" onClick={closeStatBlock} title="Close" aria-label="Close stat block">
@@ -120,13 +120,13 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
           <>
             <StatBlockBody m={statblock} />
             {isStatBlockEmpty(statblock) && (
-              <p style={{ color: 'var(--ink-3)', fontSize: '0.875rem', fontStyle: 'italic' }}>
+              <p style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-md)', fontStyle: 'italic' }}>
                 No content for this stat sheet yet.
               </p>
             )}
           </>
         ) : open ? (
-          <p style={{ color: 'var(--accent)', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: 'var(--fs-md)' }}>
             This stat sheet no longer exists. It may have been deleted.
           </p>
         ) : null}
@@ -138,7 +138,7 @@ export default function StatBlockPanel({ statblocks: monsterStatblocks }: { stat
           style={{
             padding: '10px 20px',
             borderTop: '1px solid var(--rule-soft)',
-            fontSize: '0.7rem',
+            fontSize: 'var(--fs-label)',
             color: 'var(--ink-3)',
           }}
         >

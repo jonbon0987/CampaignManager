@@ -734,7 +734,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
           {genMode === 'cr' ? (
             <>
-              <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+              <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
                 Optionally enter a CR, or leave blank for a random difficulty.
               </p>
               <FormField label="Challenge Rating (optional)">
@@ -747,7 +747,7 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
             </>
           ) : (
             <>
-              <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+              <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
                 Enter party details and the AI will build a boss scaled to challenge them.
               </p>
               <div className="grid grid-cols-2 gap-4">
@@ -784,8 +784,8 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               style={textareaStyle} disabled={genLoading} />
           </FormField>
 
-          {genError && <p className="text-sm" style={{ color: 'var(--red)' }}>{genError}</p>}
-          {genLoading && <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>Generating stat block…</p>}
+          {genError && <p className="text-md" style={{ color: 'var(--red)' }}>{genError}</p>}
+          {genLoading && <p className="text-md" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>Generating stat block…</p>}
         </div>
       </Modal>
 

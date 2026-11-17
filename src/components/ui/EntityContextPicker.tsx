@@ -72,7 +72,7 @@ export function EntityContextPicker({
 
   return (
     <div ref={rootRef}>
-      <div style={{ color: 'var(--gold)', fontSize: '0.7rem', fontWeight: 600, marginBottom: '6px' }}>
+      <div style={{ color: 'var(--gold)', fontSize: 'var(--fs-label)', fontWeight: 600, marginBottom: '6px' }}>
         {label} {selected.length > 0 && `(${selected.length})`}
       </div>
 
@@ -118,7 +118,7 @@ export function EntityContextPicker({
         onKeyDown={e => { if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false); } }}
         disabled={disabled}
         placeholder="Search NPCs, locations, lore… to add context"
-        className="w-full text-sm rounded px-2.5 py-1.5"
+        className="w-full text-md rounded px-2.5 py-1.5"
         style={{
           backgroundColor: 'var(--paper)',
           color: 'var(--ink-1)',
@@ -149,7 +149,7 @@ export function EntityContextPicker({
                     key={`${e.kind}:${e.id}`}
                     type="button"
                     onClick={() => add({ kind: e.kind, id: e.id })}
-                    className="w-full flex items-center gap-2 text-left text-sm px-2.5 py-1.5 transition-colors"
+                    className="w-full flex items-center gap-2 text-left text-md px-2.5 py-1.5 transition-colors"
                     style={{ color: 'var(--ink-2)' }}
                     onMouseEnter={ev => (ev.currentTarget.style.backgroundColor = 'var(--gold-dim)')}
                     onMouseLeave={ev => (ev.currentTarget.style.backgroundColor = 'transparent')}

@@ -117,9 +117,9 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
   return (
     <Modal isOpen onClose={onClose} title="Transcript" size="wide" footer={<Button variant="secondary" onClick={onClose}>Close</Button>}>
       {segments === null ? (
-        <p className="text-sm" style={{ color: 'var(--ink-3)' }}>Loading transcript…</p>
+        <p className="text-md" style={{ color: 'var(--ink-3)' }}>Loading transcript…</p>
       ) : visible.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--ink-3)' }}>No speech was found in this recording.</p>
+        <p className="text-md" style={{ color: 'var(--ink-3)' }}>No speech was found in this recording.</p>
       ) : (
         <div className="flex flex-col gap-5">
           {voices.length > 0 && (
@@ -132,7 +132,7 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
                 {voices.map(v => (
                   <li key={v.key} className="flex items-center gap-3 flex-wrap" style={{ padding: '8px 0', borderBottom: '1px solid var(--rule-soft)' }}>
                     <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-                      <div className="text-sm" style={{ color: 'var(--ink)', fontWeight: 500 }}>
+                      <div className="text-md" style={{ color: 'var(--ink)', fontWeight: 500 }}>
                         {v.label} <span className="text-xs" style={{ color: 'var(--ink-3)', fontWeight: 400 }}>· {v.trackLabel} · {v.lines} lines</span>
                       </div>
                       <div className="text-xs" style={{ color: 'var(--ink-3)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>“{v.sample}”</div>

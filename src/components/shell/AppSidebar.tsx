@@ -192,7 +192,7 @@ export default function AppSidebar({
             <button
               // eslint-disable-next-line no-restricted-syntax -- run-mode toggle with its own on-state styling
               className={`cm-run-btn ${runMode ? 'is-on' : ''}`} aria-pressed={runMode} onClick={onToggleRun} title={runMode ? 'End the session' : 'Start the session'}>
-              <span style={{ fontSize: '14px' }} aria-hidden="true">{runMode ? '■' : '▶'}</span>
+              <span style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">{runMode ? '■' : '▶'}</span>
               <span>{runMode ? 'End session' : 'Start session'}</span>
             </button>
           )}

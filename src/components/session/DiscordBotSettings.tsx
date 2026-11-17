@@ -57,18 +57,18 @@ export function DiscordBotSettings() {
       <div className="flex items-center gap-2 flex-wrap">
         <Badge color={color}>{label}</Badge>
         {bot.presence?.bot_tag && (
-          <span className="text-sm" style={{ color: 'var(--ink-2)' }}>
+          <span className="text-md" style={{ color: 'var(--ink-2)' }}>
             {bot.presence.bot_tag} · {servers.length ? servers.map(g => g.name).join(', ') : 'not in any server yet'}
           </span>
         )}
       </div>
-      <p className="text-sm" style={{ margin: 0, color: 'var(--ink-2)' }}>
+      <p className="text-md" style={{ margin: 0, color: 'var(--ink-2)' }}>
         For players who join over Discord. The bot sits in your voice channel while you record and keeps each person on their own track, so their lines are matched to the right character.
         It runs in the background on this computer; sign it in here when you play.
       </p>
 
       {bot.running && bot.presence?.detail && (
-        <p className="text-sm" role="status" style={{ margin: 0, color: bot.status === 'error' ? 'var(--warn)' : 'var(--ink)' }}>{bot.presence.detail}</p>
+        <p className="text-md" role="status" style={{ margin: 0, color: bot.status === 'error' ? 'var(--warn)' : 'var(--ink)' }}>{bot.presence.detail}</p>
       )}
 
       {bot.running && (
@@ -89,12 +89,12 @@ export function DiscordBotSettings() {
               <span className="dbot-label">Voice</span>
               {seat ? (
                 <>
-                  <span className="text-sm" style={{ color: 'var(--ink)' }}>In {seatLabel}</span>
+                  <span className="text-md" style={{ color: 'var(--ink)' }}>In {seatLabel}</span>
                   <Button size="sm" variant="secondary" onClick={() => { setPick(''); ask({ voice: null }); }}>Leave</Button>
                 </>
               ) : wanted ? (
                 <>
-                  <span className="text-sm" style={{ color: 'var(--ink-2)' }}>Joining #{wanted.channelName}…</span>
+                  <span className="text-md" style={{ color: 'var(--ink-2)' }}>Joining #{wanted.channelName}…</span>
                   <Button size="sm" variant="secondary" onClick={() => ask({ voice: null })}>Cancel</Button>
                 </>
               ) : (
@@ -122,7 +122,7 @@ export function DiscordBotSettings() {
 
       {bot.loaded && !bot.running && (
         <div className="flex flex-col gap-2">
-          <p className="text-sm" style={{ margin: 0, color: 'var(--ink)' }}>
+          <p className="text-md" style={{ margin: 0, color: 'var(--ink)' }}>
             The bot isn’t running on this computer. Set it up once and it starts whenever you log in, ready for you to sign it in here:
           </p>
           <div className="flex items-center gap-2">
@@ -135,10 +135,10 @@ export function DiscordBotSettings() {
       {bot.loaded && !bot.running && (
         // A one-off for whoever runs the app's code, so it stays folded.
         <details className="set-dev">
-          <summary className="text-sm" style={{ cursor: 'pointer', color: 'var(--ink-2)' }}>
+          <summary className="text-md" style={{ cursor: 'pointer', color: 'var(--ink-2)' }}>
             Developer setup: the first time on this computer
           </summary>
-        <ol className="text-sm flex flex-col gap-2" style={{ margin: '10px 0 0', paddingLeft: 20, color: 'var(--ink)', listStyle: 'decimal' }}>
+        <ol className="text-md flex flex-col gap-2" style={{ margin: '10px 0 0', paddingLeft: 20, color: 'var(--ink)', listStyle: 'decimal' }}>
           <li>Create a bot at the Discord Developer Portal (New Application → Bot), copy its token, and invite it to your server with View Channels, Connect and Send Messages.</li>
           <li>Copy your service role key from Supabase (Project Settings → API keys).</li>
           <li>
