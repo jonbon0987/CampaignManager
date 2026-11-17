@@ -56,7 +56,7 @@ const ALLOWED: Record<string, Set<string>> = Object.fromEntries(
 const NPC_STATUS = new Set(['active', 'deceased', 'unknown']);
 const MODULE_STATUS = new Set(['planned', 'active', 'completed']);
 const RELATIONSHIP_TYPE = new Set(['ally', 'rival', 'foe', 'neutral']);
-// Timeline event_type keys the world timeline renders (TIMELINE_TYPE_CONFIG).
+// Timeline event_type keys the world timeline renders (timelineTypeConfig in lib/theme).
 // 'campaign' is excluded — the world assistant seeds setting history, not
 // campaign-specific markers — so those coerce down to 'custom'.
 const TIMELINE_TYPE = new Set(['cataclysm', 'founding', 'treaty', 'war', 'political', 'magical', 'custom']);
