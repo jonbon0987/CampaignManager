@@ -36,7 +36,7 @@ describe('Modal', () => {
   it('closes from its buttons and Escape', () => {
     const { onClose } = show();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    fireEvent.click(screen.getByRole('button', { name: '×' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(3);
   });

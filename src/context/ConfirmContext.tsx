@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { Button } from '../components/ui/Button';
 
 interface ConfirmOptions {
   title?: string;
@@ -62,7 +63,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       {state && (
         <>
           <div
+            // eslint-disable-next-line no-restricted-syntax -- backdrop; Cancel and Escape do the same
             onClick={() => handleClose(false)}
+            aria-hidden="true"
             style={{
               position: 'fixed',
               inset: 0,
@@ -110,38 +113,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               {state.message}
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => handleClose(false)}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--rule)',
-                  borderRadius: 'var(--radius)',
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  color: 'var(--ink-2)',
-                  cursor: 'pointer',
-                  fontFamily: 'var(--serif)',
-                }}
-              >
+              <Button variant="secondary" onClick={() => handleClose(false)}>
                 {state.cancelLabel ?? 'Cancel'}
-              </button>
-              <button
-                onClick={() => handleClose(true)}
-                autoFocus
-                style={{
-                  border: 'none',
-                  borderRadius: 'var(--radius)',
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'var(--serif)',
-                  backgroundColor: state.danger !== false ? 'var(--red)' : 'var(--gold)',
-                  color: 'var(--bg)',
-                }}
-              >
+              </Button>
+              <Button variant={state.danger !== false ? 'danger' : 'primary'} onClick={() => handleClose(true)} autoFocus>
                 {state.confirmLabel ?? 'Confirm'}
-              </button>
+              </Button>
             </div>
           </div>
         </>

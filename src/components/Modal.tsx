@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 
 type ModalSize = 'default' | 'wide' | 'xl';
 
@@ -66,12 +67,9 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
           <h2 className="text-xl font-bold" style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}>
             {title}
           </h2>
-          <button
-            onClick={handleClose}
-            className="text-2xl leading-none w-8 h-8 flex items-center justify-center rounded transition-colors text-muted hover:text-parchment"
-          >
+          <IconButton onClick={handleClose} aria-label="Close dialog" title="Close" style={{ fontSize: 22 }}>
             ×
-          </button>
+          </IconButton>
         </div>
         <div className="p-4 overflow-y-auto flex-1">
           {children}
