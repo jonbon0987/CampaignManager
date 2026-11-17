@@ -69,7 +69,7 @@ export function GenerateItemModal({ isOpen, onClose, onCreated }: {
   return (
     <Modal isOpen={isOpen} onClose={close} title="Generate an item" onSave={loading ? undefined : () => void generate()} saveLabel="Generate">
       <div className="space-y-4">
-        <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+        <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
           The assistant makes up an item with its rules text and DM notes, and adds it to your items. Leave anything on “Any” to let it choose.
         </p>
         <div className="grid grid-cols-2 gap-4">
@@ -107,8 +107,8 @@ export function GenerateItemModal({ isOpen, onClose, onCreated }: {
           </p>
         </div>
 
-        {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
-        {loading && <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>Making the item…</p>}
+        {error && <p className="text-md" style={{ color: 'var(--red)' }}>{error}</p>}
+        {loading && <p className="text-md" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>Making the item…</p>}
       </div>
     </Modal>
   );

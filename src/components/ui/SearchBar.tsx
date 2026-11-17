@@ -14,7 +14,7 @@ export function SearchBar({ value, onChange, placeholder = 'Search…' }: Search
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-1.5 rounded text-sm outline-none pr-8"
+        className="w-full px-3 py-1.5 rounded text-md outline-none pr-8"
         style={{
           backgroundColor: 'var(--paper)',
           color: 'var(--ink)',

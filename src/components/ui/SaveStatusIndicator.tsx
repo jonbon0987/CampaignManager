@@ -41,7 +41,7 @@ export function SaveStatusIndicator({ status, onRetry }: SaveStatusIndicatorProp
         alignItems: 'center',
         gap: 6,
         color,
-        fontSize: 12,
+        fontSize: 'var(--fs-xs)',
         fontFamily: 'var(--serif)',
       }}
     >
@@ -56,7 +56,7 @@ export function SaveStatusIndicator({ status, onRetry }: SaveStatusIndicatorProp
             border: 'none',
             color: 'var(--info)',
             cursor: 'pointer',
-            fontSize: 12,
+            fontSize: 'var(--fs-xs)',
             textDecoration: 'underline',
             padding: 0,
             fontFamily: 'inherit',

@@ -306,7 +306,7 @@ Every name in "combatants" MUST exactly match either a library creature (when al
       wide
     >
       <div className="space-y-4">
-        <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+        <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
           The DM Assistant will design a full encounter — scene, tactics, and a
           balanced roster of creatures — scaled to your party.
         </p>
@@ -331,12 +331,12 @@ Every name in "combatants" MUST exactly match either a library creature (when al
 
         {/* Difficulty pills */}
         <div>
-          <div style={{ color: 'var(--gold)', fontSize: '0.7rem', fontWeight: 600, marginBottom: '6px' }}>Difficulty</div>
+          <div style={{ color: 'var(--gold)', fontSize: 'var(--fs-label)', fontWeight: 600, marginBottom: '6px' }}>Difficulty</div>
           <div className="flex rounded overflow-hidden" style={{ border: '1px solid var(--rule)' }}>
             {DIFFICULTIES.map(d => (
               <button
                 key={d} onClick={() => setDifficulty(d)} disabled={loading}
-                className="flex-1 text-sm py-1.5 font-medium capitalize transition-colors"
+                className="flex-1 text-md py-1.5 font-medium capitalize transition-colors"
                 style={{
                   backgroundColor: difficulty === d ? 'var(--gold-dim)' : 'var(--paper)',
                   color: difficulty === d ? 'var(--gold)' : 'var(--ink-2)',
@@ -350,7 +350,7 @@ Every name in "combatants" MUST exactly match either a library creature (when al
 
         {/* Creature source */}
         <div>
-          <div style={{ color: 'var(--gold)', fontSize: '0.7rem', fontWeight: 600, marginBottom: '6px' }}>Creatures</div>
+          <div style={{ color: 'var(--gold)', fontSize: 'var(--fs-label)', fontWeight: 600, marginBottom: '6px' }}>Creatures</div>
           <div className="flex rounded overflow-hidden" style={{ border: '1px solid var(--rule)' }}>
             {sourceOptions.map(opt => {
               const disabled = loading || (!hasLibrary && opt.value !== 'new');
@@ -360,7 +360,7 @@ Every name in "combatants" MUST exactly match either a library creature (when al
                   key={opt.value}
                   onClick={() => setSource(opt.value)}
                   disabled={disabled}
-                  className="flex-1 text-sm py-1.5 font-medium transition-colors"
+                  className="flex-1 text-md py-1.5 font-medium transition-colors"
                   style={{
                     backgroundColor: active ? 'var(--gold-dim)' : 'var(--paper)',
                     color: active ? 'var(--gold)' : 'var(--ink-2)',
@@ -412,9 +412,9 @@ Every name in "combatants" MUST exactly match either a library creature (when al
           />
         </FormField>
 
-        {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
+        {error && <p className="text-md" style={{ color: 'var(--red)' }}>{error}</p>}
         {loading && (
-          <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
+          <p className="text-md" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
             {progress || 'Generating…'}
           </p>
         )}

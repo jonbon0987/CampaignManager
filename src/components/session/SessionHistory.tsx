@@ -49,12 +49,12 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
   // The chronicle is part of the session's Recap.
   const openChronicle = (sessionId: string) => openRecord('sessions', sessionId);
 
-  if (entries === null) return <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Loading…</p>;
+  if (entries === null) return <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>Loading…</p>;
 
   return (
     <div className="flex flex-col gap-2">
       {rows.length === 0 && (
-        <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>
+        <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>
           Nothing yet. When you record a session and apply its chronicle, what happened here is added session by session.
         </p>
       )}
@@ -89,7 +89,7 @@ export function SessionHistory({ entityType, entityId }: { entityType: SessionEn
                   )}
                 </div>
                 <div className="ra-body" style={{ padding: '12px 16px', minHeight: 0, cursor: 'default' }}>
-                  <p className="ra-text" style={{ fontSize: 16 }}>“{e.source_quote}”</p>
+                  <p className="ra-text" style={{ fontSize: 'var(--fs-body)' }}>“{e.source_quote}”</p>
                 </div>
               </div>
             )}

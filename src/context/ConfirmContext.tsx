@@ -107,7 +107,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 id={titleId}
                 style={{
                   margin: '0 0 8px',
-                  fontSize: '16px',
+                  fontSize: 'var(--fs-body)',
                   fontWeight: 700,
                   color: state.danger ? 'var(--red)' : 'var(--gold)',
                   fontFamily: 'var(--serif)',
@@ -120,7 +120,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               id={messageId}
               style={{
                 margin: '0 0 20px',
-                fontSize: '14px',
+                fontSize: 'var(--fs-md)',
                 lineHeight: '1.5',
                 color: 'var(--ink)',
               }}

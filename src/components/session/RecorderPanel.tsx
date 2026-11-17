@@ -211,7 +211,7 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
         <div>
           <SectionLabel label="Players at the table" />
           {activePcs.length === 0 ? (
-            <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>No active player characters in this campaign yet.</p>
+            <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>No active player characters in this campaign yet.</p>
           ) : (
             <ul className="flex flex-col" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {activePcs.map(pc => {
@@ -245,7 +245,7 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
         <div>
           <SectionLabel label="Players on Discord" />
           {!bot.loaded ? (
-            <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Checking for the Discord bot…</p>
+            <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>Checking for the Discord bot…</p>
           ) : !bot.online ? (
             <BotNotReady bot={bot} purpose="Sign it in to record players on Discord." />
           ) : (
@@ -284,7 +284,7 @@ function MomentRow({ moment, onRename, onDelete }: { moment: RecordingMoment; on
       <span className="cm-kbd" style={{ color: 'var(--gold)', minWidth: 56 }}>{formatClock(moment.at_ms)}</span>
       <input
         className="as-input"
-        style={{ flex: 1, padding: '3px 8px', fontSize: 13 }}
+        style={{ flex: 1, padding: '3px 8px', fontSize: 'var(--fs-sm)' }}
         value={label}
         placeholder="What happened? (optional)"
         aria-label={`Label for moment at ${formatClock(moment.at_ms)}`}
@@ -342,7 +342,7 @@ function LiveRecorder() {
         <div className="flex items-center gap-3">
           <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: '50%', background: paused ? 'var(--ink-3)' : 'var(--red)', boxShadow: paused ? 'none' : '0 0 0 4px var(--red-dim)' }} />
           <Badge color={paused ? 'muted' : 'red'}>{paused ? 'Paused' : 'Recording'}</Badge>
-          <Elapsed startedAt={recording.started_at} style={{ fontFamily: 'var(--mono)', fontSize: 26, fontWeight: 500, color: 'var(--ink)', letterSpacing: '0.04em' }} />
+          <Elapsed startedAt={recording.started_at} style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-h2)', fontWeight: 500, color: 'var(--ink)', letterSpacing: '0.04em' }} />
         </div>
         <Waveform getLevel={getLevel} paused={paused} />
         <div className="flex items-center gap-2 flex-wrap">
@@ -395,7 +395,7 @@ function LiveRecorder() {
               <div style={{ marginTop: 8 }}>
                 {channel
                   ? <DiscordMembers members={channel.members} consents={consents} />
-                  : <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>The bot can’t see this channel right now.</p>}
+                  : <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>The bot can’t see this channel right now.</p>}
               </div>
             </details>
           </div>
@@ -623,7 +623,7 @@ export function RecorderPanel({ session }: { session: Session }) {
 
         {interruptedHere.map(r => (
           <div key={r.id} role="status" style={{ background: 'var(--warn-bg)', border: '1px solid var(--warn-line)', borderRadius: 'var(--radius-lg)', padding: '12px 14px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <span className="text-sm" style={{ flex: '1 1 260px', color: 'var(--ink)' }}>
+            <span className="text-md" style={{ flex: '1 1 260px', color: 'var(--ink)' }}>
               {r.status === 'uploading'
                 ? 'This recording ended but didn’t finish saving.'
                 : `A recording started ${new Date(r.started_at).toLocaleTimeString(undefined, { timeStyle: 'short' })} was interrupted. Audio up to the interruption is kept.`}

@@ -96,7 +96,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
     display: 'block', width: '100%', textAlign: 'left', padding: '8px 11px',
     borderRadius: 'var(--radius)', border: '1px solid ' + (selected ? 'var(--gold)' : 'var(--rule)'),
     background: selected ? 'color-mix(in srgb, var(--gold) 12%, transparent)' : 'var(--paper-2)',
-    color: 'var(--ink)', fontSize: 13, cursor: 'pointer', marginBottom: 6,
+    color: 'var(--ink)', fontSize: 'var(--fs-sm)', cursor: 'pointer', marginBottom: 6,
   });
 
   return (
@@ -106,7 +106,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
       title="Promote thread"
       footer={
         <div className="flex justify-between items-center">
-          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>The thread stays in place.</span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-3)' }}>The thread stays in place.</span>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
             <Button variant="primary" onClick={promote} disabled={!canPromote || busy}>
@@ -116,7 +116,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
         </div>
       }
     >
-      <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 4 }}>
+      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-2)', marginBottom: 4 }}>
         Turn <b style={{ color: 'var(--ink)' }}>{title}</b> into structured adventure content.
       </div>
 
@@ -125,7 +125,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
       <SegmentedControl look="tray" size="md" fill aria-labelledby="promote-to-label" value={target}
         options={TARGETS.map(t => ({ value: t.id, label: <><span style={{ marginRight: 5 }} aria-hidden="true">{t.glyph}</span>{t.label}</> }))}
         onChange={t => { setTarget(t); setErr(''); }} />
-      <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 6 }}>
+      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-3)', marginTop: 6 }}>
         {TARGETS.find(t => t.id === target)!.blurb}
       </div>
 
@@ -134,7 +134,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
         <div style={{ marginTop: 16 }}>
           <label className="as-ll" style={{ display: 'block', marginBottom: 8 }}>Add under which module?</label>
           {modules.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-3)', fontStyle: 'italic' }}>
               No modules yet — promote to a Module first, or create one in the Modules tab.
             </div>
           ) : (
@@ -153,9 +153,9 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
         <div style={{ marginTop: 16 }}>
           <label className="as-ll" style={{ display: 'block', marginBottom: 8 }}>Add under which part?</label>
           {loadingTree ? (
-            <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>Loading modules…</div>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-3)' }}>Loading modules…</div>
           ) : modules.length === 0 || !hasAnySubmodule ? (
-            <div style={{ fontSize: 13, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-3)', fontStyle: 'italic' }}>
               No submodules yet — promote to a Submodule first, then come back to add a scene under it.
             </div>
           ) : (
@@ -164,7 +164,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
               if (subs.length === 0) return null;
               return (
                 <div key={m.id} style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--ink-3)', margin: '0 0 6px 2px', fontFamily: 'var(--mono)' }}>
+                  <div style={{ fontSize: 'var(--fs-label)', textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--ink-3)', margin: '0 0 6px 2px', fontFamily: 'var(--mono)' }}>
                     {moduleLabel(m)}
                   </div>
                   <div style={{ paddingLeft: 12, borderLeft: '1px solid var(--rule)' }}>
@@ -183,7 +183,7 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
         </div>
       )}
 
-      {err && <div className="fwg-error" style={{ marginTop: 12, color: 'var(--red)', fontSize: 13 }}>{err}</div>}
+      {err && <div className="fwg-error" style={{ marginTop: 12, color: 'var(--red)', fontSize: 'var(--fs-sm)' }}>{err}</div>}
     </Modal>
   );
 }

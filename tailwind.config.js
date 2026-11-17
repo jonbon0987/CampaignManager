@@ -41,6 +41,22 @@ export default {
         display: ['"EB Garamond"', 'Georgia', 'Cambria', 'serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
+      // The type scale from src/index.css :root (--fs-*). Names match the tokens,
+      // so text-sm is 13px here (Tailwind's own text-sm was 14px: use text-md).
+      // Line heights keep what Tailwind's defaults set for the sizes they replaced.
+      fontSize: {
+        micro:   ['var(--fs-micro)',   { lineHeight: '0.875rem' }],
+        label:   ['var(--fs-label)',   { lineHeight: '1rem' }],
+        xs:      ['var(--fs-xs)',      { lineHeight: '1rem' }],
+        sm:      ['var(--fs-sm)',      { lineHeight: '1.25rem' }],
+        md:      ['var(--fs-md)',      { lineHeight: '1.25rem' }],
+        body:    ['var(--fs-body)',    { lineHeight: '1.5rem' }],
+        lg:      ['var(--fs-lg)',      { lineHeight: '1.75rem' }],
+        h3:      ['var(--fs-h3)',      { lineHeight: '1.75rem' }],
+        h2:      ['var(--fs-h2)',      { lineHeight: '2rem' }],
+        h1:      ['var(--fs-h1)',      { lineHeight: '2.5rem' }],
+        display: ['var(--fs-display)', { lineHeight: '1' }],
+      },
       // One control radius from the token scale; rounded-full stays a pill.
       borderRadius: {
         sm:        'var(--radius)',

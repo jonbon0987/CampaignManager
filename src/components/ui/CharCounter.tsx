@@ -28,7 +28,7 @@ export function CharCounter({ value, limit, className }: CharCounterProps) {
       aria-live="polite"
       style={{
         textAlign: 'right',
-        fontSize: '11px',
+        fontSize: 'var(--fs-label)',
         fontFamily: 'var(--serif)',
         marginTop: '2px',
         color: over ? 'var(--red)' : 'var(--ink-3)',

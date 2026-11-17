@@ -113,7 +113,7 @@ export function SearchableSelect({
           border: '1px solid var(--rule)',
           borderRadius: 'var(--radius)',
           fontFamily: 'var(--serif)',
-          fontSize: 14,
+          fontSize: 'var(--fs-md)',
           padding: '8px 10px',
           cursor: 'pointer',
           textAlign: 'left',
@@ -171,7 +171,7 @@ export function SearchableSelect({
                   border: 'none',
                   outline: 'none',
                   fontFamily: 'var(--serif)',
-                  fontSize: 13,
+                  fontSize: 'var(--fs-sm)',
                   padding: '4px 0',
                 }}
               />
@@ -197,7 +197,7 @@ export function SearchableSelect({
                   fontStyle: 'italic',
                   textAlign: 'left',
                   padding: '6px 8px',
-                  fontSize: 13,
+                  fontSize: 'var(--fs-sm)',
                   cursor: 'pointer',
                   borderRadius: 'var(--radius)',
                   fontFamily: 'var(--serif)',
@@ -209,7 +209,7 @@ export function SearchableSelect({
               </button>
             )}
             {filtered.length === 0 && (
-              <div style={{ padding: '8px', color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
+              <div style={{ padding: '8px', color: 'var(--ink-3)', fontSize: 'var(--fs-sm)', textAlign: 'center' }}>
                 No matches
               </div>
             )}
@@ -230,7 +230,7 @@ export function SearchableSelect({
                     color: opt.id === value ? 'var(--gold)' : 'var(--ink)',
                     textAlign: 'left',
                     padding: '6px 8px',
-                    fontSize: 13,
+                    fontSize: 'var(--fs-sm)',
                     cursor: 'pointer',
                     borderRadius: 'var(--radius)',
                     fontFamily: 'var(--serif)',
@@ -240,7 +240,7 @@ export function SearchableSelect({
                 >
                   <div>{opt.label}</div>
                   {opt.detail && (
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{opt.detail}</div>
+                    <div style={{ fontSize: 'var(--fs-label)', color: 'var(--ink-3)', marginTop: 2 }}>{opt.detail}</div>
                   )}
                 </button>
               );

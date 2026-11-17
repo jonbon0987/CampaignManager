@@ -194,7 +194,7 @@ function RandomTableGenModal({
       wide
     >
       <div className="space-y-4">
-        <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+        <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
           The DM Assistant will author a full weighted table you can roll on immediately.
         </p>
 
@@ -245,9 +245,9 @@ function RandomTableGenModal({
             style={textareaStyle} disabled={loading} />
         </FormField>
 
-        {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
+        {error && <p className="text-md" style={{ color: 'var(--red)' }}>{error}</p>}
         {loading && (
-          <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
+          <p className="text-md" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
             Authoring the table…
           </p>
         )}

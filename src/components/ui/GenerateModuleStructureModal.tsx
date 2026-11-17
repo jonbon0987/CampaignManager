@@ -185,7 +185,7 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
       size="wide"
       footer={
         <div className="flex justify-between items-center">
-          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-3)' }}>
             {draft
               ? `${keptCount} of ${draft.length} part${draft.length === 1 ? '' : 's'} · ${countScenes(draft.filter((_, i) => keep[i]))} scenes`
               : `Appends below ${existing.length} existing part${existing.length === 1 ? '' : 's'}.`}
@@ -214,7 +214,7 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
         ? <DraftReview draft={draft} keep={keep} onToggle={i => setKeep(k => k.map((v, j) => j === i ? !v : v))} error={error} />
         : (
           <div className="space-y-4">
-            <p className="text-sm" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
+            <p className="text-md" style={{ color: 'var(--ink-2)', lineHeight: '1.6' }}>
               The DM Assistant will read <b style={{ color: 'var(--ink)' }}>{mod.title || 'this module'}</b>
               {mod.synopsis?.trim() ? '’s synopsis' : ''} and break it into the sections you'd actually run — each with its own scenes. You review the outline before anything is added.
             </p>
@@ -259,9 +259,9 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
                 style={textareaStyle} disabled={busy} />
             </FormField>
 
-            {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
+            {error && <p className="text-md" style={{ color: 'var(--red)' }}>{error}</p>}
             {loading && (
-              <p className="text-sm" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
+              <p className="text-md" style={{ color: 'var(--ink-2)', fontStyle: 'italic' }}>
                 Breaking the module down…
               </p>
             )}
@@ -281,7 +281,7 @@ function DraftReview({ draft, keep, onToggle, error }: {
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm" style={{ color: 'var(--ink-2)' }}>
+      <p className="text-md" style={{ color: 'var(--ink-2)' }}>
         Uncheck anything you don't want. Everything you keep is added to the module, where you can edit it inline.
       </p>
 
@@ -311,7 +311,7 @@ function DraftReview({ draft, keep, onToggle, error }: {
                   )}
                 </div>
                 {sub.summary && (
-                  <div className="text-sm mt-1" style={{ color: 'var(--ink-2)' }}>{sub.summary}</div>
+                  <div className="text-md mt-1" style={{ color: 'var(--ink-2)' }}>{sub.summary}</div>
                 )}
                 {sub.scenes.length > 0 && (
                   <div className="mt-2" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -333,7 +333,7 @@ function DraftReview({ draft, keep, onToggle, error }: {
         );
       })}
 
-      {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
+      {error && <p className="text-md" style={{ color: 'var(--red)' }}>{error}</p>}
     </div>
   );
 }

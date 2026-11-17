@@ -81,7 +81,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 pointerEvents: 'auto',
                 padding: '10px 16px',
                 borderRadius: 'var(--radius)',
-                fontSize: '13px',
+                fontSize: 'var(--fs-sm)',
                 fontFamily: 'var(--serif)',
                 cursor: 'pointer',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
@@ -100,7 +100,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               )}
               <IconButton aria-label="Dismiss" title="Dismiss"
                 onClick={e => { e.stopPropagation(); dismiss(t.id); }}
-                style={{ width: 22, height: 22, fontSize: 12, marginLeft: 10, marginRight: -6, color: 'inherit' }}>
+                style={{ width: 22, height: 22, fontSize: 'var(--fs-xs)', marginLeft: 10, marginRight: -6, color: 'inherit' }}>
                 ✕
               </IconButton>
             </div>

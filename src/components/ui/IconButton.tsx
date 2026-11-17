@@ -20,7 +20,7 @@ export function IconButton({ children, active = false, className = '', style, ..
         disabled:opacity-50 disabled:cursor-not-allowed
         ${className}
       `.trim().replace(/\s+/g, ' ')}
-      style={{ width: 30, height: 30, fontFamily: 'var(--serif)', fontSize: 16, lineHeight: 1, ...style }}
+      style={{ width: 30, height: 30, fontFamily: 'var(--serif)', fontSize: 'var(--fs-body)', lineHeight: 1, ...style }}
     >
       {children}
     </button>

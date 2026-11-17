@@ -73,7 +73,7 @@ export function ChronicleModal({ recording, rewrite, onClose, onOpenTranscript, 
       }
     >
       <div className="flex flex-col gap-5">
-        <p className="text-sm" style={{ color: 'var(--ink-2)', margin: 0 }}>
+        <p className="text-md" style={{ color: 'var(--ink-2)', margin: 0 }}>
           The transcript is read for a recap, what each character did, the NPCs you met, places, lore, threads and loot.
           Each becomes a proposed change you can edit, accept or skip. Nothing in the campaign changes until you apply.
         </p>
@@ -98,18 +98,18 @@ export function ChronicleModal({ recording, rewrite, onClose, onOpenTranscript, 
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ink)' }}>
+          <label className="flex items-center gap-2 text-md" style={{ color: 'var(--ink)' }}>
             <input type="checkbox" checked={settings.dropTableTalk} onChange={e => setSettings(s => ({ ...s, dropTableTalk: e.target.checked }))} />
             Leave out table talk that isn’t in character (rules lookups, snacks, scheduling)
           </label>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ink)' }}>
+          <label className="flex items-center gap-2 text-md" style={{ color: 'var(--ink)' }}>
             <input type="checkbox" checked={settings.asidesToDmNotes} onChange={e => setSettings(s => ({ ...s, asidesToDmNotes: e.target.checked }))} />
             Put anything I said as an aside in DM notes only
           </label>
         </div>
 
         {unassigned !== null && unassigned > 0 && (
-          <div role="status" className="text-sm flex items-center gap-3 flex-wrap" style={{ background: 'var(--warn-bg)', border: '1px solid var(--warn-line)', borderRadius: 'var(--radius)', padding: '10px 12px', color: 'var(--ink)' }}>
+          <div role="status" className="text-md flex items-center gap-3 flex-wrap" style={{ background: 'var(--warn-bg)', border: '1px solid var(--warn-line)', borderRadius: 'var(--radius)', padding: '10px 12px', color: 'var(--ink)' }}>
             <span style={{ flex: '1 1 240px' }}>
               {unassigned} voice{unassigned === 1 ? ' hasn’t' : 's haven’t'} been matched to a player. The chronicle will guess from context, but it’s more accurate if you say who’s who.
             </span>
@@ -123,7 +123,7 @@ export function ChronicleModal({ recording, rewrite, onClose, onOpenTranscript, 
           </p>
         )}
 
-        {error && <p role="alert" className="text-sm" style={{ color: 'var(--red)', margin: 0 }}>{error}</p>}
+        {error && <p role="alert" className="text-md" style={{ color: 'var(--red)', margin: 0 }}>{error}</p>}
       </div>
     </Modal>
   );

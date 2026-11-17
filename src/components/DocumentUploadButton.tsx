@@ -85,7 +85,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
           >
             <div
               style={{
-                fontSize: '11px',
+                fontSize: 'var(--fs-label)',
                 color: 'var(--gold)',
                 fontWeight: 700,
                 textTransform: 'uppercase',
@@ -110,7 +110,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
             <div
               style={{
                 margin: '12px 0 8px',
-                fontSize: '10px',
+                fontSize: 'var(--fs-micro)',
                 color: 'var(--ink-3)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -143,7 +143,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
                 border: '1px solid var(--rule)',
                 borderRadius: 'var(--radius)',
                 padding: '8px 10px',
-                fontSize: '12px',
+                fontSize: 'var(--fs-xs)',
                 fontFamily: 'inherit',
                 outline: 'none',
                 boxSizing: 'border-box',
@@ -153,7 +153,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               Parse Google Doc
             </Button>
 
-            <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--ink-3)', lineHeight: 1.4 }}>
+            <div style={{ marginTop: '10px', fontSize: 'var(--fs-micro)', color: 'var(--ink-3)', lineHeight: 1.4 }}>
               Google Docs must be shared publicly (Anyone with the link).
             </div>
           </div>

@@ -28,7 +28,7 @@ const VALID_CRS = CHALLENGE_RATINGS;
 
 const sectionLabel: React.CSSProperties = {
   color: 'var(--gold)',
-  fontSize: '0.65rem',
+  fontSize: 'var(--fs-micro)',
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.12em',
@@ -90,7 +90,7 @@ export function CombatantRow({
     >
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-sm" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
+          <span className="font-semibold text-md" style={{ color: 'var(--ink)', fontFamily: 'var(--display)' }}>
             {c.name}
           </span>
           {c.challenge_rating && (
@@ -114,13 +114,13 @@ export function CombatantRow({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => onCountChange(-1)}
-            className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center"
+            className="w-6 h-6 rounded text-md font-bold flex items-center justify-center"
             style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
           >−</button>
-          <span className="text-sm font-semibold w-5 text-center" style={{ color: 'var(--ink)' }}>{c.count}</span>
+          <span className="text-md font-semibold w-5 text-center" style={{ color: 'var(--ink)' }}>{c.count}</span>
           <button
             onClick={() => onCountChange(1)}
-            className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center"
+            className="w-6 h-6 rounded text-md font-bold flex items-center justify-center"
             style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
           >+</button>
         </div>
@@ -288,7 +288,7 @@ export function EncounterDetail({
           <button
             onClick={onRun}
             style={{
-              fontSize: '0.75rem', fontWeight: 600, color: 'var(--bg)',
+              fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--bg)',
               backgroundColor: 'var(--gold)', border: '1px solid var(--gold)',
               borderRadius: 'var(--radius)', padding: '6px 16px', cursor: 'pointer',
               fontFamily: 'var(--serif)',
@@ -304,7 +304,7 @@ export function EncounterDetail({
 
       {/* ── Eyebrow ── */}
       <div style={{
-        color: 'var(--ink-3)', fontSize: '0.6rem', fontWeight: 700,
+        color: 'var(--ink-3)', fontSize: 'var(--fs-micro)', fontWeight: 700,
         letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px',
       }}>
         Encounter{diffVal ? ` · ${RATING_LABEL[diffVal as Rating] ?? diffVal}` : ''}
@@ -498,7 +498,7 @@ export function EncounterDetail({
         )}
 
         {totalCreatures > 0 && (
-          <div style={{ marginTop: '8px', color: 'var(--ink-3)', fontSize: '0.72rem', fontFamily: 'var(--mono)' }}>
+          <div style={{ marginTop: '8px', color: 'var(--ink-3)', fontSize: 'var(--fs-xs)', fontFamily: 'var(--mono)' }}>
             {totalCreatures} {totalCreatures === 1 ? 'creature' : 'creatures'} total
           </div>
         )}
@@ -522,7 +522,7 @@ export function EncounterDetail({
           style={{
             width: '100%', backgroundColor: 'var(--gold)', color: 'var(--bg)',
             border: 'none', borderRadius: 'var(--radius)', padding: '12px',
-            fontSize: '0.85rem', fontWeight: 700, fontFamily: 'var(--serif)',
+            fontSize: 'var(--fs-md)', fontWeight: 700, fontFamily: 'var(--serif)',
             cursor: 'pointer', letterSpacing: '0.02em',
           }}
         >

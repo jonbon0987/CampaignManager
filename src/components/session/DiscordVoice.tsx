@@ -65,7 +65,7 @@ export function DiscordMembers({ members, consents, onLinksChange }: {
   };
 
   if (people.length === 0) {
-    return <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Nobody is in this channel yet. People appear here as they join.</p>;
+    return <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>Nobody is in this channel yet. People appear here as they join.</p>;
   }
 
   return (
@@ -132,12 +132,12 @@ export function BotNotReady({ bot, purpose }: { bot: DiscordBot; purpose: string
   const toast = useToast();
   const signIn = () => void bot.setControl({ online: true }).catch(e => toast(errorMessage(e), 'error'));
   if (bot.status === 'connecting' || (bot.running && bot.control?.online && bot.status === 'offline')) {
-    return <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>Signing the bot in to Discord…</p>;
+    return <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>Signing the bot in to Discord…</p>;
   }
   if (bot.running) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm" style={{ color: bot.status === 'error' ? 'var(--warn)' : 'var(--ink-2)' }}>
+        <span className="text-md" style={{ color: bot.status === 'error' ? 'var(--warn)' : 'var(--ink-2)' }}>
           {bot.status === 'error' ? bot.presence?.detail ?? 'The bot couldn’t sign in to Discord.' : `The bot is signed out of Discord. ${purpose}`}
         </span>
         <Button size="xs" variant="secondary" onClick={signIn}>{bot.status === 'error' ? 'Try again' : 'Sign it in'}</Button>
@@ -145,7 +145,7 @@ export function BotNotReady({ bot, purpose }: { bot: DiscordBot; purpose: string
     );
   }
   return (
-    <p className="text-sm" style={{ color: 'var(--ink-3)', margin: 0 }}>
+    <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>
       The DM Lair bot isn’t running on this computer. {purpose} Set it up once in Settings → Discord.
     </p>
   );
