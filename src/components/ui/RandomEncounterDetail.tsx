@@ -41,6 +41,7 @@ import {
 import type { EncounterSaveData } from '../../lib/encounters';
 import type { RandomEncounterTable, RandomEncounterEntry, MonsterStatblock, EncounterCombatant } from '../../lib/database.types';
 import { difficultyColor, randomEntryTypeColors } from '../../lib/theme';
+import './randomTables.css';
 
 // Data the save callback receives — the caller injects world_id / campaign_id.
 export type RandomEncounterSaveData = {
@@ -84,56 +85,50 @@ function formFromTable(t: RandomEncounterTable): Form {
 // roll bar and the result view's "Adjust & re-roll" panel.
 function RollParamsControls({ params, onChange }: { params: RollParams; onChange: (p: RollParams) => void }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '16px' }}>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+    <div className="rnd-params">
+      <label className="rnd-param">
         <span className="as-ml">Party size</span>
         <input type="number" min={1} max={10} value={params.size}
           onChange={e => onChange({ ...params, size: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-          className="as-input" style={{ width: '56px' }} />
+          className="as-input rnd-param-num" />
       </label>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      <label className="rnd-param">
         <span className="as-ml">Avg level</span>
         <input type="number" min={1} max={20} value={params.level}
           onChange={e => onChange({ ...params, level: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-          className="as-input" style={{ width: '56px' }} />
+          className="as-input rnd-param-num" />
       </label>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      <div className="rnd-param">
         <span className="as-ml">Difficulty</span>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div className="rnd-diff-group">
           {DIFFICULTIES.map(d => {
             const on = params.difficulty === d;
             return (
               <button key={d} onClick={() => onChange({ ...params, difficulty: d })}
-                style={{
-                  fontSize: 'var(--fs-label)', fontWeight: 600, textTransform: 'capitalize', padding: '3px 8px',
-                  borderRadius: 'var(--radius)', cursor: 'pointer',
-                  color: on ? 'var(--bg)' : 'var(--ink-3)',
-                  backgroundColor: on ? difficultyColor(d) : 'transparent',
-                  border: `1px solid ${on ? difficultyColor(d) : 'var(--rule)'}`,
-                }}>{d}</button>
+                className="rnd-diff-btn" style={{ color: on ? 'var(--bg)' : 'var(--ink-3)', backgroundColor: on ? difficultyColor(d) : 'transparent', border: `1px solid ${on ? difficultyColor(d) : 'var(--rule)'}` }}>{d}</button>
             );
           })}
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: '150px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div className="rnd-param rnd-param-bias">
+        <div className="rnd-bias-ends">
           <span className="as-ml">⚔ Combat</span><span className="as-ml">Social ◇</span>
         </div>
         <input type="range" min={0} max={100} value={Math.round(params.socialBias * 100)}
           onChange={e => onChange({ ...params, socialBias: (parseInt(e.target.value, 10) || 0) / 100 })}
-          style={{ accentColor: 'var(--gold)' }} />
-        <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>
+          className="rnd-accent" />
+        <span className="rnd-bias-note">
           ≈ {Math.round(params.socialBias * 100)}% chance of a social encounter
         </span>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', flexBasis: '100%', cursor: 'pointer' }}>
+      <label className="rnd-param-auto">
         <input
           type="checkbox"
           checked={params.autoGenerate}
           onChange={e => onChange({ ...params, autoGenerate: e.target.checked })}
-          style={{ accentColor: 'var(--gold)' }}
+          className="rnd-accent"
         />
-        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-2)' }}>
+        <span className="rnd-param-auto-text">
           Auto-generate a creature for entries with none linked
         </span>
       </label>
@@ -362,24 +357,16 @@ export function RandomEncounterDetail({
   }
 
   return (
-    <div style={{ maxWidth: '820px' }}>
+    <div className="rnd-builder">
       {/* ── Action bar ── */}
-      <div className="as-bar" style={{ marginBottom: '20px' }}>
+      <div className="as-bar rnd-spaced">
         <SaveStatusIndicator status={saveStatus} onRetry={saveNow} />
         <div className="as-spacer" />
         <button
           onClick={roll}
           disabled={entries.length === 0}
           title={entries.length === 0 ? 'Add rows first' : `Roll d${form.die_size}`}
-          style={{
-            fontSize: 'var(--fs-xs)', fontWeight: 600,
-            color: entries.length === 0 ? 'var(--ink-4)' : 'var(--bg)',
-            backgroundColor: entries.length === 0 ? 'var(--bg-2)' : 'var(--gold)',
-            border: `1px solid ${entries.length === 0 ? 'var(--rule)' : 'var(--gold)'}`,
-            borderRadius: 'var(--radius)', padding: '6px 16px',
-            cursor: entries.length === 0 ? 'default' : 'pointer',
-            fontFamily: 'var(--serif)',
-          }}
+          className="rnd-roll-btn" style={{ color: entries.length === 0 ? 'var(--ink-4)' : 'var(--bg)', backgroundColor: entries.length === 0 ? 'var(--bg-2)' : 'var(--gold)', border: `1px solid ${entries.length === 0 ? 'var(--rule)' : 'var(--gold)'}`, cursor: entries.length === 0 ? 'default' : 'pointer' }}
         >
           ⚄ Roll d{form.die_size}
         </button>
@@ -389,10 +376,7 @@ export function RandomEncounterDetail({
       </div>
 
       {/* ── Eyebrow ── */}
-      <div style={{
-        color: 'var(--ink-3)', fontSize: 'var(--fs-micro)', fontWeight: 700,
-        letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px',
-      }}>
+      <div className="rnd-eyebrow">
         {meta.label} Table · {scope === 'world' ? 'World' : 'Campaign'}
       </div>
 
@@ -402,19 +386,18 @@ export function RandomEncounterDetail({
         onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
         placeholder="Name this table…"
         maxLength={limitFor('random_encounter_tables', 'name')}
-        style={{ display: 'block', width: '100%' }}
+        className="as-title rnd-title-input"
       />
       <input
-        className="as-sub"
+        className="as-sub rnd-subtitle-input"
         value={form.subtitle}
         onChange={e => setForm(prev => ({ ...prev, subtitle: e.target.value }))}
         placeholder="A line of flavor — where and when this table applies…"
         maxLength={limitFor('random_encounter_tables', 'subtitle')}
-        style={{ display: 'block', width: '100%', marginBottom: '18px' }}
       />
 
       {/* ── Meta strip ── */}
-      <div className="as-meta" style={{ marginBottom: '20px' }}>
+      <div className="as-meta rnd-spaced">
         <div className="as-mi">
           <div className="as-ml">Kind</div>
           <select className="as-select" value={form.kind}
@@ -424,9 +407,9 @@ export function RandomEncounterDetail({
         </div>
         <div className="as-mi">
           <div className="as-ml">Region</div>
-          <input className="as-input" value={form.environment}
+          <input className="as-input rnd-env-input" value={form.environment}
             onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))}
-            placeholder="Anywhere" maxLength={limitFor('random_encounter_tables', 'environment')} style={{ width: '130px' }} />
+            placeholder="Anywhere" maxLength={limitFor('random_encounter_tables', 'environment')} />
         </div>
         <div className="as-mi">
           <div className="as-ml">Die</div>
@@ -437,7 +420,7 @@ export function RandomEncounterDetail({
         </div>
         <div className="as-mi">
           <div className="as-ml">Weighting</div>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-xs)', color: 'var(--gold)' }}>
+          <span className="rnd-die">
             d{form.die_size} · weighted
           </span>
         </div>
@@ -445,28 +428,25 @@ export function RandomEncounterDetail({
 
       {/* ── Roll settings (encounter kind) ── */}
       {isEncounter && (
-        <div style={{
-          marginBottom: '20px', padding: '12px 14px', borderRadius: 'var(--radius)',
-          border: '1px solid var(--rule)', backgroundColor: 'var(--bg)',
-        }}>
+        <div className="rnd-rollbar">
           <RollParamsControls params={rollParams} onChange={setRollParams} />
         </div>
       )}
 
       {/* ── Entries ── */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-          <div style={{ color: 'var(--gold)', fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+      <div className="rnd-block">
+        <div className="rnd-entries-head">
+          <div className="rnd-entries-title">
             Entries
           </div>
-          <div style={{ flex: 1 }} />
-          <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-micro)', fontFamily: 'var(--mono)', letterSpacing: '0.08em' }}>
+          <div className="rnd-grow" />
+          <div className="rnd-entries-count">
             weights → roll odds
           </div>
         </div>
 
         {entries.length === 0 && (
-          <p className="text-xs" style={{ color: 'var(--ink-3)', marginBottom: '8px' }}>
+          <p className="text-xs rnd-entries-hint">
             No entries yet — add rows to build the table.
           </p>
         )}
@@ -491,11 +471,10 @@ export function RandomEncounterDetail({
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+        <div className="rnd-entry-actions">
           <button
             onClick={addRow}
-            className="text-xs px-3 py-1.5 rounded"
-            style={{ backgroundColor: 'var(--bg-2)', color: 'var(--ink-2)', border: '1px solid var(--rule)' }}
+            className="text-xs px-3 py-1.5 rounded rnd-btn-plain"
           >
             + Add entry
           </button>
@@ -503,26 +482,23 @@ export function RandomEncounterDetail({
             onClick={suggestEntry}
             disabled={suggesting}
             title="Let the DM Assistant write one entry for this table"
-            className="text-xs px-3 py-1.5 rounded"
-            style={{
-              backgroundColor: 'var(--arcane-bg)', color: 'var(--arcane)', border: '1px solid var(--arcane-line)',
-              cursor: suggesting ? 'default' : 'pointer', opacity: suggesting ? 0.7 : 1,
-            }}
+            className="text-xs px-3 py-1.5 rounded rnd-btn-arcane"
+            style={{ cursor: suggesting ? 'default' : 'pointer', opacity: suggesting ? 0.7 : 1 }}
           >
             {suggesting ? 'Suggesting…' : '✦ Suggest an entry'}
           </button>
-          {suggestError && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--red)' }}>{suggestError}</span>}
+          {suggestError && <span className="rnd-error">{suggestError}</span>}
         </div>
       </div>
 
       {/* ── Notes ── */}
-      <div className="as-fl" style={{ marginBottom: '24px' }}>
+      <div className="as-fl rnd-block">
         <div className="as-ll">Notes for this table</div>
         <SlashField value={form.description} onChange={v => setForm(prev => ({ ...prev, description: v }))}
           placeholder="How and when this table applies, pacing, tie-ins…"
           maxLength={limitFor('random_encounter_tables', 'description')} />
       </div>
-      <div className="as-fl" style={{ marginBottom: '24px' }}>
+      <div className="as-fl rnd-block">
         <div className="as-ll">DM Notes</div>
         <SlashField value={form.dm_notes} onChange={v => setForm(prev => ({ ...prev, dm_notes: v }))}
           placeholder="Private notes — escalation, secrets, follow-ups…"
@@ -570,43 +546,33 @@ function EntryRow({
 
   return (
     <div
-      style={{
-        display: 'grid', gridTemplateColumns: '24px 1fr 176px 26px', gap: '10px', alignItems: 'start',
-        padding: '10px 12px', borderRadius: 'var(--radius)',
-        backgroundColor: rolled ? 'var(--arcane-bg)' : 'var(--bg)',
-        border: `1px solid ${rolled ? 'var(--arcane-line)' : 'var(--rule)'}`,
-      }}
+      className="rnd-entry" style={{ backgroundColor: rolled ? 'var(--arcane-bg)' : 'var(--bg)', border: `1px solid ${rolled ? 'var(--arcane-line)' : 'var(--rule)'}` }}
     >
-      <div style={{ color: 'var(--gold)', fontFamily: 'var(--mono)', fontSize: 'var(--fs-sm)', fontWeight: 700, paddingTop: '5px' }}>{idx}</div>
+      <div className="rnd-entry-range">{idx}</div>
 
-      <div style={{ minWidth: 0 }}>
+      <div className="rnd-entry-main">
         <input
           type="text" value={entry.name}
           onChange={e => onPatch({ name: e.target.value })}
           placeholder="Result name…"
-          style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--ink)', fontFamily: 'var(--display)', fontSize: 'var(--fs-body)', fontWeight: 600 }}
+          className="rnd-entry-name"
           aria-label="Result name"
         />
         <textarea
           value={entry.description} rows={2}
           onChange={e => onPatch({ description: e.target.value })}
           placeholder="A brief description the DM reads or paraphrases…"
-          style={{ width: '100%', marginTop: '4px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: 'var(--fs-sm)', outline: 'none', lineHeight: 1.45 }}
+          className="rnd-entry-text"
           aria-label="Result description"
         />
 
         {/* Encounter meta: type tag + linked creatures */}
         {isEncounter && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+          <div className="rnd-entry-links">
             <button
               onClick={cycleType}
               title="Click to cycle combat / social / either"
-              style={{
-                fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-                padding: '2px 7px', borderRadius: '999px', cursor: 'pointer',
-                color: randomEntryTypeColors[entryKind], backgroundColor: 'transparent',
-                border: `1px solid ${randomEntryTypeColors[entryKind]}`,
-              }}
+              className="rnd-type-tag" style={{ color: randomEntryTypeColors[entryKind], border: `1px solid ${randomEntryTypeColors[entryKind]}` }}
             >{entryKind}</button>
 
             {creatures.map(c => {
@@ -615,23 +581,19 @@ function EntryRow({
               return (
                 <span key={c.id}
                   onClick={() => onViewStatblock?.(sb)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: 'var(--fs-label)',
-                    padding: '2px 7px', borderRadius: '999px', cursor: onViewStatblock ? 'pointer' : 'default',
-                    color: 'var(--ink)', backgroundColor: 'var(--bg-2)', border: '1px solid var(--rule)',
-                  }}
+                  className="rnd-creature" style={{ cursor: onViewStatblock ? 'pointer' : 'default' }}
                 >
                   {sb.name}
-                  {sb.challenge_rating && <span style={{ color: 'var(--cr, var(--ink-4))', fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)' }}>CR {sb.challenge_rating}</span>}
-                  <span onClick={e => { e.stopPropagation(); unlink(c.id); }} style={{ color: 'var(--ink-3)', cursor: 'pointer' }}>✕</span>
+                  {sb.challenge_rating && <span className="rnd-cr">CR {sb.challenge_rating}</span>}
+                  <span onClick={e => { e.stopPropagation(); unlink(c.id); }} className="rnd-unlink">✕</span>
                 </span>
               );
             })}
 
-            <div style={{ position: 'relative' }}>
+            <div className="rnd-anchor">
               <button
                 onClick={() => setPickerOpen(o => !o)}
-                style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', cursor: 'pointer', color: 'var(--ink-2)', backgroundColor: 'transparent', border: '1px dashed var(--rule-hover)' }}
+                className="rnd-add-creature"
               >+ link creature</button>
               {pickerOpen && (
                 <CreaturePicker statblocks={statblocks} onPick={linkCreature} onClose={() => setPickerOpen(false)} />
@@ -643,30 +605,30 @@ function EntryRow({
 
         {/* Treasure fields */}
         {kind === 'treasure' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' }}>
+          <div className="rnd-haul-grid">
             <input type="text" value={entry.coins ?? ''} onChange={e => onPatch({ coins: e.target.value })}
-              placeholder="Coin — e.g. 4d6 × 100 gp" className="as-input" style={{ fontSize: 'var(--fs-xs)' }} aria-label="Coin" />
+              placeholder="Coin — e.g. 4d6 × 100 gp" className="as-input rnd-input-sm" aria-label="Coin" />
             <input type="text" value={entry.valuables ?? ''} onChange={e => onPatch({ valuables: e.target.value })}
-              placeholder="Valuables" className="as-input" style={{ fontSize: 'var(--fs-xs)' }} aria-label="Valuables" />
+              placeholder="Valuables" className="as-input rnd-input-sm" aria-label="Valuables" />
             <input type="text" value={entry.magicItem ?? ''} onChange={e => onPatch({ magicItem: e.target.value })}
-              placeholder="Magic item" className="as-input" style={{ fontSize: 'var(--fs-xs)' }} aria-label="Magic item" />
+              placeholder="Magic item" className="as-input rnd-input-sm" aria-label="Magic item" />
           </div>
         )}
 
         {/* Magic Item fields */}
         {kind === 'magic' && (
-          <div style={{ marginTop: '8px' }}>
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <div className="rnd-item">
+            <div className="rnd-item-row">
               <input type="text" value={entry.itemType ?? ''} onChange={e => onPatch({ itemType: e.target.value })}
-                placeholder="Item type — e.g. Wondrous item" className="as-input" style={{ fontSize: 'var(--fs-xs)', flex: 1 }} aria-label="Item type" />
-              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-label)', color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
+                placeholder="Item type — e.g. Wondrous item" className="as-input rnd-input-sm rnd-grow" aria-label="Item type" />
+              <label className="rnd-attune">
                 <input type="checkbox" checked={!!entry.attunement} onChange={e => onPatch({ attunement: e.target.checked })} />
                 Attunement
               </label>
             </div>
             <textarea value={entry.itemText ?? ''} rows={2} onChange={e => onPatch({ itemText: e.target.value })}
               placeholder="Item text — what it does…"
-              style={{ width: '100%', marginTop: '6px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--ink-2)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: 'var(--fs-xs)', outline: 'none', lineHeight: 1.45 }}
+              className="rnd-entry-note"
               aria-label="Item text" />
           </div>
         )}
@@ -675,17 +637,16 @@ function EntryRow({
         {kind === 'wild' && (
           <textarea value={entry.effect ?? ''} rows={2} onChange={e => onPatch({ effect: e.target.value })}
             placeholder="Surge effect…"
-            style={{ width: '100%', marginTop: '8px', resize: 'vertical', backgroundColor: 'var(--paper)', color: 'var(--arcane)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--radius)', padding: '5px 8px', fontSize: 'var(--fs-xs)', fontFamily: 'var(--mono)', outline: 'none', lineHeight: 1.45 }}
+            className="rnd-entry-effect"
             aria-label="Surge effect" />
         )}
 
         {/* Custom card kind */}
         {kind === 'custom' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+          <div className="rnd-card-row">
             <span className="as-ml">Card</span>
-            <select className="as-select" value={entry.cardKind ?? ''}
-              onChange={e => onPatch({ cardKind: (e.target.value || undefined) as RandomEncounterEntry['cardKind'] })}
-              style={{ fontSize: 'var(--fs-xs)', padding: '2px 6px' }} aria-label="Card kind">
+            <select className="as-select rnd-select-sm" value={entry.cardKind ?? ''}
+              onChange={e => onPatch({ cardKind: (e.target.value || undefined) as RandomEncounterEntry['cardKind'] })} aria-label="Card kind">
               <option value="">Read-aloud (no card)</option>
               <option value="fortune">Fortune (good)</option>
               <option value="doom">Doom (bad)</option>
@@ -696,34 +657,33 @@ function EntryRow({
 
       {/* Weight control + live odds */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <div className="rnd-weight-row">
           {rarityMode ? (
-            <select className="as-select" value={entry.rarity ?? 'common'} onChange={e => onSetRarity(e.target.value)}
-              style={{ fontSize: 'var(--fs-xs)', padding: '2px 6px' }} aria-label="Rarity">
+            <select className="as-select rnd-select-sm" value={entry.rarity ?? 'common'} onChange={e => onSetRarity(e.target.value)} aria-label="Rarity">
               {RARITIES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)', color: 'var(--ink-3)' }}>weight</span>
+            <div className="rnd-weight">
+              <span className="rnd-weight-label">weight</span>
               <input type="number" min={1} value={entry.weight}
                 onChange={e => onPatch({ weight: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-                className="as-input" style={{ width: '48px', textAlign: 'center', padding: '2px 4px' }} aria-label="Weight" />
+                className="as-input rnd-weight-input" aria-label="Weight" />
             </div>
           )}
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-xs)', color: 'var(--gold)', fontWeight: 700 }}>
+          <span className="rnd-weight-pct">
             {range ? Math.round(range.pct * 100) : 0}%
           </span>
         </div>
-        <div style={{ height: '4px', backgroundColor: 'var(--rule)', borderRadius: '2px', marginTop: '6px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${range ? range.pct * 100 : 0}%`, backgroundColor: 'var(--gold)' }} />
+        <div className="rnd-odds-track">
+          <div className="rnd-odds-bar" style={{ width: `${range ? range.pct * 100 : 0}%` }} />
         </div>
-        <div style={{ marginTop: '4px', fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)', color: 'var(--ink-3)' }}>
+        <div className="rnd-odds-note">
           rolls {range ? `${range.lo}–${range.hi}` : '—'}
         </div>
       </div>
 
       <button onClick={onRemove} title="Remove entry" aria-label="Remove entry"
-        style={{ background: 'var(--bg-2)', color: 'var(--red)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', width: '26px', height: '26px', cursor: 'pointer', fontSize: 'var(--fs-xs)' }}>✕</button>
+        className="rnd-remove">✕</button>
     </div>
   );
 }
@@ -742,20 +702,20 @@ function CreaturePicker({ statblocks, onPick, onClose }: {
   }, [onClose]);
   const list = statblocks.filter(s => `${s.name} ${s.creature_type ?? ''}`.toLowerCase().includes(q.toLowerCase()));
   return (
-    <div ref={ref} style={{ position: 'absolute', left: 0, top: '115%', zIndex: 'var(--z-popover)', width: '230px', background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', boxShadow: '0 12px 30px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+    <div ref={ref} className="rnd-picker">
       <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search stat sheets…"
-        style={{ width: '100%', padding: '8px 10px', background: 'var(--bg)', border: 'none', borderBottom: '1px solid var(--rule)', color: 'var(--ink)', outline: 'none', fontSize: 'var(--fs-xs)' }} />
-      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+        className="rnd-picker-search" />
+      <div className="rnd-picker-list">
         {list.map(s => (
           <button key={s.id} onClick={() => onPick(s)}
-            style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '7px 10px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--rule-soft)', cursor: 'pointer', color: 'var(--ink)', fontSize: 'var(--fs-xs)', textAlign: 'left' }}
+            className="rnd-picker-item"
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-2)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
             <span>{s.name}</span>
-            {s.challenge_rating && <span style={{ color: 'var(--cr, var(--ink-4))', fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)' }}>CR {s.challenge_rating}</span>}
+            {s.challenge_rating && <span className="rnd-cr">CR {s.challenge_rating}</span>}
           </button>
         ))}
-        {list.length === 0 && <div style={{ padding: '12px', color: 'var(--ink-3)', fontSize: 'var(--fs-xs)' }}>No stat sheets to link.</div>}
+        {list.length === 0 && <div className="rnd-picker-empty">No stat sheets to link.</div>}
       </div>
     </div>
   );
@@ -764,15 +724,6 @@ function CreaturePicker({ statblocks, onPick, onClose }: {
 // ════════════════════════════════════════════════════════════
 // Encounter roll result
 // ════════════════════════════════════════════════════════════
-
-const chipStyle: React.CSSProperties = {
-  fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-  padding: '3px 9px', borderRadius: '999px', backgroundColor: 'var(--chip-bg, var(--bg-2))',
-  color: 'var(--ink-2)', border: '1px solid var(--chip-line, var(--rule))',
-};
-const layerLabel: React.CSSProperties = {
-  color: 'var(--gold)', fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px',
-};
 
 function RollResultView({
   kind, entry, result, roll, landed, die, params, onParamsChange, sbById, onViewStatblock, onBack, onReroll, onSave, onRun, saved,
@@ -798,26 +749,26 @@ function RollResultView({
   const scene = result?.scene ?? entry?.description ?? '';
   const showAdjust = !!result; // only encounter rolls have adjustable params
   return (
-    <div style={{ maxWidth: '760px' }}>
+    <div className="rnd-result">
       {/* Back + eyebrow */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+      <div className="rnd-result-head">
         <button onClick={onBack}
-          style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-2)', background: 'transparent', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '4px 10px', cursor: 'pointer' }}>‹ Table</button>
-        <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>
+          className="rnd-back">‹ Table</button>
+        <span className="rnd-result-kind">
           Rolled · {title || 'result'}
         </span>
       </div>
 
       {/* Die banner */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '18px', padding: '16px 20px', borderRadius: 'var(--radius-lg, 10px)', border: '1px solid var(--arcane-line)', backgroundColor: 'var(--arcane-bg)', marginBottom: '18px' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 'var(--fs-h1)', fontWeight: 700, color: 'var(--arcane)', fontFamily: 'var(--display)', lineHeight: 1 }}>{roll}</div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-label)', color: 'var(--ink-3)' }}>d{die}</div>
+      <div className="rnd-result-hero">
+        <div className="rnd-result-die">
+          <div className="rnd-result-roll">{roll}</div>
+          <div className="rnd-result-face">d{die}</div>
         </div>
         <div>
-          <div style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>landed {landed}</div>
-          <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700, color: title ? 'var(--ink)' : 'var(--ink-3)', fontFamily: 'var(--display)' }}>{title || (entry ? 'Unnamed result' : 'No entry covers this roll')}</div>
-          {scene && <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', fontStyle: 'italic', marginTop: '2px' }}>{scene}</div>}
+          <div className="rnd-result-eyebrow">landed {landed}</div>
+          <div className="rnd-result-title" style={{ color: title ? 'var(--ink)' : 'var(--ink-3)' }}>{title || (entry ? 'Unnamed result' : 'No entry covers this roll')}</div>
+          {scene && <div className="rnd-result-scene">{scene}</div>}
         </div>
       </div>
 
@@ -829,34 +780,34 @@ function RollResultView({
 
       {/* Adjust panel — change roll parameters; the result re-scales live */}
       {showAdjust && adjustOpen && (
-        <div style={{ marginTop: '18px', padding: '12px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--rule)', backgroundColor: 'var(--bg)' }}>
-          <div style={{ ...layerLabel, marginBottom: '10px' }}>Adjust & re-scale</div>
+        <div className="rnd-adjust">
+          <div className="rnd-layer-label is-spaced">Adjust & re-scale</div>
           <RollParamsControls params={params} onChange={onParamsChange} />
         </div>
       )}
 
       {/* Actions */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--rule)' }}>
+      <div className="rnd-result-actions">
         {onRun && (
           <button onClick={onRun}
-            style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--bg)', backgroundColor: 'var(--gold)', border: '1px solid var(--gold)', borderRadius: 'var(--radius)', padding: '8px 16px', cursor: 'pointer', fontFamily: 'var(--serif)' }}>
+            className="rnd-btn-gold">
             ▶ Run in Initiative Tracker
           </button>
         )}
         {onSave && (
           <button onClick={onSave} disabled={saved}
-            style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: saved ? 'var(--success)' : 'var(--ink-2)', backgroundColor: 'transparent', border: `1px solid ${saved ? 'var(--success-line, var(--rule))' : 'var(--rule)'}`, borderRadius: 'var(--radius)', padding: '8px 14px', cursor: saved ? 'default' : 'pointer' }}>
+            className="rnd-btn-line" style={{ color: saved ? 'var(--success)' : 'var(--ink-2)', border: `1px solid ${saved ? 'var(--success-line, var(--rule))' : 'var(--rule)'}`, cursor: saved ? 'default' : 'pointer' }}>
             {saved ? '✓ Saved to Encounters' : '＋ Save to Encounters'}
           </button>
         )}
         {showAdjust && (
           <button onClick={() => setAdjustOpen(o => !o)}
-            style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: adjustOpen ? 'var(--gold)' : 'var(--ink-2)', backgroundColor: 'transparent', border: `1px solid ${adjustOpen ? 'var(--gold-line, var(--rule))' : 'var(--rule)'}`, borderRadius: 'var(--radius)', padding: '8px 14px', cursor: 'pointer' }}>
+            className="rnd-btn-line is-clickable" style={{ color: adjustOpen ? 'var(--gold)' : 'var(--ink-2)', border: `1px solid ${adjustOpen ? 'var(--gold-line, var(--rule))' : 'var(--rule)'}` }}>
             ⚙ Adjust{adjustOpen ? ' ▴' : ' ▾'}
           </button>
         )}
         <button onClick={onReroll}
-          style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--ink-2)', backgroundColor: 'transparent', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: '8px 14px', cursor: 'pointer' }}>
+          className="rnd-btn-line is-clickable is-quiet">
           ⟳ Re-roll
         </button>
       </div>
@@ -873,18 +824,18 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
   return (
     <>
       {/* Chips */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
-        <span style={{ ...chipStyle, color: difficultyColor(result.tier), borderColor: difficultyColor(result.tier) }}>Lands at {result.tier}</span>
-        <span style={chipStyle}>≈ {result.xp.toLocaleString()} adj. XP</span>
-        <span style={chipStyle}>{result.total} {result.total === 1 ? 'creature' : 'creatures'}</span>
-        <span style={chipStyle}>party {params.size} · lvl {params.level}</span>
+      <div className="rnd-chips">
+        <span className="rnd-chip" style={{ color: difficultyColor(result.tier), borderColor: difficultyColor(result.tier) }}>Lands at {result.tier}</span>
+        <span className="rnd-chip">≈ {result.xp.toLocaleString()} adj. XP</span>
+        <span className="rnd-chip">{result.total} {result.total === 1 ? 'creature' : 'creatures'}</span>
+        <span className="rnd-chip">party {params.size} · lvl {params.level}</span>
       </div>
 
       {/* Roster */}
-      <div style={{ marginBottom: '18px' }}>
-        <div style={layerLabel}>Roster</div>
+      <div className="rnd-layer">
+        <div className="rnd-layer-label">Roster</div>
         {result.roster.length === 0 && (
-          <p style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-sm)', fontStyle: 'italic' }}>
+          <p className="rnd-muted-note">
             No creatures — link some on the entry, or enable “Auto-generate” in the roll settings to have one improvised.
           </p>
         )}
@@ -892,15 +843,15 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
           {result.roster.map((r, i) => {
             const sb = sbById.get(r.creature.id);
             return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-                <span style={{ fontFamily: 'var(--mono)', color: 'var(--gold)', fontWeight: 700, fontSize: 'var(--fs-md)' }}>{r.count}×</span>
-                <span style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-body)' }}>{r.creature.name}</span>
-                {r.creature.cr && <span style={{ ...chipStyle, padding: '1px 7px' }}>CR {r.creature.cr}</span>}
-                {r.isNew && <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--arcane)', fontWeight: 700 }}>✦ new</span>}
-                <div style={{ flex: 1 }} />
+              <div key={i} className="rnd-roster-row">
+                <span className="rnd-roster-count">{r.count}×</span>
+                <span className="rnd-name">{r.creature.name}</span>
+                {r.creature.cr && <span className="rnd-chip is-tight">CR {r.creature.cr}</span>}
+                {r.isNew && <span className="rnd-new">✦ new</span>}
+                <div className="rnd-grow" />
                 {sb && onViewStatblock && (
                   <button onClick={() => onViewStatblock(sb)}
-                    style={{ fontSize: 'var(--fs-micro)', color: 'var(--info, var(--sky))', background: 'var(--info-bg, var(--bg-2))', border: '1px solid var(--info-line, var(--rule))', borderRadius: 'var(--radius)', padding: '2px 8px', cursor: 'pointer' }}>Sheet</button>
+                    className="rnd-sheet-btn">Sheet</button>
                 )}
               </div>
             );
@@ -911,19 +862,19 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
       {/* Three layers */}
       <ResultLayer label="Battlefield" name={result.terrain.name} text={result.terrain.text} />
       <ResultLayer label="Complication" name={result.complication.name} text={result.complication.text} />
-      <div style={{ marginBottom: '16px' }}>
-        <div style={layerLabel}>Loot</div>
-        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)', color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.5 }}>
-          <div><strong style={{ color: 'var(--gold)' }}>Coin:</strong> {result.loot.coins}</div>
-          <div><strong style={{ color: 'var(--gold)' }}>On the bodies:</strong> {result.loot.find}</div>
-          {result.loot.item && <div><strong style={{ color: 'var(--gold)' }}>Magic:</strong> {result.loot.item}</div>}
+      <div className="rnd-sub-layer">
+        <div className="rnd-layer-label">Loot</div>
+        <div className="rnd-loot">
+          <div><strong className="rnd-gold-text">Coin:</strong> {result.loot.coins}</div>
+          <div><strong className="rnd-gold-text">On the bodies:</strong> {result.loot.find}</div>
+          {result.loot.item && <div><strong className="rnd-gold-text">Magic:</strong> {result.loot.item}</div>}
         </div>
       </div>
 
       {result.tactics && (
-        <div style={{ marginBottom: '4px' }}>
-          <div style={layerLabel}>DM Tactics</div>
-          <p style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55, fontStyle: 'italic' }}>{result.tactics}</p>
+        <div className="rnd-tactics-head">
+          <div className="rnd-layer-label">DM Tactics</div>
+          <p className="rnd-prose is-em">{result.tactics}</p>
         </div>
       )}
     </>
@@ -932,11 +883,11 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
 
 function ResultLayer({ label, name, text }: { label: string; name: string; text: string }) {
   return (
-    <div style={{ marginBottom: '16px' }}>
-      <div style={layerLabel}>{label}</div>
-      <div style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-        <div style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-md)', marginBottom: '3px' }}>{name}</div>
-        <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-sm)', lineHeight: 1.5 }}>{text}</div>
+    <div className="rnd-sub-layer">
+      <div className="rnd-layer-label">{label}</div>
+      <div className="rnd-panel">
+        <div className="rnd-panel-name">{name}</div>
+        <div className="rnd-panel-text">{text}</div>
       </div>
     </div>
   );
@@ -945,43 +896,43 @@ function ResultLayer({ label, name, text }: { label: string; name: string; text:
 function SocialBody({ result }: { result: SocialResult }) {
   return (
     <>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
-        <span style={{ ...chipStyle, color: 'var(--sky, var(--info))', borderColor: 'var(--sky, var(--info))' }}>Goal · {result.goal}</span>
-        <span style={chipStyle}>{result.successes} successes before {result.failures} failures</span>
+      <div className="rnd-chips">
+        <span className="rnd-chip is-goal">Goal · {result.goal}</span>
+        <span className="rnd-chip">{result.successes} successes before {result.failures} failures</span>
       </div>
 
-      <div style={{ marginBottom: '18px' }}>
-        <div style={layerLabel}>Who they meet</div>
+      <div className="rnd-layer">
+        <div className="rnd-layer-label">Who they meet</div>
         <div className="space-y-2">
           {result.npcs.map((n, i) => (
-            <div key={i} style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-              <div style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-body)' }}>{n.name}</div>
-              <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-xs)', marginBottom: '4px' }}>{n.role}</div>
-              <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-sm)' }}><strong style={{ color: 'var(--gold)' }}>Wants:</strong> {n.want}</div>
+            <div key={i} className="rnd-panel">
+              <div className="rnd-name">{n.name}</div>
+              <div className="rnd-npc-role">{n.role}</div>
+              <div className="rnd-npc-text"><strong className="rnd-gold-text">Wants:</strong> {n.want}</div>
             </div>
           ))}
         </div>
       </div>
 
-      <div style={{ marginBottom: '18px' }}>
-        <div style={layerLabel}>Skill challenge</div>
+      <div className="rnd-layer">
+        <div className="rnd-layer-label">Skill challenge</div>
         <div className="space-y-2">
           {result.checks.map((c, i) => (
-            <div key={i} style={{ padding: '10px 14px', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg)', border: '1px solid var(--rule)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ color: 'var(--ink)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-md)' }}>{c.skill}</span>
-                <span style={{ ...chipStyle, padding: '1px 7px' }}>DC {c.dc}</span>
+            <div key={i} className="rnd-panel">
+              <div className="rnd-challenge-head">
+                <span className="rnd-challenge-name">{c.skill}</span>
+                <span className="rnd-chip is-tight">DC {c.dc}</span>
               </div>
-              <div style={{ color: 'var(--success)', fontSize: 'var(--fs-sm)', lineHeight: 1.45 }}>✓ {c.success}</div>
-              <div style={{ color: 'var(--red)', fontSize: 'var(--fs-sm)', lineHeight: 1.45 }}>✗ {c.fail}</div>
+              <div className="rnd-pass">✓ {c.success}</div>
+              <div className="rnd-fail">✗ {c.fail}</div>
             </div>
           ))}
         </div>
       </div>
 
       <div>
-        <div style={layerLabel}>Running it</div>
-        <p style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55, fontStyle: 'italic' }}>{result.tactics}</p>
+        <div className="rnd-layer-label">Running it</div>
+        <p className="rnd-prose is-em">{result.tactics}</p>
       </div>
     </>
   );
@@ -995,7 +946,7 @@ const RARITY_LABEL: Record<string, string> = Object.fromEntries(RARITIES.map(r =
 
 function payloadCard(children: React.ReactNode, borderColor = 'var(--rule)'): React.ReactNode {
   return (
-    <div style={{ padding: '14px 18px', borderRadius: 'var(--radius-lg, 10px)', border: `1px solid ${borderColor}`, backgroundColor: 'var(--bg)' }}>
+    <div className="rnd-payload" style={{ border: `1px solid ${borderColor}` }}>
       {children}
     </div>
   );
@@ -1006,8 +957,8 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
     const nothing = !entry.coins && !entry.valuables && !entry.magicItem;
     return payloadCard(
       <>
-        <div style={{ ...layerLabel, marginBottom: '10px' }}>The haul</div>
-        {nothing && <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-sm)', fontStyle: 'italic' }}>No hoard authored — add coin, valuables, or a magic item to this entry.</div>}
+        <div className="rnd-layer-label is-spaced">The haul</div>
+        {nothing && <div className="rnd-muted-note">No hoard authored — add coin, valuables, or a magic item to this entry.</div>}
         {entry.coins && <HaulRow label="Coin" value={entry.coins} />}
         {entry.valuables && <HaulRow label="Valuables" value={entry.valuables} />}
         {entry.magicItem && <HaulRow label="Magic" value={entry.magicItem} />}
@@ -1019,14 +970,14 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
   if (kind === 'magic') {
     return payloadCard(
       <>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-          {entry.rarity && <span style={{ ...chipStyle, color: 'var(--gold)', borderColor: 'var(--gold-line, var(--rule))', backgroundColor: 'var(--gold-dim, var(--bg-2))' }}>{RARITY_LABEL[entry.rarity] ?? entry.rarity}</span>}
-          {entry.itemType && <span style={chipStyle}>{entry.itemType}</span>}
-          <span style={chipStyle}>{entry.attunement ? 'Requires attunement' : 'No attunement'}</span>
+        <div className="rnd-haul-chips">
+          {entry.rarity && <span className="rnd-chip is-rarity">{RARITY_LABEL[entry.rarity] ?? entry.rarity}</span>}
+          {entry.itemType && <span className="rnd-chip">{entry.itemType}</span>}
+          <span className="rnd-chip">{entry.attunement ? 'Requires attunement' : 'No attunement'}</span>
         </div>
         {entry.itemText
-          ? <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55 }}>{entry.itemText}</div>
-          : <div style={{ color: 'var(--ink-3)', fontSize: 'var(--fs-sm)', fontStyle: 'italic' }}>No item text yet.</div>}
+          ? <div className="rnd-prose">{entry.itemText}</div>
+          : <div className="rnd-muted-note">No item text yet.</div>}
       </>,
     );
   }
@@ -1034,9 +985,9 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
   if (kind === 'wild') {
     return payloadCard(
       <>
-        <div style={{ color: 'var(--arcane)', fontFamily: 'var(--display)', fontWeight: 600, fontSize: 'var(--fs-body)', marginBottom: '6px' }}>✦ {entry.name || 'Surge'}</div>
-        <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55, fontFamily: entry.effect ? 'var(--mono)' : undefined }}>
-          {entry.effect || entry.description || <em style={{ color: 'var(--ink-3)' }}>No surge effect authored.</em>}
+        <div className="rnd-surge-name">✦ {entry.name || 'Surge'}</div>
+        <div className="rnd-prose" style={{ fontFamily: entry.effect ? 'var(--mono)' : undefined }}>
+          {entry.effect || entry.description || <em className="rnd-dim">No surge effect authored.</em>}
         </div>
       </>,
       'var(--arcane-line)',
@@ -1048,12 +999,12 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
       const good = entry.cardKind === 'fortune';
       return payloadCard(
         <>
-          <div style={{ marginBottom: '8px' }}>
-            <span style={{ ...chipStyle, color: good ? 'var(--success)' : 'var(--red)', borderColor: good ? 'var(--success-line, var(--rule))' : 'var(--red-line, var(--rule))' }}>
+          <div className="rnd-haul-gap">
+            <span className="rnd-chip" style={{ color: good ? 'var(--success)' : 'var(--red)', borderColor: good ? 'var(--success-line, var(--rule))' : 'var(--red-line, var(--rule))' }}>
               {good ? 'Fortune' : 'Doom'}
             </span>
           </div>
-          <div style={{ color: 'var(--ink-2)', fontSize: 'var(--fs-md)', lineHeight: 1.55 }}>{entry.description || <em style={{ color: 'var(--ink-3)' }}>No card text.</em>}</div>
+          <div className="rnd-prose">{entry.description || <em className="rnd-dim">No card text.</em>}</div>
         </>,
         good ? 'var(--success-line, var(--rule))' : 'var(--red-line, var(--rule))',
       );
@@ -1067,9 +1018,9 @@ function NonEncounterResult({ kind, entry }: { kind: string; entry: RandomEncoun
 
 function HaulRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '12px', padding: '6px 0', borderTop: '1px solid var(--rule-soft, var(--rule))' }}>
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-micro)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold)', paddingTop: '2px' }}>{label}</span>
-      <span style={{ color: 'var(--ink)', fontSize: 'var(--fs-md)' }}>{value}</span>
+    <div className="rnd-haul-row">
+      <span className="rnd-haul-label">{label}</span>
+      <span className="rnd-haul-value">{value}</span>
     </div>
   );
 }
