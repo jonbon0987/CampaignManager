@@ -44,7 +44,8 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      // A control inside that already used the key (the slash menu closing) keeps the dialog open.
+      if (e.key === 'Escape' && !e.defaultPrevented) handleClose();
     };
     if (isOpen) document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);

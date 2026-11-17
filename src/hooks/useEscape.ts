@@ -8,7 +8,9 @@ import { useEffect } from 'react';
 export function useEscape(active: boolean, onEscape: () => void) {
   useEffect(() => {
     if (!active) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onEscape(); };
+    // Skip an Escape that something inside already handled, such as the slash
+    // menu closing, so one press closes one thing.
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) onEscape(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [active, onEscape]);
