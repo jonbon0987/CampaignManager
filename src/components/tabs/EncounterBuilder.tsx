@@ -9,11 +9,8 @@ import type { PartyMember } from '../../lib/combat';
 import { GenerateEncounterModal } from '../ui/GenerateEncounterModal';
 import { ListDetail, ListRow, EmptyDetail } from '../ui/ListDetail';
 import type { Encounter } from '../../lib/database.types';
-import {
-  EncounterDetail,
-  parseCombatants,
-  type EncounterSaveData,
-} from '../ui/EncounterDetail';
+import { EncounterDetail } from '../ui/EncounterDetail';
+import { parseCombatants, type EncounterSaveData } from '../../lib/encounters';
 import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd';
 import { isUnratable, partyLevels, rateEncounter, RATING_LABEL, type PartyLevel, type Rating } from '../../lib/encounterScaling';
 import { difficultyMeta, encounterStatusMeta } from '../../lib/theme';

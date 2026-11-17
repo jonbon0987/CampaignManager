@@ -8,15 +8,13 @@ import { useState, useMemo } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField } from '../FormField';
+import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock, buildDefaultCampaignContextBlock } from '../../lib/campaignContext';
-import {
-  EntityContextPicker,
-  useSelectedContextEntities,
-  type ContextRef,
-} from './EntityContextPicker';
+import { EntityContextPicker } from './EntityContextPicker';
+import { useSelectedContextEntities, type ContextRef } from '../../hooks/useSelectedContextEntities';
 import { RANDOM_TABLE_KINDS, DIE_SIZES, kindMeta } from '../../lib/randomEncounter';
 import { buildTablePrompt, parseGeneratedTable } from '../../lib/randomTableGeneration';
 import type { RandomEncounterSaveData } from './RandomEncounterDetail';

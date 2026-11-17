@@ -1,5 +1,6 @@
 import { useStatBlockPanel } from '../context/StatBlockPanelContext';
-import { StatBlockBody, isStatBlockEmpty } from './tabs/CreatureStatblocks';
+import { StatBlockBody } from './tabs/CreatureStatblocks';
+import { isStatBlockEmpty } from '../lib/statblocks';
 import { getTypeStyle } from '../lib/theme';
 import type { MonsterStatblock } from '../lib/database.types';
 import { IconButton } from './ui/IconButton';

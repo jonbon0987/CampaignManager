@@ -17,7 +17,8 @@ import { Button } from '../ui/Button';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { SlashField } from '../ui/SlashField';
-import { ABILITY_KEYS, AbilityInput, CREATURE_TYPES, type MonsterForm } from '../tabs/CreatureStatblocks';
+import { AbilityInput } from '../tabs/CreatureStatblocks';
+import { ABILITY_KEYS, CREATURE_TYPES, type MonsterForm } from '../../lib/statblocks';
 import type { EntityScope } from './types';
 import type { MonsterStatblock } from '../../lib/database.types';
 

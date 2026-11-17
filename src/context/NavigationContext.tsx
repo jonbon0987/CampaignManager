@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Tab } from '../App';
-import type { EntityType } from '../components/ui/StatBlockText';
+import type { RefKind as EntityType } from '../lib/slashMarkdown';
 
 /** Maps entity types to their corresponding sidebar tabs */
 const ENTITY_TAB_MAP: Record<EntityType, Tab> = {

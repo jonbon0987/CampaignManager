@@ -5,8 +5,10 @@
 
 import { useState } from 'react';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
-import { EntityContextPicker, useSelectedContextEntities, type ContextRef } from '../ui/EntityContextPicker';
+import { FormField } from '../FormField';
+import { inputStyle, textareaStyle } from '../formStyles';
+import { EntityContextPicker } from '../ui/EntityContextPicker';
+import { useSelectedContextEntities, type ContextRef } from '../../hooks/useSelectedContextEntities';
 import { useCampaign } from '../../context/CampaignContext';
 import { useItems } from '../../context/items';
 import { getAIProvider } from '../../lib/aiProvider';

@@ -13,23 +13,20 @@ import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/
 import { SrdLibrary } from '../srd/SrdLibrary';
 import type { SrdEdition, SrdMonster } from '../../lib/srd';
 import { difficultyColor } from '../../lib/theme';
+import { CHALLENGE_RATINGS } from '../../lib/statblocks';
+import { parseCombatants } from '../../lib/encounters';
+import { type EncounterSaveData } from '../../lib/encounters';
 
 // ================================================================
 // Constants
 // ================================================================
 
-export const ENVIRONMENTS = ['Dungeon', 'Forest', 'Urban', 'Cave', 'Open', 'Underground', 'Aquatic', 'Aerial', 'Other'];
-export const DIFFICULTIES = ['easy', 'medium', 'hard', 'deadly'] as const;
-export const STATUSES = ['draft', 'ready', 'completed'] as const;
+const ENVIRONMENTS = ['Dungeon', 'Forest', 'Urban', 'Cave', 'Open', 'Underground', 'Aquatic', 'Aerial', 'Other'];
+const STATUSES = ['draft', 'ready', 'completed'] as const;
 
-export const VALID_CRS = [
-  '0', '1/8', '1/4', '1/2',
-  '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
-  '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
-  '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
-];
+const VALID_CRS = CHALLENGE_RATINGS;
 
-export const sectionLabel: React.CSSProperties = {
+const sectionLabel: React.CSSProperties = {
   color: 'var(--gold)',
   fontSize: '0.65rem',
   fontWeight: 700,
@@ -53,22 +50,8 @@ export type EncounterForm = {
   status: 'draft' | 'ready' | 'completed';
 };
 
-// Minimal data shape the save callback receives — callers inject campaign_id / world_id themselves
-export type EncounterSaveData = {
-  id?: string;
-  name: string;
-  description: string | null;
-  environment: string | null;
-  difficulty: string | null;
-  party_size: number | null;
-  party_level: number | null;
-  dm_notes: string | null;
-  status: 'draft' | 'ready' | 'completed';
-  combatants: string | null;
-  sort_order: number;
-};
 
-export function formFromEncounter(enc: Encounter): EncounterForm {
+function formFromEncounter(enc: Encounter): EncounterForm {
   return {
     name: enc.name,
     description: enc.description ?? '',
@@ -79,12 +62,6 @@ export function formFromEncounter(enc: Encounter): EncounterForm {
     dm_notes: enc.dm_notes ?? '',
     status: enc.status,
   };
-}
-
-export function parseCombatants(raw: string | null): EncounterCombatant[] {
-  if (!raw) return [];
-  try { return JSON.parse(raw) as EncounterCombatant[]; }
-  catch { return []; }
 }
 
 // ================================================================

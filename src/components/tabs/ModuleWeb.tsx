@@ -18,7 +18,7 @@ import { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback } fr
 import { useCampaign } from '../../context/CampaignContext';
 import { Submodules as SubmodulesDB, Scenes as ScenesDB, SubmoduleDeps as SubmoduleDepsDB } from '../../lib/db';
 import { wouldCreateModuleCycle, wouldCreateSubmoduleCycle } from '../../lib/moduleUtils';
-import { typeInfo } from './moduleDetail/pickers';
+import { getModuleTypeInfo } from '../../lib/theme';
 import type { Module, Submodule, Scene, SubmoduleDependency } from '../../lib/database.types';
 import { WebSim, type BodyKind, type BodySpec, type LinkSpec, type Body } from './moduleWeb/sim';
 import { COL_X, CENTER_Y, SPEC, toRoman, labelLines, type Selection } from './moduleWeb/shared';
@@ -611,7 +611,7 @@ export default function ModuleWeb({ onOpen, initialModuleId }: {
                 const kids = childCount(n), open = expanded.has(n.id);
                 const rec = n.rec;
                 const info = n.kind === 'module' ? null
-                  : typeInfo(n.kind === 'sub' ? (rec as Submodule).submodule_type : (rec as Scene).scene_type);
+                  : getModuleTypeInfo(n.kind === 'sub' ? (rec as Submodule).submodule_type : (rec as Scene).scene_type);
                 const cls = [
                   'orr-node', `orr-${n.kind}`,
                   isSel ? 'is-sel' : '', hover === n.id ? 'is-hover' : '', dim ? 'is-dim' : '',

@@ -10,7 +10,7 @@ import { clockDots } from '../../lib/threadClock';
 import { dateOf, formatSpan, formatWorldDate } from '../../lib/calendar';
 import { refsToNames } from '../../lib/slashMarkdown';
 import { clip, formatSessionDate, lastPlayed, leftOpenLines, planIds, plainText, sessionName } from '../../lib/sessionLifecycle';
-import { parseCombatants } from '../ui/EncounterDetail';
+import { parseCombatants } from '../../lib/encounters';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { Button } from '../ui/Button';
 import type { Session, SessionPlan } from '../../lib/database.types';

@@ -17,7 +17,9 @@ import { SlashField } from '../../ui/SlashField';
 import { Button } from '../../ui/Button';
 import { limitFor } from '../../../lib/fieldLimits';
 import type { Module, Submodule, Scene, MonsterStatblock } from '../../../lib/database.types';
-import { TypeTag, InlinePicker, typeInfo, parseLinkedIds, SCENE_TYPES } from './pickers';
+import { TypeTag, InlinePicker } from './pickers';
+import { getModuleTypeInfo } from '../../../lib/theme';
+import { parseLinkedIds, SCENE_TYPES } from '../../../lib/moduleStructure';
 
 interface SceneForm { title: string; scene_type: string; summary: string; content: string; dm_notes: string; read_aloud: string; }
 
@@ -142,7 +144,7 @@ export function SceneEditor({ scene, part, module, index, total, prev, next, onO
           <span className="as-ll">Stat Sheets</span>
           <div className="md-chips">
             {linked.map(m => {
-              const ci = typeInfo(m.creature_type);
+              const ci = getModuleTypeInfo(m.creature_type);
               return (
                 <span key={m.id} className="md-chip">
                   <span className="md-chip-glyph" style={{ color: ci.color }}>☠</span>{m.name}
@@ -154,7 +156,7 @@ export function SceneEditor({ scene, part, module, index, total, prev, next, onO
             <InlinePicker label="Stat sheet"
               options={monsterStatblocks.filter(m => !linkedIds.includes(m.id)).map(m => ({
                 id: m.id, label: m.name, meta: m.challenge_rating ? `CR ${m.challenge_rating}` : undefined,
-                glyph: '☠', color: typeInfo(m.creature_type).color,
+                glyph: '☠', color: getModuleTypeInfo(m.creature_type).color,
               }))}
               onPick={linkCreature} />
           </div>

@@ -2,7 +2,8 @@
 // Plain data and pure functions, so a fight can be saved on the session and
 // run by both the full-screen tracker (Encounters) and the docked one (Play).
 
-import type { Encounter, EncounterCombatant, MonsterStatblock, PlayerCharacter } from './database.types';
+import type { Encounter, MonsterStatblock, PlayerCharacter } from './database.types';
+import { parseCombatants } from './encounters';
 
 // ─── D&D 5e conditions ───────────────────────────────────────────────────────
 export const CONDITIONS = [
@@ -107,12 +108,6 @@ export const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.mi
 const clampHp = (hp: number, maxHp: number) => (maxHp > 0 ? clamp(hp, 0, maxHp) : Math.max(0, hp));
 
 const without = (conditions: Condition[], drop: readonly Condition[]) => conditions.filter(c => !drop.includes(c));
-
-function parseCombatants(raw: string | null): EncounterCombatant[] {
-  if (!raw) return [];
-  try { return JSON.parse(raw) as EncounterCombatant[]; }
-  catch { return []; }
-}
 
 const base = (over: Partial<Combatant> & Pick<Combatant, 'name'>): Combatant => ({
   id: crypto.randomUUID(),

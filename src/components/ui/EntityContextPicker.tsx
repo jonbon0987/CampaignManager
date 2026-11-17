@@ -6,37 +6,13 @@
 // time; nothing is persisted.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ContextRef } from '../../hooks/useSelectedContextEntities';
 import { useEntityRefs } from '../../context/EntityRefContext';
 import { KINDS, KIND_GLYPH, KIND_GROUP_LABEL, type RefKind } from '../../lib/slashMarkdown';
-import type { SelectedEntity } from '../../lib/campaignContext';
 
-export interface ContextRef {
-  kind: RefKind;
-  id: string;
-}
 
 const keyOf = (r: ContextRef) => `${r.kind}:${r.id}`;
 
-// Resolve picked {kind,id} refs into the rich shape buildSelectedContextBlock
-// wants, pulling label / subtitle / description / meta from the shared index.
-export function useSelectedContextEntities(selected: ContextRef[]): SelectedEntity[] {
-  const { refById, detailFor } = useEntityRefs();
-  return useMemo(() => selected.map(r => {
-    const ref = refById(r.kind, r.id);
-    const d = detailFor(r.kind, r.id);
-    // detailFor substitutes a "No description yet." placeholder — drop it so it
-    // never leaks into the prompt as if it were real description text.
-    const desc = d.desc === 'No description yet.' ? '' : d.desc;
-    return {
-      kind: r.kind,
-      id: r.id,
-      label: d.label || ref?.label || r.id,
-      sub: d.sub || ref?.sub || '',
-      desc,
-      meta: d.meta,
-    } satisfies SelectedEntity;
-  }), [selected, refById, detailFor]);
-}
 
 export function EntityContextPicker({
   selected,

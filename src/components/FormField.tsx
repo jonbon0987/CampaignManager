@@ -1,4 +1,4 @@
-import type { ReactNode, CSSProperties } from 'react';
+import type { ReactNode } from 'react';
 
 interface FormFieldProps {
   label: ReactNode;
@@ -20,25 +20,3 @@ export function FormField({ label, children, className = '', hint }: FormFieldPr
     </div>
   );
 }
-
-export const inputStyle: CSSProperties = {
-  backgroundColor: 'var(--paper-2)',
-  color: 'var(--ink)',
-  border: '1px solid var(--rule)',
-  borderRadius: 'var(--radius)',
-  outline: 'none',
-  fontFamily: 'var(--serif)',
-  fontSize: '14px',
-  width: '100%',
-  padding: '8px 12px',
-  boxSizing: 'border-box',
-  colorScheme: 'dark',
-};
-
-export const textareaStyle: CSSProperties = {
-  ...inputStyle,
-  resize: 'vertical',
-  minHeight: '80px',
-  lineHeight: '1.6',
-  fontSize: '15px',
-};

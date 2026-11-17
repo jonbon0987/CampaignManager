@@ -7,7 +7,7 @@
 // Pure — no React/fetch — so the mapping/merge is unit-tested.
 // -----------------------------------------------------------
 
-import type { MonsterForm } from '../components/tabs/CreatureStatblocks';
+import type { MonsterForm } from './statblocks';
 import type { MonsterStatblock } from './database.types';
 
 const s = (v: unknown): string => (v == null ? '' : String(v));
