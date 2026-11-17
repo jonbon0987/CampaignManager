@@ -3,6 +3,10 @@
 // truth). Values are `var(--…)` references so inline styles resolve to the same tokens as the
 // rest of the app — never hardcode hex here.
 import type { TimelineTypeConfig, EraConfig } from '../types/world';
+import type { RelationshipType } from './database.types';
+
+/** A badge's three colours: fill, text and border. */
+export type Swatch = { bg: string; text: string; border: string };
 
 export const colors = {
   bg:          'var(--bg)',
@@ -145,13 +149,55 @@ export const entityKindColor: Record<'session' | 'pc' | 'npc' | 'location' | 'fa
   faction: 'var(--link-faction)', lore: 'var(--gold)', hook: 'var(--link-hook)',
 };
 
-// Encounter difficulty ramp — from tabs/moduleDetail/SubmoduleEditor.tsx (`diffColor`) and combat surfaces
-export const difficultyColors: Record<string, string> = {
-  easy:   'var(--diff-easy)',
-  medium: 'var(--gold-2)',
-  hard:   'var(--diff-hard)',
-  deadly: 'var(--diff-deadly)',
-  trivial: 'var(--ink-3)',
+// Encounter difficulty: one scale for badges and for tinted words alike.
+// (Was three maps; the words used a softer ramp than the badges.)
+export const difficultyMeta: Record<string, Swatch> = {
+  trivial:  { bg: 'var(--paper-2)',    text: 'var(--ink-3)',   border: 'var(--rule)' },
+  easy:     { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
+  medium:   { bg: 'var(--warn-bg)',    text: 'var(--warn)',    border: 'var(--warn-line)' },
+  hard:     { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
+  deadly:   { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
+  // The 2024 tiers, on the same scale of colour.
+  low:      { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
+  moderate: { bg: 'var(--warn-bg)',    text: 'var(--warn)',    border: 'var(--warn-line)' },
+  high:     { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
+  beyond:   { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
+};
+
+/** Text colour only, for places that tint a word or a glyph rather than draw a badge. */
+export const difficultyColor = (tier: string | null | undefined, fallback = 'var(--ink-3)'): string =>
+  difficultyMeta[tier ?? '']?.text ?? fallback;
+
+// Encounter status badges (draft / ready / completed).
+export const encounterStatusMeta: Record<string, Swatch> = {
+  draft:     { bg: 'var(--paper-2)',    text: 'var(--ink-3)',   border: 'var(--rule)' },
+  ready:     { bg: 'var(--info-bg)',    text: 'var(--info)',    border: 'var(--info-line)' },
+  completed: { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
+};
+
+// Random-table entries: combat, social or either.
+export const randomEntryTypeColors: Record<string, string> = {
+  combat: 'var(--red)',
+  social: 'var(--sky)',
+  either: 'var(--ink-3)',
+};
+
+// Relationship web: the line and legend colour of each relationship.
+export const relationshipColors: Record<RelationshipType, string> = {
+  ally:    'var(--moss)',
+  rival:   'var(--gold-2)',
+  foe:     'var(--accent)',
+  neutral: 'var(--ink-3)',
+};
+
+// Conditions: the pill colour of each. The rules stay in lib/combat.ts.
+export const conditionColors: Record<string, string> = {
+  blinded: 'var(--ink-3)', charmed: 'var(--arcane)', deafened: 'var(--ink-3)',
+  frightened: 'var(--gold)', grappled: 'var(--cr)', incapacitated: 'var(--ink-3)',
+  invisible: 'var(--info)', paralyzed: 'var(--red)', petrified: 'var(--ink-3)',
+  poisoned: 'var(--success)', prone: 'var(--accent)', restrained: 'var(--cr)',
+  stunned: 'var(--diff-hard)', unconscious: 'var(--red)', concentrating: 'var(--info)',
+  dying: 'var(--red)', stable: 'var(--moss)', dead: 'var(--ink-3)',
 };
 
 // World timeline: the glyph and colour of each event type, and the colour of

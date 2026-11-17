@@ -12,6 +12,7 @@ import { adviseEncounter, isUnratable, partyLevels, rateEncounter, RATING_LABEL,
 import type { Encounter, EncounterCombatant, MonsterStatblock } from '../../lib/database.types';
 import { SrdLibrary } from '../srd/SrdLibrary';
 import type { SrdEdition, SrdMonster } from '../../lib/srd';
+import { difficultyColor } from '../../lib/theme';
 
 // ================================================================
 // Constants
@@ -27,25 +28,6 @@ export const VALID_CRS = [
   '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
   '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
 ];
-
-export const difficultyColors: Record<string, { bg: string; text: string; border: string }> = {
-  easy:   { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
-  medium: { bg: 'var(--warn-bg)',    text: 'var(--warn)',    border: 'var(--warn-line)' },
-  hard:   { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
-  deadly: { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
-  trivial: { bg: 'var(--paper-2)',   text: 'var(--ink-3)',   border: 'var(--rule)' },
-  // The 2024 tiers, on the same scale of colour.
-  low:      { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
-  moderate: { bg: 'var(--warn-bg)',    text: 'var(--warn)',    border: 'var(--warn-line)' },
-  high:     { bg: 'var(--orange-bg)',  text: 'var(--orange)',  border: 'var(--orange-line)' },
-  beyond:   { bg: 'var(--red-bg)',     text: 'var(--red)',     border: 'var(--red-line)' },
-};
-
-export const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-  draft:     { bg: 'var(--paper-2)',   text: 'var(--ink-3)',   border: 'var(--rule)' },
-  ready:     { bg: 'var(--info-bg)',   text: 'var(--info)',    border: 'var(--info-line)' },
-  completed: { bg: 'var(--success-bg)', text: 'var(--success)', border: 'var(--success-line)' },
-};
 
 export const sectionLabel: React.CSSProperties = {
   color: 'var(--gold)',
@@ -404,7 +386,7 @@ export function EncounterDetail({
         {rating ? (
           <div className="enc-rate">
             <div className="enc-rate-head">
-              <span className="enc-rate-tier" style={{ color: difficultyColors[rating.tier].text }}>{RATING_LABEL[rating.tier]}</span>
+              <span className="enc-rate-tier" style={{ color: difficultyColor(rating.tier) }}>{RATING_LABEL[rating.tier]}</span>
               <span className="enc-rate-xp">{rating.xp.toLocaleString()} {rating.edition === '2024' ? 'XP · 2024 budget' : 'adjusted XP'}</span>
             </div>
             <div className="enc-scale">

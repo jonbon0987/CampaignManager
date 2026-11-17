@@ -8,17 +8,12 @@ import { FormField, inputStyle } from '../FormField';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
 import type { RelationshipType, CharacterKind } from '../../lib/database.types';
+import { relationshipColors } from '../../lib/theme';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const REL_TYPES: RelationshipType[] = ['ally', 'rival', 'foe', 'neutral'];
 
-const REL_COLOR: Record<RelationshipType, string> = {
-  ally:    'var(--moss)',
-  rival:   'var(--gold-2)',
-  foe:     'var(--accent)',
-  neutral: 'var(--ink-3)',
-};
 
 const REL_LABEL: Record<RelationshipType, string> = {
   ally:    'Ally',
@@ -249,7 +244,7 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
               aria-pressed={!hidden[t]}
               onClick={() => toggleType(t)}
             >
-              <span className="cw-legend-line" style={{ background: REL_COLOR[t] }} />
+              <span className="cw-legend-line" style={{ background: relationshipColors[t] }} />
               {REL_LABEL[t]}
             </button>
           ))}
@@ -319,7 +314,7 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
                     <line
                       x1={a.x} y1={a.y}
                       x2={b.x} y2={b.y}
-                      stroke={REL_COLOR[e.relationship_type]}
+                      stroke={relationshipColors[e.relationship_type]}
                       strokeWidth={isFocused ? 2.5 : 1.4}
                     />
                     {isFocused && e.label && (
@@ -328,7 +323,7 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
                         y={(a.y + b.y) / 2 - 6}
                         textAnchor="middle"
                         className="cw-edge-label"
-                        fill={REL_COLOR[e.relationship_type]}
+                        fill={relationshipColors[e.relationship_type]}
                       >
                         {e.label}
                       </text>
@@ -439,7 +434,7 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
                       // eslint-disable-next-line no-restricted-syntax -- relationship row in the focus panel
                       className="cw-rel"
                       // eslint-disable-next-line no-restricted-syntax -- relationship row in the focus panel
-                      style={{ '--rel-color': REL_COLOR[e.relationship_type] } as React.CSSProperties}
+                      style={{ '--rel-color': relationshipColors[e.relationship_type] } as React.CSSProperties}
                       onClick={() => setFocus(otherId)}
                     >
                       <div className="cw-rel-row">
@@ -541,10 +536,10 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
 
           <div
             className="flex items-center gap-2 px-3 py-2 rounded text-xs"
-            style={{ backgroundColor: 'var(--bg)', border: `1px solid ${REL_COLOR[relForm.relationship_type]}` }}
+            style={{ backgroundColor: 'var(--bg)', border: `1px solid ${relationshipColors[relForm.relationship_type]}` }}
           >
-            <span style={{ display: 'inline-block', width: 32, height: 2, backgroundColor: REL_COLOR[relForm.relationship_type], borderRadius: 1 }} />
-            <span style={{ color: REL_COLOR[relForm.relationship_type] }}>
+            <span style={{ display: 'inline-block', width: 32, height: 2, backgroundColor: relationshipColors[relForm.relationship_type], borderRadius: 1 }} />
+            <span style={{ color: relationshipColors[relForm.relationship_type] }}>
               {REL_LABEL[relForm.relationship_type]} — {allChars.find(c => c.id === relForm.from_id)?.name ?? '?'} → {allChars.find(c => c.id === relForm.to_id)?.name ?? '?'}
             </span>
           </div>

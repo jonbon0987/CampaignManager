@@ -19,7 +19,7 @@ import type { Module, Submodule, Scene, MonsterStatblock, Encounter } from '../.
 import {
   TypeTag, InlinePicker, typeInfo, parseLinkedIds, SUBMODULE_TYPES,
 } from './pickers';
-import { difficultyColors as diffColor } from '../../../lib/theme';
+import { difficultyColor } from '../../../lib/theme';
 import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 
@@ -208,14 +208,14 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
           <div className="md-chips">
             {linkedEncs.map(e => (
               <span key={e.id} className="md-chip">
-                <span className="md-chip-glyph" style={{ color: diffColor[e.difficulty ?? ''] ?? 'var(--gold)' }}>⚔</span>{e.name}
-                {e.difficulty && <span className="md-chip-cr" style={{ color: diffColor[e.difficulty] }}>{e.difficulty}</span>}
+                <span className="md-chip-glyph" style={{ color: difficultyColor(e.difficulty, 'var(--gold)') }}>⚔</span>{e.name}
+                {e.difficulty && <span className="md-chip-cr" style={{ color: difficultyColor(e.difficulty) }}>{e.difficulty}</span>}
                 <button title="Unlink" onClick={() => unlinkEnc(e.id)}>✕</button>
               </span>
             ))}
             <InlinePicker label="Encounter"
               options={encounters.filter(e => !encIds.includes(e.id)).map(e => ({
-                id: e.id, label: e.name, meta: e.difficulty ?? undefined, glyph: '⚔', color: diffColor[e.difficulty ?? ''] ?? 'var(--gold)',
+                id: e.id, label: e.name, meta: e.difficulty ?? undefined, glyph: '⚔', color: difficultyColor(e.difficulty, 'var(--gold)'),
               }))}
               onPick={linkEnc} />
           </div>
