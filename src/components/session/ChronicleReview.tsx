@@ -568,7 +568,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                               size="xs"
                               aria-label={`Play source at ${clock(p.source_ms)}`}
                               onClick={e => { e.stopPropagation(); playFrom(p); }}
-                              className="chg-play" style={{ background: 'var(--paper-3)', color: 'var(--gold)' }}
+                              className="chg-play" style={{ background: 'var(--paper-3)', color: 'var(--gold)', fontFamily: 'var(--mono)' }}
                             >
                               ▶ {clock(p.source_ms)}
                             </Button>

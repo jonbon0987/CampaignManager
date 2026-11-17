@@ -34,7 +34,7 @@
 .rec-audio { flex: 1; min-width: 220px; height: 32px; }
 .rec-resume { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: var(--radius-lg); padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .rec-resume-text { flex: 1 1 260px; color: var(--ink); }
-.rec-pill { border-radius: 999px; font-family: var(--mono); letter-spacing: 0.06em; }
+.rec-pill { border-radius: 999px; letter-spacing: 0.06em; }
 .rec-pill-dot { width: 7px; height: 7px; border-radius: 50%; }
 
 /* Recap chronicle: who was there, what changed, places, threads, moments and the wiki diff.
@@ -71,6 +71,8 @@
 .rcp-wiki { padding: 6px; }
 .rcp-grow { flex: 1; }
 
+/* <Button> sets font-family inline, so a Button's font is passed as style, not set here. */
+
 /* Chronicle review screen: header, filters, the source panel and merge fields.
    Used by session/ChronicleReview.tsx. The review cards' own .chg-* rules are in index.css. */
 
@@ -104,4 +106,4 @@
 .chg-filter-label { flex: 1; text-align: left; }
 .chg-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 26px; }
 .chg-accepted { white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
-.chg-play { flex: 0 0 auto; font-family: var(--mono); font-style: normal; }
+.chg-play { flex: 0 0 auto; font-style: normal; }

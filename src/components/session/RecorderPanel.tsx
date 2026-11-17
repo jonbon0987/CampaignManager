@@ -672,7 +672,7 @@ export function RecordingIndicator({ onOpen }: { onOpen: (sessionId: string) => 
       size="xs"
       onClick={() => onOpen(live.recording.session_id)}
       aria-label={live.paused ? 'Recording paused — open the session being recorded' : 'Recording — open the session being recorded'}
-      className="rec-pill" style={{ borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)' }}
+      className="rec-pill" style={{ borderColor: live.paused ? 'var(--rule)' : 'var(--red-line)', background: live.paused ? 'var(--paper-2)' : 'var(--red-bg)', color: live.paused ? 'var(--ink-2)' : 'var(--red)', fontFamily: 'var(--mono)' }}
     >
       <span aria-hidden="true" className="rec-pill-dot" style={{ background: live.paused ? 'var(--ink-3)' : 'var(--red)' }} />
       {live.paused ? 'PAUSED' : 'REC'} <Elapsed startedAt={live.recording.started_at} />
