@@ -32,6 +32,24 @@ function setup(timeline: WorldTimelineEvent[] = []) {
 
 beforeEach(() => vi.clearAllMocks());
 
+describe('Timeline empty state', () => {
+  it('shows the empty state with no events, and its button opens the new-event form', () => {
+    setup();
+    expect(screen.getByText(/No events yet/)).toBeTruthy();
+    expect(screen.queryByText('No events match the current filters.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'All Types' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Add the first event' }));
+    expect(screen.getByPlaceholderText('e.g. The Battle of Ashfield')).toBeTruthy();
+  });
+
+  it('shows the timeline, not the empty state, once there is an event', () => {
+    setup([event()]);
+    expect(screen.queryByText(/No events yet/)).toBeNull();
+    expect(screen.getByText('The Fall of Myth Drannor')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'World Timeline' })).toBeTruthy();
+  });
+});
+
 describe('Timeline event dates', () => {
   it('dates a new event in the world’s calendar, or by its year alone', async () => {
     const { createTimelineEvent } = setup();

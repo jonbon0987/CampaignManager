@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { Pill } from '../ui/ListDetail';
 import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { EmptyState } from '../ui/EmptyState';
 import type { WorldTimelineEvent, TimelineEventType } from '../../types/world';
 import { limitFor, minFor, maxFor } from '../../lib/fieldLimits';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
@@ -115,73 +117,82 @@ export default function WorldTimeline() {
 
   return (
     <div className="tl-wrap">
-      <div className="tl-head">
-        <div>
-          <div className="tl-eyebrow">{plural(filtered.length, 'event')}{suffix ? ` · ${suffix}` : ''}</div>
-          <h2 className="tl-title">World Timeline</h2>
-        </div>
+      <PageHeader className="tl-head" eyebrow={`${plural(filtered.length, 'event')}${suffix ? ` · ${suffix}` : ''}`} title="World Timeline">
         <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>+ Add event</Button>
-      </div>
+      </PageHeader>
 
-      <div className="tl-filters">
-        <Pill active={typeFilter === 'all'} onClick={() => setTypeFilter('all')}>All Types</Pill>
-        {types.map(t => {
-          const cfg = timelineTypeConfig[t];
-          return (
-            <Pill key={t} active={typeFilter === t} onClick={() => setTypeFilter(typeFilter === t ? 'all' : t)}>
-              <span style={{ marginRight: 4 }}>{cfg.glyph}</span>{cap(t)}
-            </Pill>
-          );
-        })}
-        <span className="cm-filter-sep" />
-        <Pill active={eraFilter === 'all'} onClick={() => setEraFilter('all')} subtle>All Eras</Pill>
-        {eras.map(e => (
-          <Pill key={e} active={eraFilter === e} onClick={() => setEraFilter(eraFilter === e ? 'all' : e)} subtle>{e}</Pill>
-        ))}
-      </div>
-
-      <div className="tl-body">
-        {filtered.length === 0 ? (
-          <div className="cm-empty">No events match the current filters.</div>
-        ) : (
-          <div className="tl-line">
-            {grouped.map((item, i) => {
-              if (item.type === 'era') {
-                const eraConf = eraConfig[item.era];
-                return (
-                  <div key={`era-${item.era}-${i}`} className="tl-era">
-                    <span style={eraConf ? { color: eraConf.color } : undefined}>{item.era}</span>
-                  </div>
-                );
-              }
-              const ev = item.event;
-              const cfg = timelineTypeConfig[ev.type] ?? timelineTypeConfig.custom;
-              const isExpanded = expanded === ev.id;
-              const isEditing = editingId === ev.id;
+      {timeline.length === 0 ? (
+        <div className="tl-body">
+          <EmptyState
+            glyph="❂"
+            text="No events yet. Set down the world’s history: its founding, wars, treaties and cataclysms, and the campaigns that play out in it."
+            actionLabel="Add the first event"
+            onAction={() => setAddOpen(true)}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="tl-filters">
+            <Pill active={typeFilter === 'all'} onClick={() => setTypeFilter('all')}>All Types</Pill>
+            {types.map(t => {
+              const cfg = timelineTypeConfig[t];
               return (
-                <TimelineEventCard
-                  key={ev.id}
-                  event={ev}
-                  config={cfg}
-                  expanded={isExpanded}
-                  editing={isEditing}
-                  onToggle={() => setExpanded(isExpanded ? null : ev.id)}
-                  onEdit={() => { setExpanded(ev.id); setEditingId(ev.id); }}
-                  onSaveEdit={upsertTimelineEvent}
-                  onCancelEdit={() => setEditingId(null)}
-                  onDelete={() => handleDelete(ev.id)}
-                  calendar={suffix}
-                  eras={eras}
-                />
+                <Pill key={t} active={typeFilter === t} onClick={() => setTypeFilter(typeFilter === t ? 'all' : t)}>
+                  <span style={{ marginRight: 4 }}>{cfg.glyph}</span>{cap(t)}
+                </Pill>
               );
             })}
+            <span className="cm-filter-sep" />
+            <Pill active={eraFilter === 'all'} onClick={() => setEraFilter('all')} subtle>All Eras</Pill>
+            {eras.map(e => (
+              <Pill key={e} active={eraFilter === e} onClick={() => setEraFilter(eraFilter === e ? 'all' : e)} subtle>{e}</Pill>
+            ))}
           </div>
-        )}
-        <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)} style={{ marginTop: 12 }}>
-          <span style={{ color: 'var(--gold)' }}>+</span>
-          Add event to timeline
-        </Button>
-      </div>
+
+          <div className="tl-body">
+            {filtered.length === 0 ? (
+              <div className="cm-empty">No events match the current filters.</div>
+            ) : (
+              <div className="tl-line">
+                {grouped.map((item, i) => {
+                  if (item.type === 'era') {
+                    const eraConf = eraConfig[item.era];
+                    return (
+                      <div key={`era-${item.era}-${i}`} className="tl-era">
+                        <span style={eraConf ? { color: eraConf.color } : undefined}>{item.era}</span>
+                      </div>
+                    );
+                  }
+                  const ev = item.event;
+                  const cfg = timelineTypeConfig[ev.type] ?? timelineTypeConfig.custom;
+                  const isExpanded = expanded === ev.id;
+                  const isEditing = editingId === ev.id;
+                  return (
+                    <TimelineEventCard
+                      key={ev.id}
+                      event={ev}
+                      config={cfg}
+                      expanded={isExpanded}
+                      editing={isEditing}
+                      onToggle={() => setExpanded(isExpanded ? null : ev.id)}
+                      onEdit={() => { setExpanded(ev.id); setEditingId(ev.id); }}
+                      onSaveEdit={upsertTimelineEvent}
+                      onCancelEdit={() => setEditingId(null)}
+                      onDelete={() => handleDelete(ev.id)}
+                      calendar={suffix}
+                      eras={eras}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)} style={{ marginTop: 12 }}>
+              <span style={{ color: 'var(--gold)' }}>+</span>
+              Add event to timeline
+            </Button>
+          </div>
+        </>
+      )}
 
       {addOpen && (
         <NewEventModal

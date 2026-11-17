@@ -277,21 +277,10 @@
   flex-direction: column;
   overflow: hidden;
 }
+/* Layout comes from PageHeader (.cm-page-head); this only frames it. */
 .tl-head {
   padding: 22px 28px 16px;
   border-bottom: 1px solid var(--rule-soft);
-  display: flex; align-items: flex-end; justify-content: space-between;
-}
-.tl-title {
-  font-family: var(--display);
-  font-size: var(--fs-h2); line-height: 1;
-  color: var(--ink); margin: 4px 0 0;
-  font-weight: 500;
-}
-.tl-eyebrow {
-  font-family: var(--mono); font-size: var(--fs-label);
-  letter-spacing: .22em; text-transform: uppercase;
-  color: var(--ink-3);
 }
 .tl-filters {
   display: flex; gap: 6px; padding: 12px 28px;
