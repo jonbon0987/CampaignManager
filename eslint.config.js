@@ -41,8 +41,8 @@ const deadClickSelectors = [
   },
 ]
 
-// v5: audit M3 — raw form controls. NOT enabled yet: spread this into the
-// rule below when the Input / Select / Textarea primitives land, at 'warn' first.
+// v5: audit M3 — raw form controls. Enabled with the Input / Select / Textarea
+// primitives (phase 7a); the few raw fields left carry a reason.
 const rawFieldSelectors = [
   {
     selector: "JSXOpeningElement[name.name=/^(input|select|textarea)$/] > JSXAttribute[name.name='style']",
@@ -115,7 +115,7 @@ export default defineConfig([
         'error',
         ...rawButtonSelectors,
         ...deadClickSelectors,
-        // ...rawFieldSelectors,   // v5: enable with the form primitives
+        ...rawFieldSelectors,
       ],
     },
   },

@@ -4,7 +4,6 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useReportRecord } from '../../context/NavigationContext';
 import { Modal } from '../Modal';
 import { FormField } from '../FormField';
-import { inputStyle, textareaStyle } from '../formStyles';
 import { StatBlockText } from '../ui/StatBlockText';
 import { RollableText } from '../ui/RollableText';
 import { getAIProvider } from '../../lib/aiProvider';
@@ -23,6 +22,7 @@ import { SegmentedControl } from '../ui/SegmentedControl';
 import { abilityModLabel } from '../../lib/statblocks';
 import { emptyMonsterForm } from '../../lib/statblocks';
 import { CHALLENGE_RATINGS } from '../../lib/statblocks';
+import { Input, Textarea } from '../ui/Input';
 
 
 // --------------- Helpers ---------------
@@ -72,14 +72,14 @@ export function AbilityInput({ label, value, onChange }: {
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
-      <input
+      <Input
         type="number"
         min={1}
         max={30}
         value={value}
         onChange={onChange}
         placeholder="—"
-        style={{ ...inputStyle, textAlign: 'center', padding: '4px 2px', width: '100%' }}
+        style={{ textAlign: 'center', padding: '4px 2px', width: '100%' }}
       />
       <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-2)', marginTop: '3px', minHeight: '1em' }}>
         {mod ?? ''}
@@ -472,13 +472,12 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 Optionally enter a CR, or leave blank for a random difficulty.
               </p>
               <FormField label="Challenge Rating (optional)">
-                <input
+                <Input
                   type="text"
                   value={genCR}
                   onChange={e => { setGenCR(e.target.value); setGenError(''); }}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleGenerate(); } }}
                   placeholder="Leave blank for random, or e.g. 1/4, 5, 17"
-                  style={inputStyle}
                   autoFocus
                   disabled={genLoading}
                 />
@@ -494,27 +493,25 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Number of Players">
-                  <input
+                  <Input
                     type="number"
                     min={1}
                     max={10}
                     value={genPartySize}
                     onChange={e => { setGenPartySize(e.target.value); setGenError(''); }}
                     placeholder="e.g. 4"
-                    style={inputStyle}
                     autoFocus
                     disabled={genLoading}
                   />
                 </FormField>
                 <FormField label="Average Party Level">
-                  <input
+                  <Input
                     type="number"
                     min={1}
                     max={20}
                     value={genPartyLevel}
                     onChange={e => { setGenPartyLevel(e.target.value); setGenError(''); }}
                     placeholder="e.g. 5"
-                    style={inputStyle}
                     disabled={genLoading}
                   />
                 </FormField>
@@ -536,12 +533,11 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
 
           {/* Additional context */}
           <FormField label="Additional Context (optional)">
-            <textarea
+            <Textarea
               rows={3}
               value={genAdditionalContext}
               onChange={e => setGenAdditionalContext(e.target.value)}
               placeholder="e.g. This stat sheet has multiple stages and legendary actions, transforms mid-fight, etc"
-              style={textareaStyle}
               disabled={genLoading}
             />
           </FormField>

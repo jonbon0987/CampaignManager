@@ -13,6 +13,7 @@ import {
   type CommonRule, type HouseRule, type RuleTopic,
 } from '../../lib/houseRules';
 import type { Json } from '../../lib/database.types';
+import { Input, Select, Textarea } from '../ui/Input';
 
 /** Lists, adds to and changes this campaign's rules. Mount with a `key` on the campaign. */
 export function HouseRulesEditor() {
@@ -57,17 +58,17 @@ export function HouseRulesEditor() {
             {rules.map(r => (
               <li key={r.id} className="hrule-item">
                 <div className="hrule-top">
-                  <input className="as-input hrule-title" value={r.title} maxLength={RULE_TITLE_MAX} placeholder="Name it: Flanking"
+                  <Input look="inline" className="hrule-title" value={r.title} maxLength={RULE_TITLE_MAX} placeholder="Name it: Flanking"
                     aria-label="Rule name" onChange={e => change(r.id, { title: e.target.value })} />
-                  <select className="as-select hrule-topic" value={r.topic} aria-label={`Topic of ${r.title || 'this rule'}`}
+                  <Select look="inline" className="hrule-topic" value={r.topic} aria-label={`Topic of ${r.title || 'this rule'}`}
                     onChange={e => change(r.id, { topic: e.target.value as RuleTopic })}>
                     {RULE_TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  </Select>
                   <IconButton aria-label={`Remove ${r.title || 'this rule'}`} title="Remove" onClick={() => remove(r)} style={{ width: 28, height: 28 }}>
                     <X size={14} />
                   </IconButton>
                 </div>
-                <textarea className="as-input hrule-text" rows={2} value={r.text} maxLength={RULE_TEXT_MAX} placeholder="How your table plays it…"
+                <Textarea look="inline" className="hrule-text" rows={2} value={r.text} maxLength={RULE_TEXT_MAX} placeholder="How your table plays it…"
                   aria-label={`What ${r.title || 'this rule'} says`} onChange={e => change(r.id, { text: e.target.value })} />
               </li>
             ))}

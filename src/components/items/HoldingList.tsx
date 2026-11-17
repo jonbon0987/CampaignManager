@@ -13,6 +13,7 @@ import { sessionName } from '../../lib/sessionLifecycle';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import type { ItemHolding } from '../../lib/database.types';
+import { Input, Select } from '../ui/Input';
 
 /** A count that saves when the DM leaves the field, not on every keystroke. */
 function Quantity({ value, onCommit, label }: { value: number; onCommit: (n: number) => void; label: string }) {
@@ -23,7 +24,7 @@ function Quantity({ value, onCommit, label }: { value: number; onCommit: (n: num
     if (n !== value) onCommit(n);
   };
   return (
-    <input className="as-input inv-qty" type="number" min={1} max={maxFor('item_holdings', 'quantity')} value={draft} aria-label={label}
+    <Input look="inline" className="inv-qty" type="number" min={1} max={maxFor('item_holdings', 'quantity')} value={draft} aria-label={label}
       onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
   );
 }
@@ -58,12 +59,12 @@ export function HoldingList({ holdings, showItem, showHolder, showSession = true
               </div>
             )}
             {showHolder && (
-              <select className="as-select inv-holder" aria-label={`Who has ${name}`}
+              <Select look="inline" className="inv-holder" aria-label={`Who has ${name}`}
                 value={h.pc_id && pcs.some(p => p.id === h.pc_id) ? h.pc_id : ''}
                 onChange={e => void ctx.updateHolding(h, { pc_id: e.target.value || null })}>
                 <option value="">{holderName({ pc_id: null }, pcs)}</option>
                 {pcs.map(p => <option key={p.id} value={p.id}>{p.character_name || 'Unnamed character'}</option>)}
-              </select>
+              </Select>
             )}
             <Quantity key={h.quantity} value={h.quantity} label={`How many ${name}`} onCommit={n => void ctx.updateHolding(h, { quantity: n })} />
             {item?.attunement && (

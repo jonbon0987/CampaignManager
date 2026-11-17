@@ -25,6 +25,7 @@ import { LinkList, SingleLink, type LinkOption } from './LinkPicker';
 import { CLOCK_SIZES, clockFullNote, stateAfterClock } from '../../lib/threadClock';
 import type { Hook } from '../../lib/database.types';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Input, Textarea } from '../ui/Input';
 
 export type ThreadFields = Pick<Hook, 'title' | 'category' | 'state' | 'description'
   | 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id' | 'player_text'>;
@@ -135,7 +136,7 @@ export function ThreadEditor({ thread, links, save, remove, onDeleted, onPromote
       {knownToParty && (
         <div className="as-fl">
           <label className="as-ll" htmlFor={`thread-known-${thread.id}`}>What the players know</label>
-          <textarea id={`thread-known-${thread.id}`} className="as-input th-known" rows={3} value={form.player_text ?? ''}
+          <Textarea look="inline" id={`thread-known-${thread.id}`} className="th-known" rows={3} value={form.player_text ?? ''}
             placeholder="In their words: the harbormaster wants the letter back, and he’ll pay."
             onChange={e => set('player_text', e.target.value || null)} maxLength={limitFor('hooks', 'player_text')} />
           <span className="as-hint">The player page shows the thread’s title and this, under the quest log. Never the summary, clock or links.</span>
@@ -151,7 +152,7 @@ export function ThreadEditor({ thread, links, save, remove, onDeleted, onPromote
             onChange={setClockSize} />
           {form.clock_size && (
             <>
-              <input className="as-input" value={form.clock_label ?? ''} onChange={e => set('clock_label', e.target.value || null)} aria-label="What happens when the clock fills"
+              <Input look="inline" value={form.clock_label ?? ''} onChange={e => set('clock_label', e.target.value || null)} aria-label="What happens when the clock fills"
                 placeholder="What happens when it fills: the Tide Cult raises the crown…" maxLength={limitFor('hooks', 'clock_label')} />
               <ClockControl size={form.clock_size} filled={form.clock_filled ?? 0} onChange={fillClock} name="Clock" />
               <div><Button variant="link" onClick={removeClock}>Remove the clock</Button></div>

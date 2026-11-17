@@ -18,6 +18,7 @@ import { limitFor } from '../../lib/fieldLimits';
 import { sessionName } from '../../lib/sessionLifecycle';
 import type { Levelling, Session } from '../../lib/database.types';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Input, Textarea } from '../ui/Input';
 
 /** Mounted while a wrap-up is open; it starts from the session as it is then. */
 export function WrapUpDialog() {
@@ -106,7 +107,7 @@ function WrapUp({ session, onClose }: { session: Session; onClose: () => void })
 
         <div className="wu-part">
           <label className="wu-label" htmlFor="wu-stopped">1 · Where you stopped</label>
-          <textarea id="wu-stopped" className="as-input wu-text" rows={2} value={stopped} onChange={e => setStopped(e.target.value)}
+          <Textarea look="inline" id="wu-stopped" className="wu-text" rows={2} value={stopped} onChange={e => setStopped(e.target.value)}
             placeholder="Mid-fight in the Drowned Portico; the party just found the crown's case…" maxLength={limitFor('sessions', 'hooks_notes')} />
           <span className="as-hint">The next session's Prep and "Previously on" show it.</span>
         </div>
@@ -129,7 +130,7 @@ function WrapUp({ session, onClose }: { session: Session; onClose: () => void })
               ) : <span className="as-hint">No fights ran in Play's Initiative this session.</span>}
               <div className="wu-row">
                 <label htmlFor="wu-xp-each">{party.length === 1 ? `XP to ${party[0].character_name}` : `XP to each of the ${party.length} PCs`}</label>
-                <input id="wu-xp-each" className="as-input wu-num-in" type="number" inputMode="numeric" min={0} value={xpEach} onChange={e => setXpEach(e.target.value)} />
+                <Input look="inline" id="wu-xp-each" className="wu-num-in" type="number" inputMode="numeric" min={0} value={xpEach} onChange={e => setXpEach(e.target.value)} />
                 {fights.length > 0 && <span className="as-hint">{totalXp.toLocaleString()} XP in all</span>}
               </div>
               <label className="wu-check">
@@ -156,7 +157,7 @@ function WrapUp({ session, onClose }: { session: Session; onClose: () => void })
 
         <div className="wu-part">
           <label className="wu-label" htmlFor="wu-open">4 · Left open</label>
-          <textarea id="wu-open" className="as-input wu-text" rows={3} value={leftOpen} onChange={e => setLeftOpen(e.target.value)}
+          <Textarea look="inline" id="wu-open" className="wu-text" rows={3} value={leftOpen} onChange={e => setLeftOpen(e.target.value)}
             placeholder="One loose end per line." maxLength={limitFor('sessions', 'hooks_notes')} />
           <LeftOpenToInbox text={leftOpen} sessionNumber={session.session_number} />
         </div>
@@ -166,7 +167,7 @@ function WrapUp({ session, onClose }: { session: Session; onClose: () => void })
           {date ? (
             <div className="wu-row">
               <label htmlFor="wu-days">Days that passed</label>
-              <input id="wu-days" className="as-input wu-num-in" type="number" inputMode="numeric" min={0} value={days} onChange={e => setDays(e.target.value)} placeholder="0" />
+              <Input look="inline" id="wu-days" className="wu-num-in" type="number" inputMode="numeric" min={0} value={days} onChange={e => setDays(e.target.value)} placeholder="0" />
               <span className="as-hint">
                 {newDate
                   ? `${formatWorldDate(date, months, suffix)} → ${formatWorldDate(newDate, months, suffix)} (${daysLabel(daysPassed)})`

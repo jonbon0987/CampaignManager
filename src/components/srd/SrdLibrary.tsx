@@ -16,6 +16,7 @@ import {
 } from '../../lib/srd';
 import type { MonsterStatblock } from '../../lib/database.types';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Input, Select } from '../ui/Input';
 
 const MONSTER_TYPES = ['aberration', 'beast', 'celestial', 'construct', 'dragon', 'elemental', 'fey', 'fiend', 'giant', 'humanoid', 'monstrosity', 'ooze', 'plant', 'undead'];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -141,33 +142,33 @@ function Library(props: Props) {
           <SegmentedControl aria-label="Rules" value={edition}
             options={(['2014', '2024'] as const).map(ed => ({ value: ed, label: `${ed} · ${SRD_SHORT[ed]}` }))}
             onChange={switchEdition} />
-          <input className="as-input srd-search" type="search" value={q} autoFocus aria-label={`Search ${noun}`}
+          <Input look="inline" className="srd-search" type="search" value={q} autoFocus aria-label={`Search ${noun}`}
             placeholder={kind === 'monsters' ? 'Search creatures, e.g. goblin, dragon' : 'Search magic items, e.g. cloak, +1'}
             onChange={e => { setQ(e.target.value); setSelectedId(null); }} onKeyDown={onSearchKey} />
           <div className="srd-filters">
-            <select className="as-select" value={type} aria-label="Type" onChange={e => { setType(e.target.value); setSelectedId(null); }}>
+            <Select look="inline" value={type} aria-label="Type" onChange={e => { setType(e.target.value); setSelectedId(null); }}>
               <option value="">All types</option>
               {kind === 'monsters'
                 ? MONSTER_TYPES.map(t => <option key={t} value={t}>{cap(t)}</option>)
                 : ITEM_TYPES.filter(t => !['gear', 'treasure'].includes(t.id)).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-            </select>
+            </Select>
             {kind === 'monsters' ? (
               <span className="srd-cr">
-                <select className="as-select" value={minCr} aria-label="Lowest CR" onChange={e => { setMinCr(e.target.value); setSelectedId(null); }}>
+                <Select look="inline" value={minCr} aria-label="Lowest CR" onChange={e => { setMinCr(e.target.value); setSelectedId(null); }}>
                   <option value="">CR any</option>
                   {CR_ORDER.map(c => <option key={c} value={c}>CR {c}</option>)}
-                </select>
+                </Select>
                 <span aria-hidden>to</span>
-                <select className="as-select" value={maxCr} aria-label="Highest CR" onChange={e => { setMaxCr(e.target.value); setSelectedId(null); }}>
+                <Select look="inline" value={maxCr} aria-label="Highest CR" onChange={e => { setMaxCr(e.target.value); setSelectedId(null); }}>
                   <option value="">any</option>
                   {CR_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                </Select>
               </span>
             ) : (
-              <select className="as-select" value={rare} aria-label="Rarity" onChange={e => { setRare(e.target.value); setSelectedId(null); }}>
+              <Select look="inline" value={rare} aria-label="Rarity" onChange={e => { setRare(e.target.value); setSelectedId(null); }}>
                 <option value="">Any rarity</option>
                 {RARITIES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
+              </Select>
             )}
           </div>
         </div>

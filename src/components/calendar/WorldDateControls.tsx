@@ -4,6 +4,7 @@
 import { useState, type FormEvent } from 'react';
 import { addDays, formatWorldDate, fromMonthDay, nextMonth, toMonthDay, type Month, type WorldDate } from '../../lib/calendar';
 import { Button } from '../ui/Button';
+import { Input, Select } from '../ui/Input';
 
 function DateForm({ initial, months, onSave, onCancel }: {
   initial: WorldDate;
@@ -25,13 +26,13 @@ function DateForm({ initial, months, onSave, onCancel }: {
   return (
     <form className="wd-form" onSubmit={submit}>
       {!festival && (
-        <input className="as-input wd-day" type="number" min={1} max={months[month]?.days} value={day} aria-label="Day"
+        <Input look="inline" className="wd-day" type="number" min={1} max={months[month]?.days} value={day} aria-label="Day"
           onChange={e => setDay(Math.max(1, Math.round(Number(e.target.value)) || 1))} />
       )}
-      <select className="as-select wd-month" value={month} aria-label="Month" onChange={e => setMonth(Number(e.target.value))}>
+      <Select look="inline" className="wd-month" value={month} aria-label="Month" onChange={e => setMonth(Number(e.target.value))}>
         {months.map((m, i) => <option key={i} value={i}>{m.name}</option>)}
-      </select>
-      <input className="as-input wd-year" type="number" value={year} aria-label="Year"
+      </Select>
+      <Input look="inline" className="wd-year" type="number" value={year} aria-label="Year"
         onChange={e => setYear(Math.round(Number(e.target.value)) || 0)} />
       <Button type="submit" size="xs" variant="secondary">Set</Button>
       {onCancel && <Button type="button" size="xs" variant="ghost" onClick={onCancel}>Cancel</Button>}

@@ -22,6 +22,7 @@ import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import type { EntityCanon, EntityScope } from './types';
 import type { Json, Location } from '../../lib/database.types';
+import { Input, Select } from '../ui/Input';
 
 export type LocationFields = Pick<Location,
   'name' | 'region' | 'location_type' | 'parent_id' | 'population' | 'status' | 'description' | 'history' | 'dm_notes' | 'read_aloud' | 'map_path' | 'map_pins'>;
@@ -120,26 +121,26 @@ export function LocationEditor({ location, scope, allLocations, save, remove, on
         <div className="as-meta">
           <div className="as-mi">
             <label className="as-ml" htmlFor={id('type')}>Type</label>
-            <select id={id('type')} className="as-select" value={form.location_type ?? 'landmark'} onChange={e => set('location_type', e.target.value)}>
+            <Select look="inline" id={id('type')} value={form.location_type ?? 'landmark'} onChange={e => set('location_type', e.target.value)}>
               {LOCATION_TYPES.map(t => <option key={t} value={t}>{formatType(t)}</option>)}
-            </select>
+            </Select>
           </div>
           <div className="as-mi">
             <label className="as-ml" htmlFor={id('within')}>Within</label>
-            <select id={id('within')} className="as-select" value={form.parent_id ?? ''} onChange={e => set('parent_id', e.target.value || null)}>
+            <Select look="inline" id={id('within')} value={form.parent_id ?? ''} onChange={e => set('parent_id', e.target.value || null)}>
               <option value="">— Top level —</option>
               {parentOptions.map(l => <option key={l.id} value={l.id}>{l.name || 'Unnamed'}</option>)}
-            </select>
+            </Select>
           </div>
           <div className="as-mi">
             <label className="as-ml" htmlFor={id('status')}>Status</label>
-            <select id={id('status')} className="as-select" value={form.status ?? 'active'} onChange={e => set('status', e.target.value)}>
+            <Select look="inline" id={id('status')} value={form.status ?? 'active'} onChange={e => set('status', e.target.value)}>
               {STATUSES.map(s => <option key={s} value={s}>{formatType(s)}</option>)}
-            </select>
+            </Select>
           </div>
           <div className="as-mi">
             <label className="as-ml" htmlFor={id('pop')}>Population</label>
-            <input id={id('pop')} className="as-input" value={form.population ?? ''} onChange={e => set('population', e.target.value || null)} placeholder="e.g. ~12,000" maxLength={limitFor('locations', 'population')} />
+            <Input look="inline" id={id('pop')} value={form.population ?? ''} onChange={e => set('population', e.target.value || null)} placeholder="e.g. ~12,000" maxLength={limitFor('locations', 'population')} />
           </div>
         </div>
 

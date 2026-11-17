@@ -12,6 +12,7 @@ import { PRESETS, daysInYear, yearSuffix, type Month } from '../../lib/calendar'
 import { limitFor } from '../../lib/fieldLimits';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
+import { Input, Select } from '../ui/Input';
 
 const MAX_MONTHS = 40;
 
@@ -34,9 +35,9 @@ function MonthRow({ index, month, onCommit, onRemove, canRemove }: {
   return (
     <li className="wc-month">
       <span className="wc-n">{index + 1}</span>
-      <input className="as-input wc-name" value={name} onChange={e => setName(e.target.value)} onBlur={commit} aria-label={`Month ${index + 1} name`} maxLength={60}
+      <Input look="inline" className="wc-name" value={name} onChange={e => setName(e.target.value)} onBlur={commit} aria-label={`Month ${index + 1} name`} maxLength={60}
         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
-      <input className="as-input wc-days" type="number" min={1} max={400} value={days} onChange={e => setDays(e.target.value)} onBlur={commit}
+      <Input look="inline" className="wc-days" type="number" min={1} max={400} value={days} onChange={e => setDays(e.target.value)} onBlur={commit}
         aria-label={`Days in ${month.name}`} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
       <span className="wc-unit">{month.days === 1 ? 'festival' : 'days'}</span>
       {canRemove && (
@@ -95,13 +96,13 @@ export function WorldCalendar() {
       </div>
       <div className="wc-row">
         <label className="as-ll" htmlFor={`wc-suffix-${activeWorld.id}`}>Years are counted as</label>
-        <input id={`wc-suffix-${activeWorld.id}`} className="as-input wc-suffix" value={suffix} placeholder="DR, AC, …"
+        <Input look="inline" id={`wc-suffix-${activeWorld.id}`} className="wc-suffix" value={suffix} placeholder="DR, AC, …"
           maxLength={limitFor('worlds', 'calendar')} onChange={e => setSuffix(e.target.value)} onBlur={saveSuffix}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
-        <select className="as-select wc-preset" value="" aria-label="Start from a preset" onChange={e => void applyPreset(e.target.value)}>
+        <Select look="inline" className="wc-preset" value="" aria-label="Start from a preset" onChange={e => void applyPreset(e.target.value)}>
           <option value="">Start from a preset…</option>
           {PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
+        </Select>
       </div>
       <ol className="wc-months">
         {months.map((m, i) => (

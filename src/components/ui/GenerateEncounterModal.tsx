@@ -17,7 +17,6 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { Modal } from '../Modal';
 import { FormField } from '../FormField';
-import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock, buildDefaultCampaignContextBlock } from '../../lib/campaignContext';
@@ -32,6 +31,7 @@ import {
 import { DIFFICULTIES } from '../../lib/encounterScaling';
 import type { EncounterSaveData } from '../../lib/encounters';
 import type { Encounter, MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
+import { Input, Textarea } from './Input';
 
 type CreatureSource = 'library' | 'new' | 'both';
 type ContextEntities = ReturnType<typeof useSelectedContextEntities>;
@@ -314,17 +314,17 @@ Every name in "combatants" MUST exactly match either a library creature (when al
         {/* Party + difficulty */}
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Number of Players">
-            <input
+            <Input
               type="number" min={1} max={10} value={partySize}
               onChange={e => { setPartySize(e.target.value); setError(''); }}
-              placeholder="e.g. 4" style={inputStyle} autoFocus disabled={loading}
+              placeholder="e.g. 4" autoFocus disabled={loading}
             />
           </FormField>
           <FormField label="Average Party Level">
-            <input
+            <Input
               type="number" min={1} max={20} value={partyLevel}
               onChange={e => { setPartyLevel(e.target.value); setError(''); }}
-              placeholder="e.g. 5" style={inputStyle} disabled={loading}
+              placeholder="e.g. 5" disabled={loading}
             />
           </FormField>
         </div>
@@ -381,11 +381,10 @@ Every name in "combatants" MUST exactly match either a library creature (when al
 
         {/* Theme */}
         <FormField label="Theme / Concept (optional)">
-          <input
+          <Input
             type="text" value={theme}
             onChange={e => setTheme(e.target.value)}
-            placeholder="e.g. ambush in a fog-choked bog, cultists guarding a ritual"
-            style={inputStyle} disabled={loading}
+            placeholder="e.g. ambush in a fog-choked bog, cultists guarding a ritual" disabled={loading}
           />
         </FormField>
 
@@ -404,11 +403,10 @@ Every name in "combatants" MUST exactly match either a library creature (when al
 
         {/* Additional context */}
         <FormField label="Additional Instructions (optional)">
-          <textarea
+          <Textarea
             rows={3} value={additionalContext}
             onChange={e => setAdditionalContext(e.target.value)}
-            placeholder="e.g. reinforcements arrive on round 3, the boss flees at half HP, avoid undead"
-            style={textareaStyle} disabled={loading}
+            placeholder="e.g. reinforcements arrive on round 3, the boss flees at half HP, avoid undead" disabled={loading}
           />
         </FormField>
 

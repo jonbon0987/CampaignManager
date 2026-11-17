@@ -5,11 +5,11 @@ import { useOpenRecord, useReportRecord } from '../../context/NavigationContext'
 import { currentRoute } from '../../hooks/useRouteSync';
 import { Modal } from '../Modal';
 import { FormField } from '../FormField';
-import { inputStyle } from '../formStyles';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
 import type { RelationshipType, CharacterKind } from '../../lib/database.types';
 import { relationshipColors } from '../../lib/theme';
+import { Input, Select } from '../ui/Input';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -215,11 +215,6 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
     }
   }
 
-  const selectStyle: React.CSSProperties = {
-    ...inputStyle,
-    appearance: 'none' as const,
-    WebkitAppearance: 'none' as const,
-  };
 
   const isEmpty = allNodes.length === 0;
 
@@ -482,56 +477,52 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="From">
-              <select
+              <Select className="is-plain"
                 value={relForm.from_id}
                 onChange={e => {
                   const id   = e.target.value;
                   const kind = allChars.find(c => c.id === id)?.kind ?? 'pc';
                   setRelForm(f => ({ ...f, from_id: id, from_kind: kind }));
                 }}
-                style={selectStyle}
               >
                 {allChars.map(c => (
                   <option key={c.id} value={c.id}>{c.name} ({KIND_NAME[c.kind]})</option>
                 ))}
-              </select>
+              </Select>
             </FormField>
 
             <FormField label="To">
-              <select
+              <Select className="is-plain"
                 value={relForm.to_id}
                 onChange={e => {
                   const id   = e.target.value;
                   const kind = allChars.find(c => c.id === id)?.kind ?? 'npc';
                   setRelForm(f => ({ ...f, to_id: id, to_kind: kind }));
                 }}
-                style={selectStyle}
               >
                 {allChars.map(c => (
                   <option key={c.id} value={c.id}>{c.name} ({KIND_NAME[c.kind]})</option>
                 ))}
-              </select>
+              </Select>
             </FormField>
           </div>
 
           <FormField label="Relationship Type">
-            <select
+            <Select className="is-plain"
               value={relForm.relationship_type}
               onChange={e => setRelForm(f => ({ ...f, relationship_type: e.target.value as RelationshipType }))}
-              style={selectStyle}
             >
               {REL_TYPES.map(t => (
                 <option key={t} value={t}>{REL_LABEL[t]}</option>
               ))}
-            </select>
+            </Select>
           </FormField>
 
           <FormField label="Label (optional)">
-            <input
+            <Input
               value={relForm.label}
               onChange={e => setRelForm(f => ({ ...f, label: e.target.value }))}
               placeholder="e.g. old rivals, rescued her, sworn enemies…"
-              style={inputStyle}
             />
           </FormField>
 

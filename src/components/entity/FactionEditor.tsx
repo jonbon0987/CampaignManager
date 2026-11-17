@@ -18,6 +18,7 @@ import { AddSections } from './AddSections';
 import type { EntityCanon, EntityScope } from './types';
 import type { Faction, NPC } from '../../lib/database.types';
 import { LinkList, WasText } from './LinkPicker';
+import { Select } from '../ui/Input';
 
 export type FactionFields = Pick<Faction, 'name' | 'faction_type' | 'overview' | 'key_figures' | 'key_figure_ids' | 'agenda' | 'dm_notes'>;
 
@@ -91,9 +92,9 @@ export function FactionEditor({ faction, scope, npcs, save, remove, onDeleted, o
         <div className="as-meta">
           <div className="as-mi">
             <label className="as-ml" htmlFor={`fac-type-${faction.id}`}>Type</label>
-            <select id={`fac-type-${faction.id}`} className="as-select" value={form.faction_type ?? 'other'} onChange={e => set('faction_type', e.target.value)}>
+            <Select look="inline" id={`fac-type-${faction.id}`} value={form.faction_type ?? 'other'} onChange={e => set('faction_type', e.target.value)}>
               {FACTION_TYPES.map(t => <option key={t} value={t}>{cap(t)}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
 

@@ -9,7 +9,6 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { Modal } from '../Modal';
 import { FormField } from '../FormField';
-import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock, buildDefaultCampaignContextBlock } from '../../lib/campaignContext';
@@ -19,6 +18,7 @@ import { RANDOM_TABLE_KINDS, DIE_SIZES, kindMeta } from '../../lib/randomEncount
 import { buildTablePrompt, parseGeneratedTable } from '../../lib/randomTableGeneration';
 import type { RandomEncounterSaveData } from './RandomEncounterDetail';
 import type { RandomEncounterTable, MonsterStatblock } from '../../lib/database.types';
+import { Input, Select, Textarea } from './Input';
 
 type ContextEntities = ReturnType<typeof useSelectedContextEntities>;
 
@@ -200,19 +200,19 @@ function RandomTableGenModal({
 
         <div className="grid grid-cols-3 gap-4">
           <FormField label="Kind">
-            <select value={kind} onChange={e => setKind(e.target.value)} style={inputStyle} disabled={loading}>
+            <Select value={kind} onChange={e => setKind(e.target.value)} disabled={loading}>
               {RANDOM_TABLE_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
-            </select>
+            </Select>
           </FormField>
           <FormField label="Die">
-            <select value={die} onChange={e => changeDie(parseInt(e.target.value, 10))} style={inputStyle} disabled={loading}>
+            <Select value={die} onChange={e => changeDie(parseInt(e.target.value, 10))} disabled={loading}>
               {DIE_SIZES.map(d => <option key={d} value={d}>d{d}</option>)}
-            </select>
+            </Select>
           </FormField>
           <FormField label="Number of Entries">
-            <input type="number" min={3} max={maxEntries} value={count}
+            <Input type="number" min={3} max={maxEntries} value={count}
               onChange={e => { setCount(e.target.value); setError(''); }}
-              placeholder="e.g. 8" style={inputStyle} disabled={loading} />
+              placeholder="e.g. 8" disabled={loading} />
           </FormField>
         </div>
         <p className="text-xs" style={{ color: 'var(--ink-3)', marginTop: '-8px' }}>
@@ -220,13 +220,13 @@ function RandomTableGenModal({
         </p>
 
         <FormField label="Region (optional)">
-          <input type="text" value={region} onChange={e => setRegion(e.target.value)}
-            placeholder="e.g. Frostpeak Road, the Underdark" style={inputStyle} disabled={loading} />
+          <Input type="text" value={region} onChange={e => setRegion(e.target.value)}
+            placeholder="e.g. Frostpeak Road, the Underdark" disabled={loading} />
         </FormField>
 
         <FormField label="Theme / Concept (optional)">
-          <input type="text" value={theme} onChange={e => setTheme(e.target.value)}
-            placeholder="e.g. wolves and worse in deep winter, a cursed hoard" style={inputStyle} disabled={loading} />
+          <Input type="text" value={theme} onChange={e => setTheme(e.target.value)}
+            placeholder="e.g. wolves and worse in deep winter, a cursed hoard" disabled={loading} />
         </FormField>
 
         <div>
@@ -240,9 +240,8 @@ function RandomTableGenModal({
         </div>
 
         <FormField label="Additional Instructions (optional)">
-          <textarea rows={3} value={additional} onChange={e => setAdditional(e.target.value)}
-            placeholder="e.g. keep it non-combat, lean spooky, include a rival adventuring party"
-            style={textareaStyle} disabled={loading} />
+          <Textarea rows={3} value={additional} onChange={e => setAdditional(e.target.value)}
+            placeholder="e.g. keep it non-combat, lean spooky, include a rival adventuring party" disabled={loading} />
         </FormField>
 
         {error && <p className="text-md" style={{ color: 'var(--red)' }}>{error}</p>}

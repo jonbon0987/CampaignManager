@@ -203,6 +203,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
                 onChange={e => setNewCombatantName(e.target.value)}
                 placeholder="Combatant name…"
                 autoFocus
+                // eslint-disable-next-line no-restricted-syntax -- tracker add-combatant field; moves to the shared combatant parts (phase 8)
                 style={{
                   flex: 1,
                   fontSize: 'var(--fs-md)',
@@ -337,6 +338,7 @@ function CombatantRow({
               type="number"
               value={c.initiative ?? ''}
               onChange={e => onSetInitiative(c.id, e.target.value ? parseInt(e.target.value, 10) : null)}
+              // eslint-disable-next-line no-restricted-syntax -- tracker initiative number; moves to the shared combatant parts (phase 8)
               style={{
                 width: '44px',
                 textAlign: 'center',

@@ -17,6 +17,7 @@ import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { BotNotReady } from './DiscordVoice';
+import { Select, Textarea } from '../ui/Input';
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const LAST_TEXT = (campaignId: string) => `cm-discord-recap-channel:${campaignId}`;
@@ -79,16 +80,15 @@ export function PostRecapModal({ recording, session, onClose }: { recording: Ses
         {!bot.online && <BotNotReady bot={bot} purpose={channels.length ? 'A post waits until it’s signed in.' : 'Sign it in to choose a channel.'} />}
         <div className="as-fl">
           <label className="as-ll" htmlFor="recap-channel">Channel</label>
-          <select id="recap-channel" className="as-select" value={chosen?.id ?? ''} onChange={e => setChannelId(e.target.value)}>
+          <Select look="inline" id="recap-channel" value={chosen?.id ?? ''} onChange={e => setChannelId(e.target.value)}>
             <option value="">Choose a text channel…</option>
             {channels.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="as-fl">
           <label className="as-ll" htmlFor="recap-text">What players see</label>
-          <textarea
+          <Textarea look="inline"
             id="recap-text"
-            className="as-input"
             rows={12}
             value={text}
             maxLength={limitFor('discord_posts', 'content')}

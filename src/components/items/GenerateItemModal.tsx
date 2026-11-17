@@ -6,7 +6,6 @@
 import { useState } from 'react';
 import { Modal } from '../Modal';
 import { FormField } from '../FormField';
-import { inputStyle, textareaStyle } from '../formStyles';
 import { EntityContextPicker } from '../ui/EntityContextPicker';
 import { useSelectedContextEntities, type ContextRef } from '../../hooks/useSelectedContextEntities';
 import { useCampaign } from '../../context/CampaignContext';
@@ -17,6 +16,7 @@ import { buildSelectedContextBlock } from '../../lib/campaignContext';
 import { ITEM_TYPES, RARITIES } from '../../lib/items';
 import { buildItemPrompt, parseGeneratedItem, type RarityChoice } from '../../lib/itemGeneration';
 import type { Item } from '../../lib/database.types';
+import { Select, Textarea } from '../ui/Input';
 
 export function GenerateItemModal({ isOpen, onClose, onCreated }: {
   isOpen: boolean;
@@ -74,28 +74,27 @@ export function GenerateItemModal({ isOpen, onClose, onCreated }: {
         </p>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Kind">
-            <select aria-label="Kind" value={type} onChange={e => setType(e.target.value)} style={inputStyle} disabled={loading}>
+            <Select aria-label="Kind" value={type} onChange={e => setType(e.target.value)} disabled={loading}>
               <option value="any">Any kind</option>
               {ITEM_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-            </select>
+            </Select>
           </FormField>
           <FormField label="Rarity">
-            <select aria-label="Rarity" value={rarityChoice} onChange={e => setRarityChoice(e.target.value as RarityChoice)} style={inputStyle} disabled={loading}>
+            <Select aria-label="Rarity" value={rarityChoice} onChange={e => setRarityChoice(e.target.value as RarityChoice)} disabled={loading}>
               <option value="any">Any rarity</option>
               <option value="none">Not magic</option>
               {RARITIES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-            </select>
+            </Select>
           </FormField>
         </div>
 
         <FormField label="What do you have in mind? (optional)">
-          <textarea
+          <Textarea
             aria-label="What you have in mind"
             rows={3}
             value={idea}
             onChange={e => setIdea(e.target.value)}
             placeholder="e.g. a dagger the Grey Hand’s assassins carry, or the reward for saving the harbourmaster"
-            style={textareaStyle}
             disabled={loading}
           />
         </FormField>

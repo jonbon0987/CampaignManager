@@ -10,6 +10,7 @@ import { describeShared, playerPageUrl } from '../../lib/playerPage';
 import { Button } from '../ui/Button';
 import type { PlayerPagePart } from '../../lib/database.types';
 import { TogglePill } from '../ui/SegmentedControl';
+import { Input } from '../ui/Input';
 
 const PARTS: [PlayerPagePart, string][] = [
   ['show_next_session', 'Next session'],
@@ -72,7 +73,7 @@ function Card({ shares }: { shares: PlayerSharesValue }) {
         <>
           {page.enabled ? (
             <div className="ov-share-link">
-              <input className="as-input" readOnly value={url} aria-label="Player page link" onFocus={e => e.currentTarget.select()} />
+              <Input look="inline" readOnly value={url} aria-label="Player page link" onFocus={e => e.currentTarget.select()} />
               <Button size="sm" variant="secondary" onClick={() => void copy()}>Copy link</Button>
               <a className="ov-share-open" href={url} target="_blank" rel="noopener noreferrer">Open ↗</a>
             </div>

@@ -14,6 +14,7 @@ import type { DiscordBot } from '../../hooks/useDiscordBot';
 import { Button } from '../ui/Button';
 import type { DiscordMember, PlayerConsent, SpeakerLink } from '../../lib/database.types';
 import { Badge } from '../ui/Badge';
+import { Select } from '../ui/Input';
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const NOT_RECORDED = '';
@@ -80,8 +81,7 @@ export function DiscordMembers({ members, consents, onLinksChange }: {
         return (
           <li key={m.id} className="flex items-center gap-3 flex-wrap" style={{ padding: '7px 0', borderBottom: '1px solid var(--rule-soft)' }}>
             <span style={{ flex: '1 1 140px', fontWeight: 500, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
-            <select
-              className="as-select"
+            <Select look="inline"
               style={{ flex: '0 1 200px' }}
               aria-label={`Who ${m.name} plays`}
               value={value}
@@ -91,7 +91,7 @@ export function DiscordMembers({ members, consents, onLinksChange }: {
               <option value={NOT_RECORDED}>Don’t record</option>
               <option value={AS_DM}>The DM</option>
               {pcs.map(pc => <option key={pc.id} value={pc.id}>{pc.character_name}{pc.player_name ? ` (${pc.player_name})` : ''}</option>)}
-            </select>
+            </Select>
             <span className="text-xs" style={{ color: status.color, flex: '0 0 auto' }}>{status.text}</span>
           </li>
         );

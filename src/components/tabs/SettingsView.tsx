@@ -14,6 +14,7 @@ import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { limitFor } from '../../lib/fieldLimits';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Input } from '../ui/Input';
 
 function SettingRow({ label, help, children }: { label: string; help: string; children: React.ReactNode }) {
   return (
@@ -36,7 +37,7 @@ function NameField({ name, onSave }: { name: string; onSave: (name: string) => P
     if (next !== name) void onSave(next);
   };
   return (
-    <input className="as-input set-name" value={value} aria-label="Campaign name" maxLength={limitFor('campaigns', 'name')}
+    <Input look="inline" className="set-name" value={value} aria-label="Campaign name" maxLength={limitFor('campaigns', 'name')}
       onChange={e => setValue(e.target.value)} onBlur={commit}
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setValue(name); }} />
   );

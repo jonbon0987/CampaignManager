@@ -17,6 +17,7 @@ import { useCanonLock } from './useCanonLock';
 import type { EntityCanon, EntityScope } from './types';
 import type { LoreEntry } from '../../lib/database.types';
 import { TogglePill } from '../ui/SegmentedControl';
+import { Select } from '../ui/Input';
 
 export type LoreFields = Pick<LoreEntry, 'title' | 'category' | 'dm_only' | 'content'>;
 
@@ -73,9 +74,9 @@ export function LoreEditor({ entry, scope, save, remove, onDeleted, canon }: {
         <div className="as-meta">
           <div className="as-mi">
             <label className="as-ml" htmlFor={`lore-cat-${entry.id}`}>Category</label>
-            <select id={`lore-cat-${entry.id}`} className="as-select" value={form.category ?? 'history'} onChange={e => set('category', e.target.value)}>
+            <Select look="inline" id={`lore-cat-${entry.id}`} value={form.category ?? 'history'} onChange={e => set('category', e.target.value)}>
               {CATEGORIES.map(c => <option key={c} value={c}>{cap(c)}</option>)}
-            </select>
+            </Select>
           </div>
           <div className="as-mi">
             <span className="as-ml">Secret</span>

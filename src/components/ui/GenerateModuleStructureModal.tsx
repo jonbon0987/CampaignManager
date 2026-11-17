@@ -13,7 +13,6 @@ import { useToast } from '../../context/ToastContext';
 import { Modal } from '../Modal';
 import { Button } from './Button';
 import { FormField } from '../FormField';
-import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { errorMessage } from '../../lib/errors';
@@ -27,6 +26,7 @@ import {
 } from '../../lib/moduleStructure';
 import { moduleTypeMeta } from '../../lib/theme';
 import type { Module, Submodule } from '../../lib/database.types';
+import { Input, Textarea } from './Input';
 
 const typeInfo = (t: string | null) => moduleTypeMeta[t ?? 'other'] ?? moduleTypeMeta.other;
 
@@ -221,24 +221,21 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
 
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Parts">
-                <input type="number" min={MIN_SUBMODULES} max={MAX_SUBMODULES} value={submoduleCount}
-                  onChange={e => { setSubmoduleCount(e.target.value); setError(''); }}
-                  style={inputStyle} disabled={busy} />
+                <Input type="number" min={MIN_SUBMODULES} max={MAX_SUBMODULES} value={submoduleCount}
+                  onChange={e => { setSubmoduleCount(e.target.value); setError(''); }} disabled={busy} />
               </FormField>
               <FormField label="Scenes in each">
-                <input type="number" min={MIN_SCENES} max={MAX_SCENES} value={scenesPer}
-                  onChange={e => { setScenesPer(e.target.value); setError(''); }}
-                  style={inputStyle} disabled={busy} />
+                <Input type="number" min={MIN_SCENES} max={MAX_SCENES} value={scenesPer}
+                  onChange={e => { setScenesPer(e.target.value); setError(''); }} disabled={busy} />
               </FormField>
             </div>
 
             <FormField label={mod.synopsis?.trim() ? 'Anything else? (optional)' : 'What is this module about?'}>
-              <textarea rows={4} value={description}
+              <Textarea rows={4} value={description}
                 onChange={e => { setDescription(e.target.value); setError(''); }}
                 placeholder={mod.synopsis?.trim()
                   ? 'The synopsis is already in the prompt — add anything it doesn\'t say. e.g. "the heist goes wrong halfway through", "end it on the docks"'
-                  : 'Describe the chapter: where it happens, who\'s involved, what the party is trying to do…'}
-                style={textareaStyle} disabled={busy} />
+                  : 'Describe the chapter: where it happens, who\'s involved, what the party is trying to do…'} disabled={busy} />
             </FormField>
 
             <div>
@@ -254,9 +251,8 @@ export function GenerateModuleStructureModal({ module: mod, existing, isOpen, on
             </div>
 
             <FormField label="Additional Instructions (optional)">
-              <textarea rows={2} value={additional} onChange={e => setAdditional(e.target.value)}
-                placeholder="e.g. keep the combat light, make one section a dead end, leave the ending open"
-                style={textareaStyle} disabled={busy} />
+              <Textarea rows={2} value={additional} onChange={e => setAdditional(e.target.value)}
+                placeholder="e.g. keep the combat light, make one section a dead end, leave the ending open" disabled={busy} />
             </FormField>
 
             {error && <p className="text-md" style={{ color: 'var(--red)' }}>{error}</p>}

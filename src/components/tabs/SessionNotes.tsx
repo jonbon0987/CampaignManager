@@ -27,6 +27,7 @@ import { formatSessionDate, nextBlankSession, plainText, clip, STATUS_LABEL } fr
 import { noteStamp } from '../../lib/playTime';
 import type { Session, SessionPlan, SessionStatus } from '../../lib/database.types';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Input } from '../ui/Input';
 
 type SessionForm = {
   session_number: number;
@@ -229,9 +230,8 @@ function SessionDetail({
           <div className="ss-meta">
             <div className="as-fl">
               <label className="as-ll" htmlFor={`ss-num-${session.id}`}>Session #</label>
-              <input
+              <Input look="inline"
                 id={`ss-num-${session.id}`}
-                className="as-input"
                 type="number"
                 style={{ width: 80, colorScheme: 'dark' }}
                 value={form.session_number}
@@ -242,9 +242,8 @@ function SessionDetail({
             </div>
             <div className="as-fl">
               <label className="as-ll" htmlFor={`ss-date-${session.id}`}>{form.status === 'done' ? 'Played on' : 'Date'}</label>
-              <input
+              <Input look="inline"
                 id={`ss-date-${session.id}`}
-                className="as-input"
                 type="date"
                 style={{ colorScheme: 'dark' }}
                 value={form.session_date ?? ''}
@@ -254,9 +253,8 @@ function SessionDetail({
             {form.status !== 'done' && (
               <div className="as-fl">
                 <label className="as-ll" htmlFor={`ss-time-${session.id}`}>Time</label>
-                <input
+                <Input look="inline"
                   id={`ss-time-${session.id}`}
-                  className="as-input"
                   type="time"
                   style={{ colorScheme: 'dark' }}
                   value={form.session_time ?? ''}

@@ -15,6 +15,7 @@ import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { useRecordingPlayer } from '../../hooks/useRecordingPlayer';
 import { PlayerBar } from './PlayerBar';
+import { Input, Select } from '../ui/Input';
 
 const DM = 'dm';
 
@@ -137,8 +138,7 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
                       </div>
                       <div className="text-xs" style={{ color: 'var(--ink-3)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>“{v.sample}”</div>
                     </div>
-                    <select
-                      className="as-select"
+                    <Select look="inline"
                       style={{ width: 'auto', minWidth: 170 }}
                       aria-label={`Who is ${v.label}`}
                       value={v.value}
@@ -149,7 +149,7 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
                       {pcs.filter(p => p.is_active).map(p => (
                         <option key={p.id} value={p.id}>{p.character_name}{p.player_name ? ` · ${p.player_name}` : ''}</option>
                       ))}
-                    </select>
+                    </Select>
                   </li>
                 ))}
               </ul>
@@ -164,7 +164,7 @@ export function TranscriptModal({ recording, onClose }: { recording: SessionReco
               <div className="cm-section-rule" />
             </div>
             <div className="tr-tools">
-              <input className="as-input tr-search" type="search" value={query} onChange={e => setQuery(e.target.value)}
+              <Input look="inline" className="tr-search" type="search" value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Search what was said, or who said it…" aria-label="Search the transcript" />
               <div className="tr-player">
                 <PlayerBar audio={audio} playing={playing} positionMs={positionMs} loading={loading} onPause={pause}

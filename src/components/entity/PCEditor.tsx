@@ -21,6 +21,7 @@ import { LinkList, WasText } from './LinkPicker';
 import { PCInventory } from '../items/ItemPlaces';
 import { xpProgress } from '../../lib/levelling';
 import type { Faction, Levelling, NPC, PlayerCharacter } from '../../lib/database.types';
+import { Input } from '../ui/Input';
 
 export type PCFields = Pick<PlayerCharacter,
   'character_name' | 'player_name' | 'race' | 'class' | 'background' | 'story_hooks' | 'key_npcs' | 'key_npc_ids'
@@ -111,11 +112,11 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
       <div className="as-grid-2">
         <div className="as-fl">
           <label className="as-ll" htmlFor={`pc-race-${pc.id}`}>Race</label>
-          <input id={`pc-race-${pc.id}`} className="as-input" value={form.race ?? ''} onChange={e => set('race', e.target.value || null)} placeholder="e.g. Dwarf" maxLength={limitFor('player_characters', 'race')} />
+          <Input look="inline" id={`pc-race-${pc.id}`} value={form.race ?? ''} onChange={e => set('race', e.target.value || null)} placeholder="e.g. Dwarf" maxLength={limitFor('player_characters', 'race')} />
         </div>
         <div className="as-fl">
           <label className="as-ll" htmlFor={`pc-class-${pc.id}`}>Class</label>
-          <input id={`pc-class-${pc.id}`} className="as-input" value={form.class ?? ''} onChange={e => set('class', e.target.value || null)} placeholder="e.g. Fighter" maxLength={limitFor('player_characters', 'class')} />
+          <Input look="inline" id={`pc-class-${pc.id}`} value={form.class ?? ''} onChange={e => set('class', e.target.value || null)} placeholder="e.g. Fighter" maxLength={limitFor('player_characters', 'class')} />
         </div>
       </div>
 
@@ -128,7 +129,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
         ] as const).map(([key, label, hint]) => (
           <div key={key} className="as-fl">
             <label className="as-ll" htmlFor={`pc-${key}-${pc.id}`}>{label}</label>
-            <input id={`pc-${key}-${pc.id}`} className="as-input" type="number" inputMode="numeric"
+            <Input look="inline" id={`pc-${key}-${pc.id}`} type="number" inputMode="numeric"
               min={minFor('player_characters', key)} max={maxFor('player_characters', key)}
               value={form[key] ?? ''} onChange={e => set(key, e.target.value ? parseInt(e.target.value, 10) : null)} placeholder={hint} />
           </div>
@@ -139,7 +140,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
       <div className="as-fl">
         <label className="as-ll" htmlFor={`pc-sheet-${pc.id}`}>Character sheet</label>
         <div className="pc-sheet-row">
-          <input id={`pc-sheet-${pc.id}`} className="as-input" type="url" inputMode="url" value={form.sheet_url ?? ''}
+          <Input look="inline" id={`pc-sheet-${pc.id}`} type="url" inputMode="url" value={form.sheet_url ?? ''}
             onChange={e => set('sheet_url', e.target.value.trim() || null)}
             placeholder="https://www.dndbeyond.com/characters/…" maxLength={limitFor('player_characters', 'sheet_url')} />
           {sheetHref && <a className="pc-sheet-open" href={sheetHref} target="_blank" rel="noreferrer noopener">Open ↗</a>}
@@ -156,7 +157,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
         ] as const).map(([key, label]) => (
           <div key={key} className="as-fl">
             <label className="as-ll" htmlFor={`pc-${key}-${pc.id}`}>{label}</label>
-            <input id={`pc-${key}-${pc.id}`} className="as-input" type="number" inputMode="numeric"
+            <Input look="inline" id={`pc-${key}-${pc.id}`} type="number" inputMode="numeric"
               min={minFor('player_characters', key)} max={maxFor('player_characters', key)}
               value={form[key] ?? ''} onChange={e => set(key, e.target.value ? parseInt(e.target.value, 10) : null)} placeholder="—" />
           </div>
@@ -167,7 +168,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
         <div className="as-fl pc-xp">
           <label className="as-ll" htmlFor={`pc-xp-${pc.id}`}>Experience</label>
           <div className="pc-sheet-row">
-            <input id={`pc-xp-${pc.id}`} className="as-input" type="number" inputMode="numeric" style={{ maxWidth: 140 }}
+            <Input look="inline" id={`pc-xp-${pc.id}`} type="number" inputMode="numeric" style={{ maxWidth: 140 }}
               min={minFor('player_characters', 'xp')} max={maxFor('player_characters', 'xp')}
               value={form.xp ?? ''} onChange={e => set('xp', e.target.value ? parseInt(e.target.value, 10) : null)} placeholder="0" />
             {xpNote && <span className="as-hint">{xpNote}</span>}

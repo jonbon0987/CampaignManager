@@ -15,6 +15,7 @@ import {
   type Combatant, type Condition,
 } from '../../lib/combat';
 import { conditionColors } from '../../lib/theme';
+import { Input } from '../ui/Input';
 
 function Pips({ label, value, onSet, tone }: { label: string; value: number; onSet: (n: number) => void; tone: string }) {
   return (
@@ -168,7 +169,7 @@ export function PlayInitiative() {
       )}
 
       <div className="pi-add">
-        <input className="as-input" value={name} onChange={e => setName(e.target.value)} placeholder="Add a combatant…"
+        <Input look="inline" value={name} onChange={e => setName(e.target.value)} placeholder="Add a combatant…"
           aria-label="Add a combatant" onKeyDown={e => { if (e.key === 'Enter') add(); }} />
         {missing.length > 0 && (
           <Button size="sm" variant="secondary" onClick={() => f.add(combatantsFromParty(missing))}>

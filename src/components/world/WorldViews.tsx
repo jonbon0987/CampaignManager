@@ -17,7 +17,6 @@ import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd'
 import { GenerateWorldRandomTableModal } from '../ui/GenerateRandomTableModal';
 import { parseEntries, kindMeta } from '../../lib/randomEncounter';
 import { FormField } from '../FormField';
-import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock } from '../../lib/campaignContext';
@@ -34,6 +33,7 @@ import { FactionEditor } from '../entity/FactionEditor';
 import type { ReactNode } from 'react';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { onTreeRowKey } from '../../lib/activate';
+import { Input, Textarea } from '../ui/Input';
 
 const VALID_CRS_SET = new Set([
   '0', '1/8', '1/4', '1/2',
@@ -738,10 +738,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
                 Optionally enter a CR, or leave blank for a random difficulty.
               </p>
               <FormField label="Challenge Rating (optional)">
-                <input type="text" value={genCR} onChange={e => { setGenCR(e.target.value); setGenError(''); }}
+                <Input type="text" value={genCR} onChange={e => { setGenCR(e.target.value); setGenError(''); }}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleGenerate(); } }}
-                  placeholder="Leave blank for random, or e.g. 1/4, 5, 17"
-                  style={inputStyle} autoFocus disabled={genLoading} />
+                  placeholder="Leave blank for random, or e.g. 1/4, 5, 17" autoFocus disabled={genLoading} />
               </FormField>
               <div className="text-xs" style={{ color: 'var(--ink-3)' }}>Valid CRs: 0, 1/8, 1/4, 1/2, 1–30</div>
             </>
@@ -752,14 +751,14 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Number of Players">
-                  <input type="number" min={1} max={10} value={genPartySize}
+                  <Input type="number" min={1} max={10} value={genPartySize}
                     onChange={e => { setGenPartySize(e.target.value); setGenError(''); }}
-                    placeholder="e.g. 4" style={inputStyle} autoFocus disabled={genLoading} />
+                    placeholder="e.g. 4" autoFocus disabled={genLoading} />
                 </FormField>
                 <FormField label="Average Party Level">
-                  <input type="number" min={1} max={20} value={genPartyLevel}
+                  <Input type="number" min={1} max={20} value={genPartyLevel}
                     onChange={e => { setGenPartyLevel(e.target.value); setGenError(''); }}
-                    placeholder="e.g. 5" style={inputStyle} disabled={genLoading} />
+                    placeholder="e.g. 5" disabled={genLoading} />
                 </FormField>
               </div>
             </>
@@ -778,10 +777,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
           </div>
 
           <FormField label="Additional Context (optional)">
-            <textarea rows={3} value={genAdditionalContext}
+            <Textarea rows={3} value={genAdditionalContext}
               onChange={e => setGenAdditionalContext(e.target.value)}
-              placeholder="e.g. Multiple stages, legendary actions, transforms mid-fight…"
-              style={textareaStyle} disabled={genLoading} />
+              placeholder="e.g. Multiple stages, legendary actions, transforms mid-fight…" disabled={genLoading} />
           </FormField>
 
           {genError && <p className="text-md" style={{ color: 'var(--red)' }}>{genError}</p>}

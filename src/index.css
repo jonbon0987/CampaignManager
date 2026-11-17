@@ -1282,7 +1282,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .cm-md.is-empty .cm-md-detail { background: var(--bg); }
 
 /* ═══ Forms (updated for Scriptorium) ═══ */
-.cm-input {
+/* The "form" look of <Input>, <Select> and <Textarea> (components/ui/Input.tsx), the values of
+   the old inputStyle / textareaStyle. The "inline" look is .as-input / .as-select further down. */
+.cm-input, .cm-select, .cm-textarea {
   background: var(--paper-2);
   color: var(--ink);
   border: 1px solid var(--rule);
@@ -1293,35 +1295,16 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   outline: none;
   width: 100%;
   box-sizing: border-box;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  color-scheme: dark;
 }
-.cm-input:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.12);
-}
-.cm-input::placeholder { color: var(--ink-3); }
-
 .cm-textarea {
-  background: var(--paper-2);
-  color: var(--ink);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  font-family: var(--serif);
   font-size: var(--fs-body);
   line-height: 1.6;
-  outline: none;
-  width: 100%;
-  min-height: 100px;
+  min-height: 80px;
   resize: vertical;
-  box-sizing: border-box;
-  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.cm-textarea:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.12);
-}
-.cm-textarea::placeholder { color: var(--ink-3); }
+.cm-input::placeholder, .cm-textarea::placeholder { color: var(--ink-3); }
+.cm-select.is-plain { appearance: none; -webkit-appearance: none; }   /* no native arrow */
 
 .cm-label {
   display: block;
@@ -2672,6 +2655,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
   padding: 5px 9px; outline: none; transition: border-color .12s;
 }
+.md-mini-in.is-chapter { width: 64px; }
 .md-mini-in:hover { border-color: var(--rule-hover); }
 .md-mini-in:focus { border-color: var(--gold); }
 
