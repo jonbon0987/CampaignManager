@@ -14,6 +14,7 @@ import { Button } from './ui/Button';
 import { ChangeCard, type ChangeState, type ChangeTone, type ChangeView } from './review/ChangeCard';
 import { ReviewTally } from './review/ReviewTally';
 import { entityKindColor } from '../lib/theme';
+import { IconButton } from './ui/IconButton';
 
 const COMPOSER_MAX = 120;
 function fitToText(el: HTMLTextAreaElement) {
@@ -319,17 +320,11 @@ export default function Workbench({
           <div className="s">{chat.subtitle}</div>
         </div>
         {chat.messages.length > 0 && (
-          <button className="icon-btn" onClick={chat.clearMessages} title="Clear conversation" aria-label="Clear conversation">⌫</button>
+          <IconButton onClick={chat.clearMessages} title="Clear conversation" aria-label="Clear conversation">⌫</IconButton>
         )}
-        <button
-          className="icon-btn"
-          onClick={onClose}
-          title="Close (⌘J)"
-          aria-label="Close assistant"
-          style={{ border: '1px solid var(--rule)' }}
-        >
+        <IconButton onClick={onClose} title="Close (⌘J)" aria-label="Close assistant">
           ×
-        </button>
+        </IconButton>
       </div>
 
       <div className="wb-tabs" role="tablist" aria-label="Assistant">
@@ -392,14 +387,9 @@ export default function Workbench({
                   : chat.pendingDocument.filename ?? 'document'}
               </span>
               <span className="hint">Send to extract, or add instructions first.</span>
-              <button
-                className="icon-btn"
-                onClick={() => chat.setPendingDocument(null)}
-                title="Remove attachment"
-                aria-label="Remove attachment"
-              >
+              <IconButton onClick={() => chat.setPendingDocument(null)} title="Remove attachment" aria-label="Remove attachment">
                 ×
-              </button>
+              </IconButton>
             </div>
           )}
 

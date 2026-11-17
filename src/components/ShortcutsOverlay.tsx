@@ -1,3 +1,5 @@
+import { IconButton } from './ui/IconButton';
+
 interface ShortcutsOverlayProps {
   open: boolean;
   onClose: () => void;
@@ -42,7 +44,7 @@ export default function ShortcutsOverlay({ open, onClose, scope = 'campaign' }: 
           <span className="v6-ks-title">Keyboard Shortcuts</span>
           <div style={{ flex: 1 }} />
           <span className="v6-ks-key">?</span>
-          <button className="v6-ks-close" onClick={onClose} aria-label="Close">✕</button>
+          <IconButton onClick={onClose} aria-label="Close">✕</IconButton>
         </div>
         <div className="v6-ks-grid">
           {groups.map((g, gi) => (

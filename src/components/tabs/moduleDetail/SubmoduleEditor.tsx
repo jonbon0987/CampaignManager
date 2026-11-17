@@ -20,6 +20,8 @@ import {
   TypeTag, InlinePicker, typeInfo, parseLinkedIds, SUBMODULE_TYPES,
 } from './pickers';
 import { difficultyColors as diffColor } from '../../../lib/theme';
+import { Button } from '../../ui/Button';
+import { IconButton } from '../../ui/IconButton';
 
 /* ───────────────────────── scene row ───────────────────────── */
 
@@ -232,7 +234,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
                     {dep.dependency_type === 'required' ? 'AND' : 'OR'}
                   </span>
                   <span className="md-dep-name">{ps.title}</span>
-                  <button className="md-iconbtn is-danger" title="Remove" onClick={() => deleteSubmoduleDep(dep.id)}>✕</button>
+                  <IconButton aria-label="Remove dependency" title="Remove" onClick={() => deleteSubmoduleDep(dep.id)} style={{ width: 26, height: 26, fontSize: 13 }}>✕</IconButton>
                 </div>
               );
             })}
@@ -260,13 +262,13 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
                 onDragEnd={() => { dragFrom.current = null; setDraggingIdx(null); }}
               />
             ))}
-            <button className="md-add" style={{ marginTop: 6 }} onClick={async () => {
+            <Button variant="secondary" size="xs" className="mt-1.5" onClick={async () => {
               const made = await upsertScene({
                 submodule_id: submodule.id, title: 'New scene', scene_type: 'encounter',
                 summary: null, content: null, dm_notes: null, sort_order: subScenes.length, linked_monster_ids: null,
               });
               if (made) onOpenScene(made.id);
-            }}>＋ Scene</button>
+            }}>＋ Scene</Button>
           </div>
         </div>
       </div>

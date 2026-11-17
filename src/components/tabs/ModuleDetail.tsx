@@ -21,6 +21,7 @@ import { typeInfo } from './moduleDetail/pickers';
 import { ModuleOverview } from './moduleDetail/ModuleOverview';
 import { SubmoduleEditor } from './moduleDetail/SubmoduleEditor';
 import { SceneEditor } from './moduleDetail/SceneEditor';
+import { Button } from '../ui/Button';
 
 // Styles live in src/index.css — see the "Module Atlas" block appended there.
 
@@ -182,7 +183,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, tar
           })}
 
           <div className="md-railfoot">
-            <button className="md-add md-add-block" onClick={addSubmodule}>＋ Add part</button>
+            <Button variant="secondary" size="sm" className="w-full" onClick={addSubmodule}>＋ Add part</Button>
           </div>
         </div>
       </aside>

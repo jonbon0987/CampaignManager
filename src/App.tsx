@@ -57,6 +57,7 @@ import { useRouteSync, currentRoute } from './hooks/useRouteSync';
 import { setRecentScope } from './lib/recent';
 import type { Route } from './lib/route';
 import type { WorldTab } from './types/world';
+import { Button } from './components/ui/Button';
 
 // Tabs in a campaign. Ideas is kept for old links; it is now the Inbox column
 // of the Threads board, and Settings opens from the sidebar's footer menu.
@@ -409,7 +410,6 @@ function LoginScreen() {
   }
 
   const inputStyle = { backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule)' };
-  const linkStyle = { color: 'var(--gold)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' };
 
   return (
     <div
@@ -451,19 +451,13 @@ function LoginScreen() {
               data-testid="login-password"
             />
             {error && <p className="text-xs" data-testid="login-error" style={{ color: 'var(--red)' }}>{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
-              data-testid="login-submit"
-            >
+            <Button variant="primary" className="py-2" type="submit" disabled={loading} data-testid="login-submit">
               {loading ? '…' : 'Sign in'}
-            </button>
+            </Button>
             <div className="text-center">
-              <button type="button" style={linkStyle} onClick={() => { setError(''); setMode('forgot'); }}>
+              <Button variant="link" type="button" onClick={() => { setError(''); setMode('forgot'); }}>
                 Forgot password?
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -483,18 +477,13 @@ function LoginScreen() {
               style={inputStyle}
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
-            >
+            <Button variant="primary" className="py-2" type="submit" disabled={loading}>
               {loading ? '…' : 'Send reset link'}
-            </button>
+            </Button>
             <div className="text-center">
-              <button type="button" style={linkStyle} onClick={() => { setError(''); setMode('signin'); }}>
+              <Button variant="link" type="button" onClick={() => { setError(''); setMode('signin'); }}>
                 Back to sign in
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -504,9 +493,9 @@ function LoginScreen() {
             <p className="text-sm" style={{ color: 'var(--ink)' }}>
               Check your email — a reset link is on its way.
             </p>
-            <button type="button" style={linkStyle} onClick={() => { setError(''); setMode('signin'); }}>
+            <Button variant="link" className="self-center" type="button" onClick={() => { setError(''); setMode('signin'); }}>
               Back to sign in
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -581,14 +570,9 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
               style={inputStyle}
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 rounded text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--bg)' }}
-            >
+            <Button variant="primary" className="py-2" type="submit" disabled={loading}>
               {loading ? '…' : 'Update password'}
-            </button>
+            </Button>
           </form>
         )}
       </div>

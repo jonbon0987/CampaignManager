@@ -5,6 +5,8 @@
 
 import { useRef, useState } from 'react';
 import { extractClientSide, parseGoogleDocsUrl, type DocumentInput } from '../lib/documentImport';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 
 interface Props {
   disabled: boolean;
@@ -51,17 +53,9 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
 
   return (
     <div style={{ position: 'relative' }}>
-      <button
-        type="button"
-        className={`icon-btn${open ? ' on' : ''}`}
-        onClick={() => setOpen(o => !o)}
-        disabled={disabled}
-        title="Attach a document"
-        aria-label="Attach a document"
-        style={{ flexShrink: 0, opacity: disabled ? 0.5 : 1 }}
-      >
+      <IconButton active={open} type="button" onClick={() => setOpen(o => !o)} disabled={disabled} title="Attach a document" aria-label="Attach a document">
         ＋
-      </button>
+      </IconButton>
 
       {open && (
         <>
@@ -99,25 +93,9 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               Import Document
             </div>
 
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-              style={{
-                width: '100%',
-                backgroundColor: 'var(--gold)',
-                color: 'var(--bg)',
-                border: 'none',
-                borderRadius: 'var(--radius)',
-                padding: '8px 12px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: loading ? 'default' : 'pointer',
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
+            <Button variant="primary" size="sm" className="w-full" type="button" onClick={() => fileInputRef.current?.click()} disabled={loading}>
               {loading ? 'Reading…' : 'Upload file (.txt, .md, .docx, .pdf)'}
-            </button>
+            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -168,25 +146,9 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
                 boxSizing: 'border-box',
               }}
             />
-            <button
-              type="button"
-              onClick={handleGdocsSubmit}
-              disabled={loading || !gdocsUrl.trim()}
-              style={{
-                marginTop: '8px',
-                width: '100%',
-                background: 'none',
-                border: '1px solid var(--rule)',
-                borderRadius: 'var(--radius)',
-                padding: '6px 12px',
-                fontSize: '12px',
-                color: 'var(--ink-2)',
-                cursor: loading || !gdocsUrl.trim() ? 'default' : 'pointer',
-                opacity: loading || !gdocsUrl.trim() ? 0.5 : 1,
-              }}
-            >
+            <Button variant="secondary" size="sm" className="w-full mt-2" type="button" onClick={handleGdocsSubmit} disabled={loading || !gdocsUrl.trim()}>
               Parse Google Doc
-            </button>
+            </Button>
 
             <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--ink-3)', lineHeight: 1.4 }}>
               Google Docs must be shared publicly (Anyone with the link).
