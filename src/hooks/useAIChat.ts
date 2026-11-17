@@ -540,8 +540,8 @@ export function useAIChat(backend: AssistantBackend) {
       ? 'Google Doc'
       : (docInput.filename ?? 'document');
     const userContent = userInstructions
-      ? `📄 Attached ${filename}\n${userInstructions}`
-      : `📄 Attached ${filename}`;
+      ? `Attached ${filename}\n${userInstructions}`
+      : `Attached ${filename}`;
     const userMsg: ChatMessage = { role: 'user', content: userContent };
 
     setMessages(prev => {

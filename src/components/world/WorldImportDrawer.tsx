@@ -33,7 +33,7 @@ interface KindConfig {
 }
 
 const KIND_GLYPH: Record<string, string> = {
-  npc: '◇', faction: '❖', location: '✦', lore: '❦', statblock: '✜', encounter: '⚔', randomtable: '🎲',
+  npc: '◇', faction: '❖', location: '✦', lore: '❦', statblock: '✜', encounter: '⚔', randomtable: '⚄',
 };
 
 const TYPE_LABEL: Record<string, string> = {

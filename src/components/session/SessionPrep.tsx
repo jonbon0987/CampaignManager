@@ -212,7 +212,7 @@ export function SessionPrep({ session, sessions, plan, prepNotes, onPlan, onPrep
       {readAlouds.length > 0 && (
         <section className="sp-part">
           <div className="cm-section-head">
-            <span className="cm-section-title"><span className="sp-glyph">📜</span> Read aloud and handouts</span>
+            <span className="cm-section-title"><span className="sp-glyph" aria-hidden>❧</span> Read aloud and handouts</span>
             <div className="cm-section-rule" />
           </div>
           <p className="sp-hint">From the agenda’s scenes. Play shows them when you reach each scene.</p>

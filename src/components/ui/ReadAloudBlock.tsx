@@ -11,7 +11,7 @@ export function ReadAloudField({ value, onChange, maxLength, disabled }: {
 }) {
   return (
     <div className="ra">
-      <div className="ra-label"><span aria-hidden>📜</span> Read aloud</div>
+      <div className="ra-label"><span aria-hidden>❧</span> Read aloud</div>
       <textarea className="ra-input" value={value} onChange={e => onChange(e.target.value)} disabled={disabled}
         rows={3} maxLength={maxLength} aria-label="Read aloud"
         placeholder="What the players see and hear as they arrive. Shown large in Play, so you can read it straight off the screen." />
@@ -23,7 +23,7 @@ export function ReadAloudField({ value, onChange, maxLength, disabled }: {
 export function ReadAloud({ text, large, label = 'Read aloud' }: { text: string; large?: boolean; label?: string }) {
   return (
     <div className={`ra${large ? ' is-large' : ''}`}>
-      <div className="ra-label"><span aria-hidden>📜</span> {label}</div>
+      <div className="ra-label"><span aria-hidden>❧</span> {label}</div>
       <p className="ra-text">{text}</p>
     </div>
   );

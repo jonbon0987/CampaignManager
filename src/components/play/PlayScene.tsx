@@ -40,7 +40,7 @@ export function PlayScene() {
   const hasPrevious = !!live && !!previouslyOn(sessions, live.session_number);
   const opener = hasPrevious && live && (
     <details className="psc-prev" open={!scene}>
-      <summary className="psc-label">📜 Previously on…</summary>
+      <summary className="psc-label"><span aria-hidden>❧</span> Previously on…</summary>
       <PreviouslyOn sessions={sessions} before={live.session_number} large readLabel="Read aloud" onOpenSession={id => openRecord('sessions', id)} />
     </details>
   );
