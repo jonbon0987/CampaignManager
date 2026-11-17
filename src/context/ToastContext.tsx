@@ -80,9 +80,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 cursor: 'pointer',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
                 animation: 'toast-slide-in 0.2s ease-out',
-                backgroundColor: t.type === 'error' ? 'var(--red-bg)' : '#1a301a',
+                backgroundColor: t.type === 'error' ? 'var(--red-bg)' : 'var(--success-bg)',
                 color: t.type === 'error' ? 'var(--red)' : 'var(--success)',
-                border: `1px solid ${t.type === 'error' ? 'var(--red-line)' : '#2a6a2a'}`,
+                border: `1px solid ${t.type === 'error' ? 'var(--red-line)' : 'var(--success-line)'}`,
               }}
             >
               {t.type === 'error' ? '✕ ' : '✓ '}{t.message}

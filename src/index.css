@@ -35,7 +35,7 @@
   --sky:       #7fa8d0;
   --red:       #e05c5c;
   --red-dim:   rgba(224,92,92,0.12);
-  --red-bg:    #3a1a1a;
+  --red-bg:    #2e1515;
   --red-line:  #6a2a2a;
   --success:     #6ab87a;
   --success-bg:  #1a2a1a;
@@ -61,7 +61,7 @@
   --chip-bg:     #2a1a1a;  /* stat-chip background */
   --chip-line:   #5a3a2a;  /* stat-chip border */
   --arcane:      #c060d0;  /* stat-sheet / arcane accent */
-  --arcane-bg:   #2a1a3a;
+  --arcane-bg:   #221530;
   --arcane-line: #5a2a7a;
   --immune:      #70a0a0;  /* resist / immune teal */
   --diff-easy:   #7fc090;
@@ -89,6 +89,33 @@
   --radius:    6px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+  /* Text on filled accents. The same dark ink reads on gold and on the copper
+     accent (5.56:1); white on the accent measured 3.28:1. */
+  --on-gold:   #1a1410;
+  --on-accent: #1a1410;
+  /* Type scale — eleven steps. New and edited rules use these; existing
+     literal sizes are snapped to them screen by screen. */
+  --fs-micro:   10px;  /* uppercase mono eyebrows, counters: the floor */
+  --fs-label:   11px;  /* mono labels, tags, chips */
+  --fs-xs:      12px;  /* dense secondary text */
+  --fs-sm:      13px;  /* list rows, controls */
+  --fs-md:      14px;  /* inputs, compact body */
+  --fs-body:    15px;  /* body copy */
+  --fs-lg:      17px;  /* lead paragraphs, card titles */
+  --fs-h3:      20px;
+  --fs-h2:      26px;
+  --fs-h1:      34px;
+  --fs-display: 44px;
+  /* Layers. Within a layer, later DOM order wins; no +1 variants. */
+  --z-raised:  1;    /* dots, sticky bars inside a panel */
+  --z-sticky:  10;   /* in-canvas toolbars, resize handles */
+  --z-popover: 100;  /* menus, date pickers, slash menu, hover cards */
+  --z-drawer:  200;  /* mobile sidebar, side rail, import drawer */
+  --z-modal:   300;  /* modals, lightbox, prep sheet, shortcuts */
+  --z-overlay: 400;  /* command palette, creation gate, confirm dialog */
+  --z-toast:   500;
+  /* Breakpoints can't be custom properties inside @media, so by convention:
+     640px phone · 900px narrow · 1240px wide. */
   /* Paper for printing (the prep sheet): dark ink on white */
   --print-paper:  #ffffff;
   --print-ink:    #1b1712;
@@ -134,6 +161,25 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--gold) !important;
   outline: none;
   box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.12);
+}
+
+/* One default focus ring for everything else that takes focus. :where() keeps
+   specificity at zero, so a component that draws its own focus state (the
+   fields above, .cw-node, .orr-node, .mp-pin, .cm-rail-resize) still wins. */
+:where(a, button, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Motion is decoration here: with reduced motion asked for, state changes
+   land at once. The loading spinner keeps turning, slowly (see below). */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.cm-loading-spinner), *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ═══ Shell Layout — sidebar + main + optional AI rail ═══ */
@@ -342,11 +388,11 @@ input:focus, textarea:focus, select:focus {
 }
 .cm-run-btn:hover {
   background: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
 }
 .cm-run-btn.is-on {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .cm-side-meta {
@@ -453,7 +499,7 @@ input:focus, textarea:focus, select:focus {
 }
 .cm-top-btn-primary {
   background: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
   border-color: var(--gold);
   font-weight: 600;
   font-size: 12px;
@@ -462,11 +508,11 @@ input:focus, textarea:focus, select:focus {
   background: var(--gold-2);
 }
 .cm-top-btn-primary .cm-top-btn-glyph {
-  color: #1a1410;
+  color: var(--on-gold);
 }
 .cm-top-btn-primary.is-on {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .cm-top-sep {
@@ -482,7 +528,7 @@ input:focus, textarea:focus, select:focus {
 }
 .cm-top-btn.is-active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .cm-kbd {
@@ -991,7 +1037,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   text-transform: uppercase;
   color: var(--sky);
   background: rgba(127,168,208,0.12);
-  border: 1px solid #2a4a7a;
+  border: 1px solid var(--info-line);
   border-radius: 999px;
   padding: 1px 8px;
 }
@@ -1259,7 +1305,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .cm-pill.is-active {
   background: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
   border-color: var(--gold);
 }
 .cm-pill.is-subtle {
@@ -1279,7 +1325,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   color: var(--ink-3);
   border: 1px solid var(--rule-soft);
 }
-.cm-tag-active   { color: #4a7a3a; border-color: rgba(90,140,80,0.4); background: rgba(110,160,90,0.10); }
+.cm-tag-active   { color: var(--success); border-color: var(--success-line); background: var(--success-bg); }
 .cm-tag-deceased { color: #8a3a2a; border-color: rgba(140,70,50,0.4); background: rgba(180,90,70,0.10); }
 .cm-tag-unknown  { color: var(--gold); border-color: var(--rule); background: rgba(180,140,60,0.10); }
 .cm-tag-planned  { color: var(--ink-3); }
@@ -1455,7 +1501,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .cm-dep-badge-or {
   background: rgba(176,128,224,.12);
-  color: #b080e0;
+  color: var(--arcane);
   border: 1px solid rgba(176,128,224,.3);
 }
 .cm-dep-or-group {
@@ -1471,7 +1517,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   font-size: 9px;
   letter-spacing: .15em;
   text-transform: uppercase;
-  color: #b080e0;
+  color: var(--arcane);
 }
 .cm-dep-or-group-body { padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
 
@@ -2434,7 +2480,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 
 /* ═══ Module Web — the gravity web of chapters, parts and scenes ═══ */
 .orr { display: grid; grid-template-columns: 1fr 328px; height: 100%; min-height: 0; }
-.orr-stage { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(130% 90% at 50% 8%, #1b1711 0%, #15120e 55%, #100e0b 100%); }
+.orr-stage { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(130% 90% at 50% 8%, #1b1711 0%, var(--bg) 55%, #100e0b 100%); }
 .orr-svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; }
 .orr-svg.is-panning { cursor: grabbing; }
 
@@ -2453,7 +2499,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .orr-seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 5px; }
 .orr-seg-btn { background: none; border: none; padding: 3px 11px; font-family: var(--serif); font-size: 12.5px; color: var(--ink-2); cursor: pointer; border-radius: 3px; }
 .orr-seg-btn:hover { color: var(--ink); }
-.orr-seg-btn.is-active { background: var(--gold); color: #1a1410; font-weight: 600; }
+.orr-seg-btn.is-active { background: var(--gold); color: var(--on-gold); font-weight: 600; }
 .orr-slider { width: 76px; accent-color: var(--gold); height: 2px; }
 .orr-chip {
   display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px;
@@ -2466,7 +2512,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .orr-chip-dot { width: 6px; height: 6px; border-radius: 50%; }
 .orr-btn { padding: 4px 11px; background: transparent; border: 1px solid var(--rule); border-radius: 5px; font-family: var(--serif); font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
 .orr-btn:hover { color: var(--ink); border-color: var(--rule-hover); }
-.orr-btn.is-primary { background: var(--gold); border-color: var(--gold); color: #1a1410; font-weight: 600; }
+.orr-btn.is-primary { background: var(--gold); border-color: var(--gold); color: var(--on-gold); font-weight: 600; }
 .orr-btn.is-primary:hover { background: var(--gold-2); }
 .orr-btn.is-primary:disabled { opacity: .35; cursor: default; }
 .orr-btn.is-on { color: var(--gold); border-color: rgba(201,168,76,.5); }
@@ -2500,7 +2546,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .orr-node:focus { outline: none; }
 .orr-node:focus-visible .orr-disc, .orr-node:focus-visible .orr-dot { stroke: var(--gold); stroke-opacity: 1; stroke-width: 2.2; }
 /* the stroke halo is what keeps labels legible over links */
-.orr-node text { text-anchor: middle; paint-order: stroke fill; stroke: #15120e; stroke-width: 3.5px; stroke-linejoin: round; pointer-events: none; }
+.orr-node text { text-anchor: middle; paint-order: stroke fill; stroke: var(--bg); stroke-width: 3.5px; stroke-linejoin: round; pointer-events: none; }
 .orr-halo { fill: transparent; transition: fill .3s; }
 .orr-node.is-sel .orr-halo { fill: rgba(201,168,76,.08); }
 .orr-disc { fill: var(--paper-2); stroke: var(--rule); stroke-width: 1; }
@@ -2514,7 +2560,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .orr-node.is-hover .orr-meta, .orr-node.is-sel .orr-meta { opacity: 1; }
 .orr-node.is-hover .orr-label-xs, .orr-node.is-sel .orr-label-xs { opacity: 1; fill: var(--ink-2); }
 .orr-module.is-active .orr-ring { stroke: var(--gold); stroke-opacity: .85; }
-.orr-module.is-active .orr-disc { fill: #231d15; }
+.orr-module.is-active .orr-disc { fill: var(--paper-2); }
 .orr-module.is-completed .orr-ring { stroke: var(--moss); stroke-opacity: .6; }
 .orr-module.is-planned .orr-ring { stroke: var(--ink-3); stroke-opacity: .5; stroke-dasharray: 3 5; }
 .orr-module.is-planned .orr-roman { fill: var(--ink-2); }
@@ -2539,7 +2585,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .orr-bud circle { stroke: rgba(201,168,76,.55); }
 .orr-bud text { fill: var(--gold); font-size: 11px; }
 .orr-bud:hover circle { fill: var(--gold); }
-.orr-bud:hover text { fill: #1a1410; stroke: var(--gold); }
+.orr-bud:hover text { fill: var(--on-gold); stroke: var(--gold); }
 .orr-handle { cursor: crosshair; }
 .orr-handle-hit { fill: transparent; }
 .orr-handle-dot { fill: var(--bg); stroke: var(--gold); stroke-width: 1.2; stroke-opacity: .75; }
@@ -2584,7 +2630,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .orr-lg-line { width: 18px; border-top: 1px solid var(--ink-2); opacity: .6; margin-right: 7px; }
 .orr-lg-line.is-or { border-top-style: dashed; }
 .orr-lg-line.is-tether { opacity: .25; }
-.orr-legend-hint { color: #5f5744; letter-spacing: .1em; }
+.orr-legend-hint { color: var(--ink-3); letter-spacing: .1em; }
 .orr-refuse {
   position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); z-index: 5;
   display: flex; align-items: center; gap: 7px; padding: 7px 13px;
@@ -2863,7 +2909,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .as-tog.is-on {
   background: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
   border-color: var(--gold);
 }
 
@@ -3002,7 +3048,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .as-pill-opt.is-active {
   background: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
   border-color: var(--gold);
 }
 
@@ -3286,7 +3332,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .v6-scratch-send {
   padding: 7px 12px;
   background: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
   border: none;
   border-radius: var(--radius);
   font-weight: 600;
