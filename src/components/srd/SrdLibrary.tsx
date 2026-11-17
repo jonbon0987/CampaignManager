@@ -15,6 +15,7 @@ import {
   srdToStatblock, type SrdEdition, type SrdItem, type SrdMonster,
 } from '../../lib/srd';
 import type { MonsterStatblock } from '../../lib/database.types';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 const MONSTER_TYPES = ['aberration', 'beast', 'celestial', 'construct', 'dragon', 'elemental', 'fey', 'fiend', 'giant', 'humanoid', 'monstrosity', 'ooze', 'plant', 'undead'];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -137,15 +138,9 @@ function Library(props: Props) {
     >
       <div className="srd">
         <div className="srd-bar">
-          <div className="srd-editions" role="radiogroup" aria-label="Rules">
-            {(['2014', '2024'] as const).map(ed => (
-              // eslint-disable-next-line no-restricted-syntax -- a radio styled as a pill, like the wrap-up's
-              <button key={ed} type="button" role="radio" aria-checked={edition === ed} className={`cm-pill is-subtle${edition === ed ? ' is-active' : ''}`}
-                onClick={() => switchEdition(ed)}>
-                {ed} · {SRD_SHORT[ed]}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl aria-label="Rules" value={edition}
+            options={(['2014', '2024'] as const).map(ed => ({ value: ed, label: `${ed} · ${SRD_SHORT[ed]}` }))}
+            onChange={switchEdition} />
           <input className="as-input srd-search" type="search" value={q} autoFocus aria-label={`Search ${noun}`}
             placeholder={kind === 'monsters' ? 'Search creatures, e.g. goblin, dragon' : 'Search magic items, e.g. cloak, +1'}
             onChange={e => { setQ(e.target.value); setSelectedId(null); }} onKeyDown={onSearchKey} />

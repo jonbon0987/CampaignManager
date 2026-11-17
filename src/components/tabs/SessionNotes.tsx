@@ -26,6 +26,7 @@ import { LeftOpenToInbox } from '../session/LeftOpenToInbox';
 import { formatSessionDate, nextBlankSession, plainText, clip, STATUS_LABEL } from '../../lib/sessionLifecycle';
 import { noteStamp } from '../../lib/playTime';
 import type { Session, SessionPlan, SessionStatus } from '../../lib/database.types';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 type SessionForm = {
   session_number: number;
@@ -269,20 +270,9 @@ function SessionDetail({
                   <Button variant="secondary" size="xs" onClick={() => void endSession()}>■ End session</Button>
                 </div>
               ) : (
-              <div className="flex gap-1" role="radiogroup" aria-labelledby={`ss-status-${session.id}`}>
-                {(['planned', 'done'] as const).map(st => (
-                  // eslint-disable-next-line no-restricted-syntax -- a status pill, styled by .cm-pill
-                  <button className={`cm-pill is-subtle${form.status === st ? ' is-active' : ''}`}
-                    key={st}
-                    type="button"
-                    role="radio"
-                    aria-checked={form.status === st}
-                    onClick={() => set('status', st)}
-                  >
-                    {STATUS_LABEL[st]}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl aria-labelledby={`ss-status-${session.id}`} value={form.status}
+                options={(['planned', 'done'] as const).map(st => ({ value: st, label: STATUS_LABEL[st] }))}
+                onChange={st => set('status', st)} />
               )}
             </div>
           </div>

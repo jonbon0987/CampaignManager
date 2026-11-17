@@ -392,7 +392,7 @@ describe('Threads', () => {
       });
       render(<Threads />);
       await promoteFromPage('The Heist');
-      fireEvent.click(screen.getByRole('button', { name: 'Part' }));
+      fireEvent.click(screen.getByRole('radio', { name: 'Part' }));
       // Disabled until a module is chosen.
       expect((screen.getByRole('button', { name: 'Promote' }) as HTMLButtonElement).disabled).toBe(true);
       fireEvent.click(screen.getByRole('button', { name: /Chapter One/ }));
@@ -412,7 +412,7 @@ describe('Threads', () => {
       });
       render(<Threads />);
       await promoteFromPage('The Heist');
-      fireEvent.click(screen.getByRole('button', { name: 'Scene' }));
+      fireEvent.click(screen.getByRole('radio', { name: 'Scene' }));
       // The tree loads submodules for every module; pick one.
       const vault = await screen.findByRole('button', { name: 'The Vault' });
       fireEvent.click(vault);

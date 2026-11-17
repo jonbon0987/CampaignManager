@@ -18,6 +18,7 @@ import { HoldingList } from '../items/HoldingList';
 import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import type { Item } from '../../lib/database.types';
+import { TogglePill } from '../ui/SegmentedControl';
 
 export type ItemFields = Pick<Item, 'name' | 'item_type' | 'rarity' | 'attunement' | 'attunement_note' | 'value' | 'description' | 'dm_notes' | 'image_path'>;
 
@@ -93,12 +94,9 @@ export function ItemEditor({ item, save, remove, onDeleted }: {
         </div>
         <div className="as-mi">
           <span className="as-ml">Attunement</span>
-          <div className="as-pills">
-            {/* eslint-disable-next-line no-restricted-syntax -- an on/off option, styled with its pill group */}
-            <button type="button" className={`as-pill-opt${form.attunement ? ' is-active' : ''}`} onClick={() => set('attunement', !form.attunement)}>
-              {form.attunement ? 'Required' : 'Not needed'}
-            </button>
-          </div>
+          <TogglePill pressed={!!form.attunement} onChange={v => set('attunement', v)}>
+            {form.attunement ? 'Required' : 'Not needed'}
+          </TogglePill>
           {form.attunement && (
             <input className="as-input item-attune-note" value={form.attunement_note ?? ''} onChange={e => set('attunement_note', e.target.value || null)}
               placeholder="by a wizard…" maxLength={limitFor('items', 'attunement_note')} aria-label="Attunement by" />

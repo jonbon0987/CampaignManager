@@ -16,6 +16,7 @@ import { SessionUpdateBand } from '../session/SessionUpdateBand';
 import { useCanonLock } from './useCanonLock';
 import type { EntityCanon, EntityScope } from './types';
 import type { LoreEntry } from '../../lib/database.types';
+import { TogglePill } from '../ui/SegmentedControl';
 
 export type LoreFields = Pick<LoreEntry, 'title' | 'category' | 'dm_only' | 'content'>;
 
@@ -78,12 +79,9 @@ export function LoreEditor({ entry, scope, save, remove, onDeleted, canon }: {
           </div>
           <div className="as-mi">
             <span className="as-ml">Secret</span>
-            <div className="as-pills">
-              {/* eslint-disable-next-line no-restricted-syntax -- an on/off option, styled with its pill group */}
-              <button type="button" className={`as-pill-opt${form.dm_only ? ' is-active' : ''}`} onClick={() => set('dm_only', !form.dm_only)}>
-                {form.dm_only ? 'DM only' : 'Not secret'}
-              </button>
-            </div>
+            <TogglePill pressed={!!form.dm_only} onChange={v => set('dm_only', v)}>
+              {form.dm_only ? 'DM only' : 'Not secret'}
+            </TogglePill>
           </div>
         </div>
 

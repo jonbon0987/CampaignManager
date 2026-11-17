@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import { describeShared, playerPageUrl } from '../../lib/playerPage';
 import { Button } from '../ui/Button';
 import type { PlayerPagePart } from '../../lib/database.types';
+import { TogglePill } from '../ui/SegmentedControl';
 
 const PARTS: [PlayerPagePart, string][] = [
   ['show_next_session', 'Next session'],
@@ -87,11 +88,9 @@ function Card({ shares }: { shares: PlayerSharesValue }) {
           <div className="ov-share-parts" role="group" aria-label="Also show on the page">
             <span className="ov-card-sub">Also show:</span>
             {PARTS.map(([part, label]) => (
-              // eslint-disable-next-line no-restricted-syntax -- an on/off pill, styled .cm-pill
-              <button key={part} type="button" className={`cm-pill is-subtle${page[part] ? ' is-active' : ''}`} aria-pressed={!!page[part]}
-                onClick={() => void shares.setPart(part, !page[part])}>
+              <TogglePill key={part} pressed={!!page[part]} onChange={on => void shares.setPart(part, on)}>
                 {label}
-              </button>
+              </TogglePill>
             ))}
           </div>
           <div className="ov-share-actions">

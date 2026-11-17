@@ -34,6 +34,7 @@ import { LocationEditor } from '../entity/LocationEditor';
 import { LoreEditor } from '../entity/LoreEditor';
 import { FactionEditor } from '../entity/FactionEditor';
 import type { ReactNode } from 'react';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 const VALID_CRS_SET = new Set([
   '0', '1/8', '1/4', '1/2',
@@ -722,15 +723,9 @@ Respond with a JSON object using this exact structure (no markdown, just raw JSO
         saveLabel="Generate"
       >
         <div className="space-y-4">
-          <div className="flex rounded overflow-hidden" style={{ border: '1px solid var(--rule)' }}>
-            {(['cr', 'party'] as const).map(mode => (
-              <button key={mode} onClick={() => { setGenMode(mode); setGenError(''); }} disabled={genLoading}
-                className="flex-1 text-sm py-1.5 font-medium transition-colors"
-                style={{ backgroundColor: genMode === mode ? 'var(--gold-dim)' : 'var(--paper)', color: genMode === mode ? 'var(--gold)' : 'var(--ink-2)' }}>
-                {mode === 'cr' ? 'By Challenge Rating' : 'By Party'}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl look="tray" size="md" fill aria-label="Generate from" value={genMode} disabled={genLoading}
+            options={[{ value: 'cr', label: 'By Challenge Rating' }, { value: 'party', label: 'By Party' }]}
+            onChange={mode => { setGenMode(mode); setGenError(''); }} />
 
           {genMode === 'cr' ? (
             <>
