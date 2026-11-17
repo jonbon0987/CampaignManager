@@ -31,6 +31,7 @@ import { CharCounter } from '../ui/CharCounter';
 import './firstWorldGate.css';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
+import { isActivateKey } from '../../lib/activate';
 
 type Route = 'menu' | 'scratch' | 'template' | 'import' | 'ai';
 
@@ -391,7 +392,10 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
         <>
           <div
             className={'fwg-drop' + (dragging ? ' is-drag' : '')}
+            role="button"
+            tabIndex={0}
             onClick={() => fileRef.current?.click()}
+            onKeyDown={e => { if (isActivateKey(e)) fileRef.current?.click(); }}
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onDrop={e => {

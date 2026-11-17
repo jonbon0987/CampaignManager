@@ -66,6 +66,7 @@ export default function ScopeSwitcher({ collapsed, onExpand }: { collapsed: bool
     <>
       <button
         ref={buttonRef}
+        // eslint-disable-next-line no-restricted-syntax -- scope switcher trigger in the topbar (crest + two-line label)
         className="cm-scope"
         onClick={toggle}
         aria-haspopup="menu"
@@ -117,7 +118,9 @@ export default function ScopeSwitcher({ collapsed, onExpand }: { collapsed: bool
             </div>
           ))}
           <div className="ws-drop-sep" />
-          <button role="menuitem" className="ws-drop-new" onClick={() => { setOpen(false); setGate('world'); }}>
+          <button role="menuitem"
+            // eslint-disable-next-line no-restricted-syntax -- menu item in the scope dropdown
+            className="ws-drop-new" onClick={() => { setOpen(false); setGate('world'); }}>
             <span>+</span> Create new world
           </button>
         </div>,

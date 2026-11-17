@@ -19,6 +19,7 @@ import { GenerateModuleStructureModal } from '../../ui/GenerateModuleStructureMo
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
 import { typeInfo } from './pickers';
 import { SegmentedControl } from '../../ui/SegmentedControl';
+import { onActivate } from '../../../lib/activate';
 
 interface ModuleForm {
   title: string;
@@ -158,7 +159,9 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
                   const prereqs = deps.filter(d => d.dependent_id === s.id);
                   return (
                     <div className="md-depmap-row" key={s.id}>
-                      <button className="md-depmap-node" style={{ borderColor: info.color + '55' }} onClick={() => onSelect(s.id)}>
+                      <button
+                        // eslint-disable-next-line no-restricted-syntax -- node in the dependency map, bordered in its type colour
+                        className="md-depmap-node" style={{ borderColor: info.color + '55' }} onClick={() => onSelect(s.id)}>
                         <span className="md-glyph" style={{ color: info.color }} title={info.label} aria-hidden>{info.glyph}</span>
                         <span className="md-num">{i + 1}</span>
                         <span className="md-depmap-name">{s.title}</span>
@@ -170,7 +173,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
                             const ps = byId[p.prerequisite_id]; if (!ps) return null;
                             return (
                               <span key={p.id} className={`md-dep-kind md-dep-kind-${p.dependency_type === 'required' ? 'required' : 'optional'}`}
-                                onClick={() => onSelect(ps.id)}>{ps.title}</span>
+                                role="button" tabIndex={0} onClick={() => onSelect(ps.id)} onKeyDown={onActivate(() => onSelect(ps.id))}>{ps.title}</span>
                             );
                           })}
                         </div>

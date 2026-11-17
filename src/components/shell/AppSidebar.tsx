@@ -125,7 +125,9 @@ export default function AppSidebar({
   return (
     <>
       {isMobile && mobileOpen && (
-        <div className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={onCloseMobile} aria-hidden="true" />
+        <div className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+          // eslint-disable-next-line no-restricted-syntax -- mobile backdrop; the sidebar close button is the keyboard path
+          onClick={onCloseMobile} aria-hidden="true" />
       )}
 
       <aside
@@ -150,6 +152,7 @@ export default function AppSidebar({
                 {g.items.map(t => (
                   <button
                     key={t.id}
+                    // eslint-disable-next-line no-restricted-syntax -- sidebar nav row (glyph + label, collapses to a glyph)
                     className={`cm-nav-item ${activeId === t.id ? 'is-active' : ''}`}
                     aria-current={activeId === t.id ? 'page' : undefined}
                     onClick={() => go(t.id)}
@@ -172,6 +175,7 @@ export default function AppSidebar({
               {recents.map(r => (
                 <button
                   key={`${r.kind}:${r.id}`}
+                  // eslint-disable-next-line no-restricted-syntax -- sidebar recent-item row
                   className="rv-item"
                   onClick={() => { onOpenRecent?.(r.tab, r.id); if (isMobile) onCloseMobile(); }}
                 >
@@ -185,7 +189,9 @@ export default function AppSidebar({
 
         <div className="cm-side-foot">
           {scope === 'campaign' && (
-            <button className={`cm-run-btn ${runMode ? 'is-on' : ''}`} onClick={onToggleRun} title={runMode ? 'End the session' : 'Start the session'}>
+            <button
+              // eslint-disable-next-line no-restricted-syntax -- run-mode toggle with its own on-state styling
+              className={`cm-run-btn ${runMode ? 'is-on' : ''}`} aria-pressed={runMode} onClick={onToggleRun} title={runMode ? 'End the session' : 'Start the session'}>
               <span style={{ fontSize: '14px' }} aria-hidden="true">{runMode ? '■' : '▶'}</span>
               <span>{runMode ? 'End session' : 'Start session'}</span>
             </button>

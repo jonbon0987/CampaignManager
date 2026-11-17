@@ -139,7 +139,9 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
             </div>
           ) : (
             modules.map(m => (
-              <button key={m.id} onClick={() => setModuleId(m.id)} style={rowStyle(moduleId === m.id)}>
+              <button key={m.id} aria-pressed={moduleId === m.id} onClick={() => setModuleId(m.id)}
+                // eslint-disable-next-line no-restricted-syntax -- choice row in the promote picker
+                style={rowStyle(moduleId === m.id)}>
                 <span style={{ color: 'var(--gold)', marginRight: 7 }} aria-hidden="true">▣</span>{moduleLabel(m)}
               </button>
             ))
@@ -167,7 +169,9 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
                   </div>
                   <div style={{ paddingLeft: 12, borderLeft: '1px solid var(--rule)' }}>
                     {subs.map(s => (
-                      <button key={s.id} onClick={() => setSubmoduleId(s.id)} style={rowStyle(submoduleId === s.id)}>
+                      <button key={s.id} aria-pressed={submoduleId === s.id} onClick={() => setSubmoduleId(s.id)}
+                        // eslint-disable-next-line no-restricted-syntax -- choice row in the promote picker
+                        style={rowStyle(submoduleId === s.id)}>
                         <span style={{ color: 'var(--gold)', marginRight: 7 }} aria-hidden="true">▸</span>{s.title || 'Untitled part'}
                       </button>
                     ))}

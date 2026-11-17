@@ -39,4 +39,13 @@ describe('ToastProvider', () => {
     act(() => { vi.advanceTimersByTime(8100); });
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
+
+  it('announces toasts politely and can be dismissed from the keyboard', () => {
+    const onClick = vi.fn();
+    show({ label: 'Undo', onClick });
+    expect(screen.getByRole('status').textContent).toMatch(/NPC deleted/);
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByText(/NPC deleted/)).toBeNull();
+    expect(onClick).not.toHaveBeenCalled();
+  });
 });

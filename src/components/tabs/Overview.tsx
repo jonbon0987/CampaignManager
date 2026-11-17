@@ -20,6 +20,7 @@ import {
 import { REPEATS, expectedNext, formatWhen } from '../../lib/schedule';
 import type { Session, SessionRepeat } from '../../lib/database.types';
 import type { Tab } from '../../App';
+import { onActivate } from '../../lib/activate';
 
 interface OverviewProps {
   onNavigate: (tab: Tab) => void;
@@ -221,7 +222,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
       {/* Threads in motion, full width */}
       <div className="ov-grid is-single">
         {/* Active Threads */}
-        <div className="ov-card" onClick={() => onNavigate('threads')}>
+        <div className="ov-card" role="button" tabIndex={0} onClick={() => onNavigate('threads')} onKeyDown={onActivate(() => onNavigate('threads'))}>
           <div className="ov-card-head">
             <span className="ov-card-title">Threads in motion</span>
             <span className="ov-card-chevron">›</span>
@@ -261,7 +262,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
 
       {/* 2-col: Party + Current chapter */}
       <div className="ov-grid">
-        <div className="ov-card" onClick={() => onNavigate('cast')}>
+        <div className="ov-card" role="button" tabIndex={0} onClick={() => onNavigate('cast')} onKeyDown={onActivate(() => onNavigate('cast'))}>
           <div className="ov-card-head">
             <span className="ov-card-title">The party</span>
             <span className="ov-card-chevron">›</span>
@@ -297,7 +298,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
           </div>
         </div>
 
-        <div className="ov-card" onClick={() => onNavigate('modules')}>
+        <div className="ov-card" role="button" tabIndex={0} onClick={() => onNavigate('modules')} onKeyDown={onActivate(() => onNavigate('modules'))}>
           <div className="ov-card-head">
             <span className="ov-card-title">Current chapter</span>
             <span className="ov-card-chevron">›</span>

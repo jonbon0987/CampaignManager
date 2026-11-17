@@ -149,6 +149,7 @@ export default function CommandPalette({ open, onClose, items, onAsk, onRolled, 
                   aria-selected={idx === active}
                   className={`cm-pal-item ${idx === active ? 'is-active' : ''}`}
                   onMouseMove={() => setActive(idx)}
+                  // eslint-disable-next-line no-restricted-syntax -- listbox option; the keyboard drives it through the search field (arrows + Enter)
                   onClick={() => choose(item)}
                 >
                   <span className="cm-pal-item-glyph" aria-hidden="true">{item.glyph}</span>

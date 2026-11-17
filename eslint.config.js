@@ -29,8 +29,13 @@ const rawButtonSelectors = [
 //   // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape closes
 const deadClickSelectors = [
   {
+    // An element that also handles keys (directly, or in a spread used when the
+    // click is conditional) has been made keyboard-reachable on purpose.
     selector:
-      "JSXOpeningElement[name.name=/^(div|span|li|tr|td|p|article|section)$/] > JSXAttribute[name.name='onClick']",
+      "JSXOpeningElement[name.name=/^(div|span|li|tr|td|p|article|section)$/]" +
+      ":not(:has(> JSXAttribute[name.name='onKeyDown']))" +
+      ":not(:has(JSXSpreadAttribute Property[key.name='onKeyDown']))" +   // esquery: a multi-step :has must not start with '>'
+      " > JSXAttribute[name.name='onClick']",
     message:
       "onClick on a non-interactive element is unreachable by keyboard. Use a <button>, <a> or <Button>. Backdrop or stopPropagation wrapper? Add an eslint-disable-next-line with a reason.",
   },
@@ -98,9 +103,9 @@ export default defineConfig([
   // ─── Guardrails for feature code ──────────────────────────────────────────
   // Everything outside the ui/ primitives.
   //
-  // Both ship at 'warn'. Flip to 'error' when their backlog is cleared:
-  //   raw buttons   → when the remaining styled raw <button>s are migrated
-  //   dead clicks   → when the remaining onClick-on-div sites are converted
+  // Both are errors since v5 phase 4d: every remaining site was converted or
+  // carries an eslint-disable-next-line with its reason. New code must use the
+  // ui primitives, or say why not.
   {
     files: ['src/**/*.tsx'],
     ignores: [
@@ -108,7 +113,7 @@ export default defineConfig([
     ],
     rules: {
       'no-restricted-syntax': [
-        'warn',
+        'error',
         ...rawButtonSelectors,
         ...deadClickSelectors,
         // ...rawFieldSelectors,   // v5: enable with the form primitives

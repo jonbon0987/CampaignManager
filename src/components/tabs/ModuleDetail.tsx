@@ -22,6 +22,7 @@ import { ModuleOverview } from './moduleDetail/ModuleOverview';
 import { SubmoduleEditor } from './moduleDetail/SubmoduleEditor';
 import { SceneEditor } from './moduleDetail/SceneEditor';
 import { Button } from '../ui/Button';
+import { onTreeRowKey } from '../../lib/activate';
 
 // Styles live in src/index.css — see the "Module Atlas" block appended there.
 
@@ -125,7 +126,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, tar
           <Breadcrumb segments={[{ label: 'Modules', onClick: onBack }, { label: mod.title }]} />
         </div>
 
-        <button className={`md-railhead ${selectedId === OVERVIEW ? 'is-active' : ''}`} onClick={() => setSelectedId(OVERVIEW)}>
+        <button
+          // eslint-disable-next-line no-restricted-syntax -- rail heading row for the module overview
+          className={`md-railhead ${selectedId === OVERVIEW ? 'is-active' : ''}`} aria-current={selectedId === OVERVIEW ? 'page' : undefined} onClick={() => setSelectedId(OVERVIEW)}>
           <div className="cm-md-eyebrow">
             {mod.chapter ? `Chapter ${mod.chapter} · ` : ''}{mod.status}
           </div>
@@ -148,14 +151,23 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, tar
                 <div
                   className={`md-srow ${selectedId === sub.id ? 'is-active' : ''} ${open ? 'is-open' : ''} ${draggingIdx === i ? 'is-dragging' : ''} ${dropIdx === i ? 'is-drop-target' : ''}`}
                   draggable
+                  role="button"
+                  tabIndex={0}
+                  aria-current={selectedId === sub.id ? 'page' : undefined}
+                  aria-expanded={subScenes.length > 0 ? open : undefined}
                   onClick={() => selectSub(sub.id)}
+                  onKeyDown={onTreeRowKey(() => selectSub(sub.id), subScenes.length > 0 ? open : undefined, () => toggleOpen(sub.id))}
                   onDragStart={() => { dragFrom.current = i; setDraggingIdx(i); }}
                   onDragOver={e => { e.preventDefault(); setDropIdx(i); }}
                   onDrop={() => { if (dragFrom.current != null) reorder(dragFrom.current, i); setDropIdx(null); }}
                   onDragEnd={() => { dragFrom.current = null; setDraggingIdx(null); setDropIdx(null); }}
                 >
-                  <span className="md-grip" title="Drag to reorder" onClick={e => e.stopPropagation()}>⠿</span>
-                  <span className="md-twist" onClick={e => { e.stopPropagation(); toggleOpen(sub.id); }}>
+                  <span className="md-grip" title="Drag to reorder"
+                    // eslint-disable-next-line no-restricted-syntax -- drag handle; stops the row click. Reordering has no keyboard path yet
+                    onClick={e => e.stopPropagation()}>⠿</span>
+                  <span className="md-twist"
+                    // eslint-disable-next-line no-restricted-syntax -- twist toggle for the mouse; the row handles Right / Left
+                    onClick={e => { e.stopPropagation(); toggleOpen(sub.id); }}>
                     {subScenes.length > 0 || open ? '▶' : ''}
                   </span>
                   <span className="md-glyph" style={{ color: info.color }} title={info.label} aria-hidden>{info.glyph}</span>
@@ -169,7 +181,9 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, tar
                     {subScenes.map((sc, si) => {
                       const sinfo = typeInfo(sc.scene_type);
                       return (
-                        <button type="button" className={`md-tree-scene${selectedId === sc.id ? ' is-active' : ''}`} key={sc.id}
+                        <button type="button"
+                          // eslint-disable-next-line no-restricted-syntax -- scene row in the parts rail
+                          className={`md-tree-scene${selectedId === sc.id ? ' is-active' : ''}`} key={sc.id}
                           aria-current={selectedId === sc.id ? 'page' : undefined} onClick={() => setSelectedId(sc.id)}>
                           <span className="md-glyph is-small" style={{ color: sinfo.color }} title={sinfo.label} aria-hidden>{sinfo.glyph}</span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{si + 1}. {sc.title}</span>

@@ -233,7 +233,9 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
       <PageHeader className="cw-head" eyebrow="Cast" title="Relationship web">
         <div className="cw-toolbar">
           <button
+            // eslint-disable-next-line no-restricted-syntax -- legend toggle with a line swatch
             className={`cw-legend ${metOnly ? '' : 'is-off'}`}
+            aria-pressed={metOnly}
             onClick={() => setMetOnly(v => !v)}
           >
             Met only
@@ -242,14 +244,18 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
           {REL_TYPES.map(t => (
             <button
               key={t}
+              // eslint-disable-next-line no-restricted-syntax -- legend toggle with a line swatch
               className={`cw-legend ${hidden[t] ? 'is-off' : ''}`}
+              aria-pressed={!hidden[t]}
               onClick={() => toggleType(t)}
             >
               <span className="cw-legend-line" style={{ background: REL_COLOR[t] }} />
               {REL_LABEL[t]}
             </button>
           ))}
-          <button className={`cw-legend ${showMembers ? '' : 'is-off'}`} onClick={() => setShowMembers(v => !v)}>
+          <button
+            // eslint-disable-next-line no-restricted-syntax -- legend toggle with a line swatch
+            className={`cw-legend ${showMembers ? '' : 'is-off'}`} aria-pressed={showMembers} onClick={() => setShowMembers(v => !v)}>
             <span className="cw-legend-line is-member" />
             Members
           </button>
@@ -406,7 +412,9 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
                   {focusedMembers.map(m => {
                     const otherId = m.factionId === focus ? m.memberId : m.factionId;
                     return (
-                      <button key={otherId} className="cw-rel" style={{ '--rel-color': 'var(--sky)' } as React.CSSProperties} onClick={() => setFocus(otherId)}>
+                      <button key={otherId}
+                        // eslint-disable-next-line no-restricted-syntax -- relationship row in the focus panel
+                        className="cw-rel" style={{ '--rel-color': 'var(--sky)' } as React.CSSProperties} onClick={() => setFocus(otherId)}>
                         <div className="cw-rel-row"><span className="cw-rel-name">{visibleNodes.find(n => n.id === otherId)?.label ?? otherId}</span></div>
                       </button>
                     );
@@ -428,7 +436,9 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
                   return (
                     <button
                       key={e.id}
+                      // eslint-disable-next-line no-restricted-syntax -- relationship row in the focus panel
                       className="cw-rel"
+                      // eslint-disable-next-line no-restricted-syntax -- relationship row in the focus panel
                       style={{ '--rel-color': REL_COLOR[e.relationship_type] } as React.CSSProperties}
                       onClick={() => setFocus(otherId)}
                     >

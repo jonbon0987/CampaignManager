@@ -12,6 +12,7 @@ import { plural } from '../lib/plural';
 import StatBlockPanel from './StatBlockPanel';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
+import { onActivate } from '../lib/activate';
 
 interface InitiativeTrackerProps {
   encounter: Encounter;
@@ -380,6 +381,7 @@ function CombatantRow({
                 textDecorationColor: 'var(--rule-hover)',
               }}
               onClick={() => statblock && onViewStatblock(statblock)}
+              {...(statblock ? { role: 'button', tabIndex: 0, title: 'Open the stat block', onKeyDown: onActivate(() => onViewStatblock(statblock)) } : {})}
             >
               {c.name}
             </span>
@@ -393,6 +395,7 @@ function CombatantRow({
               {[...c.conditions].map(cond => (
                 <span
                   key={cond}
+                  // eslint-disable-next-line no-restricted-syntax -- condition chip removes on click; the Conditions menu toggles the same from the keyboard. Shared ConditionChips in phase 8
                   onClick={() => onToggleCondition(c.id, cond)}
                   style={{
                     fontSize: '0.56rem',
@@ -439,7 +442,9 @@ function CombatantRow({
                   onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { cancelNextBlur.current = true; e.currentTarget.blur(); } }}
                 />
               ) : (
-                <span className="itk-hp-num itk-hp-editable" style={{ color: hpColor(c.currentHp, c.maxHp) }} title="Click to set current HP" onClick={() => startEdit('hp')}>{c.currentHp}</span>
+                <span className="itk-hp-num itk-hp-editable" style={{ color: hpColor(c.currentHp, c.maxHp) }} title="Click to set current HP"
+                  // eslint-disable-next-line no-restricted-syntax -- click-to-edit HP; the Damage / Heal field is the keyboard path. Shared HpControl in phase 8
+                  onClick={() => startEdit('hp')}>{c.currentHp}</span>
               )}
               {editing === 'max' ? (
                 <input
@@ -453,7 +458,9 @@ function CombatantRow({
                   onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { cancelNextBlur.current = true; e.currentTarget.blur(); } }}
                 />
               ) : (
-                <span className="itk-hp-max itk-hp-editable" title="Click to override max HP for this combat" onClick={() => startEdit('max')}>/{hasMax ? c.maxHp : '—'}</span>
+                <span className="itk-hp-max itk-hp-editable" title="Click to override max HP for this combat"
+                  // eslint-disable-next-line no-restricted-syntax -- click-to-edit max HP; shared HpControl in phase 8
+                  onClick={() => startEdit('max')}>/{hasMax ? c.maxHp : '—'}</span>
               )}
               {showTemp && <span className="itk-hp-temp">+{c.temp} temp</span>}
             </div>
@@ -472,7 +479,9 @@ function CombatantRow({
 
           <div className="itk-hp-ctrl">
             <div className="itk-dh">
-              <button className="dmg" onClick={() => apply(false)}>Damage</button>
+              <button
+                // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
+                className="dmg" onClick={() => apply(false)}>Damage</button>
               <input
                 inputMode="numeric"
                 value={val}
@@ -480,7 +489,9 @@ function CombatantRow({
                 onChange={e => setVal(e.target.value.replace(/[^0-9]/g, ''))}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); apply(e.shiftKey); } }}
               />
-              <button className="heal" onClick={() => apply(true)}>Heal</button>
+              <button
+                // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
+                className="heal" onClick={() => apply(true)}>Heal</button>
             </div>
             <div className="itk-nudge">
               <button onClick={() => onHeal(c.id, 1)} title="+1">+1</button>
@@ -490,7 +501,9 @@ function CombatantRow({
               <button onClick={() => onHeal(c.id, 5)} title="+5">+5</button>
               <button onClick={() => onDamage(c.id, 5)} title="−5">−5</button>
             </div>
-            <button className="itk-tempbtn" title="Add temporary HP" onClick={() => setTempOpen(o => !o)}>+T</button>
+            <button
+              // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
+              className="itk-tempbtn" title="Add temporary HP" onClick={() => setTempOpen(o => !o)}>+T</button>
           </div>
 
           {tempOpen && (
@@ -505,7 +518,9 @@ function CombatantRow({
                 onKeyDown={e => { if (e.key === 'Enter') commitTemp(); if (e.key === 'Escape') setTempOpen(false); }}
               />
               <button onClick={commitTemp}>Set</button>
-              <button className="x" onClick={() => setTempOpen(false)}>Cancel</button>
+              <button
+                // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
+                className="x" onClick={() => setTempOpen(false)}>Cancel</button>
             </div>
           )}
 
@@ -516,6 +531,7 @@ function CombatantRow({
                 {[0, 1, 2].map(i => (
                   <button
                     key={'s' + i}
+                    // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
                     className={'itk-pip s' + (c.deathSaves.s > i ? ' on' : '')}
                     title="Success"
                     onClick={() => onDeathSave(c.id, 's', c.deathSaves.s > i ? i : i + 1)}
@@ -526,6 +542,7 @@ function CombatantRow({
                 {[0, 1, 2].map(i => (
                   <button
                     key={'f' + i}
+                    // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
                     className={'itk-pip f' + (c.deathSaves.f > i ? ' on' : '')}
                     title="Failure"
                     onClick={() => onDeathSave(c.id, 'f', c.deathSaves.f > i ? i : i + 1)}
@@ -575,6 +592,7 @@ function CombatantRow({
                 key={cond}
                 title={CONDITION_RULES[cond]}
                 onClick={() => { if (!active && n > 0) onSetConditionRounds(c.id, cond, n); else onToggleCondition(c.id, cond); }}
+                // eslint-disable-next-line no-restricted-syntax -- bespoke combatant control; moves to the shared HpControl / DeathSavePips / ConditionChips parts (phase 8)
                 style={{
                   fontSize: '0.62rem',
                   fontWeight: 700,

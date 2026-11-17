@@ -79,8 +79,12 @@ export function RecentlyDeleted({ onClose }: { onClose: () => void }) {
   };
 
   return createPortal(
-    <div className="rd-back" onClick={onClose}>
-      <div className="rd" role="dialog" aria-modal="true" aria-labelledby="rd-title" onClick={e => e.stopPropagation()}>
+    <div className="rd-back"
+      // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape or the close button is the keyboard path
+      onClick={onClose}>
+      <div className="rd" role="dialog" aria-modal="true" aria-labelledby="rd-title"
+        // eslint-disable-next-line no-restricted-syntax -- stopPropagation wrapper, not a control
+        onClick={e => e.stopPropagation()}>
         <div className="rd-head">
           <h2 className="rd-title" id="rd-title">Recently deleted</h2>
           <IconButton onClick={onClose} aria-label="Close" title="Close">✕</IconButton>

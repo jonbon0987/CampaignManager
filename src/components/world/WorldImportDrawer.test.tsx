@@ -55,6 +55,16 @@ describe('WorldImportDrawer', () => {
     expect(screen.getByText('0 selected')).toBeTruthy();
   });
 
+  it('closes on Escape, clearing the selection like the ✕', () => {
+    const onClose = vi.fn();
+    render(<WorldImportDrawer open onClose={onClose} entityType="npc" />);
+    fireEvent.click(screen.getByText('Aldric'));
+    expect(screen.getByRole('button', { name: /Aldric/, pressed: true })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+    expect(screen.getByText('0 selected')).toBeTruthy();
+  });
+
   it('links a selected NPC in Link mode (default)', async () => {
     const onClose = vi.fn();
     const { container } = render(<WorldImportDrawer open onClose={onClose} entityType="npc" />);

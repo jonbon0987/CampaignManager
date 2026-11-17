@@ -82,6 +82,7 @@ function ModuleList({ onOpen }: { onOpen: (id: string) => void }) {
             return (
               <button
                 key={mod.id}
+                // eslint-disable-next-line no-restricted-syntax -- module list row
                 className="cm-row"
                 onClick={() => onOpen(mod.id)}
               >

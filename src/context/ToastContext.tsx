@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { IconButton } from '../components/ui/IconButton';
 
 type ToastType = 'success' | 'error';
 
@@ -53,9 +54,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      {/* Toast container */}
-      {toasts.length > 0 && (
-        <div
+      {/* Toast container: always mounted so screen readers announce new toasts */}
+      <div
+          role="status"
+          aria-live="polite"
           style={{
             position: 'fixed',
             bottom: '20px',
@@ -70,8 +72,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           {toasts.map(t => (
             <div
               key={t.id}
+              // Clicking anywhere on a toast dismisses it; the ✕ button does the same from the keyboard.
+              // eslint-disable-next-line no-restricted-syntax -- mouse convenience; the Dismiss button is the keyboard path
               onClick={() => dismiss(t.id)}
               style={{
+                display: 'flex',
+                alignItems: 'center',
                 pointerEvents: 'auto',
                 padding: '10px 16px',
                 borderRadius: 'var(--radius)',
@@ -92,10 +98,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   {t.action.label}
                 </button>
               )}
+              <IconButton aria-label="Dismiss" title="Dismiss"
+                onClick={e => { e.stopPropagation(); dismiss(t.id); }}
+                style={{ width: 22, height: 22, fontSize: 12, marginLeft: 10, marginRight: -6, color: 'inherit' }}>
+                ✕
+              </IconButton>
             </div>
           ))}
-        </div>
-      )}
+      </div>
       <style>{`
         @keyframes toast-slide-in {
           from { opacity: 0; transform: translateY(10px); }

@@ -350,7 +350,9 @@ export default function Workbench({
                 </div>
                 <div className="wb-samples">
                   {chat.samples.map((s, i) => (
-                    <button key={i} className="wb-sample" onClick={() => chat.sendMessage(s.text)}>
+                    <button key={i}
+                      // eslint-disable-next-line no-restricted-syntax -- sample-prompt chip: a card-like suggestion, not an action button
+                      className="wb-sample" onClick={() => chat.sendMessage(s.text)}>
                       <span className="g">{s.glyph}</span>{s.text}
                     </button>
                   ))}
@@ -412,11 +414,14 @@ export default function Workbench({
                 onKeyDown={chat.handleKeyDown}
               />
               {chat.loading ? (
-                <button className="askbar-send" onClick={chat.stopGeneration} title="Stop" aria-label="Stop">
+                <button
+                  // eslint-disable-next-line no-restricted-syntax -- the round send / stop button inside the ask bar
+                  className="askbar-send" onClick={chat.stopGeneration} title="Stop" aria-label="Stop">
                   ■
                 </button>
               ) : (
                 <button
+                  // eslint-disable-next-line no-restricted-syntax -- the round send / stop button inside the ask bar
                   className="askbar-send"
                   onClick={() => chat.sendMessage()}
                   disabled={!canSend}

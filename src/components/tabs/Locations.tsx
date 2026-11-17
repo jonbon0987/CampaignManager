@@ -9,6 +9,7 @@ import { pushRecent } from '../../lib/recent';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import type { Location } from '../../lib/database.types';
 import { LocationEditor, type LocationFields } from '../entity/LocationEditor';
+import { onTreeRowKey } from '../../lib/activate';
 
 // Type → tree glyph (mirrors the prototype's locTypeGlyph, mapped to this app's types).
 const LOC_GLYPH: Record<string, string> = {
@@ -126,11 +127,18 @@ export default function Locations({ openId, onOpenConsumed, onImportFromWorld }:
         <div
           className={`cm-tree-node ${selected?.id === loc.id ? 'is-active' : ''}`}
           style={{ paddingLeft: 8 + depth * 18 }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={kids.length ? isOpen : undefined}
           onClick={() => handleSelect(loc)}
+          onKeyDown={onTreeRowKey(() => handleSelect(loc), kids.length ? isOpen : undefined, () => toggle(loc.id))}
         >
           {kids.length ? (
             <button
               type="button"
+              tabIndex={-1}
+              aria-label={isOpen ? 'Collapse' : 'Expand'}
+              // eslint-disable-next-line no-restricted-syntax -- tree caret; out of the tab order, the row handles Right / Left
               className="cm-tree-caret is-btn"
               onClick={e => { e.stopPropagation(); toggle(loc.id); }}
             >

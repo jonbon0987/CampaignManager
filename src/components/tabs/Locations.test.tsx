@@ -65,7 +65,27 @@ describe('Locations', () => {
     render(<Locations />);
     expect(screen.getByText('The Docks')).toBeTruthy(); // child visible while expanded
 
-    fireEvent.click(screen.getByRole('button', { name: '▾' })); // collapse the parent
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' })); // the caret
     expect(screen.queryByText('The Docks')).toBeNull();
+  });
+
+  it('works the tree from the keyboard: Right and Left open and close a row', () => {
+    h.campaign.value = makeCampaignContext({
+      locations: [
+        makeLocation({ id: 'p', name: 'Saltmarsh', parent_id: null, location_type: 'city' }),
+        makeLocation({ id: 'c', name: 'The Docks', parent_id: 'p', location_type: 'landmark' }),
+      ],
+    });
+    render(<Locations />);
+    const row = screen.getByRole('button', { name: /Saltmarsh/, expanded: true });
+    expect(row.tabIndex).toBe(0);
+    // The caret is for the mouse; the row is the one Tab stop.
+    expect(screen.getByRole('button', { name: 'Collapse' }).tabIndex).toBe(-1);
+
+    fireEvent.keyDown(row, { key: 'ArrowLeft' });
+    expect(screen.queryByText('The Docks')).toBeNull();
+    expect(row.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.keyDown(row, { key: 'ArrowRight' });
+    expect(screen.getByText('The Docks')).toBeTruthy();
   });
 });
