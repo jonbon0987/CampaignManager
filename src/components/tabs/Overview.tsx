@@ -271,7 +271,7 @@ export default function Overview({ onNavigate, runMode, onToggleRun }: OverviewP
               overview.party ? (
                 <div>
                   <div style={{ color: 'var(--ink-2)', fontSize: '13px', lineHeight: 1.5 }}>{overview.party}</div>
-                  <div style={{ color: 'var(--ink-4)', fontSize: '12px', marginTop: '6px' }}>Add full character sheets in Cast ›</div>
+                  <div style={{ color: 'var(--ink-3)', fontSize: '12px', marginTop: '6px' }}>Add full character sheets in Cast ›</div>
                 </div>
               ) : (
                 <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: '13px' }}>

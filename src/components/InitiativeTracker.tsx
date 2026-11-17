@@ -231,7 +231,7 @@ export function InitiativeTracker({ encounter, statblocks, party = [], onClose }
             <button
               onClick={() => setAddingCombatant(true)}
               style={{
-                color: 'var(--ink-4)',
+                color: 'var(--ink-3)',
                 fontSize: '0.72rem',
                 fontFamily: 'var(--mono)',
                 backgroundColor: 'transparent',
@@ -410,7 +410,7 @@ function CombatantRow({
             <span style={{
               fontSize: '1.1rem',
               fontWeight: 700,
-              color: isCurrent ? 'var(--gold)' : 'var(--ink-4)',
+              color: isCurrent ? 'var(--gold)' : 'var(--ink-3)',
               fontFamily: 'var(--mono)',
             }}>
               {c.initiative ?? '—'}
@@ -605,7 +605,7 @@ function CombatantRow({
             onClick={onToggleConditionMenu}
             title="Conditions"
             style={{
-              color: c.conditions.length > 0 ? 'var(--gold)' : 'var(--ink-4)',
+              color: c.conditions.length > 0 ? 'var(--gold)' : 'var(--ink-3)',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -691,7 +691,7 @@ const HP_ZONE_CSS = `
 .itk-hp-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
 .itk-hp-read{display:flex;align-items:baseline;gap:2px}
 .itk-hp-num{font-family:var(--mono);font-weight:700;font-size:28px;line-height:1;letter-spacing:-.01em}
-.itk-hp-max{font-family:var(--mono);font-size:14px;color:var(--ink-4)}
+.itk-hp-max{font-family:var(--mono);font-size:14px;color:var(--ink-3)}
 .itk-hp-editable{cursor:pointer;border-radius:4px;transition:background .1s}
 .itk-hp-editable:hover{background:var(--gold-dim);text-decoration:underline dotted;text-underline-offset:3px}
 .itk-hp-edit{font-family:var(--mono);font-weight:700;background:var(--bg-2);border:1px solid var(--gold-line);border-radius:5px;color:var(--ink);outline:none;text-align:center;padding:0 2px}
@@ -712,7 +712,7 @@ const HP_ZONE_CSS = `
 .itk-dh .heal{background:rgba(106,184,122,.14);color:var(--success)}
 .itk-dh .heal:hover{background:rgba(106,184,122,.26)}
 .itk-dh input{flex:1;min-width:0;width:100%;border:none;background:var(--bg-2);color:var(--ink);font-family:var(--mono);font-size:17px;font-weight:700;text-align:center;outline:none;height:40px;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
-.itk-dh input::placeholder{color:var(--ink-4);font-weight:400}
+.itk-dh input::placeholder{color:var(--ink-3);font-weight:400}
 .itk-nudge{display:flex;flex-direction:column;gap:4px}
 .itk-nudge button{font-family:var(--mono);font-size:10px;color:var(--ink-2);background:var(--paper);border:1px solid var(--rule);border-radius:5px;cursor:pointer;transition:.12s;line-height:1;width:34px;height:18px}
 .itk-nudge button:hover{border-color:var(--gold-line);color:var(--gold)}

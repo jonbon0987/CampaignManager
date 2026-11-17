@@ -48,7 +48,7 @@
 .fwg-opt:hover .fwg-opt-arrow { color: var(--gold); transform: translateX(2px); }
 
 .fwg-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--rule-soft); }
-.fwg-foot-id { font-family: var(--mono); font-size: 11px; color: var(--ink-4); }
+.fwg-foot-id { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
 .fwg-foot-id b { color: var(--ink-3); font-weight: 500; }
 .fwg-linkbtn { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
 .fwg-linkbtn:hover { color: var(--gold); }
@@ -62,10 +62,10 @@
 .fwg-field { margin-bottom: 16px; }
 .fwg-label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 7px; }
 .fwg-inp { width: 100%; padding: 11px 13px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); color: var(--ink); font-size: 16px; font-family: var(--serif); }
-.fwg-inp::placeholder { color: var(--ink-4); }
+.fwg-inp::placeholder { color: var(--ink-3); }
 textarea.fwg-inp { resize: vertical; min-height: 96px; line-height: 1.5; }
 .fwg-inp:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 0 3px rgba(201,168,76,0.12); }
-.fwg-hint { font-size: 12.5px; color: var(--ink-4); margin-top: 6px; }
+.fwg-hint { font-size: 12.5px; color: var(--ink-3); margin-top: 6px; }
 .fwg-error { font-size: 13px; color: var(--red); margin-top: 14px; }
 /* Partial-failure notice (e.g. one extraction pass came back thin) — distinct
    from .fwg-error since the parse as a whole still succeeded. */
@@ -99,11 +99,11 @@ textarea.fwg-inp { resize: vertical; min-height: 96px; line-height: 1.5; }
 .fwg-drop:hover, .fwg-drop.is-drag { border-color: var(--gold-line); background: var(--gold-dim); }
 .fwg-drop-glyph { font-size: 30px; color: var(--ink-3); margin-bottom: 12px; }
 .fwg-drop-title { font-size: 16px; color: var(--ink); }
-.fwg-drop-sub { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; color: var(--ink-4); margin-top: 6px; }
+.fwg-drop-sub { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; color: var(--ink-3); margin-top: 6px; }
 .fwg-file-chip { display: flex; align-items: center; gap: 11px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); margin-bottom: 16px; }
 .fwg-file-chip-glyph { color: var(--sky); font-size: 16px; }
 .fwg-file-chip-name { flex: 1; font-size: 14.5px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fwg-file-chip-size { font-family: var(--mono); font-size: 11px; color: var(--ink-4); }
+.fwg-file-chip-size { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
 .fwg-file-chip-read { font-family: var(--mono); font-size: 11px; color: var(--success); }
 
 /* working / spinner */

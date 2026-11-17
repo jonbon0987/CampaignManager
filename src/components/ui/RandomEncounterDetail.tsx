@@ -631,7 +631,7 @@ function EntryRow({
                 >
                   {sb.name}
                   {sb.challenge_rating && <span style={{ color: 'var(--cr, var(--ink-4))', fontFamily: 'var(--mono)', fontSize: '0.6rem' }}>CR {sb.challenge_rating}</span>}
-                  <span onClick={e => { e.stopPropagation(); unlink(c.id); }} style={{ color: 'var(--ink-4)', cursor: 'pointer' }}>✕</span>
+                  <span onClick={e => { e.stopPropagation(); unlink(c.id); }} style={{ color: 'var(--ink-3)', cursor: 'pointer' }}>✕</span>
                 </span>
               );
             })}

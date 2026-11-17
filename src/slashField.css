@@ -15,7 +15,7 @@
 }
 .rre-pill-glyph { color: var(--gold); font-size: 0.95em; }
 .rre-pill-label { color: inherit; }
-.rre-pill.is-missing { background: #2a1a1a; border-color: #5a2a2a; color: var(--red); }
+.rre-pill.is-missing { background: var(--red-bg); border-color: var(--red-line); color: var(--red); }
 
 /* field surface */
 .sf-wrap { position: relative; }

@@ -69,7 +69,7 @@
 .ws-drop-item-delete {
   display: block;
   background: transparent; border: none;
-  color: var(--ink-4); font-size: 12px;
+  color: var(--ink-3); font-size: 12px;
   padding: 2px 5px; cursor: pointer;
   border-radius: var(--radius);
   line-height: 1;
@@ -121,7 +121,7 @@
 .ws-create-cancel:hover { color: var(--ink); border-color: var(--ink-3); }
 .ws-create-submit {
   padding: 5px 12px;
-  background: var(--gold); color: #1a1410;
+  background: var(--gold); color: var(--on-gold);
   border: 1px solid var(--gold);
   font-family: var(--serif); font-size: 12px; font-weight: 600;
   border-radius: var(--radius); cursor: pointer;
@@ -357,7 +357,7 @@
 .wc-hero-cta:hover { background: rgba(201,168,76,.16); border-color: var(--gold); }
 
 /* Slim rows — the other campaigns */
-.wc-others-label { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-4); padding: 16px 4px 4px; }
+.wc-others-label { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); padding: 16px 4px 4px; }
 .wc-row {
   display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 8px;
   border: none; background: transparent; border-radius: var(--radius); text-align: left;
@@ -366,7 +366,7 @@
 .wc-row:hover { background: var(--paper-2); }
 .wc-row:hover .wc-row-name { color: var(--ink); }
 .wc-row-name { flex: 1; min-width: 0; font-family: var(--display); font-size: 13.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wc-row-n { font-family: var(--mono); font-size: 10px; color: var(--ink-4); flex: 0 0 auto; }
+.wc-row-n { font-family: var(--mono); font-size: 10px; color: var(--ink-3); flex: 0 0 auto; }
 .wc-row-menu { flex: 0 0 auto; opacity: 0; transition: opacity 0.12s; }
 .wc-row:hover .wc-row-menu, .wc-row:focus-within .wc-row-menu { opacity: 1; }
 .wc-hero-menu { position: absolute; top: 6px; right: 6px; z-index: 2; opacity: 0; transition: opacity 0.12s; }
@@ -375,7 +375,7 @@
 
 /* Status dots (shared by hero eyebrow + rows) */
 .wc-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; display: inline-block; }
-.wc-dot-active { background: #6b9a4a; }
+.wc-dot-active { background: var(--moss); }
 .wc-dot-paused { background: var(--ink-3); }
 .wc-dot-completed { background: var(--gold); }
 
@@ -919,7 +919,7 @@
 .wi-item.is-selected .wi-check {
   background: var(--gold);
   border-color: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
 }
 .wi-item-glyph { font-size: 14px; margin-top: 2px; }
 .wi-item-body { min-width: 0; }
@@ -981,7 +981,7 @@
   color: var(--ink);
   background: color-mix(in srgb, var(--gold) 12%, transparent);
 }
-.wi-item-linked { color: var(--ink-4); font-weight: 400; }
+.wi-item-linked { color: var(--ink-3); font-weight: 400; }
 .wi-error {
   margin: 0 14px 8px;
   padding: 7px 10px;
@@ -994,7 +994,7 @@
 .wi-import-btn {
   padding: 8px 16px;
   background: var(--gold);
-  color: #1a1410;
+  color: var(--on-gold);
   border: 1px solid var(--gold);
   font-family: var(--serif); font-size: 13px;
   font-weight: 600;
