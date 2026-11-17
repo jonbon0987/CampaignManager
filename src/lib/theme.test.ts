@@ -5,6 +5,7 @@ import {
   hookCategoryStyles, getHookCategoryStyle,
   threadStateMeta, THREAD_STATES, getThreadState,
   moduleTypeMeta, getModuleTypeInfo,
+  difficultyColor, difficultyMeta,
 } from './theme';
 
 describe('getTypeStyle (creature types)', () => {
@@ -73,5 +74,26 @@ describe('taxonomy maps expose their fallback keys', () => {
     expect(hookCategoryStyles.side_quest).toBeDefined();
     expect(threadStateMeta.active).toBeDefined();
     expect(moduleTypeMeta.other).toBeDefined();
+  });
+});
+
+describe('difficulty colours', () => {
+  it('tints a word with the same colour its badge uses', () => {
+    for (const tier of Object.keys(difficultyMeta)) {
+      expect(difficultyColor(tier)).toBe(difficultyMeta[tier].text);
+    }
+  });
+
+  it('puts the 2024 tiers on the same scale as the 2014 ones', () => {
+    expect(difficultyMeta.low).toEqual(difficultyMeta.easy);
+    expect(difficultyMeta.moderate).toEqual(difficultyMeta.medium);
+    expect(difficultyMeta.high).toEqual(difficultyMeta.hard);
+    expect(difficultyMeta.beyond).toEqual(difficultyMeta.deadly);
+  });
+
+  it('falls back for an unknown or missing tier', () => {
+    expect(difficultyColor(null)).toBe('var(--ink-3)');
+    expect(difficultyColor('legendary')).toBe('var(--ink-3)');
+    expect(difficultyColor(undefined, 'var(--gold)')).toBe('var(--gold)');
   });
 });

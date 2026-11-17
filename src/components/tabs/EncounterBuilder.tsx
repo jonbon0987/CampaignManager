@@ -11,13 +11,12 @@ import { ListDetail, ListRow, EmptyDetail } from '../ui/ListDetail';
 import type { Encounter } from '../../lib/database.types';
 import {
   EncounterDetail,
-  difficultyColors,
-  statusColors,
   parseCombatants,
   type EncounterSaveData,
 } from '../ui/EncounterDetail';
 import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd';
 import { isUnratable, partyLevels, rateEncounter, RATING_LABEL, type PartyLevel, type Rating } from '../../lib/encounterScaling';
+import { difficultyMeta, encounterStatusMeta } from '../../lib/theme';
 
 // ================================================================
 // Main component
@@ -157,12 +156,12 @@ export default function EncounterBuilder({ openId, onOpenConsumed }: { openId?: 
           ? <div className="cm-empty is-inline">No encounters match.</div>
           : filtered.map(enc => {
             const tier = tierOf(enc);
-            const dc = tier ? difficultyColors[tier] : null;
+            const dc = tier ? difficultyMeta[tier] : null;
             const unrated = !tier && isUnratable(parseCombatants(enc.combatants).map(c => ({ cr: c.challenge_rating, count: c.count })));
             return (
               <ListRow key={enc.id} active={selectedEnc?.id === enc.id} onClick={() => setSelectedId(enc.id)} glyph="⚔"
                 title={enc.name || 'Unnamed encounter'} subtitle={enc.environment ?? undefined}
-                badges={<>{dc && badge(dc, RATING_LABEL[tier as Rating] ?? tier!)}{unrated && badge(statusColors.draft, 'unrated')}{badge(statusColors[enc.status] ?? statusColors.draft, enc.status)}</>} />
+                badges={<>{dc && badge(dc, RATING_LABEL[tier as Rating] ?? tier!)}{unrated && badge(encounterStatusMeta.draft, 'unrated')}{badge(encounterStatusMeta[enc.status] ?? encounterStatusMeta.draft, enc.status)}</>} />
             );
           })}
         detail={selectedEnc ? (

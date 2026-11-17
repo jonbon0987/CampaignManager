@@ -11,9 +11,10 @@ import { useFight, type FightControls } from '../../hooks/useFight';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import {
-  CONDITIONS, CONDITION_COLORS, CONDITION_RULES, combatantsFromParty, conditionTitle, isDown, newCombatant, partyFrom,
+  CONDITIONS, CONDITION_RULES, combatantsFromParty, conditionTitle, isDown, newCombatant, partyFrom,
   type Combatant, type Condition,
 } from '../../lib/combat';
+import { conditionColors } from '../../lib/theme';
 
 function Pips({ label, value, onSet, tone }: { label: string; value: number; onSet: (n: number) => void; tone: string }) {
   return (
@@ -91,7 +92,7 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
           const left = c.rounds?.[cond];
           return (
             // eslint-disable-next-line no-restricted-syntax -- a condition pill; clicking clears it
-            <button key={cond} type="button" className="pi-cond" style={{ color: CONDITION_COLORS[cond], borderColor: CONDITION_COLORS[cond] }}
+            <button key={cond} type="button" className="pi-cond" style={{ color: conditionColors[cond], borderColor: conditionColors[cond] }}
               onClick={() => f.toggleCondition(c.id, cond)} title={`${conditionTitle(c, cond)}\n\nClick to clear.`} aria-label={`Clear ${cond}`}>
               {cond}{left ? <span className="pi-cond-left"> · {left}</span> : null} ×
             </button>

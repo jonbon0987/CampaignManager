@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import type { Encounter, MonsterStatblock } from '../lib/database.types';
 import {
-  CONDITIONS, CONDITION_COLORS as conditionColors, CONDITION_RULES, clamp, conditionTitle,
+  CONDITIONS, CONDITION_RULES, clamp, conditionTitle,
   combatantsFromEncounter, combatantsFromParty, newCombatant,
   type Combatant, type Condition, type Fight, type PartyMember,
 } from '../lib/combat';
@@ -13,6 +13,7 @@ import StatBlockPanel from './StatBlockPanel';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
 import { onActivate } from '../lib/activate';
+import { conditionColors } from '../lib/theme';
 
 interface InitiativeTrackerProps {
   encounter: Encounter;

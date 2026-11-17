@@ -15,14 +15,7 @@ export const CONDITIONS = [
 // can be undone.
 export type Condition = (typeof CONDITIONS)[number] | 'dying' | 'stable' | 'dead';
 
-export const CONDITION_COLORS: Record<string, string> = {
-  blinded: 'var(--ink-3)', charmed: 'var(--arcane)', deafened: 'var(--ink-3)',
-  frightened: 'var(--gold)', grappled: 'var(--cr)', incapacitated: 'var(--ink-3)',
-  invisible: 'var(--info)', paralyzed: 'var(--red)', petrified: 'var(--ink-3)',
-  poisoned: 'var(--success)', prone: 'var(--accent)', restrained: 'var(--cr)',
-  stunned: 'var(--diff-hard)', unconscious: 'var(--red)', concentrating: 'var(--info)',
-  dying: 'var(--red)', stable: 'var(--moss)', dead: 'var(--ink-3)',
-};
+// Their pill colours are presentation and live in lib/theme.ts (conditionColors).
 
 const DEATH_STATE: readonly Condition[] = ['unconscious', 'dying', 'stable', 'dead'];
 

@@ -64,9 +64,7 @@
   --arcane-bg:   #221530;
   --arcane-line: #5a2a7a;
   --immune:      #70a0a0;  /* resist / immune teal */
-  --diff-easy:   #7fc090;
-  --diff-hard:   #e0a060;
-  --diff-deadly: #e06868;
+  --diff-hard:   #e0a060;  /* HP bar mid-range and the 'stunned' pill */
   /* Entity-kind colors: links, chips and names of NPCs, places, factions… */
   --link-npc:           var(--info);
   --link-npc-bg:        var(--info-bg);

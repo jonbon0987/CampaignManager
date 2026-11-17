@@ -40,6 +40,7 @@ import {
 } from '../../lib/encounterScaling';
 import type { EncounterSaveData } from './EncounterDetail';
 import type { RandomEncounterTable, RandomEncounterEntry, MonsterStatblock, EncounterCombatant } from '../../lib/database.types';
+import { difficultyColor, randomEntryTypeColors } from '../../lib/theme';
 
 // Data the save callback receives — the caller injects world_id / campaign_id.
 export type RandomEncounterSaveData = {
@@ -79,11 +80,6 @@ function formFromTable(t: RandomEncounterTable): Form {
   };
 }
 
-const diffColors: Record<string, string> = {
-  easy: 'var(--diff-easy, var(--success))', medium: 'var(--gold)',
-  hard: 'var(--diff-hard, var(--orange))', deadly: 'var(--diff-deadly, var(--red))',
-};
-
 // Party size / avg level / difficulty / social dial — shared by the builder's
 // roll bar and the result view's "Adjust & re-roll" panel.
 function RollParamsControls({ params, onChange }: { params: RollParams; onChange: (p: RollParams) => void }) {
@@ -112,8 +108,8 @@ function RollParamsControls({ params, onChange }: { params: RollParams; onChange
                   fontSize: '0.68rem', fontWeight: 600, textTransform: 'capitalize', padding: '3px 8px',
                   borderRadius: 'var(--radius)', cursor: 'pointer',
                   color: on ? 'var(--bg)' : 'var(--ink-3)',
-                  backgroundColor: on ? diffColors[d] : 'transparent',
-                  border: `1px solid ${on ? diffColors[d] : 'var(--rule)'}`,
+                  backgroundColor: on ? difficultyColor(d) : 'transparent',
+                  border: `1px solid ${on ? difficultyColor(d) : 'var(--rule)'}`,
                 }}>{d}</button>
             );
           })}
@@ -540,10 +536,6 @@ export function RandomEncounterDetail({
 // Entry row
 // ════════════════════════════════════════════════════════════
 
-const TYPE_TAG_COLOR: Record<string, string> = {
-  combat: 'var(--red)', social: 'var(--sky, var(--info))', either: 'var(--ink-3)',
-};
-
 function EntryRow({
   entry, idx, range, rolled, kind, rarityMode, statblocks, sbById,
   onPatch, onSetRarity, onRemove, onViewStatblock,
@@ -612,8 +604,8 @@ function EntryRow({
               style={{
                 fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
                 padding: '2px 7px', borderRadius: '999px', cursor: 'pointer',
-                color: TYPE_TAG_COLOR[entryKind], backgroundColor: 'transparent',
-                border: `1px solid ${TYPE_TAG_COLOR[entryKind]}`,
+                color: randomEntryTypeColors[entryKind], backgroundColor: 'transparent',
+                border: `1px solid ${randomEntryTypeColors[entryKind]}`,
               }}
             >{entryKind}</button>
 
@@ -882,7 +874,7 @@ function CombatBody({ result, params, sbById, onViewStatblock }: {
     <>
       {/* Chips */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
-        <span style={{ ...chipStyle, color: diffColors[result.tier], borderColor: diffColors[result.tier] }}>Lands at {result.tier}</span>
+        <span style={{ ...chipStyle, color: difficultyColor(result.tier), borderColor: difficultyColor(result.tier) }}>Lands at {result.tier}</span>
         <span style={chipStyle}>≈ {result.xp.toLocaleString()} adj. XP</span>
         <span style={chipStyle}>{result.total} {result.total === 1 ? 'creature' : 'creatures'}</span>
         <span style={chipStyle}>party {params.size} · lvl {params.level}</span>
