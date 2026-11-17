@@ -13,6 +13,7 @@ import { SlashField } from '../ui/SlashField';
 import { SaveStatusIndicator } from '../ui/SaveStatusIndicator';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { limitFor } from '../../lib/fieldLimits';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 function SettingRow({ label, help, children }: { label: string; help: string; children: React.ReactNode }) {
   return (
@@ -23,14 +24,6 @@ function SettingRow({ label, help, children }: { label: string; help: string; ch
       </div>
       {children}
     </div>
-  );
-}
-
-function TogglePill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button type="button" className={`cm-pill ${active ? 'is-active' : ''}`} aria-pressed={active} onClick={onClick}>
-      {children}
-    </button>
   );
 }
 
@@ -160,13 +153,8 @@ export default function SettingsView() {
                 >
                   <div className="set-status">
                     {!worldCampaign.archived && (
-                      <div className="flex gap-1" role="radiogroup" aria-label="Campaign status">
-                        {STATUSES.map(st => (
-                          <TogglePill key={st.id} active={worldCampaign.status === st.id} onClick={() => setStatus(st.id)}>
-                            {st.label}
-                          </TogglePill>
-                        ))}
-                      </div>
+                      <SegmentedControl size="md" aria-label="Campaign status" value={worldCampaign.status}
+                        options={STATUSES.map(st => ({ value: st.id, label: st.label }))} onChange={setStatus} />
                     )}
                     <Button size="xs" variant="secondary" onClick={() => setArchived(!worldCampaign.archived)}>
                       {worldCampaign.archived ? 'Restore' : 'Archive'}
@@ -189,25 +177,17 @@ export default function SettingsView() {
                   label="Edition"
                   help="Encounter difficulty follows it: the 2014 thresholds and multipliers, or the 2024 XP budget (Low, Moderate, High)."
                 >
-                  <div className="flex gap-1" role="radiogroup" aria-label="Rules edition">
-                    {EDITIONS.map(ed => (
-                      <TogglePill key={ed} active={(selectedCampaign.rules_edition ?? '2014') === ed} onClick={() => setRules({ rules_edition: ed })}>
-                        {ed} rules
-                      </TogglePill>
-                    ))}
-                  </div>
+                  <SegmentedControl size="md" aria-label="Rules edition" value={selectedCampaign.rules_edition ?? '2014'}
+                    options={EDITIONS.map(ed => ({ value: ed, label: `${ed} rules` }))}
+                    onChange={ed => setRules({ rules_edition: ed })} />
                 </SettingRow>
                 <SettingRow
                   label="Levelling"
                   help="What the end-of-session wrap-up asks: XP from the night's fights, or a level at a milestone."
                 >
-                  <div className="flex gap-1" role="radiogroup" aria-label="Levelling">
-                    {LEVELLING.map(l => (
-                      <TogglePill key={l.id} active={selectedCampaign.levelling === l.id} onClick={() => setRules({ levelling: l.id })}>
-                        {l.label}
-                      </TogglePill>
-                    ))}
-                  </div>
+                  <SegmentedControl size="md" aria-label="Levelling" value={selectedCampaign.levelling}
+                    options={LEVELLING.map(l => ({ value: l.id, label: l.label }))}
+                    onChange={levelling => setRules({ levelling })} />
                 </SettingRow>
                 <HouseRulesEditor key={selectedCampaign.id} />
               </section>

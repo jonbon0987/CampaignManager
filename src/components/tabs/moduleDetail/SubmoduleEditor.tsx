@@ -240,7 +240,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
             })}
             <div style={{ marginTop: 6 }}>
               <InlinePicker label="Prerequisite"
-                radio={{ value: depKind, options: [{ value: 'required', label: 'Required (AND)' }, { value: 'optional', label: 'Optional (OR)' }], onChange: v => setDepKind(v as 'required' | 'optional') }}
+                radio={{ label: 'Dependency', value: depKind, options: [{ value: 'required', label: 'Required (AND)' }, { value: 'optional', label: 'Optional (OR)' }], onChange: v => setDepKind(v as 'required' | 'optional') }}
                 options={siblings.filter(s => s.id !== submodule.id && !prereqs.find(d => d.prerequisite_id === s.id)).map(s => ({
                   id: s.id, label: s.title, glyph: typeInfo(s.submodule_type).glyph, color: typeInfo(s.submodule_type).color,
                 }))}

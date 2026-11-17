@@ -16,6 +16,7 @@ export type { TypeInfo };
    this module's API. */
 import { SUBMODULE_TYPES, SCENE_TYPES } from '../../../lib/moduleStructure';
 import { Button } from '../../ui/Button';
+import { SegmentedControl } from '../../ui/SegmentedControl';
 export { SUBMODULE_TYPES, SCENE_TYPES };
 
 export const typeInfo = (t: string | null | undefined): TypeInfo => TYPE_META[t ?? 'other'] ?? TYPE_META.other;
@@ -83,7 +84,7 @@ export function InlinePicker({ label, options, onPick, header, radio }: {
   options: PickerOption[];
   onPick: (id: string) => void;
   header?: ReactNode;
-  radio?: { value: string; options: { value: string; label: string }[]; onChange: (v: string) => void };
+  radio?: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void };
 }) {
   const [open, setOpen] = useState(false);
   const ref = useClickAway<HTMLSpanElement>(open, () => setOpen(false));
@@ -94,13 +95,8 @@ export function InlinePicker({ label, options, onPick, header, radio }: {
         <div className="md-pop">
           {header && <div className="md-pop-empty" style={{ fontStyle: 'normal', color: 'var(--ink-2)' }}>{header}</div>}
           {radio && (
-            <div className="md-pop-radio">
-              {radio.options.map(o => (
-                <button key={o.value}
-                  className={`as-pill-opt ${radio.value === o.value ? 'is-active' : ''}`}
-                  onClick={() => radio.onChange(o.value)}>{o.label}</button>
-              ))}
-            </div>
+            <SegmentedControl className="md-pop-radio" aria-label={radio.label} value={radio.value}
+              options={radio.options} onChange={radio.onChange} />
           )}
           {options.length === 0
             ? <div className="md-pop-empty">Nothing available to add.</div>

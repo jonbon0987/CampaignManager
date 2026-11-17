@@ -5,6 +5,7 @@ import { kindMeta } from '../../lib/randomEncounter';
 import { NO_NPC_DETAILS } from '../../lib/npcDetails';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 interface WorldImportDrawerProps {
   open: boolean;
@@ -241,28 +242,13 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
         <div className="wi-foot">
           <div className="wi-foot-count">{selected.size} selected</div>
           {config.canLink && (
-            <div className="wi-foot-actions" role="radiogroup" aria-label="Import mode">
-              <button
-                className={`wi-foot-mode ${mode === 'link' ? 'is-active' : ''}`}
-                role="radio"
-                aria-checked={mode === 'link'}
-                onClick={() => setMode('link')}
-                title="Reference the canon entity — edits to it show here too"
-              >
-                <span className="wi-foot-mode-dot wi-mode-link" />
-                Link
-              </button>
-              <button
-                className={`wi-foot-mode ${mode === 'copy' ? 'is-active' : ''}`}
-                role="radio"
-                aria-checked={mode === 'copy'}
-                onClick={() => setMode('copy')}
-                title="Duplicate into this campaign — an independent, editable copy"
-              >
-                <span className="wi-foot-mode-dot wi-mode-copy" />
-                Copy
-              </button>
-            </div>
+            <SegmentedControl aria-label="Import mode" className="ml-auto" value={mode} onChange={setMode}
+              options={[
+                { value: 'link', title: 'Reference the canon entity — edits to it show here too',
+                  label: <><span className="wi-foot-mode-dot wi-mode-link" />Link</> },
+                { value: 'copy', title: 'Duplicate into this campaign — an independent, editable copy',
+                  label: <><span className="wi-foot-mode-dot wi-mode-copy" />Copy</> },
+              ]} />
           )}
           <Button variant="primary" disabled={selected.size === 0 || busy} onClick={handleImport}>
             {busy ? `${verb}ing…` : `${verb} ${selected.size > 0 ? `(${selected.size})` : ''}`}

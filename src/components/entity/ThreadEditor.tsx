@@ -24,6 +24,7 @@ import { useOptionalSections } from './useOptionalSections';
 import { LinkList, SingleLink, type LinkOption } from './LinkPicker';
 import { CLOCK_SIZES, clockFullNote, stateAfterClock } from '../../lib/threadClock';
 import type { Hook } from '../../lib/database.types';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 export type ThreadFields = Pick<Hook, 'title' | 'category' | 'state' | 'description'
   | 'clock_size' | 'clock_filled' | 'clock_label' | 'npc_ids' | 'location_ids' | 'faction_ids' | 'module_id' | 'player_text'>;
@@ -113,26 +114,16 @@ export function ThreadEditor({ thread, links, save, remove, onDeleted, onPromote
 
       <div className="as-fl">
         <span className="as-ll">State</span>
-        <div className="as-pills" role="radiogroup" aria-label="State">
-          {THREAD_STATES.map(s => (
-            // eslint-disable-next-line no-restricted-syntax -- an option in its pill group
-            <button key={s} type="button" role="radio" aria-checked={form.state === s} className={`as-pill-opt${form.state === s ? ' is-active' : ''}`} onClick={() => set('state', s)}>
-              {threadStateMeta[s].label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl aria-label="State" value={form.state}
+          options={THREAD_STATES.map(s => ({ value: s, label: threadStateMeta[s].label }))}
+          onChange={s => set('state', s)} />
       </div>
 
       <div className="as-fl">
         <span className="as-ll">Kind</span>
-        <div className="as-pills" role="radiogroup" aria-label="Kind">
-          {THREAD_KINDS.map(k => (
-            // eslint-disable-next-line no-restricted-syntax -- an option in its pill group, coloured by kind
-            <button key={k} type="button" role="radio" aria-checked={form.category === k} className={`as-pill-opt${form.category === k ? ' is-active' : ''}`} style={form.category === k ? undefined : { color: hookCategoryStyles[k].badge }} onClick={() => set('category', k)}>
-              {formatThreadKind(k)}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl aria-label="Kind" value={form.category}
+          options={THREAD_KINDS.map(k => ({ value: k, label: formatThreadKind(k), color: hookCategoryStyles[k].badge }))}
+          onChange={k => set('category', k)} />
       </div>
 
       <div className="as-fl">
@@ -155,14 +146,9 @@ export function ThreadEditor({ thread, links, save, remove, onDeleted, onPromote
         <div className="as-fl th-clock-field">
           <span className="as-ll">Clock</span>
           <p className="as-hint th-clock-note">Something moving on its own. Fill a segment when it gets closer; when it’s full, a seed or cold thread goes Active.</p>
-          <div className="as-pills" role="radiogroup" aria-label="Clock size">
-            {CLOCK_SIZES.map(n => (
-              // eslint-disable-next-line no-restricted-syntax -- an option in its pill group
-              <button key={n} type="button" role="radio" aria-checked={form.clock_size === n} className={`as-pill-opt${form.clock_size === n ? ' is-active' : ''}`} onClick={() => setClockSize(n)}>
-                {n} segments
-              </button>
-            ))}
-          </div>
+          <SegmentedControl aria-label="Clock size" value={form.clock_size}
+            options={CLOCK_SIZES.map(n => ({ value: n, label: `${n} segments` }))}
+            onChange={setClockSize} />
           {form.clock_size && (
             <>
               <input className="as-input" value={form.clock_label ?? ''} onChange={e => set('clock_label', e.target.value || null)} aria-label="What happens when the clock fills"

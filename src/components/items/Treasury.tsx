@@ -13,6 +13,7 @@ import { COINS, formatCoins, formatLine, gpWorth, hasCoins, negate, parseCoins, 
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import type { TreasuryEntry } from '../../lib/database.types';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 /** A line to add: gained or spent, how much, and what for. */
 function CoinEntry({ sessionId, defaultSessionId, idPrefix }: {
@@ -49,14 +50,9 @@ function CoinEntry({ sessionId, defaultSessionId, idPrefix }: {
 
   return (
     <div className="tr-entry">
-      <div className="as-pills" role="radiogroup" aria-label="Gained or spent">
-        {[false, true].map(isSpent => (
-          // eslint-disable-next-line no-restricted-syntax -- an option in its pill group
-          <button key={String(isSpent)} type="button" role="radio" aria-checked={spent === isSpent} className={`as-pill-opt${spent === isSpent ? ' is-active' : ''}`} onClick={() => setSpent(isSpent)}>
-            {isSpent ? 'Spent' : 'Gained'}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl aria-label="Gained or spent" value={spent}
+        options={[{ value: false, label: 'Gained' }, { value: true, label: 'Spent' }]}
+        onChange={setSpent} />
       <input id={`${idPrefix}-amount`} className="as-input tr-amount" value={amount} placeholder="120 gp, 5 sp" aria-label="How much" aria-invalid={!!error}
         onChange={e => { setAmount(e.target.value); setError(''); }} onKeyDown={onEnter} />
       <input className="as-input tr-note" value={note} placeholder={spent ? 'What on: passage to Waterdeep' : 'From where: the harbormaster’s bribe'} aria-label="What for"

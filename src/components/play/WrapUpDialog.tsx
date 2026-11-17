@@ -17,6 +17,7 @@ import { addDays, daysLabel, formatWorldDate } from '../../lib/calendar';
 import { limitFor } from '../../lib/fieldLimits';
 import { sessionName } from '../../lib/sessionLifecycle';
 import type { Levelling, Session } from '../../lib/database.types';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 /** Mounted while a wrap-up is open; it starts from the session as it is then. */
 export function WrapUpDialog() {
@@ -112,15 +113,9 @@ function WrapUp({ session, onClose }: { session: Session; onClose: () => void })
 
         <div className="wu-part">
           <span className="wu-label" id="wu-xp-label">2 · Experience</span>
-          <div className="wu-pills" role="radiogroup" aria-labelledby="wu-xp-label">
-            {(['xp', 'milestone'] as const).map(mode => (
-              // eslint-disable-next-line no-restricted-syntax -- a choice pill, styled .cm-pill
-              <button key={mode} type="button" role="radio" aria-checked={levelling === mode} className={`cm-pill is-subtle${levelling === mode ? ' is-active' : ''}`}
-                onClick={() => setLevelling(mode)}>
-                {mode === 'xp' ? 'By XP' : 'By milestone'}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl aria-labelledby="wu-xp-label" value={levelling}
+            options={[{ value: 'xp', label: 'By XP' }, { value: 'milestone', label: 'By milestone' }]}
+            onChange={setLevelling} />
           {!selectedCampaign?.levelling && <span className="as-hint">How this table levels; it's remembered for the campaign.</span>}
 
           {levelling === 'xp' && (

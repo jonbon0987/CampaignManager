@@ -25,6 +25,7 @@ import { AddSections } from './AddSections';
 import type { EntityCanon, EntityScope } from './types';
 import type { Faction, Location, NPC } from '../../lib/database.types';
 import { SingleLink, WasText } from './LinkPicker';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 /** What the editor writes back: every field it shows. */
 export type NPCFields = Pick<NPC,
@@ -143,15 +144,10 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
       <fieldset className="as-fieldset" disabled={locked}>
         <div className="as-meta">
           <div className="as-mi">
-            <span className="as-ml">Status</span>
-            <div className="as-pills">
-              {(['active', 'deceased', 'unknown'] as NPC['status'][]).map(s => (
-                // eslint-disable-next-line no-restricted-syntax -- a status option, styled with its pill group
-                <button key={s} type="button" className={`as-pill-opt${form.status === s ? ' is-active' : ''}`} onClick={() => set('status', s)}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
+            <span className="as-ml" id={`npc-status-${npc.id}`}>Status</span>
+            <SegmentedControl aria-labelledby={`npc-status-${npc.id}`} value={form.status}
+              options={(['active', 'deceased', 'unknown'] as NPC['status'][]).map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
+              onChange={s => set('status', s)} />
           </div>
           {scope === 'world' && usedIn !== undefined && (
             <div className="as-mi">

@@ -18,6 +18,7 @@ import { Button } from '../../ui/Button';
 import { GenerateModuleStructureModal } from '../../ui/GenerateModuleStructureModal';
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
 import { typeInfo } from './pickers';
+import { SegmentedControl } from '../../ui/SegmentedControl';
 
 interface ModuleForm {
   title: string;
@@ -98,15 +99,12 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
             <input className="md-mini-in" style={{ width: 64 }} value={form.chapter}
               onChange={e => set('chapter', e.target.value)} placeholder="—" maxLength={limitFor('modules', 'chapter')} />
           </label>
-          <label className="as-mi">
-            <span className="as-ml">Status</span>
-            <div className="as-pills">
-              {STATUSES.map(s => (
-                <button key={s} className={`as-pill-opt ${form.status === s ? 'is-active' : ''}`}
-                  onClick={() => set('status', s)}>{s}</button>
-              ))}
-            </div>
-          </label>
+          <div className="as-mi">
+            <span className="as-ml" id={`mod-status-${module.id}`}>Status</span>
+            <SegmentedControl aria-labelledby={`mod-status-${module.id}`} value={form.status}
+              options={STATUSES.map(s => ({ value: s, label: s }))}
+              onChange={s => set('status', s)} />
+          </div>
           <label className="as-mi">
             <span className="as-ml">Faction</span>
             <select className="md-mini-in" value={form.faction_id ?? ''}

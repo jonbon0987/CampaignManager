@@ -5,6 +5,7 @@ import { Submodules as SubmodulesDB, Scenes as ScenesDB } from '../../lib/db';
 import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import type { Hook, Submodule } from '../../lib/database.types';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 type Target = 'module' | 'submodule' | 'scene';
 
@@ -120,28 +121,10 @@ export function PromoteThreadModal({ thread, onClose }: { thread: Hook; onClose:
       </div>
 
       {/* Target type */}
-      <label className="as-ll" style={{ display: 'block', margin: '14px 0 8px' }}>Promote to</label>
-      <div className="flex gap-2">
-        {TARGETS.map(t => {
-          const active = target === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => { setTarget(t.id); setErr(''); }}
-              className="flex-1 text-sm rounded transition-colors"
-              style={{
-                padding: '10px 8px', textAlign: 'center',
-                background: active ? 'color-mix(in srgb, var(--gold) 12%, transparent)' : 'var(--paper-2)',
-                color: active ? 'var(--ink)' : 'var(--ink-2)',
-                border: '1px solid ' + (active ? 'var(--gold)' : 'var(--rule)'),
-                fontWeight: active ? 600 : 400,
-              }}
-            >
-              <span style={{ marginRight: 5 }} aria-hidden="true">{t.glyph}</span>{t.label}
-            </button>
-          );
-        })}
-      </div>
+      <span className="as-ll" id="promote-to-label" style={{ display: 'block', margin: '14px 0 8px' }}>Promote to</span>
+      <SegmentedControl look="tray" size="md" fill aria-labelledby="promote-to-label" value={target}
+        options={TARGETS.map(t => ({ value: t.id, label: <><span style={{ marginRight: 5 }} aria-hidden="true">{t.glyph}</span>{t.label}</> }))}
+        onChange={t => { setTarget(t); setErr(''); }} />
       <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 6 }}>
         {TARGETS.find(t => t.id === target)!.blurb}
       </div>

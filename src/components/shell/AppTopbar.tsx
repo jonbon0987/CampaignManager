@@ -4,6 +4,7 @@
 
 import type { ReactNode } from 'react';
 import { ToolbarButton } from '../ui/ToolbarButton';
+import { SegmentedControl } from '../ui/SegmentedControl';
 
 export interface Crumb { label: string; onClick?: () => void }
 interface ViewOption { id: string; label: string }
@@ -61,18 +62,9 @@ export default function AppTopbar({
       )}
 
       {viewOptions && viewOptions.length > 0 && setViewMode && (
-        <div className="cm-vm" role="group" aria-label="View">
-          {viewOptions.map(o => (
-            <button
-              key={o.id}
-              className={`cm-vm-btn ${viewMode === o.id ? 'is-active' : ''}`}
-              aria-pressed={viewMode === o.id}
-              onClick={() => setViewMode(o.id)}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl look="tray" aria-label="View" className="ml-2"
+          options={viewOptions.map(o => ({ value: o.id, label: o.label }))}
+          value={viewMode} onChange={setViewMode} />
       )}
 
       <div className="cm-top-spacer" />
