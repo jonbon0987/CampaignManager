@@ -195,9 +195,6 @@ input:focus, textarea:focus, select:focus {
 .cm-shell.has-rail {
   grid-template-columns: 260px 1fr clamp(300px, var(--rail-w, 340px), max(300px, min(760px, calc(100vw - 900px))));
 }
-.cm-shell.has-strip {
-  grid-template-columns: 260px 1fr 44px;
-}
 /* Collapsed sidebar variants */
 .cm-shell.side-collapsed {
   grid-template-columns: 56px 1fr;
@@ -205,9 +202,6 @@ input:focus, textarea:focus, select:focus {
 /* World sidebar collapsed */
 .cm-shell.side-collapsed.has-rail {
   grid-template-columns: 56px 1fr clamp(300px, var(--rail-w, 340px), max(300px, min(760px, calc(100vw - 696px))));
-}
-.cm-shell.side-collapsed.has-strip {
-  grid-template-columns: 56px 1fr 44px;
 }
 
 /* ═══ Sidebar ═══ */
@@ -225,7 +219,6 @@ input:focus, textarea:focus, select:focus {
 }
 .cm-side.is-collapsed .cm-side-name,
 .cm-side.is-collapsed .cm-side-eyebrow,
-.cm-side.is-collapsed .cm-side-meta,
 .cm-side.is-collapsed .cm-nav-section,
 .cm-side.is-collapsed .rv {
   display: none;
@@ -391,12 +384,6 @@ input:focus, textarea:focus, select:focus {
   background: var(--accent);
   color: var(--on-accent);
   border-color: var(--accent);
-}
-.cm-side-meta {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--ink-3);
-  letter-spacing: .04em;
 }
 
 /* ═══ Topbar ═══ */
@@ -822,7 +809,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .cm-state--resolved { color: var(--gold);  background: var(--gold-dim); border: 1px solid var(--gold-line); }
 
 /* A section heading inside a page (the SectionHeader title, without its layout). */
-.cm-sechead-title { margin: 0; font-family: var(--display); font-size: 20px; line-height: 28px; font-weight: 700; color: var(--gold); }
 .cm-drawer-tag,
 .cm-drawer-text {
   font-family: var(--mono);
@@ -909,7 +895,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border-radius: var(--radius-lg, 10px);
   padding: 14px;
 }
-.cm-idea.is-promoted { opacity: .6; border-left-color: var(--orange); }
 .cm-idea-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .cm-idea-glyph { color: var(--sky); font-size: 15px; }
 .cm-idea-tag {
@@ -1135,26 +1120,11 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   flex-direction: column;
   gap: 28px;
 }
-.cm-detail-note {
-  font-family: var(--serif);
-  font-style: italic;
-  color: var(--ink-2);
-  padding: 12px 16px;
-  border-left: 2px solid var(--gold);
-  background: var(--highlight, var(--paper-2));
-  margin: 0;
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
 .cm-prose {
   font-family: var(--serif);
   color: var(--ink);
   margin: 0;
   line-height: 1.6;
-}
-.cm-empty-inline {
-  color: var(--ink-3);
-  font-style: italic;
-  font-size: 13px;
 }
 
 /* ═══ Tags, Pills, Chips ═══ */
@@ -1196,10 +1166,7 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   border: 1px solid var(--rule-soft);
 }
 .cm-tag-active   { color: var(--success); border-color: var(--success-line); background: var(--success-bg); }
-.cm-tag-deceased { color: #8a3a2a; border-color: rgba(140,70,50,0.4); background: rgba(180,90,70,0.10); }
-.cm-tag-unknown  { color: var(--gold); border-color: var(--rule); background: rgba(180,140,60,0.10); }
 .cm-tag-planned  { color: var(--ink-3); }
-.cm-tag-muted    { color: var(--ink-3); }
 
 .cm-chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .cm-chip {
@@ -1250,98 +1217,13 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 /* ═══ Dependency rows ═══ */
 
 /* ═══ Simplified section label (v3 declutter) ═══ */
-.sl {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-.sl-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-.sl-ask {
-  background: transparent;
-  border: 1px solid var(--rule);
-  color: var(--gold);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 11px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.sl-ask:hover {
-  border-color: var(--gold);
-  background: var(--bg-2);
-}
 
 /* ═══ Stat Strip (inline key-value) ═══ */
-.ds {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--serif);
-  font-size: 14px;
-}
-.ds-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-.ds-value { color: var(--ink); }
 
 /* ═══ Detail Tabs ═══ */
 
 /* ═══ Voice Card ═══ */
-.vc { display: flex; flex-direction: column; gap: 16px; }
-.vc-field {
-  padding: 12px 16px;
-  background: var(--paper-2);
-  border-left: 2px solid var(--gold);
-}
-.vc-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 6px;
-}
-.vc-value {
-  font-family: var(--serif);
-  color: var(--ink);
-  line-height: 1.55;
-}
-.vc-phrase { border-left-color: var(--accent); }
-.vc-quote {
-  font-family: var(--display);
-  font-size: 20px;
-  font-style: italic;
-  color: var(--ink);
-  line-height: 1.35;
-}
 /* Audit F4 — .vc-regen removed; now uses <Button variant="ghost" size="xs">. */
-.vc-empty {
-  text-align: center;
-  padding: 40px 16px;
-  color: var(--ink-3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.vc-empty-glyph { font-size: 36px; }
-.vc-empty-title { font-family: var(--display); font-size: 16px; color: var(--ink-2); }
-.vc-empty-sub { font-size: 13px; max-width: 36ch; line-height: 1.5; }
 
 /* ═══ Read-Aloud Block ═══ */
 .ra {
@@ -1522,21 +1404,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 
 /* ═══ Links ═══ */
-.cm-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--serif);
-  color: var(--ink);
-  text-decoration: underline;
-  text-decoration-color: var(--rule);
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-.cm-link:hover {
-  color: var(--accent);
-  text-decoration-color: var(--accent);
-}
 
 /* ═══ Markdown preview styles ═══ */
 .markdown-preview h1, .markdown-preview h2, .markdown-preview h3,
@@ -1970,11 +1837,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   gap: 24px; padding: 28px 32px 20px; border-bottom: 1px solid var(--rule);
 }
 .cw-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cw-select {
-  background: var(--paper-2); color: var(--ink);
-  border: 1px solid var(--rule); border-radius: var(--radius);
-  padding: 6px 10px; font-family: var(--serif); font-size: 13px;
-}
 .cw-legend {
   display: inline-flex; align-items: center; gap: 6px;
   background: none; border: 1px solid var(--rule); padding: 4px 10px;
@@ -2016,7 +1878,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .cw-side { background: var(--paper); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .cw-side-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--ink-3); text-transform: uppercase; }
 .cw-side-title { font-family: var(--display); font-size: 22px; color: var(--ink); margin: 4px 0 2px; }
-.cw-side-sub { font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 14px; }
 .cw-empty { text-align: center; padding: 40px 8px; color: var(--ink-3); }
 .cw-empty-glyph { font-size: 32px; color: var(--gold); margin-bottom: 8px; }
 .cw-empty-title { font-family: var(--display); font-size: 16px; color: var(--ink-2); }
@@ -2550,13 +2411,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
   gap: 12px;
   margin-bottom: 4px;
 }
-.as-grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 4px;
-}
-@media (max-width: 767px) { .as-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* A PC's passives: four across when there's room, two when there isn't, so a
    label like PASSIVE INVESTIGATION wraps at its space instead of running into the next. */
 .pc-passives {
@@ -2611,51 +2465,8 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 
 /* Textarea wrapper with @ button */
-.as-tw {
-  position: relative;
-}
-.as-ta {
-  width: 100%;
-  box-sizing: border-box;
-  font-family: var(--serif);
-  font-size: 15px;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  padding: 8px 34px 8px 10px;
-  outline: none;
-  line-height: 1.6;
-  resize: vertical;
-  min-height: 72px;
-  transition: border-color .15s, background .15s;
-}
-.as-ta:hover { border-color: var(--rule-soft); background: var(--bg); }
-.as-ta:focus { border-color: var(--gold); background: var(--bg); padding-right: 34px; }
-.as-ta::placeholder { color: var(--ink-3); font-style: italic; }
 
 /* @ mention button inside textarea wrapper */
-.as-at {
-  position: absolute;
-  bottom: 8px;
-  right: 6px;
-  padding: 2px 6px;
-  background: var(--paper-2);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--gold);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity .12s;
-  pointer-events: none;
-}
-.as-tw:hover .as-at,
-.as-tw:focus-within .as-at {
-  opacity: 1;
-  pointer-events: auto;
-}
 
 /* @ mention popup */
 
@@ -3027,11 +2838,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .md-chip:hover button { opacity: 1; }
 .md-chip button:hover { color: var(--red); }
-.md-chip-link {
-  appearance: none; border: 0; background: transparent; cursor: pointer;
-  color: inherit; font: inherit; padding: 0;
-}
-.md-chip-link:hover { color: var(--gold-2); }
 
 /* ── inline picker popover ── */
 .md-pop-wrap { position: relative; display: inline-block; }
@@ -3085,12 +2891,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 
 /* Atlas redesign — additions missing from earlier partial append */
 /* breadcrumb back-link in the rail head */
-.md-crumb {
-  appearance: none; border: 0; background: transparent; cursor: pointer;
-  font-family: var(--serif); font-size: 13px; color: var(--ink-3);
-  padding: 0 0 4px; transition: color .12s;
-}
-.md-crumb:hover { color: var(--gold); }
 
 
 /* ═══ Shell (one sidebar, topbar and rail for world and campaign) ═══ */

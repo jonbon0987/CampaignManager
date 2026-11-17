@@ -207,14 +207,6 @@
   color: var(--ink-2);
   margin: 0 0 20px;
 }
-.w-hero-stats {
-  display: flex; gap: 0;
-  border: 1px solid var(--rule-soft);
-  border-radius: var(--radius);
-  background: var(--paper-2);
-  max-width: 600px;
-}
-.w-hero-stats > .cm-stat { flex: 1; }
 
 /* Counts that open what they count */
 .w-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; max-width: 900px; }
@@ -522,17 +514,6 @@
 }
 
 /* ── Detail inherited indicator ── */
-.w-inherited {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-family: var(--mono); font-size: 11px;
-  letter-spacing: .15em; text-transform: uppercase;
-  color: var(--gold);
-  padding: 3px 8px;
-  border: 1px solid var(--rule-soft);
-  border-radius: 999px;
-  background: rgba(201,168,76,0.06);
-  margin-bottom: 12px;
-}
 
 /* ── Creature list in encounter detail ── */
 
@@ -717,19 +698,6 @@
   background: var(--paper-2); color: var(--ink-3);
   border-color: var(--rule);
 }
-.wi-trigger {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--rule);
-  background: var(--paper);
-  color: var(--ink-2);
-  font-family: var(--serif); font-size: 13px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all .15s;
-}
-.wi-trigger:hover { border-color: var(--gold); color: var(--gold); }
-.wi-trigger-glyph { color: var(--gold); font-size: 13px; }
 
 /* ── Campaign sidebar within world ── */
 
@@ -767,10 +735,6 @@
 }
 
 /* ── Modal shell ── */
-.wb-scrim {
-  position: fixed; inset: 0; z-index: 9000; background: rgba(10,8,6,0.62);
-  backdrop-filter: blur(3px); display: grid; place-items: center; animation: wb-fade .16s ease;
-}
 .wb {
   width: min(1120px, 95vw); height: min(760px, 92vh);
   background: var(--bg); border: 1px solid var(--gold-line); border-radius: var(--radius-xl);
@@ -790,11 +754,6 @@
 .wb-head .lead { flex: 1; min-width: 0; }
 .wb-head .lead .t { font-family: var(--display); font-size: 19px; color: var(--gold); font-weight: 500; line-height: 1.1; }
 .wb-head .lead .s { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-top: 2px; }
-
-.wb-grid {
-  flex: 1; display: grid; grid-template-columns: 1.32fr 1fr;
-  grid-template-rows: minmax(0, 1fr); min-height: 0;
-}
 .wb-conv { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--rule); }
 .wb-thread { flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; }
 
@@ -966,7 +925,6 @@
 
 /* Below 900px the tray has no room; conversation takes the full width. */
 @media (max-width: 900px) {
-  .wb-grid { grid-template-columns: 1fr; }
   .wb-stage { display: none; }
   .wb-conv { border-right: none; }
 }
