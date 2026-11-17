@@ -10,33 +10,14 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useFight, type FightControls } from '../../hooks/useFight';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
-import {
-  CONDITIONS, CONDITION_RULES, combatantsFromParty, conditionTitle, isDown, newCombatant, partyFrom,
-  type Combatant, type Condition,
-} from '../../lib/combat';
-import { conditionColors } from '../../lib/theme';
+import { combatantsFromParty, isDown, newCombatant, partyFrom, type Combatant } from '../../lib/combat';
+import { HpControl } from '../combat/HpControl';
+import { DeathSavePips } from '../combat/DeathSavePips';
+import { ConditionChips } from '../combat/ConditionChips';
 import { Input } from '../ui/Input';
-
-function Pips({ label, value, onSet, tone }: { label: string; value: number; onSet: (n: number) => void; tone: string }) {
-  return (
-    <span className="pi-pips" aria-label={`${label}: ${value} of 3`}>
-      <span className="pi-pips-label">{label}</span>
-      {[1, 2, 3].map(n => (
-        // eslint-disable-next-line no-restricted-syntax -- a death-save pip
-        <button key={n} type="button" className="pi-pip" style={n <= value ? { background: tone, borderColor: tone } : undefined}
-          aria-label={`${label} ${n}`} onClick={() => onSet(n <= value ? n - 1 : n)} />
-      ))}
-    </span>
-  );
-}
 
 function Row({ c, current, started, f }: { c: Combatant; current: boolean; started: boolean; f: FightControls }) {
   const { openStatBlock } = useStatBlockPanel();
-  const [amount, setAmount] = useState('');
-  const [rounds, setRounds] = useState('');
-  const n = parseInt(amount, 10);
-  const valid = n > 0;
-  const apply = (fn: (id: string, n: number) => void) => { if (valid) { fn(c.id, n); setAmount(''); } };
   const down = isDown(c);
   const dead = c.conditions.includes('dead');
   const stable = c.conditions.includes('stable');
@@ -62,22 +43,13 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
         </IconButton>
       </div>
 
-      <div className="pi-bot">
-        <input className="pi-amount" type="number" min={1} aria-label={`Amount for ${c.name}`} placeholder="#"
-          value={amount} onChange={e => setAmount(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') apply(e.shiftKey ? f.heal : f.damage); }} />
-        <Button size="xs" variant="secondary" disabled={!valid} onClick={() => apply(f.damage)} title="Damage (Enter)">Dmg</Button>
-        <Button size="xs" variant="secondary" disabled={!valid} onClick={() => apply(f.heal)} title="Heal (Shift+Enter)">Heal</Button>
-        <Button size="xs" variant="ghost" disabled={!valid} onClick={() => apply(f.addTemp)} title="Temporary HP">Temp</Button>
-        {c.maxHp <= 0 && <Button size="xs" variant="ghost" disabled={!valid} onClick={() => apply(f.setMax)} title="Set max HP">Max</Button>}
+      <HpControl className="pi-indent" combatant={c}
+        onDamage={n => f.damage(c.id, n)} onHeal={n => f.heal(c.id, n)} onTemp={n => f.addTemp(c.id, n)} onSetMax={n => f.setMax(c.id, n)}>
         {c.ac != null && <span className="pi-ac">AC {c.ac}</span>}
-      </div>
+      </HpControl>
 
       {c.isPC && down && !dead && !stable && (
-        <div className="pi-saves">
-          <Pips label="Saves" value={c.deathSaves.s} tone="var(--moss)" onSet={v => f.deathSave(c.id, 's', v)} />
-          <Pips label="Fails" value={c.deathSaves.f} tone="var(--red)" onSet={v => f.deathSave(c.id, 'f', v)} />
-        </div>
+        <DeathSavePips className="pi-indent" successes={c.deathSaves.s} failures={c.deathSaves.f} onSet={(k, v) => f.deathSave(c.id, k, v)} />
       )}
 
       {c.conCheck != null && (
@@ -88,31 +60,8 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
         </div>
       )}
 
-      <div className="pi-conds">
-        {c.conditions.map(cond => {
-          const left = c.rounds?.[cond];
-          return (
-            // eslint-disable-next-line no-restricted-syntax -- a condition pill; clicking clears it
-            <button key={cond} type="button" className="pi-cond" style={{ color: conditionColors[cond], borderColor: conditionColors[cond] }}
-              onClick={() => f.toggleCondition(c.id, cond)} title={`${conditionTitle(c, cond)}\n\nClick to clear.`} aria-label={`Clear ${cond}`}>
-              {cond}{left ? <span className="pi-cond-left"> · {left}</span> : null} ×
-            </button>
-          );
-        })}
-        <select className="pi-cond-add" aria-label={`Add a condition to ${c.name}`} value=""
-          onChange={e => {
-            const cond = e.target.value as Condition;
-            if (!cond) return;
-            const n = parseInt(rounds, 10);
-            if (n > 0) f.setConditionRounds(c.id, cond, n); else f.toggleCondition(c.id, cond);
-            setRounds('');
-          }}>
-          <option value="">+ condition</option>
-          {CONDITIONS.filter(x => !c.conditions.includes(x)).map(x => <option key={x} value={x} title={CONDITION_RULES[x]}>{x}</option>)}
-        </select>
-        <input className="pi-cond-rounds" type="number" min={1} max={100} value={rounds} onChange={e => setRounds(e.target.value)}
-          placeholder="rds" aria-label={`Rounds for the next condition on ${c.name}`} title="Rounds it lasts (leave empty for until cleared)" />
-      </div>
+      <ConditionChips className="pi-indent" combatant={c}
+        onToggle={cond => f.toggleCondition(c.id, cond)} onSetRounds={(cond, n) => f.setConditionRounds(c.id, cond, n)} />
     </li>
   );
 }

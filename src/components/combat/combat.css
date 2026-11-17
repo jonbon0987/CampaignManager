@@ -1,0 +1,22 @@
+/* Shared combatant parts: HpControl, DeathSavePips, ConditionChips.
+   Used by the Play rail's tracker (and, from phase 8b, the full-screen one). */
+
+/* HP entry */
+.cbt-hp-rail { display: flex; align-items: center; gap: 4px; }
+.cbt-amount { width: 48px; height: 24px; text-align: center; background: var(--bg-2); border: 1px solid var(--rule); border-radius: var(--radius); color: var(--ink); font-family: var(--mono); font-size: var(--fs-xs); outline: none; }
+.cbt-amount:focus { border-color: var(--gold); }
+
+/* Death saves */
+.cbt-saves { display: flex; gap: 14px; }
+.cbt-pips { display: inline-flex; align-items: center; gap: 4px; }
+.cbt-pips-label { font-family: var(--mono); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin-right: 2px; }
+.cbt-pip { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--rule-hover); background: transparent; padding: 0; cursor: pointer; }
+.cbt-pip.is-s.on { background: var(--moss); border-color: var(--moss); }
+.cbt-pip.is-f.on { background: var(--red); border-color: var(--red); }
+
+/* Conditions */
+.cbt-conds { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.cbt-cond { font-family: var(--mono); font-size: var(--fs-micro); padding: 1px 7px; border: 1px solid; border-radius: 999px; background: transparent; cursor: pointer; }
+.cbt-cond-left { opacity: .8; }
+.cbt-cond-add { font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-3); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; cursor: pointer; color-scheme: dark; }
+.cbt-cond-rounds { width: 46px; font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-2); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; color-scheme: dark; }
