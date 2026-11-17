@@ -2,6 +2,8 @@
 // Thin accessor over the CSS custom properties in src/index.css :root (the single source of
 // truth). Values are `var(--…)` references so inline styles resolve to the same tokens as the
 // rest of the app — never hardcode hex here.
+import type { TimelineTypeConfig, EraConfig } from '../types/world';
+
 export const colors = {
   bg:          'var(--bg)',
   bg2:         'var(--bg-2)',
@@ -151,3 +153,25 @@ export const difficultyColors: Record<string, string> = {
   deadly: 'var(--diff-deadly)',
   trivial: 'var(--ink-3)',
 };
+
+// World timeline: the glyph and colour of each event type, and the colour of
+// each era. Taxonomy values like the creature types above, so the hexes live here.
+export const timelineTypeConfig: Record<string, TimelineTypeConfig> = {
+  cataclysm: { glyph: '☄', color: '#c44' },
+  founding:  { glyph: '⚑', color: '#6b9a4a' },
+  treaty:    { glyph: '⚖', color: '#7a8ab3' },
+  war:       { glyph: '⚔', color: '#b35a3a' },
+  political: { glyph: '❖', color: '#b3953a' },
+  magical:   { glyph: '✦', color: '#9a6bc4' },
+  campaign:  { glyph: '❧', color: '#c9a84c' },
+  custom:    { glyph: '✧', color: '#897f68' },
+};
+
+export const eraConfig: Record<string, EraConfig> = {
+  'Before Reckoning': { color: '#5e6b3a' },
+  'First Silence':    { color: '#7a8ab3' },
+  'Second Silence':   { color: '#b3953a' },
+  'Third Silence':    { color: '#8a4a2e' },
+  'Fourth Silence':   { color: '#c97a55' },
+};
+

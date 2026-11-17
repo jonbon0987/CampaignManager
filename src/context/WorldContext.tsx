@@ -5,9 +5,7 @@ import type {
   WorldNPC, WorldFaction, WorldLocation, WorldLoreEntry,
   WorldBestiaryEntry, WorldEncounter, WorldTimelineEvent,
 } from '../types/world';
-import {
-  TIMELINE_TYPE_CONFIG, ERA_CONFIG,
-} from '../data/worldMockData';
+import { timelineTypeConfig, eraConfig } from '../lib/theme';
 import {
   Worlds as WorldsDB,
   Campaigns as CampaignsDB,
@@ -254,8 +252,8 @@ interface WorldContextType {
   createTimelineEvent: (data: Omit<WorldTimelineEvent, 'id' | 'worldId'>) => Promise<string | null>;
   upsertTimelineEvent: (data: Partial<WorldTimelineEvent> & { id: string }) => Promise<void>;
   deleteTimelineEvent: (id: string) => Promise<void>;
-  timelineTypeConfig: typeof TIMELINE_TYPE_CONFIG;
-  eraConfig: typeof ERA_CONFIG;
+  timelineTypeConfig: typeof timelineTypeConfig;
+  eraConfig: typeof eraConfig;
 
   // Lookup maps (derived from fetched data)
   npcById: Record<string, WorldNPC>;
@@ -939,8 +937,8 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     worldRandomEncounterTables: rawRandomTables,
     createRandomEncounterTable,
     upsertWorldRandomEncounterTable,
-    timelineTypeConfig: TIMELINE_TYPE_CONFIG,
-    eraConfig: ERA_CONFIG,
+    timelineTypeConfig,
+    eraConfig,
     npcById,
     locById,
     loreById,
