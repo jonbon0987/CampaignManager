@@ -35,6 +35,7 @@ import { LoreEditor } from '../entity/LoreEditor';
 import { FactionEditor } from '../entity/FactionEditor';
 import type { ReactNode } from 'react';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { onTreeRowKey } from '../../lib/activate';
 
 const VALID_CRS_SET = new Set([
   '0', '1/8', '1/4', '1/2',
@@ -257,10 +258,16 @@ export function WorldLocationsView() {
         <div
           className={`cm-tree-node ${sel?.id === l.id ? 'is-active' : ''}`}
           style={{ paddingLeft: 8 + depth * 18 }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={kids.length ? isOpen : undefined}
           onClick={() => setSelected('locations', l.id)}
+          onKeyDown={onTreeRowKey(() => setSelected('locations', l.id), kids.length ? isOpen : undefined, () => toggle(l.id))}
         >
           {kids.length ? (
-            <button type="button" className="cm-tree-caret is-btn" onClick={e => { e.stopPropagation(); toggle(l.id); }}>
+            <button type="button" tabIndex={-1} aria-label={isOpen ? 'Collapse' : 'Expand'}
+              // eslint-disable-next-line no-restricted-syntax -- tree caret; out of the tab order, the row handles Right / Left
+              className="cm-tree-caret is-btn" onClick={e => { e.stopPropagation(); toggle(l.id); }}>
               {isOpen ? '▾' : '▸'}
             </button>
           ) : (

@@ -577,7 +577,9 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                       ) : undefined}
                     >
                       {isEditing ? (
-                        <div onClick={e => e.stopPropagation()}>
+                        <div
+                          // eslint-disable-next-line no-restricted-syntax -- stopPropagation wrapper, not a control
+                          onClick={e => e.stopPropagation()}>
                           <EditForm
                             draft={editing.draft}
                             setDraft={d => setEditing({ id: p.id, draft: d })}

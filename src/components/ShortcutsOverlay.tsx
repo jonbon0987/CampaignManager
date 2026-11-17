@@ -38,8 +38,12 @@ export default function ShortcutsOverlay({ open, onClose, scope = 'campaign' }: 
     .filter(g => g.shortcuts.length);
 
   return (
-    <div className="v6-ks-back" onClick={onClose}>
-      <div className="v6-ks" onClick={e => e.stopPropagation()}>
+    <div className="v6-ks-back"
+      // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape or the close button is the keyboard path
+      onClick={onClose}>
+      <div className="v6-ks"
+        // eslint-disable-next-line no-restricted-syntax -- stopPropagation wrapper, not a control
+        onClick={e => e.stopPropagation()}>
         <div className="v6-ks-head">
           <span className="v6-ks-title">Keyboard Shortcuts</span>
           <div style={{ flex: 1 }} />

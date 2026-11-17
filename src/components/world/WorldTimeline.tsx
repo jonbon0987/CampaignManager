@@ -11,6 +11,8 @@ import { plural } from '../../lib/plural';
 import { SlashField } from '../ui/SlashField';
 import { MarkdownContent } from '../ui/MarkdownContent';
 import { IconButton } from '../ui/IconButton';
+import { onActivate } from '../../lib/activate';
+import { useEscape } from '../../hooks/useEscape';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -300,7 +302,8 @@ function TimelineEventCard({
   }
 
   return (
-    <div className="tl-event" style={{ cursor: 'pointer' }} onClick={onToggle}>
+    <div className="tl-event" style={{ cursor: 'pointer' }} role="button" tabIndex={0} aria-expanded={expanded}
+      onClick={onToggle} onKeyDown={onActivate(onToggle)}>
       <div
         className="tl-event-dot"
         style={{
@@ -366,6 +369,7 @@ function NewEventModal({
 }) {
   const { timelineTypeConfig, activeWorld } = useWorld();
   const months = activeWorld?.calendarMonths ?? [];
+  useEscape(true, onClose);
   const [title, setTitle] = useState('');
   const [year, setYear] = useState('');
   const [day, setDay] = useState<number | null>(null);
@@ -391,8 +395,12 @@ function NewEventModal({
   };
 
   return (
-    <div className="ne-overlay" onClick={onClose}>
-      <div className="ne-modal" onClick={e => e.stopPropagation()}>
+    <div className="ne-overlay"
+      // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape or the close button is the keyboard path
+      onClick={onClose}>
+      <div className="ne-modal"
+        // eslint-disable-next-line no-restricted-syntax -- stopPropagation wrapper, not a control
+        onClick={e => e.stopPropagation()}>
         <div className="ne-head">
           <div className="ne-title">New timeline event</div>
           <IconButton aria-label="Close" onClick={onClose}>✕</IconButton>

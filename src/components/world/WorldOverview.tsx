@@ -3,6 +3,7 @@ import { useWorld } from '../../context/WorldContext';
 import { limitFor } from '../../lib/fieldLimits';
 import { WorldCalendar } from './WorldCalendar';
 import { plural } from '../../lib/plural';
+import { onActivate } from '../../lib/activate';
 
 /** A count that opens what it counts. */
 function Tile({ label, value, onClick }: { label: string; value: number; onClick?: () => void }) {
@@ -20,7 +21,8 @@ const Empty = ({ children }: { children: React.ReactNode }) => <p className="w-o
 
 function Card({ title, onClick, children }: { title: string; onClick?: () => void; children: React.ReactNode }) {
   return (
-    <div className="cm-card" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
+    <div className="cm-card" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}
+      {...(onClick ? { role: 'button', tabIndex: 0, onKeyDown: onActivate(onClick) } : {})}>
       <div className="cm-card-head">
         <span className="cm-card-title">{title}</span>
         {onClick && <span className="cm-card-arrow">›</span>}
@@ -134,7 +136,10 @@ export default function WorldOverview() {
               <div
                 key={c.id}
                 className="w-ov-camp"
+                role="button"
+                tabIndex={0}
                 onClick={() => openCampaign(c.id)}
+                onKeyDown={onActivate(() => openCampaign(c.id))}
               >
                 <span className="w-ov-camp-glyph">❧</span>
                 <div>

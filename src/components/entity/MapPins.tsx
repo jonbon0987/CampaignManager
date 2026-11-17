@@ -100,13 +100,18 @@ export function MapPins({ url, pins, onChange, places, disabled, onOpenPlace, on
         <Button size="xs" variant="ghost" onClick={onViewFull} disabled={!url}>View full size</Button>
       </div>
 
-      <div ref={map} className={`mp-map${editing ? ' is-placing' : ''}`} onClick={dropOnMap}>
+      <div ref={map} className={`mp-map${editing ? ' is-placing' : ''}`}
+        // eslint-disable-next-line no-restricted-syntax -- dropping a pin needs a pointer position; pins are edited from the list by keyboard
+        onClick={dropOnMap}>
         {url ? <img className="mp-img" src={url} alt="Map" draggable={false} /> : <span className="img-slot-note mp-loading">Loading…</span>}
         {url && pins.map(p => {
           const pos = dragged?.id === p.id ? dragged : p;
           const name = nameOf(p);
           return (
-            <button key={p.id} type="button" className={`mp-pin${selectedId === p.id && editing ? ' is-selected' : ''}`}
+            <button key={p.id} type="button"
+              // eslint-disable-next-line no-restricted-syntax -- a pin positioned on the map image
+              className={`mp-pin${selectedId === p.id && editing ? ' is-selected' : ''}`}
+              // eslint-disable-next-line no-restricted-syntax -- a pin positioned on the map image
               style={{ left: `${pos.x}%`, top: `${pos.y}%` }} aria-label={editing ? `Edit the pin: ${name}` : p.place_id ? `Open ${name}` : name}
               onPointerDown={grab(p)} onPointerMove={drag} onPointerUp={letGo} onPointerCancel={letGo}
               onClick={e => { e.stopPropagation(); clickPin(p); }} onKeyDown={nudge(p)}>

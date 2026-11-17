@@ -17,6 +17,8 @@ export type { TypeInfo };
 import { SUBMODULE_TYPES, SCENE_TYPES } from '../../../lib/moduleStructure';
 import { Button } from '../../ui/Button';
 import { SegmentedControl } from '../../ui/SegmentedControl';
+import { onActivate } from '../../../lib/activate';
+import { useEscape } from '../../../hooks/useEscape';
 export { SUBMODULE_TYPES, SCENE_TYPES };
 
 export const typeInfo = (t: string | null | undefined): TypeInfo => TYPE_META[t ?? 'other'] ?? TYPE_META.other;
@@ -26,7 +28,7 @@ export function parseLinkedIds(raw: string | null | undefined): string[] {
   try { return JSON.parse(raw) as string[]; } catch { return []; }
 }
 
-/* ── close-on-outside-click hook ── */
+/* ── close on an outside click or Escape ── */
 function useClickAway<T extends HTMLElement>(active: boolean, onAway: () => void) {
   const ref = useRef<T>(null);
   useEffect(() => {
@@ -35,6 +37,7 @@ function useClickAway<T extends HTMLElement>(active: boolean, onAway: () => void
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [active, onAway]);
+  useEscape(active, onAway);
   return ref;
 }
 
@@ -57,7 +60,8 @@ export function TypeTag({ type, types, onPick }: {
   }
   return (
     <span className="md-pop-wrap" ref={ref}>
-      <span className="md-tag" style={{ color: info.color }} onClick={() => setOpen(o => !o)}>
+      <span className="md-tag" style={{ color: info.color }} role="button" tabIndex={0} aria-haspopup="true" aria-expanded={open}
+        onClick={() => setOpen(o => !o)} onKeyDown={onActivate(() => setOpen(o => !o))}>
         <span className="md-tag-glyph">{info.glyph}</span>{info.label}
       </span>
       {open && (
@@ -65,7 +69,9 @@ export function TypeTag({ type, types, onPick }: {
           {(types ?? SUBMODULE_TYPES).map(t => {
             const ti = typeInfo(t);
             return (
-              <button key={t} className="md-pop-item" onClick={() => { onPick(t); setOpen(false); }}>
+              <button key={t}
+                // eslint-disable-next-line no-restricted-syntax -- option in an inline popover
+                className="md-pop-item" onClick={() => { onPick(t); setOpen(false); }}>
                 <span style={{ color: ti.color }}>{ti.glyph}</span>{ti.label}
               </button>
             );
@@ -101,7 +107,9 @@ export function InlinePicker({ label, options, onPick, header, radio }: {
           {options.length === 0
             ? <div className="md-pop-empty">Nothing available to add.</div>
             : options.map(o => (
-              <button key={o.id} className="md-pop-item" onClick={() => { onPick(o.id); setOpen(false); }}>
+              <button key={o.id}
+                // eslint-disable-next-line no-restricted-syntax -- option in an inline popover
+                className="md-pop-item" onClick={() => { onPick(o.id); setOpen(false); }}>
                 {o.glyph && <span style={{ color: o.color ?? 'var(--gold)' }}>{o.glyph}</span>}
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.label}</span>
                 {o.meta && <span className="md-pop-item-meta">{o.meta}</span>}

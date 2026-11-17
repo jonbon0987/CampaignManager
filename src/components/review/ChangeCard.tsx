@@ -4,6 +4,7 @@
 // accept, skip, edit) in `actions`; the card is the shared look.
 
 import type { ReactNode } from 'react';
+import { onActivate } from '../../lib/activate';
 
 /** What a change does to its record. */
 export type ChangeTone = 'new' | 'update' | 'note' | 'delete';
@@ -54,8 +55,11 @@ export function ChangeCard({
 }) {
   const empty = !view.changes.length && !view.body && !view.history && view.tone !== 'delete';
   return (
-    <article className={`chg-card is-${state}${selected ? ' is-selected' : ''}${open ? '' : ' is-closed'}`} onClick={onSelect}>
-      <div className={`chg-head${onToggleOpen ? ' is-toggle' : ''}`} onClick={onToggleOpen}>
+    // Tabbing to anything in the card (its Accept / Skip buttons) selects it, as a click does.
+    // eslint-disable-next-line no-restricted-syntax -- selection by click; keyboard focus selects too (onFocus)
+    <article className={`chg-card is-${state}${selected ? ' is-selected' : ''}${open ? '' : ' is-closed'}`} onClick={onSelect} onFocus={onSelect}>
+      <div className={`chg-head${onToggleOpen ? ' is-toggle' : ''}`} onClick={onToggleOpen}
+        {...(onToggleOpen ? { role: 'button', tabIndex: 0, 'aria-expanded': !!open, onKeyDown: onActivate(onToggleOpen) } : {})}>
         <span className="chg-glyph" style={{ color: view.color }} aria-hidden>{view.glyph}</span>
         <span className="chg-title">
           <span className="chg-name" style={{ color: view.color }}>{view.name}</span>
@@ -68,7 +72,9 @@ export function ChangeCard({
           </span>
         </span>
         {meta}
-        {actions && <span className="chg-actions" onClick={e => e.stopPropagation()}>{actions}</span>}
+        {actions && <span className="chg-actions"
+          // eslint-disable-next-line no-restricted-syntax -- stopPropagation wrapper, not a control
+          onClick={e => e.stopPropagation()}>{actions}</span>}
         {onToggleOpen && <span className="chg-chev" aria-hidden>▸</span>}
       </div>
 

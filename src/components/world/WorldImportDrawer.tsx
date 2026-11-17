@@ -6,6 +6,7 @@ import { NO_NPC_DETAILS } from '../../lib/npcDetails';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { useEscape } from '../../hooks/useEscape';
 
 interface WorldImportDrawerProps {
   open: boolean;
@@ -164,6 +165,7 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
   // Closing clears the staged selection (and search/mode) so reopening the
   // drawer always starts fresh rather than showing the previous checks.
   const handleClose = () => { reset(); setMode('link'); onClose(); };
+  useEscape(open, handleClose);
 
   const handleImport = async () => {
     if (selected.size === 0 || busy) return;
@@ -186,7 +188,9 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
 
   return (
     <>
-      <div className="wi-overlay" onClick={handleClose} />
+      <div className="wi-overlay"
+        // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape or the close button closes the drawer
+        onClick={handleClose} />
       <div className="wi-drawer">
         <div className="wi-head">
           <div>
@@ -216,7 +220,9 @@ export default function WorldImportDrawer({ open, onClose, entityType }: WorldIm
               return (
                 <button
                   key={item.kind + item.id}
+                  // eslint-disable-next-line no-restricted-syntax -- selectable item row with a check
                   className={`wi-item ${isSelected ? 'is-selected' : ''}`}
+                  aria-pressed={isSelected}
                   onClick={() => toggleItem(item.id)}
                 >
                   <span className="wi-check">{isSelected ? '✓' : ''}</span>

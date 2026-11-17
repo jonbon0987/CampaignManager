@@ -42,7 +42,9 @@ function SceneRow({ scene, index, onOpen, onDragStart, onDrop, onDragEnd, draggi
       <span className="md-grip" title="Drag to reorder">⠿</span>
       <span className="md-scene-num">{index + 1}</span>
       <span className="md-glyph" style={{ color: info.color }} title={info.label} aria-hidden>{info.glyph}</span>
-      <button type="button" className="md-scene-open" onClick={onOpen}>
+      <button type="button"
+        // eslint-disable-next-line no-restricted-syntax -- scene card opener
+        className="md-scene-open" onClick={onOpen}>
         <span className="md-scene-name">{scene.title || 'Untitled scene'}</span>
         {scene.summary && <span className="md-scene-beat">{scene.summary}</span>}
       </button>

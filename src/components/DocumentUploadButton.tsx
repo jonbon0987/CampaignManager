@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { extractClientSide, parseGoogleDocsUrl, type DocumentInput } from '../lib/documentImport';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
+import { useEscape } from '../hooks/useEscape';
 
 interface Props {
   disabled: boolean;
@@ -19,6 +20,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
   const [gdocsUrl, setGdocsUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useEscape(open, () => setOpen(false));
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -61,6 +63,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
         <>
           {/* Click-outside catcher */}
           <div
+            // eslint-disable-next-line no-restricted-syntax -- click-outside catcher for the popover; Escape and the trigger close it
             onClick={() => setOpen(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 1001 }}
           />

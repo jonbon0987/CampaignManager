@@ -100,8 +100,11 @@ function SessionSection({
     >
       <button
         type="button"
+        aria-expanded={open}
         onClick={() => setOpen(o => !o)}
+        // eslint-disable-next-line no-restricted-syntax -- full-width section disclosure
         className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs font-medium transition-colors duration-150"
+        // eslint-disable-next-line no-restricted-syntax -- full-width section disclosure
         style={{ color: 'var(--gold)', letterSpacing: '0.06em' }}
       >
         <span style={{ color: 'var(--ink-3)', fontSize: '10px' }}>{open ? '▾' : '▸'}</span>
@@ -472,6 +475,7 @@ function SessionLog({ openId, onOpenConsumed }: { openId?: string | null; onOpen
                   <div className="ss-gap">{gap[0] === gap[1] ? `No session ${gap[0]}` : `No sessions ${gap[0]}–${gap[1]}`}</div>
                 )}
                 <button
+                  // eslint-disable-next-line no-restricted-syntax -- session list row
                   className={`cm-row ${selected?.id === s.id ? 'is-active' : ''}`}
                   onClick={() => setSelectedId(s.id)}
                 >

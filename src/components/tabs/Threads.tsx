@@ -22,6 +22,7 @@ import { ThreadEditor, type ThreadFields, type ThreadLinkOptions } from '../enti
 import { PromoteThreadModal } from './PromoteThreadModal';
 import { clockOf } from '../../lib/threadClock';
 import type { Faction, Hook, Idea, Location, NPC } from '../../lib/database.types';
+import { useEscape } from '../../hooks/useEscape';
 
 type Column = 'inbox' | (typeof THREAD_STATES)[number];
 const DRAG_THREAD = 'application/x-thread';
@@ -52,6 +53,7 @@ function IdeaCard({ idea, onPromote, onDismiss }: {
   onDismiss: (idea: Idea) => void;
 }) {
   const [menu, setMenu] = useState(false);
+  useEscape(menu, () => setMenu(false));
   return (
     <div className="cm-idea th-idea" draggable onDragStart={e => { e.dataTransfer.setData(DRAG_IDEA, idea.id); e.dataTransfer.effectAllowed = 'move'; }}>
       <div className="cm-idea-top">
@@ -65,7 +67,9 @@ function IdeaCard({ idea, onPromote, onDismiss }: {
           <Button variant="secondary" size="xs" onClick={() => setMenu(m => !m)}>Promote ▾</Button>
           {menu && (
             <>
-              <div className="cm-promote-scrim" onClick={() => setMenu(false)} />
+              <div className="cm-promote-scrim"
+                // eslint-disable-next-line no-restricted-syntax -- click-outside scrim for the promote menu; Escape closes it
+                onClick={() => setMenu(false)} />
               <div className="cm-promote-menu">
                 <button onClick={() => { setMenu(false); onPromote(idea, 'thread'); }}><span style={{ color: 'var(--orange)' }}>✧</span> to a Thread</button>
                 <button onClick={() => { setMenu(false); onPromote(idea, 'lore'); }}><span style={{ color: 'var(--gold)' }}>❡</span> to a Lore entry</button>
@@ -290,7 +294,9 @@ export default function Threads({ openId, onOpenConsumed }: { openId?: string | 
       </div>
 
       <div className={`cm-drawer-wrap${openThread ? ' is-open' : ''}`} aria-hidden={!openThread}>
-        <div className="cm-drawer-back" onClick={() => setOpenThreadId(null)} />
+        <div className="cm-drawer-back"
+          // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape or the close button is the keyboard path
+          onClick={() => setOpenThreadId(null)} />
         <div className="cm-drawer th-drawer" role="dialog" aria-label={openThread?.title || 'Thread'}>
           {openThread && (
             <ThreadEditor key={openThread.id} thread={openThread} links={links} save={saveThread(openThread)} remove={deleteHook}
