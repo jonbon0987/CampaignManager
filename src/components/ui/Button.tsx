@@ -6,7 +6,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 //     NPC "In Campaign ✓", etc.) that were hand-styled with an underline linkStyle
 // Existing call sites keep working unchanged.
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'link';
-type ButtonSize = 'xs' | 'sm' | 'md';
+type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -26,6 +26,7 @@ const sizeStyles: Record<ButtonSize, string> = {
   xs: 'px-2 py-0.5 text-[11px]',
   sm: 'px-2.5 py-1 text-xs',
   md: 'px-4 py-1.5 text-sm',
+  lg: 'px-5 py-2.5 text-[15px]',   // full-page flows: the creation gates
 };
 
 export function Button({

@@ -1,6 +1,8 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 type ModalSize = 'default' | 'wide' | 'xl';
 
@@ -31,6 +33,9 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
   // pointer (a dropdown closing on mousedown shrinks the modal), and the browser
   // then sends the click to the backdrop; so can dragging a text selection out.
   const pressedBackdrop = useRef(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const trap = useFocusTrap(panelRef, isOpen);
 
   const handleClose = useCallback(async () => {
     if (onBeforeClose) await onBeforeClose();
@@ -52,6 +57,7 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
       onMouseDown={(e) => { pressedBackdrop.current = e.target === e.currentTarget; }}
+      // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape and the close button do the same
       onClick={(e) => {
         const outside = pressedBackdrop.current && e.target === e.currentTarget;
         pressedBackdrop.current = false;
@@ -59,19 +65,22 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
       }}
     >
       <div
-        className={`rounded-lg border flex flex-col ${sizeClasses[resolvedSize]}`}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onKeyDown={trap.onKeyDown}
+        className={`rounded-lg border flex flex-col focus:outline-none ${sizeClasses[resolvedSize]}`}
         style={{ backgroundColor: 'var(--paper)', borderColor: 'var(--rule)', maxHeight: '90vh' }}
       >
         <div className="flex items-center justify-between p-4 border-b shrink-0" style={{ borderColor: 'var(--rule)' }}>
-          <h2 className="text-xl font-bold" style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}>
+          <h2 id={titleId} className="text-xl font-bold" style={{ color: 'var(--gold)', fontFamily: 'var(--display)' }}>
             {title}
           </h2>
-          <button
-            onClick={handleClose}
-            className="text-2xl leading-none w-8 h-8 flex items-center justify-center rounded transition-colors text-muted hover:text-parchment"
-          >
+          <IconButton onClick={handleClose} aria-label="Close dialog" title="Close" style={{ fontSize: 22 }}>
             ×
-          </button>
+          </IconButton>
         </div>
         <div className="p-4 overflow-y-auto flex-1">
           {children}

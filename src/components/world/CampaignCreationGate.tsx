@@ -29,6 +29,8 @@ import { generateCampaignDraft, type CampaignDraft } from '../../lib/generateCam
 import { limitFor } from '../../lib/fieldLimits';
 import { CharCounter } from '../ui/CharCounter';
 import './firstWorldGate.css';
+import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
 
 type Route = 'menu' | 'scratch' | 'template' | 'import' | 'ai';
 
@@ -94,7 +96,7 @@ export default function CampaignCreationGate({ onClose }: { onClose: () => void 
 
   return (
     <div className="fwg-gate fwg-overlay" role="dialog" aria-modal="true" aria-label="Start a new campaign">
-      <button className="fwg-close" onClick={onClose} aria-label="Close" title="Close">✕</button>
+      <IconButton className="fwg-close" onClick={onClose} aria-label="Close" title="Close">✕</IconButton>
 
       {route === 'menu' && (
         <div className="fwg-col fwg-fade">
@@ -109,7 +111,10 @@ export default function CampaignCreationGate({ onClose }: { onClose: () => void 
           </div>
           <div className="fwg-opts">
             {OPTIONS.map(o => (
-              <button className="fwg-opt" key={o.id} onClick={() => setRoute(o.id)}>
+              <button
+                // eslint-disable-next-line no-restricted-syntax -- an option card (glyph, title, description), not an action button
+                className="fwg-opt" key={o.id} onClick={() => setRoute(o.id)}
+              >
                 <span
                   className="fwg-opt-glyph"
                   aria-hidden="true"
@@ -130,7 +135,7 @@ export default function CampaignCreationGate({ onClose }: { onClose: () => void 
             ))}
           </div>
           <div className="fwg-foot">
-            <button className="fwg-linkbtn" onClick={onClose}>Cancel</button>
+            <Button variant="link" onClick={onClose}>Cancel</Button>
           </div>
         </div>
       )}
@@ -146,7 +151,7 @@ export default function CampaignCreationGate({ onClose }: { onClose: () => void 
 interface PanelProps { onBack: () => void; onClose: () => void }
 
 function BackBtn({ onBack }: { onBack: () => void }) {
-  return <button className="fwg-back" onClick={onBack}>‹ All options</button>;
+  return <Button variant="ghost" size="sm" className="fwg-back" onClick={onBack}>‹ All options</Button>;
 }
 
 /* ── Path 1: scratch ─────────────────────────────────────────────────────── */
@@ -204,10 +209,10 @@ function ScratchPanel({ onBack, onClose }: PanelProps) {
       </div>
       {err && <div className="fwg-error">{err}</div>}
       <div className="fwg-btn-row">
-        <button className="fwg-btn fwg-btn-primary" disabled={!name.trim() || busy} onClick={submit}>
+        <Button variant="primary" size="lg" disabled={!name.trim() || busy} onClick={submit}>
           {busy ? 'Creating…' : 'Create campaign'}
-        </button>
-        <button className="fwg-btn fwg-btn-ghost" onClick={onBack} disabled={busy}>Cancel</button>
+        </Button>
+        <Button variant="secondary" size="lg" onClick={onBack} disabled={busy}>Cancel</Button>
       </div>
     </div>
   );
@@ -241,7 +246,10 @@ function TemplatePanel({ onBack, onClose }: PanelProps) {
         {CAMPAIGN_TEMPLATES.map(t => {
           const c = templateCounts(t);
           return (
-            <button className={'fwg-ex' + (sel === t.id ? ' is-sel' : '')} key={t.id} onClick={() => setSel(t.id)}>
+            <button
+              // eslint-disable-next-line no-restricted-syntax -- a selectable example card, not an action button
+              className={'fwg-ex' + (sel === t.id ? ' is-sel' : '')} key={t.id} onClick={() => setSel(t.id)}
+            >
               <span className="fwg-ex-glyph" aria-hidden="true">❧</span>
               <span className="fwg-ex-body">
                 <span className="fwg-ex-name">{t.name}</span>
@@ -257,10 +265,10 @@ function TemplatePanel({ onBack, onClose }: PanelProps) {
       </div>
       {err && <div className="fwg-error">{err}</div>}
       <div className="fwg-btn-row">
-        <button className="fwg-btn fwg-btn-primary" disabled={!chosen || busy} onClick={create}>
+        <Button variant="primary" size="lg" disabled={!chosen || busy} onClick={create}>
           {busy ? 'Creating…' : 'Create from this template'}
-        </button>
-        <button className="fwg-btn fwg-btn-ghost" onClick={onBack} disabled={busy}>Cancel</button>
+        </Button>
+        <Button variant="secondary" size="lg" onClick={onBack} disabled={busy}>Cancel</Button>
       </div>
     </div>
   );
@@ -411,8 +419,8 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
           </p>
           {err && <div className="fwg-error">{err}</div>}
           <div className="fwg-btn-row">
-            <button className="fwg-btn fwg-btn-primary" onClick={startImport}>Start import</button>
-            <button className="fwg-btn fwg-btn-ghost" onClick={reset}>Choose a different file</button>
+            <Button variant="primary" size="lg" onClick={startImport}>Start import</Button>
+            <Button variant="secondary" size="lg" onClick={reset}>Choose a different file</Button>
           </div>
         </div>
       )}
@@ -468,10 +476,10 @@ function ImportPanel({ onBack, onClose }: PanelProps) {
           </div>
           {err && <div className="fwg-error">{err}</div>}
           <div className="fwg-btn-row">
-            <button className="fwg-btn fwg-btn-primary" disabled={!name.trim() || busy} onClick={create}>
+            <Button variant="primary" size="lg" disabled={!name.trim() || busy} onClick={create}>
               {busy ? 'Creating…' : 'Create campaign'}
-            </button>
-            <button className="fwg-btn fwg-btn-ghost" onClick={reset} disabled={busy}>Choose another file</button>
+            </Button>
+            <Button variant="secondary" size="lg" onClick={reset} disabled={busy}>Choose another file</Button>
           </div>
         </div>
       )}
@@ -531,7 +539,7 @@ function AiPanel({ onBack, onClose }: PanelProps) {
             disabled={stage === 'working'}
             placeholder="e.g. A heist crew pulling one last job in a city of clockwork gods…" />
           <div className="fwg-chips">
-            {AI_SAMPLES.map((s, i) => <button className="fwg-chip" key={i} onClick={() => setPrompt(s)} disabled={stage === 'working'}>{s}</button>)}
+            {AI_SAMPLES.map((s, i) => <Button variant="secondary" size="sm" className="rounded-full text-left" key={i} onClick={() => setPrompt(s)} disabled={stage === 'working'}>{s}</Button>)}
           </div>
         </div>
       )}
@@ -539,8 +547,8 @@ function AiPanel({ onBack, onClose }: PanelProps) {
         <>
           {err && <div className="fwg-error">{err}</div>}
           <div className="fwg-btn-row">
-            <button className="fwg-btn fwg-btn-primary" disabled={!prompt.trim()} onClick={gen}>✦ Generate campaign</button>
-            <button className="fwg-btn fwg-btn-ghost" onClick={onBack}>Cancel</button>
+            <Button variant="primary" size="lg" disabled={!prompt.trim()} onClick={gen}>✦ Generate campaign</Button>
+            <Button variant="secondary" size="lg" onClick={onBack}>Cancel</Button>
           </div>
         </>
       )}
@@ -562,10 +570,10 @@ function AiPanel({ onBack, onClose }: PanelProps) {
           </div>
           {err && <div className="fwg-error">{err}</div>}
           <div className="fwg-btn-row">
-            <button className="fwg-btn fwg-btn-primary" disabled={busy} onClick={create}>
+            <Button variant="primary" size="lg" disabled={busy} onClick={create}>
               {busy ? 'Creating…' : 'Create campaign'}
-            </button>
-            <button className="fwg-btn fwg-btn-ghost" disabled={busy} onClick={() => { setStage('prompt'); setResult(null); }}>↺ Regenerate</button>
+            </Button>
+            <Button variant="secondary" size="lg" disabled={busy} onClick={() => { setStage('prompt'); setResult(null); }}>↺ Regenerate</Button>
           </div>
         </div>
       )}
