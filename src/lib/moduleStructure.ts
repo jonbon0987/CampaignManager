@@ -230,3 +230,9 @@ export function parseModuleStructure(text: string): DraftSubmodule[] {
 export function countScenes(subs: DraftSubmodule[]): number {
   return subs.reduce((n, s) => n + s.scenes.length, 0);
 }
+
+/** The ids in a stored JSON list of links (stat sheets, encounters, prerequisites). Bad or empty JSON gives none. */
+export function parseLinkedIds(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw) as string[]; } catch { return []; }
+}

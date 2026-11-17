@@ -24,7 +24,7 @@ import type {
   RandomEncounterTable, RandomEncounterTableInsert,
   TimelineEvent as DBTimelineEvent,
 } from '../lib/database.types';
-import type { EncounterSaveData } from '../components/ui/EncounterDetail';
+import type { EncounterSaveData } from '../lib/encounters';
 import { defaultRandomEntry } from '../lib/randomEncounter';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useDeletedToast } from '../hooks/useDeletedToast';

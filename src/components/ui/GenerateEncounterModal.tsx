@@ -16,22 +16,21 @@ import { useState } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { useWorld } from '../../context/WorldContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField } from '../FormField';
+import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock, buildDefaultCampaignContextBlock } from '../../lib/campaignContext';
-import {
-  EntityContextPicker,
-  useSelectedContextEntities,
-  type ContextRef,
-} from './EntityContextPicker';
+import { EntityContextPicker } from './EntityContextPicker';
+import { useSelectedContextEntities, type ContextRef } from '../../hooks/useSelectedContextEntities';
 import {
   creatureToInsert,
   resolveCombatants,
   pickDifficulty,
   type ResolvableCreature,
 } from '../../lib/encounterGeneration';
-import { DIFFICULTIES, type EncounterSaveData } from './EncounterDetail';
+import { DIFFICULTIES } from '../../lib/encounterScaling';
+import type { EncounterSaveData } from '../../lib/encounters';
 import type { Encounter, MonsterStatblock, MonsterStatblockInsert } from '../../lib/database.types';
 
 type CreatureSource = 'library' | 'new' | 'both';

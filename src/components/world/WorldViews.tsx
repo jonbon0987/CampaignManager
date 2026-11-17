@@ -16,15 +16,13 @@ import { SrdLibrary } from '../srd/SrdLibrary';
 import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd';
 import { GenerateWorldRandomTableModal } from '../ui/GenerateRandomTableModal';
 import { parseEntries, kindMeta } from '../../lib/randomEncounter';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField } from '../FormField';
+import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock } from '../../lib/campaignContext';
-import {
-  EntityContextPicker,
-  useSelectedContextEntities,
-  type ContextRef,
-} from '../ui/EntityContextPicker';
+import { EntityContextPicker } from '../ui/EntityContextPicker';
+import { useSelectedContextEntities, type ContextRef } from '../../hooks/useSelectedContextEntities';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import type { WorldLocation } from '../../types/world';
 import type { NPC } from '../../lib/database.types';

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parsedToMonsterForm, mergeMissing, buildCompletionPrompt, formFromStatblock, statblockFieldsFromForm } from './statblockCompletion';
 import type { MonsterStatblock } from './database.types';
-import { emptyMonsterForm, type MonsterForm } from '../components/tabs/CreatureStatblocks';
+import { emptyMonsterForm, type MonsterForm } from './statblocks';
 
 describe('parsedToMonsterForm', () => {
   it('maps a full JSON object into a form (numbers → strings)', () => {

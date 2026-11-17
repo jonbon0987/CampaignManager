@@ -72,11 +72,10 @@ export default defineConfig([
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
 
-      // v5: a hot-reload nicety, not a correctness rule. It accounts for 29 of
-      // the 43 errors on main. Demoted so CI can go green on day one; the 21
-      // that are not context files go away as constants move to lib/theme.ts.
-      // Promote back to 'error' after that.
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // A .tsx file exports components only, so Fast Refresh can hot-swap it.
+      // Shared data and helpers go in lib/ (or hooks/), not beside a component.
+      // Back to 'error' since v5 phase 5b; context files are exempt below.
+      'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
 
       // v5: React Compiler diagnostics, 7 sites on main. These are real, but
       // each needs a considered refactor rather than a mechanical fix:

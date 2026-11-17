@@ -3,17 +3,15 @@ import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useReportRecord } from '../../context/NavigationContext';
 import { Modal } from '../Modal';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField } from '../FormField';
+import { inputStyle, textareaStyle } from '../formStyles';
 import { StatBlockText } from '../ui/StatBlockText';
 import { RollableText } from '../ui/RollableText';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { buildSelectedContextBlock } from '../../lib/campaignContext';
-import {
-  EntityContextPicker,
-  useSelectedContextEntities,
-  type ContextRef,
-} from '../ui/EntityContextPicker';
+import { EntityContextPicker } from '../ui/EntityContextPicker';
+import { useSelectedContextEntities, type ContextRef } from '../../hooks/useSelectedContextEntities';
 import { parsedToMonsterForm, statblockFieldsFromForm } from '../../lib/statblockCompletion';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { ListDetail, ListRow, EmptyDetail, Pill } from '../ui/ListDetail';
@@ -22,69 +20,13 @@ import { SrdLibrary } from '../srd/SrdLibrary';
 import { srdToStatblock, type SrdEdition, type SrdMonster } from '../../lib/srd';
 import type { MonsterStatblock } from '../../lib/database.types';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { abilityModLabel } from '../../lib/statblocks';
+import { emptyMonsterForm } from '../../lib/statblocks';
+import { CHALLENGE_RATINGS } from '../../lib/statblocks';
 
-// --------------- Form type ---------------
-
-export type MonsterForm = {
-  name: string;
-  creature_type: string;
-  challenge_rating: string;
-  armor_class: string;
-  ac_descriptor: string;
-  hit_points: string;
-  hit_dice: string;
-  speed: string;
-  str: string;
-  dex: string;
-  con: string;
-  int: string;
-  wis: string;
-  cha: string;
-  saving_throws: string;
-  skills: string;
-  damage_immunities: string;
-  damage_resistances: string;
-  condition_immunities: string;
-  senses: string;
-  languages: string;
-  content: string;
-  dm_notes: string;
-  tags: string;
-};
-
-export const emptyMonsterForm = (): MonsterForm => ({
-  name: '',
-  creature_type: 'monstrosity',
-  challenge_rating: '',
-  armor_class: '',
-  ac_descriptor: '',
-  hit_points: '',
-  hit_dice: '',
-  speed: '',
-  str: '',
-  dex: '',
-  con: '',
-  int: '',
-  wis: '',
-  cha: '',
-  saving_throws: '',
-  skills: '',
-  damage_immunities: '',
-  damage_resistances: '',
-  condition_immunities: '',
-  senses: '',
-  languages: '',
-  content: '',
-  dm_notes: '',
-  tags: '',
-});
 
 // --------------- Helpers ---------------
 
-export function abilityMod(score: number): string {
-  const mod = Math.floor((score - 10) / 2);
-  return mod >= 0 ? `+${mod}` : `${mod}`;
-}
 
 // Standard 5e CR → proficiency bonus table
 function profBonus(cr: string | null): string | null {
@@ -101,16 +43,6 @@ function profBonus(cr: string | null): string | null {
   return '+9';
 }
 
-// Shared empty-state predicate used by the StatBlockPanel and view modal.
-export function isStatBlockEmpty(m: MonsterStatblock): boolean {
-  return !m.content && !m.dm_notes
-    && m.armor_class == null && m.hit_points == null && !m.speed
-    && m.str == null && m.dex == null && m.con == null
-    && m.int == null && m.wis == null && m.cha == null
-    && !m.saving_throws && !m.skills
-    && !m.damage_resistances && !m.damage_immunities && !m.condition_immunities
-    && !m.senses && !m.languages;
-}
 
 // --------------- Styles ---------------
 
@@ -123,28 +55,9 @@ const sectionLabel = {
   marginBottom: '0.4rem',
 };
 
-export const CREATURE_TYPES = [
-  'aberration', 'beast', 'celestial', 'construct', 'dragon',
-  'elemental', 'fey', 'fiend', 'giant', 'humanoid',
-  'monstrosity', 'ooze', 'plant', 'undead', 'other',
-];
 
-// All valid D&D 5e challenge ratings
-const VALID_CRS = new Set([
-  '0', '1/8', '1/4', '1/2',
-  '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
-  '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
-  '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
-]);
+const VALID_CRS = new Set(CHALLENGE_RATINGS);
 
-export const ABILITY_KEYS: Array<{ key: keyof MonsterForm; label: string }> = [
-  { key: 'str', label: 'STR' },
-  { key: 'dex', label: 'DEX' },
-  { key: 'con', label: 'CON' },
-  { key: 'int', label: 'INT' },
-  { key: 'wis', label: 'WIS' },
-  { key: 'cha', label: 'CHA' },
-];
 
 // Ability score input cell. Module-scoped so its identity is stable across
 // renders — defining it inside the editor remounted the <input> on every
@@ -155,7 +68,7 @@ export function AbilityInput({ label, value, onChange }: {
   onChange: React.ChangeEventHandler<HTMLInputElement>;
 }) {
   const score = parseInt(value, 10);
-  const mod = !isNaN(score) ? abilityMod(score) : null;
+  const mod = !isNaN(score) ? abilityModLabel(score) : null;
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: '0.65rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{label}</div>
@@ -182,7 +95,7 @@ export function AbilityInput({ label, value, onChange }: {
 export function StatBlockBody({ m }: { m: MonsterStatblock }) {
   const hasAbilityScores = m.str != null || m.dex != null || m.con != null || m.int != null || m.wis != null || m.cha != null;
   const hasDefenses = m.armor_class != null || m.hit_points != null || m.speed;
-  const initiative = m.dex != null ? abilityMod(m.dex) : null;
+  const initiative = m.dex != null ? abilityModLabel(m.dex) : null;
   const proficiency = profBonus(m.challenge_rating);
   const hasTraits =
     initiative || proficiency ||
@@ -241,7 +154,7 @@ export function StatBlockBody({ m }: { m: MonsterStatblock }) {
                 </div>
                 {score != null && (
                   <div style={{ fontSize: '0.7rem', color: 'var(--ink-2)' }}>
-                    <RollableText text={`${key[0].toUpperCase()}${key.slice(1)} ${abilityMod(score)}`} checks source={m.name} />
+                    <RollableText text={`${key[0].toUpperCase()}${key.slice(1)} ${abilityModLabel(score)}`} checks source={m.name} />
                   </div>
                 )}
               </div>

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useEntityRefs } from '../../context/EntityRefContext';
-import { parseSegments, hasRefs, refRegex, KIND_GLYPH, KIND_LABEL } from '../../lib/slashMarkdown';
+import { parseSegments, hasRefs, KIND_GLYPH, KIND_LABEL } from '../../lib/slashMarkdown';
 import type { RefKind } from '../../lib/slashMarkdown';
 import { RollableText } from './RollableText';
 
@@ -92,6 +92,5 @@ export function StatBlockText({ text, as: Tag = 'p', style, className, rollableF
   );
 }
 
-// Re-exports for existing consumers (MarkdownContent, MarkdownEditor, toolbars).
-export { EntityChip, parseSegments, refRegex };
-export type { EntityType };
+// EntityChip is also used by MarkdownContent. The parsing helpers live in lib/slashMarkdown.
+export { EntityChip };

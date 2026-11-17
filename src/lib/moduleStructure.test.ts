@@ -6,6 +6,7 @@ import {
   clampField,
   SUBMODULE_TYPES,
   SCENE_TYPES,
+  parseLinkedIds,
 } from './moduleStructure';
 import { LIMIT } from './fieldLimits';
 
@@ -192,5 +193,16 @@ describe('countScenes', () => {
     }));
     expect(countScenes(subs)).toBe(3);
     expect(countScenes([])).toBe(0);
+  });
+});
+
+describe('parseLinkedIds', () => {
+  it('reads a stored JSON list of ids', () => {
+    expect(parseLinkedIds('["a","b"]')).toEqual(['a', 'b']);
+  });
+  it('gives none for empty or broken JSON', () => {
+    expect(parseLinkedIds(null)).toEqual([]);
+    expect(parseLinkedIds('')).toEqual([]);
+    expect(parseLinkedIds('[oops')).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 /* moduleWeb/Inspector.tsx — the 328px rail beside the stage. Shows what is
    selected: where it sits in the story, what it contains, and what it
    requires / unlocks. Everything here also selects on the stage. */
-import { typeInfo } from '../moduleDetail/pickers';
+import { getModuleTypeInfo } from '../../../lib/theme';
 import { MarkdownContent } from '../../ui/MarkdownContent';
 import { AddRow } from './AddForm';
 import { kindLabel, type Selection } from './shared';
@@ -68,7 +68,7 @@ export function Inspector({
   const rec = scene ?? sub ?? mod;
   if (!rec || !mod) return <aside className="orr-side" />;
 
-  const info = kind === 'module' ? null : typeInfo(scene ? scene.scene_type : sub?.submodule_type);
+  const info = kind === 'module' ? null : getModuleTypeInfo(scene ? scene.scene_type : sub?.submodule_type);
   const kids = kind === 'module'
     ? submodules.filter(s => s.module_id === mod.id).sort((a, b) => a.sort_order - b.sort_order)
     : kind === 'sub' && sub
@@ -127,7 +127,7 @@ export function Inspector({
           <div className="orr-side-sec">
             <div className="orr-side-sec-label">{kind === 'module' ? 'Parts' : 'Scenes'}</div>
             {kids.map(k => {
-              const ki = typeInfo('submodule_type' in k ? k.submodule_type : k.scene_type);
+              const ki = getModuleTypeInfo('submodule_type' in k ? k.submodule_type : k.scene_type);
               const sc = kind === 'module' ? scenes.filter(s => s.submodule_id === k.id).length : 0;
               return (
                 // eslint-disable-next-line no-restricted-syntax -- bespoke child row, a list item that selects

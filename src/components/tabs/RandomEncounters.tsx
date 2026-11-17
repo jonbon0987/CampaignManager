@@ -12,7 +12,7 @@ import {
   type RandomEncounterSaveData,
 } from '../ui/RandomEncounterDetail';
 import { GenerateRandomTableModal } from '../ui/GenerateRandomTableModal';
-import { type EncounterSaveData } from '../ui/EncounterDetail';
+import type { EncounterSaveData } from '../../lib/encounters';
 import {
   RANDOM_TABLE_KINDS,
   kindMeta,

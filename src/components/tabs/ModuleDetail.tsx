@@ -17,7 +17,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useCampaign } from '../../context/CampaignContext';
 import { Breadcrumb } from '../ui/Breadcrumb';
 import type { Module } from '../../lib/database.types';
-import { typeInfo } from './moduleDetail/pickers';
+import { getModuleTypeInfo } from '../../lib/theme';
 import { ModuleOverview } from './moduleDetail/ModuleOverview';
 import { SubmoduleEditor } from './moduleDetail/SubmoduleEditor';
 import { SceneEditor } from './moduleDetail/SceneEditor';
@@ -143,7 +143,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, tar
           </div>
 
           {modSubs.map((sub, i) => {
-            const info = typeInfo(sub.submodule_type);
+            const info = getModuleTypeInfo(sub.submodule_type);
             const open = !!openIds[sub.id];
             const subScenes = scenesOf(sub.id);
             return (
@@ -179,7 +179,7 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, tar
                 {open && subScenes.length > 0 && (
                   <div className="md-tree-scenes">
                     {subScenes.map((sc, si) => {
-                      const sinfo = typeInfo(sc.scene_type);
+                      const sinfo = getModuleTypeInfo(sc.scene_type);
                       return (
                         <button type="button"
                           // eslint-disable-next-line no-restricted-syntax -- scene row in the parts rail

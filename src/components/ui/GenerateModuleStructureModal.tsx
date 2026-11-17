@@ -12,16 +12,14 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../Modal';
 import { Button } from './Button';
-import { FormField, inputStyle, textareaStyle } from '../FormField';
+import { FormField } from '../FormField';
+import { inputStyle, textareaStyle } from '../formStyles';
 import { getAIProvider } from '../../lib/aiProvider';
 import { authHeaders } from '../../lib/apiClient';
 import { errorMessage } from '../../lib/errors';
 import { buildSelectedContextBlock } from '../../lib/campaignContext';
-import {
-  EntityContextPicker,
-  useSelectedContextEntities,
-  type ContextRef,
-} from './EntityContextPicker';
+import { EntityContextPicker } from './EntityContextPicker';
+import { useSelectedContextEntities, type ContextRef } from '../../hooks/useSelectedContextEntities';
 import {
   buildModuleStructurePrompt, parseModuleStructure, countScenes,
   MIN_SUBMODULES, MAX_SUBMODULES, MIN_SCENES, MAX_SCENES,

@@ -38,7 +38,7 @@ import {
   type CombatResult,
   type SocialResult,
 } from '../../lib/encounterScaling';
-import type { EncounterSaveData } from './EncounterDetail';
+import type { EncounterSaveData } from '../../lib/encounters';
 import type { RandomEncounterTable, RandomEncounterEntry, MonsterStatblock, EncounterCombatant } from '../../lib/database.types';
 import { difficultyColor, randomEntryTypeColors } from '../../lib/theme';
 

@@ -9,7 +9,7 @@ import { useOpenRecord } from '../../context/NavigationContext';
 import { usePlay } from '../../context/PlayContext';
 import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { planIds, previouslyOn } from '../../lib/sessionLifecycle';
-import { parseLinkedIds } from '../tabs/moduleDetail/pickers';
+import { parseLinkedIds } from '../../lib/moduleStructure';
 import { ReadAloud } from '../ui/ReadAloudBlock';
 import { Button } from '../ui/Button';
 import { HandoutGallery } from '../handouts/HandoutGallery';

@@ -17,7 +17,7 @@ import { plural } from '../../../lib/plural';
 import { Button } from '../../ui/Button';
 import { GenerateModuleStructureModal } from '../../ui/GenerateModuleStructureModal';
 import type { Module, Submodule, SubmoduleDependency } from '../../../lib/database.types';
-import { typeInfo } from './pickers';
+import { getModuleTypeInfo } from '../../../lib/theme';
 import { SegmentedControl } from '../../ui/SegmentedControl';
 import { onActivate } from '../../../lib/activate';
 
@@ -155,7 +155,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
             : (
               <div className="md-depmap">
                 {submodules.map((s, i) => {
-                  const info = typeInfo(s.submodule_type);
+                  const info = getModuleTypeInfo(s.submodule_type);
                   const prereqs = deps.filter(d => d.dependent_id === s.id);
                   return (
                     <div className="md-depmap-row" key={s.id}>

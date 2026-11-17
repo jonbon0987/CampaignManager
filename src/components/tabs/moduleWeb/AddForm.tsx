@@ -2,7 +2,8 @@
    homes: the bubble anchored to a body on the stage, and the dashed
    "New part / New scene" row at the bottom of the inspector rail. */
 import { useEffect, useRef, useState } from 'react';
-import { typeInfo, SUBMODULE_TYPES, SCENE_TYPES } from '../moduleDetail/pickers';
+import { getModuleTypeInfo } from '../../../lib/theme';
+import { SUBMODULE_TYPES, SCENE_TYPES } from '../../../lib/moduleStructure';
 import { limitFor } from '../../../lib/fieldLimits';
 
 const typesFor = (kind: 'sub' | 'scene') => (kind === 'sub' ? SUBMODULE_TYPES : SCENE_TYPES);
@@ -34,7 +35,7 @@ function AddFields({ kind, onAdd, onCancel, autoFocus }: {
         }} />
       <div className="orr-type-grid">
         {types.map(t => {
-          const i = typeInfo(t);
+          const i = getModuleTypeInfo(t);
           return (
             // eslint-disable-next-line no-restricted-syntax -- bespoke type-swatch in the design's 2-column grid
             <button key={t} className={`orr-type ${type === t ? 'is-active' : ''}`} title={i.label} onClick={() => setType(t)}>

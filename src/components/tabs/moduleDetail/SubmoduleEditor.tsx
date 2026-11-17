@@ -16,9 +16,9 @@ import { SlashField } from '../../ui/SlashField';
 import { limitFor } from '../../../lib/fieldLimits';
 import { wouldCreateSubmoduleCycle } from '../../../lib/moduleUtils';
 import type { Module, Submodule, Scene, MonsterStatblock, Encounter } from '../../../lib/database.types';
-import {
-  TypeTag, InlinePicker, typeInfo, parseLinkedIds, SUBMODULE_TYPES,
-} from './pickers';
+import { TypeTag, InlinePicker } from './pickers';
+import { getModuleTypeInfo } from '../../../lib/theme';
+import { parseLinkedIds, SUBMODULE_TYPES } from '../../../lib/moduleStructure';
 import { difficultyColor } from '../../../lib/theme';
 import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
@@ -35,7 +35,7 @@ function SceneRow({ scene, index, onOpen, onDragStart, onDrop, onDragEnd, draggi
   onDragEnd: () => void;
   dragging: boolean;
 }) {
-  const info = typeInfo(scene.scene_type);
+  const info = getModuleTypeInfo(scene.scene_type);
   return (
     <div className={`md-scene-row${dragging ? ' is-dragging' : ''}`} draggable
       onDragStart={() => onDragStart(index)} onDragOver={e => e.preventDefault()} onDrop={() => onDrop(index)} onDragEnd={onDragEnd}>
@@ -184,7 +184,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
           <span className="as-ll">Stat Sheets</span>
           <div className="md-chips">
             {linkedMonsters.map(m => {
-              const ci = typeInfo(m.creature_type);
+              const ci = getModuleTypeInfo(m.creature_type);
               return (
                 <span key={m.id} className="md-chip">
                   <span className="md-chip-glyph" style={{ color: ci.color }}>☠</span>{m.name}
@@ -196,7 +196,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
             <InlinePicker label="Stat sheet"
               options={monsterStatblocks.filter(m => !monsterIds.includes(m.id)).map(m => ({
                 id: m.id, label: m.name, meta: m.challenge_rating ? `CR ${m.challenge_rating}` : undefined,
-                glyph: '☠', color: typeInfo(m.creature_type).color,
+                glyph: '☠', color: getModuleTypeInfo(m.creature_type).color,
               }))}
               onPick={linkCreature} />
           </div>
@@ -244,7 +244,7 @@ export function SubmoduleEditor({ submodule, module, siblings, onDeleted, onOpen
               <InlinePicker label="Prerequisite"
                 radio={{ label: 'Dependency', value: depKind, options: [{ value: 'required', label: 'Required (AND)' }, { value: 'optional', label: 'Optional (OR)' }], onChange: v => setDepKind(v as 'required' | 'optional') }}
                 options={siblings.filter(s => s.id !== submodule.id && !prereqs.find(d => d.prerequisite_id === s.id)).map(s => ({
-                  id: s.id, label: s.title, glyph: typeInfo(s.submodule_type).glyph, color: typeInfo(s.submodule_type).color,
+                  id: s.id, label: s.title, glyph: getModuleTypeInfo(s.submodule_type).glyph, color: getModuleTypeInfo(s.submodule_type).color,
                 }))}
                 onPick={addDep} />
             </div>

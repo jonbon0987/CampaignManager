@@ -1,32 +1,16 @@
 /* ════════════════════════════════════════════════════════════════
    moduleDetail/pickers.tsx
-   Shared helpers + inline popover pickers that replace the old
-   modal dialogs (stat-sheet link, encounter link, dependency add,
-   type select). Everything edits in place.
+   Inline popover pickers that replace the old modal dialogs
+   (stat-sheet link, encounter link, dependency add, type select).
+   Everything edits in place. Their helpers live in lib/moduleStructure.
    ════════════════════════════════════════════════════════════════ */
 import { useState, useRef, useEffect, type ReactNode } from 'react';
-
-/* Type metadata now lives in src/lib/theme.ts (audit F9) — re-export to keep this module's API. */
-import { moduleTypeMeta as TYPE_META, type TypeInfo } from '../../../lib/theme';
-export { TYPE_META };
-export type { TypeInfo };
-
-/* The submodule/scene taxonomies live in src/lib/moduleStructure.ts so the AI
-   generators and this picker offer exactly the same set — re-export to keep
-   this module's API. */
-import { SUBMODULE_TYPES, SCENE_TYPES } from '../../../lib/moduleStructure';
+import { getModuleTypeInfo } from '../../../lib/theme';
+import { SUBMODULE_TYPES } from '../../../lib/moduleStructure';
 import { Button } from '../../ui/Button';
 import { SegmentedControl } from '../../ui/SegmentedControl';
 import { onActivate } from '../../../lib/activate';
 import { useEscape } from '../../../hooks/useEscape';
-export { SUBMODULE_TYPES, SCENE_TYPES };
-
-export const typeInfo = (t: string | null | undefined): TypeInfo => TYPE_META[t ?? 'other'] ?? TYPE_META.other;
-
-export function parseLinkedIds(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  try { return JSON.parse(raw) as string[]; } catch { return []; }
-}
 
 /* ── close on an outside click or Escape ── */
 function useClickAway<T extends HTMLElement>(active: boolean, onAway: () => void) {
@@ -48,7 +32,7 @@ export function TypeTag({ type, types, onPick }: {
   onPick?: (t: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const info = typeInfo(type);
+  const info = getModuleTypeInfo(type);
   const ref = useClickAway<HTMLSpanElement>(open, () => setOpen(false));
 
   if (!onPick) {
@@ -67,7 +51,7 @@ export function TypeTag({ type, types, onPick }: {
       {open && (
         <div className="md-pop" style={{ minWidth: 180 }}>
           {(types ?? SUBMODULE_TYPES).map(t => {
-            const ti = typeInfo(t);
+            const ti = getModuleTypeInfo(t);
             return (
               <button key={t}
                 // eslint-disable-next-line no-restricted-syntax -- option in an inline popover
