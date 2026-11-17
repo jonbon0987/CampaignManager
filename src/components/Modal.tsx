@@ -44,7 +44,8 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      // A control inside that already used the key (the slash menu closing) keeps the dialog open.
+      if (e.key === 'Escape' && !e.defaultPrevented) handleClose();
     };
     if (isOpen) document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
@@ -54,7 +55,7 @@ export function Modal({ isOpen, onClose, title, children, onSave, saveLabel = 'S
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
       onMouseDown={(e) => { pressedBackdrop.current = e.target === e.currentTarget; }}
       // eslint-disable-next-line no-restricted-syntax -- backdrop; Escape and the close button do the same

@@ -125,7 +125,7 @@ export default function AppSidebar({
   return (
     <>
       {isMobile && mobileOpen && (
-        <div className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+        <div className="fixed inset-0 z-drawer" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
           // eslint-disable-next-line no-restricted-syntax -- mobile backdrop; the sidebar close button is the keyboard path
           onClick={onCloseMobile} aria-hidden="true" />
       )}

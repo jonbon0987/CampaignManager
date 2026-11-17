@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import { RAIL_DEFAULT } from './railWidth';
 
-const PHONE = '(max-width: 767px)';
+const PHONE = '(max-width: 900px)';   // the narrow breakpoint; index.css's shell rule uses the same
 
 const isTyping = (t: EventTarget | null) => {
   const el = t as HTMLElement | null;
