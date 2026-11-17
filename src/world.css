@@ -615,6 +615,8 @@
   border-radius: 50%;
   margin-right: 5px; vertical-align: 1px;
 }
+/* On a chosen (gold) option, ring the dot so a gold dot doesn't vanish into the fill. */
+.cm-seg-opt.is-active .wi-foot-mode-dot { box-shadow: 0 0 0 1.5px var(--on-gold); }
 .wi-mode-link { background: var(--gold); }
 .wi-mode-copy { background: var(--accent, var(--accent)); }
 .wi-item-linked { color: var(--ink-3); font-weight: 400; }
