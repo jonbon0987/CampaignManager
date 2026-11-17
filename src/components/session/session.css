@@ -1,0 +1,109 @@
+/* Session recorder: the live panel, sources, level meter, waveform, moments and the resume banner.
+   Used by session/RecorderPanel.tsx; runtime colours (paused, here, consent) stay inline there. */
+
+.rec-section-head { margin-bottom: 8px; }
+.rec-meter { flex: 1 1 160px; min-width: 120px; height: 6px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
+.rec-meter-bar { width: 0; height: 100%; background: var(--gold); transition: width 60ms linear; }
+.rec-wave { flex: 1 1 280px; min-width: 200px; height: 44px; display: flex; align-items: center; gap: 3px; overflow: hidden; }
+.rec-wave-bar { flex: 0 0 4px; height: 4px; border-radius: 2px; transition: height 100ms linear; }
+.rec-note { color: var(--ink-3); margin: 0; }
+.rec-list { list-style: none; margin: 0; padding: 0; }
+.rec-pc { padding: 8px 0; border-bottom: 1px solid var(--rule-soft); }
+.rec-pc-check { flex: 1 1 200px; }
+.rec-strong { font-weight: 500; }
+.rec-dim { color: var(--ink-3); }
+.rec-consent { margin: 10px 0 0; }
+.rec-moment-at { color: var(--gold); min-width: 56px; }
+.rec-moment-input { flex: 1; padding: 3px 8px; font-size: var(--fs-sm); }
+.rec-panel { background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.rec-panel-top { gap: 18px; }
+.rec-dot { width: 12px; height: 12px; border-radius: 50%; }
+.rec-clock { font-family: var(--mono); font-size: var(--fs-h2); font-weight: 500; color: var(--ink); letter-spacing: 0.04em; }
+.rec-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; border-top: 1px solid var(--rule-soft); padding-top: 14px; }
+.rec-source { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.rec-gold { color: var(--gold); }
+.rec-grow { flex: 1; }
+.rec-level-label { color: var(--ink-2); width: 110px; }
+.rec-faction { color: var(--link-faction); }
+.rec-whos-who { cursor: pointer; color: var(--gold); }
+.rec-whos-who-body { margin-top: 8px; }
+.rec-voices { gap: 8px 20px; color: var(--ink-3); }
+.rec-voice { color: var(--ink-2); }
+.rec-warn { color: var(--warn); }
+.rec-audio-label { color: var(--ink-2); min-width: 120px; }
+.rec-audio { flex: 1; min-width: 220px; height: 32px; }
+.rec-resume { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: var(--radius-lg); padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.rec-resume-text { flex: 1 1 260px; color: var(--ink); }
+.rec-pill { border-radius: 999px; letter-spacing: 0.06em; }
+.rec-pill-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* Recap chronicle: who was there, what changed, places, threads, moments and the wiki diff.
+   Used by session/RecapChronicle.tsx. */
+
+.rcp-entity-link { font-weight: 500; text-decoration: none; text-align: left; justify-content: flex-start; align-self: flex-start; }
+.rcp-dim { color: var(--ink-3); }
+.rcp-play { padding: 0 4px; }
+.rcp-note { color: var(--ink-3); margin: 0; }
+.rcp-pc-name { font-size: var(--fs-body); font-weight: 500; text-decoration: none; justify-content: flex-start; }
+.rcp-discord { color: var(--link-faction); border-color: var(--link-faction-line); }
+.rcp-pc-list { margin: 0; padding-left: 18px; list-style: disc; display: flex; flex-direction: column; gap: 4px; }
+.rcp-pc-foot { margin-top: auto; }
+.rcp-spot { flex: 1; height: 4px; background: var(--paper-3); border-radius: 999px; }
+.rcp-spot-fill { height: 100%; border-radius: 999px; }
+.rcp-ink-2 { color: var(--ink-2); }
+.rcp-card { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); }
+.rcp-change { white-space: nowrap; color: var(--ink-3); }
+.rcp-success { color: var(--success); }
+.rcp-flush { margin: 0; }
+.rcp-places { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rcp-place { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 10px; padding: 8px 0; align-items: start; }
+.rcp-place-glyph { color: var(--link-location); padding-top: 2px; }
+.rcp-place-body { min-width: 0; }
+.rcp-moments { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; align-items: baseline; }
+.rcp-contents { display: contents; }
+.rcp-gold { color: var(--gold); }
+.rcp-moment-label { font-size: var(--fs-md); }
+.rcp-row-static { cursor: default; }
+.rcp-wiki-foot { padding: 8px; border-top: 1px solid var(--rule-soft); }
+.rcp-pc { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.rcp-thread { flex: 1 1 240px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.rcp-play-start { justify-self: start; }
+.rcp-wiki { padding: 6px; }
+.rcp-grow { flex: 1; }
+
+/* <Button> sets font-family inline, so a Button's font is passed as style, not set here. */
+
+/* Chronicle review screen: header, filters, the source panel and merge fields.
+   Used by session/ChronicleReview.tsx. The review cards' own .chg-* rules are in index.css. */
+
+.chg-edit-text { resize: vertical; line-height: 1.5; }
+.chg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.chg-merge { background: var(--paper-3); border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px; }
+.chg-src { flex: 1 1 280px; min-width: 0; max-width: 380px; position: sticky; top: 16px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); display: flex; flex-direction: column; }
+.chg-src-head { padding: 12px 14px; border-bottom: 1px solid var(--rule); display: flex; flex-direction: column; gap: 10px; }
+.chg-src-note { color: var(--ink-3); margin: 14px; }
+.chg-src-list { list-style: none; margin: 0; padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
+.chg-src-line { padding: 6px 8px; border-radius: var(--radius); }
+.chg-dim { color: var(--ink-3); }
+.chg-src-who { color: var(--gold); font-weight: 500; }
+.chg-src-text { margin: 2px 0 0; color: var(--ink); }
+.chg-src-foot { padding: 10px 14px; border-top: 1px solid var(--rule); }
+.chg-screen { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--bg); color: var(--ink); display: flex; flex-direction: column; }
+.chg-screen-head { flex: 0 0 auto; background: var(--bg); border-bottom: 1px solid var(--rule); padding: 14px 28px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; }
+.chg-screen-titles { flex: 1 1 380px; display: flex; flex-direction: column; gap: 4px; }
+.chg-back { align-self: flex-start; }
+.chg-gold { color: var(--gold); }
+.chg-screen-title { margin: 0; font-family: var(--display); font-size: var(--fs-h1); line-height: 1.15; font-weight: 500; }
+.chg-screen-sub { margin: 0; font-style: italic; color: var(--ink-2); }
+.chg-screen-scroll { flex: 1 1 auto; overflow-y: auto; }
+.chg-failures { margin: 16px 28px 0; padding: 10px 14px; border-radius: var(--radius); background: var(--red-bg); border: 1px solid var(--red-line); }
+.chg-ink { color: var(--ink); }
+.chg-red { color: var(--red); }
+.chg-screen-body { display: flex; flex-wrap: wrap; gap: 24px; padding: 20px 28px 48px; align-items: flex-start; }
+.chg-filters { flex: 1 1 190px; max-width: 230px; display: flex; flex-direction: column; gap: 2px; }
+.chg-filter { justify-content: flex-start; gap: 10px; }
+.chg-filter-glyph { width: 16px; color: var(--gold); }
+.chg-filter-label { flex: 1; text-align: left; }
+.chg-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 26px; }
+.chg-accepted { white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+.chg-play { flex: 0 0 auto; font-style: normal; }

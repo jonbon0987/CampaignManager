@@ -26,6 +26,7 @@ import { TranscriptModal } from './TranscriptModal';
 import { ChangeCard, type ChangeState, type ChangeView } from '../review/ChangeCard';
 import { ReviewTally } from '../review/ReviewTally';
 import { PlayerBar } from './PlayerBar';
+import './session.css';
 
 // --------------- Labels ---------------
 
@@ -170,7 +171,7 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
   const area = (value: string, onChange: (v: string) => void, label: string, rows = 3) => (
     <label className="flex flex-col">
       <span className="as-ll">{label}</span>
-      <textarea className="as-input" rows={rows} value={value} onChange={e => onChange(e.target.value)} style={{ resize: 'vertical', lineHeight: 1.5 }} />
+      <textarea className="as-input chg-edit-text" rows={rows} value={value} onChange={e => onChange(e.target.value)} />
     </label>
   );
 
@@ -189,7 +190,7 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
     };
     fields = (
       <>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <div className="chg-grid">
           {a.entity_type !== 'pc' && (
             <label className="flex flex-col">
               <span className="as-ll">Goes to</span>
@@ -253,7 +254,7 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
   }
 
   return (
-    <div className="flex flex-col gap-3" style={{ background: 'var(--paper-3)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', padding: 14 }}>
+    <div className="flex flex-col gap-3 chg-merge">
       {fields}
       <div className="flex flex-wrap gap-2 justify-end">
         <Button size="sm" variant="ghost" onClick={onCancel} disabled={saving}>Cancel</Button>
@@ -286,29 +287,29 @@ function SourcePanel({ proposal, segments, player, onOpenTranscript }: {
   const who = (s: TranscriptSegment) => (s.is_dm ? 'DM' : s.pc_id ? pcs.find(p => p.id === s.pc_id)?.character_name ?? 'Player' : s.speaker_label ?? 'Unknown');
 
   return (
-    <aside aria-label="Source" style={{ flex: '1 1 280px', minWidth: 0, maxWidth: 380, position: 'sticky', top: 16, background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--rule)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <aside aria-label="Source" className="chg-src">
+      <div className="chg-src-head">
         <div className="cm-section-head"><span className="cm-section-title">{at != null ? `Heard at ${clock(at)}` : 'Source'}</span><div className="cm-section-rule" /></div>
         {player}
       </div>
       {proposal == null ? (
-        <p className="text-md" style={{ color: 'var(--ink-3)', margin: 14 }}>Pick a change to see where it came from.</p>
+        <p className="text-md chg-src-note">Pick a change to see where it came from.</p>
       ) : at == null ? (
-        <p className="text-md" style={{ color: 'var(--ink-3)', margin: 14 }}>This change sums up the whole session rather than one moment.</p>
+        <p className="text-md chg-src-note">This change sums up the whole session rather than one moment.</p>
       ) : (
-        <ol style={{ listStyle: 'none', margin: 0, padding: '8px 12px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <ol className="chg-src-list">
           {context.map(s => {
             const hl = s.id === segments[nearest].id;
             return (
-              <li key={s.id} style={{ padding: '6px 8px', borderRadius: 'var(--radius)', border: `1px solid ${hl ? 'var(--gold-line)' : 'transparent'}`, background: hl ? 'var(--gold-dim)' : 'transparent' }}>
-                <div className="flex gap-2 items-baseline"><span className="cm-kbd" style={{ color: 'var(--ink-3)' }}>{clock(s.start_ms)}</span><span className="text-xs" style={{ color: 'var(--gold)', fontWeight: 500 }}>{who(s)}</span></div>
-                <p className="text-md" style={{ margin: '2px 0 0', color: 'var(--ink)' }}>{s.text}</p>
+              <li key={s.id} className="chg-src-line" style={{ border: `1px solid ${hl ? 'var(--gold-line)' : 'transparent'}`, background: hl ? 'var(--gold-dim)' : 'transparent' }}>
+                <div className="flex gap-2 items-baseline"><span className="cm-kbd chg-dim">{clock(s.start_ms)}</span><span className="text-xs chg-src-who">{who(s)}</span></div>
+                <p className="text-md chg-src-text">{s.text}</p>
               </li>
             );
           })}
         </ol>
       )}
-      <div className="flex flex-wrap gap-2" style={{ padding: '10px 14px', borderTop: '1px solid var(--rule)' }}>
+      <div className="flex flex-wrap gap-2 chg-src-foot">
         <Button size="xs" onClick={onOpenTranscript} title="Say who a voice is, in the transcript">Fix speaker</Button>
         <Button size="xs" onClick={onOpenTranscript}>Open full transcript</Button>
       </div>
@@ -467,13 +468,13 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
   const session = lookup.session(recording.session_id);
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Review the Chronicle" style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)', background: 'var(--bg)', color: 'var(--ink)', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ flex: '0 0 auto', background: 'var(--bg)', borderBottom: '1px solid var(--rule)', padding: '14px 28px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '12px 24px' }}>
-        <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <Button variant="link" onClick={onClose} style={{ alignSelf: 'flex-start' }}><ArrowLeft size={12} /> Back</Button>
-          <div className="cm-section-title" style={{ color: 'var(--gold)' }}>Session {session?.session_number ?? ''} · Review</div>
-          <h1 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 'var(--fs-h1)', lineHeight: 1.15, fontWeight: 500 }}>Review the Chronicle</h1>
-          <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--ink-2)' }}>
+    <div role="dialog" aria-modal="true" aria-label="Review the Chronicle" className="chg-screen">
+      <header className="chg-screen-head">
+        <div className="chg-screen-titles">
+          <Button variant="link" onClick={onClose} className="chg-back"><ArrowLeft size={12} /> Back</Button>
+          <div className="cm-section-title chg-gold">Session {session?.session_number ?? ''} · Review</div>
+          <h1 className="chg-screen-title">Review the Chronicle</h1>
+          <p className="chg-screen-sub">
             {settled && counts.applied
               ? `${counts.applied} change${counts.applied === 1 ? '' : 's'} applied to the campaign. Undo the write-back to send them back to review.`
               : `${all.length} proposed changes. Edit, accept or skip each one — nothing reaches the campaign until you apply.`}
@@ -495,15 +496,15 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
       </header>
 
       {/* Only the body scrolls, so the header and the sticky source panel never overlap. */}
-      <div style={{ flex: '1 1 auto', overflowY: 'auto' }}>
+      <div className="chg-screen-scroll">
       {failures.length > 0 && (
-        <div role="alert" style={{ margin: '16px 28px 0', padding: '10px 14px', borderRadius: 'var(--radius)', background: 'var(--red-bg)', border: '1px solid var(--red-line)' }}>
-          {failures.map((f, i) => <div key={i} className="text-md" style={{ color: 'var(--ink)' }}><strong style={{ color: 'var(--red)' }}>{f.name}:</strong> {f.message}</div>)}
+        <div role="alert" className="chg-failures">
+          {failures.map((f, i) => <div key={i} className="text-md chg-ink"><strong className="chg-red">{f.name}:</strong> {f.message}</div>)}
         </div>
       )}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, padding: '20px 28px 48px', alignItems: 'flex-start' }}>
-        <nav aria-label="Filter changes" style={{ flex: '1 1 190px', maxWidth: 230, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div className="chg-screen-body">
+        <nav aria-label="Filter changes" className="chg-filters">
           {[{ key: 'all' as const, label: 'All changes', glyph: '❖', n: all.length }, ...GROUPS.map(g => ({ key: g.key, label: g.label, glyph: g.glyph, n: all.filter(p => p.group_key === g.key).length }))]
             .filter(f => f.key === 'all' || f.n > 0)
             .map(f => (
@@ -513,24 +514,24 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                 size="sm"
                 aria-pressed={filter === f.key}
                 onClick={() => setFilter(f.key)}
-                style={{ justifyContent: 'flex-start', gap: 10, background: filter === f.key ? 'var(--paper-2)' : undefined, boxShadow: filter === f.key ? 'inset 2px 0 0 var(--gold)' : undefined, color: filter === f.key ? 'var(--ink)' : undefined }}
+                className="chg-filter" style={{ background: filter === f.key ? 'var(--paper-2)' : undefined, boxShadow: filter === f.key ? 'inset 2px 0 0 var(--gold)' : undefined, color: filter === f.key ? 'var(--ink)' : undefined }}
               >
-                <span aria-hidden="true" style={{ width: 16, color: 'var(--gold)' }}>{f.glyph}</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>{f.label}</span>
-                <span className="cm-kbd" style={{ color: 'var(--ink-3)' }}>{f.n}</span>
+                <span aria-hidden="true" className="chg-filter-glyph">{f.glyph}</span>
+                <span className="chg-filter-label">{f.label}</span>
+                <span className="cm-kbd chg-dim">{f.n}</span>
               </Button>
             ))}
         </nav>
 
-        <main style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 26 }}>
-          {proposals === null && <p style={{ color: 'var(--ink-3)' }}>Loading proposals…</p>}
-          {proposals?.length === 0 && <p style={{ color: 'var(--ink-3)' }}>This recording has no proposed changes. Write the chronicle from the session's recording first.</p>}
+        <main className="chg-main">
+          {proposals === null && <p className="chg-dim">Loading proposals…</p>}
+          {proposals?.length === 0 && <p className="chg-dim">This recording has no proposed changes. Write the chronicle from the session's recording first.</p>}
           {visibleGroups.map(g => {
             const pending = g.items.filter(p => p.status === 'pending');
             return (
               <section key={g.key} className="flex flex-col gap-2">
                 <div className="cm-section-head">
-                  <span aria-hidden="true" style={{ color: 'var(--gold)' }}>{g.glyph}</span>
+                  <span aria-hidden="true" className="chg-gold">{g.glyph}</span>
                   <span className="cm-section-title">{g.label} · {g.items.length}</span>
                   <div className="cm-section-rule" />
                   {pending.length > 1 && <Button variant="link" onClick={() => void setStatus(pending.map(p => p.id), 'accepted')}>Accept all {pending.length}</Button>}
@@ -555,7 +556,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                         </>
                       ) : p.status === 'accepted' || p.status === 'skipped' ? (
                         <>
-                          <Badge color={p.status === 'accepted' ? 'green' : 'muted'}>{p.status === 'accepted' ? <span style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={10} /> Accepted</span> : 'Skipped'}</Badge>
+                          <Badge color={p.status === 'accepted' ? 'green' : 'muted'}>{p.status === 'accepted' ? <span className="chg-accepted"><Check size={10} /> Accepted</span> : 'Skipped'}</Badge>
                           {p.status === 'accepted' && <Button variant="link" onClick={() => setEditing({ id: p.id, draft: effectiveAction(p) })}>Edit</Button>}
                           <Button variant="link" onClick={() => void setStatus([p.id], 'pending')}>Undo</Button>
                         </>
@@ -567,7 +568,7 @@ export function ChronicleReview({ recording, onClose, onChanged }: {
                               size="xs"
                               aria-label={`Play source at ${clock(p.source_ms)}`}
                               onClick={e => { e.stopPropagation(); playFrom(p); }}
-                              style={{ flex: '0 0 auto', background: 'var(--paper-3)', color: 'var(--gold)', fontFamily: 'var(--mono)', fontStyle: 'normal' }}
+                              className="chg-play" style={{ background: 'var(--paper-3)', color: 'var(--gold)', fontFamily: 'var(--mono)' }}
                             >
                               ▶ {clock(p.source_ms)}
                             </Button>

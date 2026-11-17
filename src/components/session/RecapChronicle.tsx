@@ -25,6 +25,7 @@ import { useRecordingPlayer } from '../../hooks/useRecordingPlayer';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { PlayerBar } from './PlayerBar';
+import './session.css';
 
 const GLYPH: Record<EntityKind | 'session', string> = { session: '❧', pc: '❖', npc: '❦', location: '✦', faction: '◈', lore: '✦', hook: '✧' };
 const SESSION_FIELD: Record<string, string> = {
@@ -33,7 +34,6 @@ const SESSION_FIELD: Record<string, string> = {
 
 const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
-const card: React.CSSProperties = { background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)' };
 
 /** A section of the recap: its label and rule, as the session page has them. */
 function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
@@ -148,17 +148,17 @@ export function RecapChronicle({ recording: initial, onChanged }: {
     const color = opts.color ?? entityKindColor[item.kind];
     const text = `${opts.glyph ? `${GLYPH[item.kind]} ` : ''}${nameOf(item)}`;
     return currentName(item)
-      ? <Button variant="link" onClick={() => open(item.kind, item.entityId)} style={{ fontSize: opts.size ?? 15, fontWeight: 500, color, textDecoration: 'none', textAlign: 'left', justifyContent: 'flex-start', alignSelf: 'flex-start' }}>{text}</Button>
-      : <span style={{ fontSize: opts.size ?? 15, color: 'var(--ink-3)' }} title="No longer in this campaign">{text}</span>;
+      ? <Button variant="link" onClick={() => open(item.kind, item.entityId)} className="rcp-entity-link" style={{ fontSize: opts.size ?? 15, color }}>{text}</Button>
+      : <span className="rcp-dim" style={{ fontSize: opts.size ?? 15 }} title="No longer in this campaign">{text}</span>;
   };
   const time = (ms: number | null) => (ms == null ? null : (
-    <Button variant="ghost" size="xs" onClick={() => play(ms)} title="Play from here" style={{ padding: '0 4px' }}>
-      <span className="cm-kbd" style={{ color: 'var(--ink-3)' }}>▶ {clockLabel(ms)}</span>
+    <Button variant="ghost" size="xs" onClick={() => play(ms)} title="Play from here" className="rcp-play">
+      <span className="cm-kbd rcp-dim">▶ {clockLabel(ms)}</span>
     </Button>
   ));
   const text = (item: WrittenItem) => item.entry ?? item.added;
 
-  if (proposals === null) return <p className="text-md" style={{ color: 'var(--ink-3)', margin: 0 }}>Loading the chronicle…</p>;
+  if (proposals === null) return <p className="text-md rcp-note">Loading the chronicle…</p>;
 
   const k = model.byKind;
   const written: { key: string; kind: EntityKind | 'session'; name: string; what: string; meta: string; item?: WrittenItem }[] = [
@@ -181,22 +181,22 @@ export function RecapChronicle({ recording: initial, onChanged }: {
               const isQuiet = quiet.has(pc.id);
               const did = k.pc.filter(i => i.entityId === pc.id && i.entry);
               return (
-                <article key={pc.id} style={{ ...card, borderColor: isQuiet ? 'var(--orange-line)' : 'var(--rule)', padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <article key={pc.id} className="rcp-card rcp-pc" style={{ borderColor: isQuiet ? 'var(--orange-line)' : 'var(--rule)' }}>
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <Button variant="link" onClick={() => open('pc', pc.id)} style={{ fontSize: 'var(--fs-body)', fontWeight: 500, color: 'var(--ink)', textDecoration: 'none', justifyContent: 'flex-start' }}>{pc.character_name}</Button>
-                    <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{[[pc.race, pc.class].filter(Boolean).join(' '), pc.player_name].filter(Boolean).join(' · ')}</span>
-                    {onDiscord.has(pc.id) && <span className="cm-tag" style={{ color: 'var(--link-faction)', borderColor: 'var(--link-faction-line)' }}>◈ Discord</span>}
+                    <Button variant="link" onClick={() => open('pc', pc.id)} className="rcp-pc-name" style={{ color: 'var(--ink)' }}>{pc.character_name}</Button>
+                    <span className="text-xs rcp-dim">{[[pc.race, pc.class].filter(Boolean).join(' '), pc.player_name].filter(Boolean).join(' · ')}</span>
+                    {onDiscord.has(pc.id) && <span className="cm-tag rcp-discord">◈ Discord</span>}
                     {isQuiet && <Badge color="orange">Quiet night</Badge>}
                   </div>
                   {did.length > 0
-                    ? <ul style={{ margin: 0, paddingLeft: 18, listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 4 }}>{did.map(i => <li key={i.proposalId}>{i.entry}</li>)}</ul>
-                    : <span className="text-md" style={{ color: 'var(--ink-3)' }}>Nothing written down for this character.</span>}
+                    ? <ul className="rcp-pc-list">{did.map(i => <li key={i.proposalId}>{i.entry}</li>)}</ul>
+                    : <span className="text-md rcp-dim">Nothing written down for this character.</span>}
                   {s != null && (
-                    <div className="flex items-center gap-2" style={{ marginTop: 'auto' }}>
-                      <div aria-hidden="true" style={{ flex: 1, height: 4, background: 'var(--paper-3)', borderRadius: 999 }}>
-                        <div style={{ width: `${Math.round(s * 100)}%`, height: '100%', background: isQuiet ? 'var(--orange)' : 'var(--gold)', borderRadius: 999 }} />
+                    <div className="flex items-center gap-2 rcp-pc-foot">
+                      <div aria-hidden="true" className="rcp-spot">
+                        <div className="rcp-spot-fill" style={{ width: `${Math.round(s * 100)}%`, background: isQuiet ? 'var(--orange)' : 'var(--gold)' }} />
                       </div>
-                      <span className="cm-kbd" style={{ color: 'var(--ink-2)' }}>{Math.round(s * 100)}%</span>
+                      <span className="cm-kbd rcp-ink-2">{Math.round(s * 100)}%</span>
                     </div>
                   )}
                 </article>
@@ -208,15 +208,15 @@ export function RecapChronicle({ recording: initial, onChanged }: {
 
       {k.npc.length > 0 && (
         <Section title="NPCs met">
-          <div style={card}>
+          <div className="rcp-card">
             {k.npc.map((item, i) => (
               <div key={item.proposalId} className="rc-npc" style={{ borderTop: i ? '1px solid var(--rule-soft)' : undefined }}>
                 <div className="flex flex-wrap items-center gap-2">{nameLink(item, { glyph: true })}{item.created && <Badge color="orange">New</Badge>}</div>
                 <span>{text(item)}</span>
                 <div className="flex flex-col items-end gap-1">
                   {item.changes.map(c => (
-                    <span key={c.field} className="text-xs" style={{ whiteSpace: 'nowrap', color: 'var(--ink-3)' }}>
-                      {c.from ? <>{cap(c.from)} → </> : null}<span style={{ color: 'var(--success)' }}>{cap(c.to)}</span>
+                    <span key={c.field} className="text-xs rcp-change">
+                      {c.from ? <>{cap(c.from)} → </> : null}<span className="rcp-success">{cap(c.to)}</span>
                     </span>
                   ))}
                   {time(item.sourceMs)}
@@ -232,7 +232,7 @@ export function RecapChronicle({ recording: initial, onChanged }: {
           {knowledge.map(item => {
             const canon = isCanon(item);
             return (
-              <div key={item.proposalId} className={`cm-originband ${canon ? 'is-canon' : 'is-local'}`} style={{ margin: 0 }}>
+              <div key={item.proposalId} className={`cm-originband ${canon ? 'is-canon' : 'is-local'} rcp-flush`}>
                 <span className="cm-originband-glyph" aria-hidden="true">{GLYPH[item.kind]}</span>
                 <div className="cm-originband-body">
                   <div className="cm-originband-kicker">{nameOf(item)} · {canon ? 'world canon' : 'this table'}{item.created ? ' · new' : ''}</div>
@@ -249,13 +249,13 @@ export function RecapChronicle({ recording: initial, onChanged }: {
 
       {k.location.length > 0 && (
         <Section title="Places visited">
-          <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+          <ol className="rcp-places">
             {k.location.map((item, i) => (
-              <li key={item.proposalId} style={{ display: 'grid', gridTemplateColumns: '20px minmax(0, 1fr) auto', gap: 10, padding: '8px 0', borderTop: i ? '1px solid var(--rule-soft)' : undefined, alignItems: 'start' }}>
-                <span aria-hidden="true" style={{ color: 'var(--link-location)', paddingTop: 2 }}>✦</span>
-                <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
+              <li key={item.proposalId} className="rcp-place" style={{ borderTop: i ? '1px solid var(--rule-soft)' : undefined }}>
+                <span aria-hidden="true" className="rcp-place-glyph">✦</span>
+                <div className="flex flex-col gap-1 rcp-place-body">
                   <div className="flex flex-wrap items-center gap-2">{nameLink(item, { color: 'var(--ink)' })}{item.created && <Badge color="orange">New</Badge>}</div>
-                  {text(item) && <span className="text-md" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
+                  {text(item) && <span className="text-md rcp-ink-2">{text(item)}</span>}
                 </div>
                 {time(item.sourceMs)}
               </li>
@@ -271,15 +271,15 @@ export function RecapChronicle({ recording: initial, onChanged }: {
               const change = item.changes.find(c => c.field === 'state');
               const now = change?.to ?? hooks.find(h => h.id === item.entityId)?.state ?? 'active';
               return (
-                <div key={item.proposalId} style={{ ...card, borderTop: `2px solid ${threadStateMeta[now]?.line ?? 'var(--rule)'}`, flex: '1 1 240px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div key={item.proposalId} className="rcp-card rcp-thread" style={{ borderTop: `2px solid ${threadStateMeta[now]?.line ?? 'var(--rule)'}` }}>
                   <div className="flex flex-wrap items-center gap-2">
                     {item.created && <Badge color="orange">New</Badge>}
-                    {change?.from && !item.created && <><StateBadge state={change.from} /><span aria-hidden="true" style={{ color: 'var(--ink-3)' }}>→</span></>}
+                    {change?.from && !item.created && <><StateBadge state={change.from} /><span aria-hidden="true" className="rcp-dim">→</span></>}
                     <StateBadge state={now} />
-                    {!change && !item.created && <span className="text-xs" style={{ color: 'var(--ink-3)' }}>advanced</span>}
+                    {!change && !item.created && <span className="text-xs rcp-dim">advanced</span>}
                   </div>
                   {nameLink(item, { color: 'var(--ink)', size: 16 })}
-                  {text(item) && <span className="text-md" style={{ color: 'var(--ink-2)' }}>{text(item)}</span>}
+                  {text(item) && <span className="text-md rcp-ink-2">{text(item)}</span>}
                 </div>
               );
             })}
@@ -289,13 +289,13 @@ export function RecapChronicle({ recording: initial, onChanged }: {
 
       {moments.length > 0 && (
         <Section title="Key moments">
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '6px 10px', alignItems: 'baseline' }}>
+          <div className="rcp-moments">
             {moments.map(m => (
-              <div key={m.id} style={{ display: 'contents' }}>
-                <Button variant="ghost" size="xs" onClick={() => play(m.at_ms)} title="Play from here" style={{ padding: '0 4px', justifySelf: 'start' }}>
-                  <span className="cm-kbd" style={{ color: 'var(--gold)' }}>{clockLabel(m.at_ms)}</span>
+              <div key={m.id} className="rcp-contents">
+                <Button variant="ghost" size="xs" onClick={() => play(m.at_ms)} title="Play from here" className="rcp-play rcp-play-start">
+                  <span className="cm-kbd rcp-gold">{clockLabel(m.at_ms)}</span>
                 </Button>
-                <span style={{ fontSize: 'var(--fs-md)', color: m.label ? 'var(--ink)' : 'var(--ink-3)' }}>{m.label || 'Marked moment'}</span>
+                <span className="rcp-moment-label" style={{ color: m.label ? 'var(--ink)' : 'var(--ink-3)' }}>{m.label || 'Marked moment'}</span>
               </div>
             ))}
           </div>
@@ -304,7 +304,7 @@ export function RecapChronicle({ recording: initial, onChanged }: {
 
       {written.length > 0 && (
         <Section title={`Written to the campaign · ${written.length}`}>
-          <div style={{ ...card, padding: 6 }}>
+          <div className="rcp-card rcp-wiki">
             {written.map(w => {
               const body = (
                 <>
@@ -316,16 +316,16 @@ export function RecapChronicle({ recording: initial, onChanged }: {
               return w.item && currentName(w.item)
                 // eslint-disable-next-line no-restricted-syntax -- a list row (.cm-row), not a button style
                 ? <button key={w.key} type="button" className="cm-row" onClick={() => open(w.item!.kind, w.item!.entityId)}>{body}</button>
-                : <div key={w.key} className="cm-row" style={{ cursor: 'default' }}>{body}</div>;
+                : <div key={w.key} className="cm-row rcp-row-static">{body}</div>;
             })}
-            <div className="flex flex-wrap items-center gap-2" style={{ padding: 8, borderTop: '1px solid var(--rule-soft)' }}>
-              <span className="text-xs" style={{ color: 'var(--ink-3)', flex: 1 }}>{model.edited} edited by you · {model.skipped} skipped</span>
+            <div className="flex flex-wrap items-center gap-2 rcp-wiki-foot">
+              <span className="text-xs rcp-dim rcp-grow">{model.edited} edited by you · {model.skipped} skipped</span>
               <Button size="xs" variant="danger" onClick={() => void undo()} disabled={undoing || !writer}>{undoing ? 'Undoing…' : 'Undo this write-back'}</Button>
             </div>
           </div>
           <div className="flex flex-col gap-1">
             <PlayerBar audio={audio} playing={playing} positionMs={positionMs} loading={loading} onPause={pause} atMs={null} totalMs={recording.duration_ms} onPlay={() => play(positionMs ?? 0)} />
-            <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+            <span className="text-xs rcp-dim">
               {[
                 durationLabel(recording.duration_ms),
                 recording.audio_expires_at ? `audio kept until ${new Date(recording.audio_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'audio kept',

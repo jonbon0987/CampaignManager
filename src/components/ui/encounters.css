@@ -1,0 +1,29 @@
+/* Encounter detail: header, meta strip, combatant rows and the stat-sheet / custom pickers.
+   Used by ui/EncounterDetail.tsx. The older .enc-* rules (badges, rating, scaling) are in index.css. */
+
+.enc-box { background-color: var(--bg); border: 1px solid var(--rule); }
+.enc-cmb-name { color: var(--ink); font-family: var(--display); }
+.enc-cmb-cr { background-color: var(--chip-bg); color: var(--cr); }
+.enc-dim { color: var(--ink-3); }
+.enc-btn-info { background-color: var(--info-bg); color: var(--info); border: 1px solid var(--info-line); }
+.enc-step { background-color: var(--bg-2); color: var(--ink-2); border: 1px solid var(--rule); }
+.enc-cmb-count { color: var(--ink); }
+.enc-cmb-remove { background-color: var(--bg-2); color: var(--red); border: 1px solid var(--rule); }
+.enc-cmb-notes { background-color: var(--paper); color: var(--ink-2); border: 1px solid var(--rule-soft); }
+.enc-detail { max-width: 700px; }
+.enc-toolbar { margin-bottom: 20px; }
+.enc-run { font-size: var(--fs-xs); font-weight: 600; color: var(--bg); background-color: var(--gold); border: 1px solid var(--gold); border-radius: var(--radius); padding: 6px 16px; cursor: pointer; font-family: var(--serif); }
+.enc-eyebrow { color: var(--ink-3); font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 6px; }
+.enc-title { margin-bottom: 20px; display: block; width: 100%; }
+.enc-block { margin-bottom: 24px; }
+.enc-num { width: 56px; }
+.enc-section-label { color: var(--gold); font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
+.enc-gold { color: var(--gold); }
+.enc-pick { background-color: var(--paper); color: var(--ink); border: 1px solid var(--rule-soft); }
+.enc-cr { color: var(--cr); }
+.enc-btn-cancel { color: var(--ink-3); border: 1px solid var(--rule); }
+.enc-btn-add { background-color: var(--gold-hover); color: var(--ink); }
+.enc-total { margin-top: 8px; color: var(--ink-3); font-size: var(--fs-xs); font-family: var(--mono); }
+.enc-run-wide { width: 100%; background-color: var(--gold); color: var(--bg); border: none; border-radius: var(--radius); padding: 12px; font-size: var(--fs-md); font-weight: 700; font-family: var(--serif); cursor: pointer; letter-spacing: 0.02em; }
+/* A set width, so Party fits on the meta row beside Status and Environment. */
+.enc-env { width: 140px; }
