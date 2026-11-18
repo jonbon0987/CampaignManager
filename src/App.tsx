@@ -55,7 +55,8 @@ import { useShellChrome, shellClass, railStyle } from './components/shell/useShe
 import { RailResizer } from './components/shell/RailResizer';
 import { useRouteSync, currentRoute } from './hooks/useRouteSync';
 import { setRecentScope } from './lib/recent';
-import type { Route } from './lib/route';
+import { isShortRef, resolveRef, sameRef, type Route } from './lib/route';
+import { useCampaignRouteRecords, useWorldRouteRecords } from './hooks/useRouteRecords';
 import type { WorldTab } from './types/world';
 import { Button } from './components/ui/Button';
 import { Input } from './components/ui/Input';
@@ -106,6 +107,10 @@ const RAIL_OVERLAY_CLASS = 'cm-rail';
 
 /** What to open for a record (and a module's part) the URL or a tab's memory names. */
 const openTargetFor = (tab: Tab, rec: { id: string; sub?: string }) => ({ tab, id: rec.id, kind: rec.sub ? `submodule:${rec.sub}` : undefined });
+
+// The address may name a world or campaign by a short id; these find the full one.
+const fullWorldId = (worlds: { id: string }[], ref: string) => resolveRef(ref, worlds.map(w => w.id)) ?? ref;
+const fullCampaignId = (worlds: { campaignIds: string[] }[], ref: string) => resolveRef(ref, worlds.flatMap(w => w.campaignIds)) ?? ref;
 
 function AppInner() {
   const world = useWorld();
@@ -168,8 +173,13 @@ function AppInner() {
 
   const activeViewMode = viewModes[activeTab] ?? TAB_DEFAULT_VIEW[activeTab] ?? 'list';
   const setViewMode = (v: string) => setViewModes(prev => ({ ...prev, [activeTab]: v }));
-  const openIdFor = (tab: Tab) => (openTarget?.tab === tab ? openTarget.id : null);
   const { loading, error, selectedCampaign, selectedCampaignId, monsterStatblocks, loadModuleTree } = useCampaign();
+  // A record the address names by a short id opens once it has loaded.
+  const routeRecords = useCampaignRouteRecords();
+  const target = openTarget && isShortRef(openTarget.id)
+    ? (() => { const rec = routeRecords.record(openTarget.tab, openTarget.id); return rec ? { ...openTarget, id: rec.id } : null; })()
+    : openTarget;
+  const openIdFor = (tab: Tab) => (target?.tab === tab ? target.id : null);
   const { activeStatBlockId, closeStatBlock } = useStatBlockPanel();
   const chat = useAIChat(useCampaignAssistantBackend());
   const play = usePlay();
@@ -199,20 +209,27 @@ function AppInner() {
     sub: shownRecord?.tab === activeTab ? shownRecord.sub : undefined,
     view: activeViewMode !== (TAB_DEFAULT_VIEW[activeTab] ?? 'list') ? activeViewMode : undefined,
   } : null;
+  const shown = shownRecord?.tab === activeTab ? shownRecord : null;
+  const routeNames = {
+    world: world.activeWorld?.name,
+    campaign: selectedCampaign?.name,
+    record: shown ? routeRecords.record(activeTab, shown.id)?.name : undefined,
+    sub: shown?.sub ? routeRecords.part(shown.sub)?.name : undefined,
+  };
   useRouteSync(route, r => {
-    if (r.worldId !== world.activeWorldId) world.setActiveWorldId(r.worldId);
+    if (!sameRef(r.worldId, world.activeWorldId ?? undefined)) world.setActiveWorldId(fullWorldId(world.worlds, r.worldId));
     if (r.scope === 'world') {
       world.setWorldTab(r.tab);
       if (r.recordId) world.setSelected(r.tab, r.recordId);
       return;
     }
-    if (r.campaignId !== world.activeCampaignId) world.openCampaign(r.campaignId);
+    if (!sameRef(r.campaignId, world.activeCampaignId ?? undefined)) world.openCampaign(fullCampaignId(world.worlds, r.campaignId));
     const n = normalizeTab(r.tab, r.view);
     setActiveTabState(n.tab);
     setViewModes(prev => ({ ...prev, [n.tab]: n.view ?? TAB_DEFAULT_VIEW[n.tab] ?? 'list' }));
     setShownRecord(r.recordId ? { tab: n.tab, id: r.recordId, sub: r.sub } : null);
     if (r.recordId) setOpenTarget(openTargetFor(n.tab, { id: r.recordId, sub: r.sub }));
-  });
+  }, routeNames);
 
   // Start session asks which session and whether to record; End checks, then
   // opens the session on its recap.
@@ -318,9 +335,9 @@ function AppInner() {
                 {activeTab === 'items'     && <Items openId={openIdFor('items')} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'locations' && <Locations openId={openIdFor('locations')} onOpenConsumed={clearOpenTarget} onImportFromWorld={() => { setImportType('location'); setImportOpen(true); }} />}
                 {activeTab === 'threads'   && <Threads openId={openIdFor('threads')} onOpenConsumed={clearOpenTarget} />}
-                {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} openSubmoduleId={openTarget?.tab === 'modules' && openTarget.kind?.startsWith('submodule:') ? openTarget.kind.slice('submodule:'.length) : null} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'modules'   && <Modules viewMode={viewModes.modules ?? 'list'} setViewMode={(v) => setViewModes(p => ({ ...p, modules: v }))} openId={openIdFor('modules')} openSubmoduleId={target?.tab === 'modules' && target.kind?.startsWith('submodule:') ? target.kind.slice('submodule:'.length) : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'sessions'  && <SessionNotes viewMode={viewModes.sessions ?? 'log'} setViewMode={(v) => setViewModes(p => ({ ...p, sessions: v }))} openId={openIdFor('sessions')} onOpenConsumed={clearOpenTarget} />}
-                {activeTab === 'combat'    && <CombatView view={viewModes.combat ?? 'encounters'} setView={setCombatView} onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={openTarget?.tab === 'combat' ? openTarget : null} onOpenConsumed={clearOpenTarget} />}
+                {activeTab === 'combat'    && <CombatView view={viewModes.combat ?? 'encounters'} setView={setCombatView} onImportFromWorld={(type) => { setImportType(type); setImportOpen(true); }} openTarget={target?.tab === 'combat' ? target : null} onOpenConsumed={clearOpenTarget} />}
                 {activeTab === 'settings'  && <SettingsView />}
               </>
             )}
@@ -622,13 +639,22 @@ function WorldShell() {
       view: world.worldTab === 'combat' && combatView !== 'encounter' ? combatView : undefined,
     }
     : null;
+  const worldRecord = useWorldRouteRecords();
   useRouteSync(route, r => {
-    if (r.worldId !== world.activeWorldId) world.setActiveWorldId(r.worldId);
-    if (r.scope === 'campaign') { world.openCampaign(r.campaignId); return; }
+    if (!sameRef(r.worldId, world.activeWorldId ?? undefined)) world.setActiveWorldId(fullWorldId(world.worlds, r.worldId));
+    if (r.scope === 'campaign') { world.openCampaign(fullCampaignId(world.worlds, r.campaignId)); return; }
     world.setWorldTab(r.tab);
     if (r.tab === 'combat') setCombatView(isWorldCombatView(r.view) ? r.view : 'encounter');
     if (r.recordId) world.setSelected(r.tab, r.recordId);
-  });
+  }, { world: world.activeWorld?.name, record: route?.recordId ? worldRecord(world.worldTab, route.recordId)?.name : undefined });
+
+  // A record the address named by a short id: swap in its full id once it has loaded.
+  const { setSelected, worldTab } = world;
+  useEffect(() => {
+    if (!isShortRef(recordId)) return;
+    const full = worldRecord(worldTab, recordId)?.id;
+    if (full) setSelected(worldTab, full);
+  }, [recordId, worldTab, worldRecord, setSelected]);
 
   const paletteHandlers = useMemo(() => ({
     openShortcuts: chrome.toggleShortcuts,
@@ -703,11 +729,13 @@ function WorldRoot({ user }: { user: User }) {
   useEffect(() => {
     if (loading || routed) return;
     const r = currentRoute();
-    const target = r ? worlds.find(w => w.id === r.worldId) : null;
+    const worldId = r ? resolveRef(r.worldId, worlds.map(w => w.id)) : undefined;
+    const target = worldId ? worlds.find(w => w.id === worldId) : null;
     if (r && target) {
-      if (r.worldId !== activeWorldId) world.setActiveWorldId(r.worldId);
-      if (r.scope === 'campaign' && target.campaignIds.includes(r.campaignId)) {
-        world.openCampaign(r.campaignId);
+      if (target.id !== activeWorldId) world.setActiveWorldId(target.id);
+      const campaignId = r.scope === 'campaign' ? resolveRef(r.campaignId, target.campaignIds) : undefined;
+      if (campaignId) {
+        world.openCampaign(campaignId);
       } else if (r.scope === 'world') {
         world.setWorldTab(r.tab);
         if (r.recordId) world.setSelected(r.tab, r.recordId);

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { buildPath, parseRoute, type Route } from '../lib/route';
+import { buildPath, parseRoute, sameRef, type Route, type RouteNames } from '../lib/route';
 
 /** True when two routes show the same tab of the same world or campaign. */
 function sameTab(a: Route, b: Route): boolean {
-  if (a.scope !== b.scope || a.worldId !== b.worldId || a.tab !== b.tab) return false;
-  return a.scope === 'world' || (b.scope === 'campaign' && a.campaignId === b.campaignId);
+  if (a.scope !== b.scope || !sameRef(a.worldId, b.worldId) || a.tab !== b.tab) return false;
+  return a.scope === 'world' || (b.scope === 'campaign' && sameRef(a.campaignId, b.campaignId));
 }
 
 /**
@@ -14,14 +14,16 @@ function sameTab(a: Route, b: Route): boolean {
  * `route` is where the app is now; when it changes, the URL follows. Moving to
  * another tab, world, campaign or record adds a history entry. A record being
  * picked for the first time (a tab's default selection) or a view switch only
- * replaces the current one, so Back isn't cluttered. `apply` is called with
- * the route Back or Forward lands on.
+ * replaces the current one, so Back isn't cluttered, and so does a rename
+ * (only the name in the address changes). `apply` is called with the route
+ * Back or Forward lands on; its ids may be short references (see resolveRef).
+ * `names` are shown beside the ids.
  */
-export function useRouteSync(route: Route | null, apply: (route: Route) => void) {
+export function useRouteSync(route: Route | null, apply: (route: Route) => void, names?: RouteNames) {
   const applyRef = useRef(apply);
   useEffect(() => { applyRef.current = apply; });
   const last = useRef<Route | null>(null);
-  const path = route ? buildPath(route) : null;
+  const path = route ? buildPath(route, names) : null;
 
   useEffect(() => {
     if (!route || !path) return;
@@ -32,9 +34,11 @@ export function useRouteSync(route: Route | null, apply: (route: Route) => void)
     const prev = last.current ?? parseRoute(window.location.pathname, window.location.search);
     last.current = route;
     if (path === here) return;
+    const sameRecord = !!prev && sameRef(prev.recordId, route.recordId);
+    const subOf = (r: Route) => (r.scope === 'campaign' ? r.sub : undefined);
     const minor = !prev || (sameTab(prev, route) && (
       !prev.recordId || !route.recordId ||
-      (prev.recordId === route.recordId && prev.view !== route.view)
+      (sameRecord && (prev.view !== route.view || sameRef(subOf(prev), subOf(route))))
     ));
     const url = path + window.location.hash;
     if (minor) window.history.replaceState(window.history.state, '', url);
@@ -55,5 +59,5 @@ export function useRouteSync(route: Route | null, apply: (route: Route) => void)
   }, []);
 }
 
-/** The route in the address bar right now, or null for "/". */
+/** The route in the address bar right now, or null for "/". Its ids may be short references. */
 export const currentRoute = () => parseRoute(window.location.pathname, window.location.search);

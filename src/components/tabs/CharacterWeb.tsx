@@ -3,6 +3,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { currentRoute } from '../../hooks/useRouteSync';
+import { resolveRef } from '../../lib/route';
 import { Modal } from '../Modal';
 import { FormField } from '../FormField';
 import { PageHeader } from '../ui/PageHeader';
@@ -75,7 +76,8 @@ export default function CharacterWeb({ openId, onOpenConsumed }: { openId?: stri
   // Starts on the record in the URL, so switching from the list keeps your place.
   const [focus, setFocus] = useState<string | null>(() => {
     const r = currentRoute();
-    return r?.scope === 'campaign' && r.tab === 'cast' ? r.recordId ?? null : null;
+    const ref = r?.scope === 'campaign' && r.tab === 'cast' ? r.recordId : undefined;
+    return ref ? resolveRef(ref, [...pcs, ...npcs, ...factions].map(x => x.id)) ?? null : null;
   });
   useReportRecord('cast', focus);
   useEffect(() => {
