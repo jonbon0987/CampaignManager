@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Input, Select, Textarea } from './Input';
 import { FormField } from '../FormField';
+import { SlashField } from './SlashField';
 
 describe('field primitives', () => {
   it('draw the form look by default and the inline look on request', () => {
@@ -56,5 +57,22 @@ describe('FormField', () => {
     </>);
     expect(screen.getByLabelText('Raw').id).toBe('raw');
     expect(screen.getByLabelText('Own id').id).toBe('mine');
+  });
+});
+
+describe('FormField with a SlashField', () => {
+  it('names the rich-text editor by its label, and a label click focuses it', () => {
+    render(<FormField label="Synopsis"><SlashField value="" onChange={() => {}} /></FormField>);
+    const editor = screen.getByRole('textbox', { name: 'Synopsis' });
+    expect(editor.getAttribute('contenteditable')).toBe('true');
+    fireEvent.click(screen.getByText('Synopsis'));
+    expect(document.activeElement).toBe(editor);
+  });
+
+  it('leaves a SlashField outside a FormField unnamed and without an id', () => {
+    render(<SlashField value="" onChange={() => {}} />);
+    const editor = screen.getByRole('textbox');
+    expect(editor.id).toBe('');
+    expect(editor.getAttribute('aria-labelledby')).toBeNull();
   });
 });

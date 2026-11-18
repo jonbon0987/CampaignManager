@@ -20,6 +20,7 @@ import {
   KINDS, KIND_GLYPH, KIND_LABEL,
 } from '../../lib/slashMarkdown';
 import type { RefKind } from '../../lib/slashMarkdown';
+import { useFieldId } from './fieldContext';
 
 type MenuType = 'slash' | 'ref';
 interface MenuState { type: MenuType; query: string; kind: RefKind | null; left: number; top: number; }
@@ -143,6 +144,7 @@ interface SlashFieldProps {
 
 export function SlashField({ value, onChange, placeholder, minHeight, variant = 'sectioned', maxLength, readOnly = false }: SlashFieldProps) {
   const { entities, detailFor, openRef } = useEntityRefs();
+  const fieldId = useFieldId();
   const edRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [active, setActive] = useState(0);
@@ -398,6 +400,10 @@ export function SlashField({ value, onChange, placeholder, minHeight, variant = 
       <div
         ref={edRef}
         className="sf-editor"
+        id={fieldId}
+        role="textbox"
+        aria-multiline="true"
+        aria-labelledby={fieldId ? `${fieldId}-label` : undefined}
         contentEditable={!readOnly}
         aria-readonly={readOnly || undefined}
         suppressContentEditableWarning

@@ -1305,6 +1305,8 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 }
 .cm-input::placeholder, .cm-textarea::placeholder { color: var(--ink-3); }
 .cm-select.is-plain { appearance: none; -webkit-appearance: none; }   /* no native arrow */
+/* The sign-in and reset screens: the plain paper background and roomier padding. */
+.cm-input.is-auth { background: var(--paper); padding: 8px 16px; line-height: 1.25rem; }
 
 .cm-label {
   display: block;
@@ -1531,8 +1533,6 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 /* Lines under the name line up with it: HP entry, death saves, conditions. */
 .pi-indent { padding-left: 42px; }
 .pi-ac { margin-left: auto; font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-3); }
-.pi-con { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 8px; border-radius: var(--radius); background: var(--info-bg, rgba(127,168,208,.12)); border: 1px solid var(--info-line); }
-.pi-con-text { flex: 1; min-width: 0; font-family: var(--mono); font-size: var(--fs-label); color: var(--info); }
 .pi-expired { margin-top: 3px; font-family: var(--serif); font-size: var(--fs-xs); font-style: italic; color: var(--gold); white-space: normal; }
 .pi-empty { margin: 0; padding: 14px; font-family: var(--serif); font-style: italic; font-size: var(--fs-sm); color: var(--ink-3); }
 .pi-add { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px; }

@@ -16,6 +16,7 @@ import { onActivate } from '../lib/activate';
 import { HpControl } from './combat/HpControl';
 import { DeathSavePips } from './combat/DeathSavePips';
 import { ConditionChips, ConditionPicker } from './combat/ConditionChips';
+import { ConcentrationCheck } from './combat/ConcentrationCheck';
 import './initiativeTracker.css';
 
 interface InitiativeTrackerProps {
@@ -214,11 +215,7 @@ function CombatantRow({ c, f, statblock, isCurrent, started, conditionMenuOpen, 
           </div>
           <ConditionChips density="full" combatant={c} onToggle={toggle} onSetRounds={setRounds} />
           {c.conCheck != null && (
-            <div className="itk-con" role="alert">
-              ◎ Concentration: Con save, DC {c.conCheck}
-              <button type="button" onClick={() => f.resolveConcentration(c.id, true)}>Held</button>
-              <button type="button" onClick={() => f.resolveConcentration(c.id, false)}>Lost</button>
-            </div>
+            <ConcentrationCheck density="full" dc={c.conCheck} onResolve={held => f.resolveConcentration(c.id, held)} />
           )}
         </div>
 

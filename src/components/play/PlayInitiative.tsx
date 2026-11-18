@@ -14,6 +14,7 @@ import { combatantsFromParty, isDown, newCombatant, partyFrom, type Combatant } 
 import { HpControl } from '../combat/HpControl';
 import { DeathSavePips } from '../combat/DeathSavePips';
 import { ConditionChips } from '../combat/ConditionChips';
+import { ConcentrationCheck } from '../combat/ConcentrationCheck';
 import { Input } from '../ui/Input';
 
 function Row({ c, current, started, f }: { c: Combatant; current: boolean; started: boolean; f: FightControls }) {
@@ -53,11 +54,7 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
       )}
 
       {c.conCheck != null && (
-        <div className="pi-con" role="alert">
-          <span className="pi-con-text">◎ Concentration: Con save, DC {c.conCheck}</span>
-          <Button size="xs" variant="secondary" onClick={() => f.resolveConcentration(c.id, true)}>Held</Button>
-          <Button size="xs" variant="ghost" onClick={() => f.resolveConcentration(c.id, false)}>Lost</Button>
-        </div>
+        <ConcentrationCheck density="rail" dc={c.conCheck} onResolve={held => f.resolveConcentration(c.id, held)} />
       )}
 
       <ConditionChips density="rail" className="pi-indent" combatant={c}
