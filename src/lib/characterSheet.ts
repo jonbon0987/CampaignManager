@@ -188,9 +188,15 @@ export interface FieldChange {
   group?: string;
   current: string | number | null;
   next: string | number;
-  /** Ticked to begin with: the PC had nothing there, or the sheet differs. */
+  /**
+   * Ticked to begin with when the sheet differs, except a longer text the
+   * record already has (a description, story hooks, a stat sheet's actions):
+   * replacing what the DM wrote is opted into, not out of.
+   */
   apply: boolean;
 }
+
+const LONG_TEXT = new Set(['story_hooks', 'description', 'hooks_motivations', 'content']);
 
 /**
  * What importing `values` would change on `current` (or on a new record, with
@@ -208,7 +214,8 @@ export function diffValues(
     if (next == null || next === '') continue;
     const now = (current?.[key] ?? null) as string | number | null;
     if (now != null && String(now).trim() === String(next).trim()) continue;
-    changes.push({ key, label, group, current: now === '' ? null : now, next: next as string | number, apply: true });
+    const hasText = now != null && String(now).trim() !== '';
+    changes.push({ key, label, group, current: now === '' ? null : now, next: next as string | number, apply: !(LONG_TEXT.has(key) && hasText) });
   }
   return changes;
 }

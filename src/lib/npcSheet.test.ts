@@ -76,6 +76,14 @@ describe('matching, changes and saving', () => {
     expect(patchFrom(changes, STATBLOCK_GROUP)).not.toHaveProperty('content');
   });
 
+  it('leaves a longer text the record already has unticked, so it isn’t replaced by default', () => {
+    const changes = npcSheetChanges(sheet, { name: 'Mara Vell', description: 'Written by the DM.' }, { name: 'Mara Vell', content: 'Old actions' });
+    expect(changes.find(c => c.key === 'description')?.apply).toBe(false);
+    expect(changes.find(c => c.key === 'content')?.apply).toBe(false);
+    expect(changes.find(c => c.key === 'role')?.apply).toBe(true);
+    expect(changes.find(c => c.key === 'hooks_motivations')?.apply).toBe(true);
+  });
+
   it('writes the whole stat sheet, keeping what isn’t changed', () => {
     const saved = mergedStatblock({ name: 'Old', challenge_rating: '2', dm_notes: 'Keep me', armor_class: 12 }, { armor_class: 15 }, 'Mara');
     expect(saved).toMatchObject({ name: 'Old', challenge_rating: '2', dm_notes: 'Keep me', armor_class: 15, skills: null });
