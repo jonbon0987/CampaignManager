@@ -1,0 +1,19 @@
+/* Import character sheets (SheetImportDialog). */
+.shi { display: flex; flex-direction: column; gap: 14px; }
+.shi-intro { margin: 0; font-size: var(--fs-md); line-height: 1.6; color: var(--ink-2); }
+.shi-sheet { border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px 12px; background: var(--paper-2); }
+.shi-sheet-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.shi-file { font-family: var(--mono); font-size: var(--fs-xs); color: var(--ink); min-width: 0; overflow-wrap: anywhere; flex: 1; }
+.shi-source { font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--moss); }
+.shi-source.is-ai { color: var(--arcane); }
+.shi-target { width: auto; max-width: 220px; }
+.shi-note { margin: 8px 0 0; font-family: var(--serif); font-style: italic; font-size: var(--fs-sm); color: var(--ink-3); }
+.shi-note.is-error { color: var(--red); font-style: normal; }
+.shi-table { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: var(--fs-sm); }
+.shi-table th, .shi-table td { text-align: left; vertical-align: top; padding: 5px 8px 5px 0; border-top: 1px solid var(--rule-soft); }
+.shi-table thead th { border-top: none; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 400; }
+.shi-table tbody th { font-weight: 400; color: var(--ink-2); white-space: nowrap; }
+.shi-table td:first-child { width: 24px; }
+.shi-now { color: var(--ink-3); }
+.shi-next { color: var(--ink); white-space: pre-wrap; }
+.shi-table tr.is-off .shi-next { color: var(--ink-3); text-decoration: line-through; }
