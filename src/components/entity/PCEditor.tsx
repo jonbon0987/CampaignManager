@@ -22,6 +22,7 @@ import { PCInventory } from '../items/ItemPlaces';
 import { xpProgress } from '../../lib/levelling';
 import type { Faction, Levelling, NPC, PlayerCharacter } from '../../lib/database.types';
 import { Input } from '../ui/Input';
+import { SheetImportDialog } from './SheetImportDialog';
 
 export type PCFields = Pick<PlayerCharacter,
   'character_name' | 'player_name' | 'race' | 'class' | 'background' | 'story_hooks' | 'key_npcs' | 'key_npc_ids'
@@ -70,6 +71,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
   });
 
   const set = <K extends keyof PCFields>(key: K, val: PCFields[K]) => setForm(f => ({ ...f, [key]: val }));
+  const [sheetOpen, setSheetOpen] = useState(false);
   const sheetHref = form.sheet_url && /^https?:\/\//i.test(form.sheet_url) ? form.sheet_url : null;
   const xpNote = xpProgress(form.xp, form.level);
 
@@ -85,8 +87,18 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
       <div className="as-bar">
         <SaveStatusIndicator status={status} onRetry={saveNow} />
         <div className="as-spacer" />
-        <OverflowMenu items={[{ label: 'Delete character', danger: true, onClick: handleDelete }]} />
+        <OverflowMenu items={[
+          { label: 'Import from a sheet PDF…', onClick: () => setSheetOpen(true) },
+          { label: 'Delete character', danger: true, onClick: handleDelete },
+        ]} />
       </div>
+      <SheetImportDialog
+        isOpen={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        pcs={[]}
+        target={{ ...pc, ...form, id: pc.id }}
+        onApply={([imp]) => { if (imp) setForm(f => ({ ...f, ...imp.patch })); }}
+      />
 
       <SessionUpdateBand entityType="pc" entityId={pc.id} />
 

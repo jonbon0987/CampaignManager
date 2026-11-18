@@ -16,6 +16,7 @@ import { ImageThumb } from '../ui/ImageThumb';
 import { NPCEditor } from '../entity/NPCEditor';
 import { FactionEditor } from '../entity/FactionEditor';
 import { PCEditor } from '../entity/PCEditor';
+import { SheetImportDialog, type SheetImport } from '../entity/SheetImportDialog';
 import { NO_NPC_DETAILS } from '../../lib/npcDetails';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 
@@ -144,6 +145,9 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
     markDraft(result.id);
     setSelectedId(result.id);
   };
+  // Player characters from sheet PDFs (CastSheetImport, below).
+  const [sheetsOpen, setSheetsOpen] = useState(false);
+  const [importStamp, setImportStamp] = useState(0);
   const addNPC = async () => {
     const result = await upsertNPC({ name: '', status: 'active', met_by_pcs: false, faction_ids: [] });
     markDraft(result.id);
@@ -157,6 +161,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
   };
 
   return (
+    <>
     <ListDetail
       title="Cast"
       count={all.length}
@@ -166,6 +171,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       addLabel={filter === 'faction' ? '+ Add faction' : filter === 'npc' ? '+ Add NPC' : filter === 'pc' ? '+ Add PC' : '+ Add'}
       addOptions={filter === 'all' ? [
         { label: 'PC', onClick: addPC },
+        { label: 'PCs from sheet PDFs…', onClick: () => setSheetsOpen(true) },
         { label: 'NPC', onClick: addNPC },
         { label: 'Faction', onClick: addFaction },
       ] : undefined}
@@ -220,7 +226,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       detail={
         selected ? (
           <CastDetail
-            key={`${selectedCampaignId}:${selected.id}`}
+            key={`${selectedCampaignId}:${selected.id}:${importStamp}`}
             item={selected}
             factions={factions}
             statblocks={monsterStatblocks}
@@ -233,7 +239,34 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
         )
       }
     />
+    <CastSheetImport
+      isOpen={sheetsOpen}
+      onClose={() => setSheetsOpen(false)}
+      // An open editor holds its own copy of the PC; remount it on what was just saved.
+      onImported={id => { setImportStamp(n => n + 1); if (id) { setFilter('all'); setSelectedId(id); } }}
+    />
+    </>
   );
+}
+
+/** Player characters from sheet PDFs: each updates the PC it was matched to, or makes a new one. */
+function CastSheetImport({ isOpen, onClose, onImported }: { isOpen: boolean; onClose: () => void; onImported: (firstId: string | null) => void }) {
+  const { pcs, upsertPC, updatePC } = useCampaign();
+  const importSheets = async (imports: SheetImport[]) => {
+    let first: string | null = null;
+    for (const imp of imports) {
+      if (imp.pcId) {
+        await updatePC(imp.pcId, imp.patch);
+        first ??= imp.pcId;
+      } else {
+        const name = imp.patch.character_name || imp.file.replace(/\.pdf$/i, '');
+        const pc = await upsertPC({ is_active: true, faction_ids: [], ...imp.patch, character_name: name });
+        first ??= pc.id;
+      }
+    }
+    onImported(first);
+  };
+  return <SheetImportDialog isOpen={isOpen} onClose={onClose} pcs={pcs} onApply={importSheets} />;
 }
 
 /* ── Cast Detail Panel ── */
