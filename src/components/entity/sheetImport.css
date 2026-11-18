@@ -14,6 +14,7 @@
 .shi-table thead th { border-top: none; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 400; }
 .shi-table tbody th { font-weight: 400; color: var(--ink-2); white-space: nowrap; }
 .shi-table td:first-child { width: 24px; }
+.shi-table input[type="checkbox"] { accent-color: var(--gold); }
 .shi-now { color: var(--ink-3); }
 .shi-next { color: var(--ink); white-space: pre-wrap; }
 .shi-table tr.is-off .shi-next { color: var(--ink-3); text-decoration: line-through; }
