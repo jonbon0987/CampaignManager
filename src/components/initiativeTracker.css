@@ -31,9 +31,6 @@ input.itk-init-input { width: 44px; text-align: center; font-size: var(--fs-body
 .itk-name.is-down { color: var(--ink-3); }
 .itk-name.is-link { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--rule-hover); }
 .itk-meta { font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-3); margin-top: 3px; display: flex; gap: 12px; }
-.itk-con { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; padding: 3px 8px; border-radius: 4px; font-family: var(--mono); font-size: var(--fs-label); color: var(--info); background: var(--info-bg); border: 1px solid var(--info-line); }
-.itk-con button { font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 3px; padding: 1px 7px; cursor: pointer; }
-.itk-con button:hover { color: var(--ink); border-color: var(--rule-hover); }
 .itk-verdict { margin-top: 9px; font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--moss); }
 .itk-verdict.is-dead { color: var(--red); }
 .itk-trail { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; align-items: center; }

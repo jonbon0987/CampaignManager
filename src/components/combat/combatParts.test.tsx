@@ -4,6 +4,7 @@ import type { Combatant } from '../../lib/combat';
 import { HpControl } from './HpControl';
 import { DeathSavePips } from './DeathSavePips';
 import { ConditionChips, ConditionPicker } from './ConditionChips';
+import { ConcentrationCheck } from './ConcentrationCheck';
 
 const make = (over: Partial<Combatant> = {}): Combatant => ({
   id: 'c1', name: 'Mage', initiative: 15, dexMod: 2, maxHp: 30, currentHp: 18, temp: 0, deathSaves: { s: 0, f: 0 }, ac: 12,
@@ -224,5 +225,16 @@ describe('ConditionChips and ConditionPicker, full density', () => {
     expect(onSetRounds).toHaveBeenCalledWith('stunned', 2);
     fireEvent.click(screen.getByRole('button', { name: 'prone' }));
     expect(onToggle).toHaveBeenCalledWith('prone');
+  });
+});
+
+describe('ConcentrationCheck', () => {
+  it.each(['rail', 'full'] as const)('reports Held or Lost at %s density', density => {
+    const onResolve = vi.fn();
+    render(<ConcentrationCheck density={density} dc={14} onResolve={onResolve} />);
+    expect(screen.getByRole('alert').textContent).toContain('Con save, DC 14');
+    fireEvent.click(screen.getByRole('button', { name: 'Held' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lost' }));
+    expect(onResolve.mock.calls).toEqual([[true], [false]]);
   });
 });

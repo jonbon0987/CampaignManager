@@ -58,6 +58,7 @@ import { setRecentScope } from './lib/recent';
 import type { Route } from './lib/route';
 import type { WorldTab } from './types/world';
 import { Button } from './components/ui/Button';
+import { Input } from './components/ui/Input';
 
 // Tabs in a campaign. Ideas is kept for old links; it is now the Inbox column
 // of the Threads board, and Settings opens from the sidebar's footer menu.
@@ -409,8 +410,6 @@ function LoginScreen() {
     }
   }
 
-  const inputStyle = { backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule)' };
-
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center gap-8"
@@ -430,26 +429,24 @@ function LoginScreen() {
       <div className="w-full max-w-sm flex flex-col gap-4" style={{ padding: '0 1rem' }}>
         {mode === 'signin' && (
           <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3" data-testid="login-form">
-            <input
+            <Input
               type="email"
               placeholder="Email"
+              aria-label="Email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="px-4 py-2 rounded text-md outline-none"
-              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
-              style={inputStyle}
+              className="is-auth"
               data-testid="login-email"
             />
-            <input
+            <Input
               type="password"
               placeholder="Password"
+              aria-label="Password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="px-4 py-2 rounded text-md outline-none"
-              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
-              style={inputStyle}
+              className="is-auth"
               data-testid="login-password"
             />
             {error && <p className="text-xs" data-testid="login-error" style={{ color: 'var(--red)' }}>{error}</p>}
@@ -469,15 +466,14 @@ function LoginScreen() {
             <p className="text-xs text-center" style={{ color: 'var(--ink-2)' }}>
               Enter your email and we'll send you a reset link.
             </p>
-            <input
+            <Input
               type="email"
               placeholder="Email"
+              aria-label="Email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="px-4 py-2 rounded text-md outline-none"
-              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
-              style={inputStyle}
+              className="is-auth"
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
             <Button variant="primary" className="py-2" type="submit" disabled={loading}>
@@ -532,8 +528,6 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
     }
   }
 
-  const inputStyle = { backgroundColor: 'var(--paper)', color: 'var(--ink)', border: '1px solid var(--rule)' };
-
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center gap-8"
@@ -553,26 +547,24 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
           <p className="text-md text-center" style={{ color: 'var(--success)' }}>Password updated! Signing you in…</p>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <input
+            <Input
               type="password"
               placeholder="New password"
+              aria-label="New password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
               minLength={6}
-              className="px-4 py-2 rounded text-md outline-none"
-              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
-              style={inputStyle}
+              className="is-auth"
             />
-            <input
+            <Input
               type="password"
               placeholder="Confirm new password"
+              aria-label="Confirm new password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               required
-              className="px-4 py-2 rounded text-md outline-none"
-              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
-              style={inputStyle}
+              className="is-auth"
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
             <Button variant="primary" className="py-2" type="submit" disabled={loading}>

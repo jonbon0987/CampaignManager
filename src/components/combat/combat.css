@@ -72,3 +72,11 @@
 .cbt-picker-rounds input { width: 48px; font-family: var(--mono); font-size: var(--fs-label); color: var(--ink); background: var(--bg-2); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 4px; color-scheme: dark; }
 .cbt-pick { font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 2px; cursor: pointer; background: transparent; color: var(--ink-3); border: 1px solid var(--rule-soft); transition: all .1s; }
 .cbt-pick.on { color: var(--cc); background: color-mix(in srgb, var(--cc) 9%, transparent); border-color: color-mix(in srgb, var(--cc) 33%, transparent); }
+
+/* ── Concentration check ── */
+.cbt-con { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 8px; border-radius: var(--radius); background: var(--info-bg, rgba(127,168,208,.12)); border: 1px solid var(--info-line); }
+.cbt-con-text { flex: 1; min-width: 0; font-family: var(--mono); font-size: var(--fs-label); color: var(--info); }
+.cbt-con.is-full { display: inline-flex; margin-top: 7px; padding: 3px 8px; border-radius: 4px; font-family: var(--mono); font-size: var(--fs-label); color: var(--info); background: var(--info-bg); }
+.cbt-con.is-full .cbt-con-text { flex: none; }
+.cbt-con.is-full button { font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 3px; padding: 1px 7px; cursor: pointer; }
+.cbt-con.is-full button:hover { color: var(--ink); border-color: var(--rule-hover); }
