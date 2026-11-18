@@ -23,6 +23,7 @@ import { SubmoduleEditor } from './moduleDetail/SubmoduleEditor';
 import { SceneEditor } from './moduleDetail/SceneEditor';
 import { Button } from '../ui/Button';
 import { onTreeRowKey } from '../../lib/activate';
+import { isShortRef, resolveRef } from '../../lib/route';
 
 // Styles live in src/index.css — see the "Module Atlas" block appended there.
 
@@ -49,10 +50,14 @@ export default function ModuleDetail({ module: mod, onBack, onModuleDeleted, tar
     submoduleDeps, loadSubmoduleDeps,
   } = useCampaign();
 
-  const [selectedId, setSelectedId] = useState<string>(target?.id ?? OVERVIEW);
-  const [openIds, setOpenIds] = useState<Record<string, boolean>>(() => (target?.id ? { [target.id]: true } : {}));
+  // A part named by a short id (from the address) is found once the tree loads.
+  const targetId = useMemo(() => {
+    const id = target?.id ?? null;
+    return isShortRef(id) ? resolveRef(id, [...submodules, ...scenes].map(x => x.id)) ?? id : id;
+  }, [target?.id, submodules, scenes]);
+  const [selectedId, setSelectedId] = useState<string>(targetId ?? OVERVIEW);
+  const [openIds, setOpenIds] = useState<Record<string, boolean>>(() => (targetId ? { [targetId]: true } : {}));
   const targetN = target?.n;
-  const targetId = target?.id ?? null;
   useEffect(() => {
     if (targetN === undefined) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- following a request from outside (Back, a link)

@@ -10,6 +10,7 @@ import { useStatBlockPanel } from '../../context/StatBlockPanelContext';
 import { pushRecent } from '../../lib/recent';
 import CharacterWeb from './CharacterWeb';
 import { currentRoute } from '../../hooks/useRouteSync';
+import { resolveRef } from '../../lib/route';
 import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import { ImageThumb } from '../ui/ImageThumb';
 import { NPCEditor } from '../entity/NPCEditor';
@@ -64,7 +65,8 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
   // Starts on the record in the URL, so switching from the web keeps your place.
   const [selectedId, setSelectedId] = useState<string | null>(() => {
     const r = currentRoute();
-    return r?.scope === 'campaign' && r.tab === 'cast' ? r.recordId ?? null : null;
+    const ref = r?.scope === 'campaign' && r.tab === 'cast' ? r.recordId : undefined;
+    return ref ? resolveRef(ref, [...pcs, ...npcs, ...factions].map(x => x.id)) ?? null : null;
   });
   useReportRecord('cast', selectedId);
 
