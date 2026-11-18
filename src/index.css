@@ -1528,20 +1528,9 @@ button.cm-tree-caret.is-btn:hover { color: var(--ink); }
 .pi-top .pi-name:hover { color: var(--gold); text-decoration: underline dotted; }
 .pi-hp { font-family: var(--mono); font-size: var(--fs-sm); flex-shrink: 0; }
 .pi-temp { color: var(--info); font-size: var(--fs-label); }
-.pi-bot, .pi-saves, .pi-conds { padding-left: 42px; }
-.pi-bot { display: flex; align-items: center; gap: 4px; }
-.pi-amount { width: 48px; height: 24px; text-align: center; background: var(--bg-2); border: 1px solid var(--rule); border-radius: var(--radius); color: var(--ink); font-family: var(--mono); font-size: var(--fs-xs); outline: none; }
-.pi-amount:focus { border-color: var(--gold); }
+/* Lines under the name line up with it: HP entry, death saves, conditions. */
+.pi-indent { padding-left: 42px; }
 .pi-ac { margin-left: auto; font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-3); }
-.pi-saves { display: flex; gap: 14px; }
-.pi-pips { display: inline-flex; align-items: center; gap: 4px; }
-.pi-pips-label { font-family: var(--mono); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin-right: 2px; }
-.pi-pip { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--rule-hover); background: transparent; padding: 0; cursor: pointer; }
-.pi-conds { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.pi-cond { font-family: var(--mono); font-size: var(--fs-micro); padding: 1px 7px; border: 1px solid; border-radius: 999px; background: transparent; cursor: pointer; }
-.pi-cond-add { font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-3); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; cursor: pointer; color-scheme: dark; }
-.pi-cond-left { opacity: .8; }
-.pi-cond-rounds { width: 46px; font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-2); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; color-scheme: dark; }
 .pi-con { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 8px; border-radius: var(--radius); background: var(--info-bg, rgba(127,168,208,.12)); border: 1px solid var(--info-line); }
 .pi-con-text { flex: 1; min-width: 0; font-family: var(--mono); font-size: var(--fs-label); color: var(--info); }
 .pi-expired { margin-top: 3px; font-family: var(--serif); font-size: var(--fs-xs); font-style: italic; color: var(--gold); white-space: normal; }
