@@ -26,7 +26,7 @@ input.itk-init-input { width: 44px; text-align: center; font-size: var(--fs-body
 .itk-name-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .itk-kind { font-size: var(--fs-xs); color: var(--accent); }
 .itk-kind.is-pc { color: var(--moss); }
-.itk-name { color: var(--ink-2); font-size: var(--fs-body); font-weight: 600; font-family: var(--display); }
+.itk-name { cursor: default; color: var(--ink-2); font-size: var(--fs-body); font-weight: 600; font-family: var(--display); }
 .itk-name.is-current { color: var(--ink); }
 .itk-name.is-down { color: var(--ink-3); }
 .itk-name.is-link { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--rule-hover); }
