@@ -32,6 +32,7 @@ import { Modal } from '../Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import './session.css';
+import { Input, Select } from '../ui/Input';
 
 function formatClock(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -201,12 +202,12 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
       <div className="flex flex-col gap-5">
         <div className="as-fl">
           <label className="as-ll" htmlFor="rec-mic">Table microphone</label>
-          <select id="rec-mic" className="as-select" value={deviceId} onChange={e => setDeviceId(e.target.value)}>
+          <Select look="inline" id="rec-mic" value={deviceId} onChange={e => setDeviceId(e.target.value)}>
             <option value="">System default</option>
             {mics.filter(m => m.deviceId && m.deviceId !== 'default').map(m => (
               <option key={m.deviceId} value={m.deviceId}>{m.label || 'Microphone'}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
@@ -251,12 +252,12 @@ export function StartRecordingModal({ session, onClose }: { session: Session; on
             <BotNotReady bot={bot} purpose="Sign it in to record players on Discord." />
           ) : (
             <div className="flex flex-col gap-3">
-              <select className="as-select" aria-label="Discord voice channel" value={channel?.channelId ?? ''} onChange={e => setChannelId(e.target.value || null)}>
+              <Select look="inline" aria-label="Discord voice channel" value={channel?.channelId ?? ''} onChange={e => setChannelId(e.target.value || null)}>
                 <option value="">Don’t record Discord</option>
                 {channels.map(c => (
                   <option key={c.channelId} value={c.channelId}>{c.label}{c.members.length ? ` · ${c.members.filter(m => !m.bot).length} in it` : ''}</option>
                 ))}
-              </select>
+              </Select>
               {channel && <DiscordMembers members={channel.members} consents={consents} onLinksChange={onLinks} />}
               {channel && (
                 <p className="text-xs rec-note">
@@ -283,8 +284,8 @@ function MomentRow({ moment, onRename, onDelete }: { moment: RecordingMoment; on
   return (
     <li className="flex items-center gap-2">
       <span className="cm-kbd rec-moment-at">{formatClock(moment.at_ms)}</span>
-      <input
-        className="as-input rec-moment-input"
+      <Input look="inline"
+        className="rec-moment-input"
         value={label}
         placeholder="What happened? (optional)"
         aria-label={`Label for moment at ${formatClock(moment.at_ms)}`}

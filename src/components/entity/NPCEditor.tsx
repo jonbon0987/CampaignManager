@@ -26,6 +26,7 @@ import type { EntityCanon, EntityScope } from './types';
 import type { Faction, Location, NPC } from '../../lib/database.types';
 import { SingleLink, WasText } from './LinkPicker';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Input } from '../ui/Input';
 
 /** What the editor writes back: every field it shows. */
 export type NPCFields = Pick<NPC,
@@ -183,7 +184,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
           </div>
           <div className="as-fl">
             <label className="as-ll" htmlFor={`npc-disp-${npc.id}`}>Toward the party</label>
-              <input id={`npc-disp-${npc.id}`} className="as-input" value={form.disposition ?? ''} onChange={e => set('disposition', e.target.value || null)} placeholder="Wary, friendly, owes them a favor…" maxLength={limitFor('npcs', 'disposition')} />
+              <Input look="inline" id={`npc-disp-${npc.id}`} value={form.disposition ?? ''} onChange={e => set('disposition', e.target.value || null)} placeholder="Wary, friendly, owes them a favor…" maxLength={limitFor('npcs', 'disposition')} />
           </div>
         </div>
       )}
@@ -200,7 +201,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
           {scope === 'campaign' && (
             <div className="as-fl">
               <label className="as-ll" htmlFor={`npc-first-${npc.id}`}>First session #</label>
-              <input id={`npc-first-${npc.id}`} className="as-input" type="number" min={minFor('npcs', 'first_session')} max={maxFor('npcs', 'first_session')}
+              <Input look="inline" id={`npc-first-${npc.id}`} type="number" min={minFor('npcs', 'first_session')} max={maxFor('npcs', 'first_session')}
                 value={form.first_session ?? ''} onChange={e => set('first_session', e.target.value ? parseInt(e.target.value, 10) : null)} placeholder="e.g. 3" />
             </div>
           )}
@@ -236,7 +237,7 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
               ] as const).map(([key, label, ph]) => (
                 <div key={key} className="as-fl">
                   <label className="as-ll" htmlFor={`npc-voice-${key}-${npc.id}`}>{label}</label>
-                  <input id={`npc-voice-${key}-${npc.id}`} className="as-input" value={voice[key] ?? ''} onChange={e => setVoiceField(key, e.target.value)} placeholder={ph} />
+                  <Input look="inline" id={`npc-voice-${key}-${npc.id}`} value={voice[key] ?? ''} onChange={e => setVoiceField(key, e.target.value)} placeholder={ph} />
                 </div>
               ))}
             </div>

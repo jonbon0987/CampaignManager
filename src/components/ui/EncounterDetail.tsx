@@ -17,6 +17,7 @@ import { CHALLENGE_RATINGS } from '../../lib/statblocks';
 import { parseCombatants } from '../../lib/encounters';
 import { type EncounterSaveData } from '../../lib/encounters';
 import './encounters.css';
+import { Input, Select } from './Input';
 
 // ================================================================
 // Constants
@@ -302,14 +303,14 @@ export function EncounterDetail({
       <div className="as-meta enc-block">
         <div className="as-mi">
           <div className="as-ml">Status</div>
-          <select className="as-select" value={form.status}
+          <Select look="inline" value={form.status}
             onChange={e => setForm(prev => ({ ...prev, status: e.target.value as EncounterForm['status'] }))}>
             {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="as-mi">
           <div className="as-ml">Environment</div>
-          <input className="as-input enc-env" list="env-list-ed" value={form.environment}
+          <Input look="inline" className="enc-env" list="env-list-ed" value={form.environment}
             onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))} placeholder="—" maxLength={limitFor('encounters', 'environment')} />
           <datalist id="env-list-ed">
             {ENVIRONMENTS.map(env => <option key={env} value={env} />)}
@@ -323,13 +324,13 @@ export function EncounterDetail({
         ) : (<>
         <div className="as-mi">
           <div className="as-ml">Party Size</div>
-          <input className="as-input enc-num" type="number" min={1} max={10} value={form.party_size}
+          <Input look="inline" className="enc-num" type="number" min={1} max={10} value={form.party_size}
             onChange={e => setForm(prev => ({ ...prev, party_size: e.target.value }))}
             placeholder="—" />
         </div>
         <div className="as-mi">
           <div className="as-ml">Avg Level</div>
-          <input className="as-input enc-num" type="number" min={1} max={20} value={form.party_level}
+          <Input look="inline" className="enc-num" type="number" min={1} max={20} value={form.party_level}
             onChange={e => setForm(prev => ({ ...prev, party_level: e.target.value }))}
             placeholder="—" />
         </div>
@@ -443,17 +444,17 @@ export function EncounterDetail({
             <p className="text-xs font-semibold enc-gold">Add Custom Creature</p>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-3">
-                <input type="text" value={customCreatureName}
+                <Input look="inline" type="text" value={customCreatureName}
                   onChange={e => setCustomCreatureName(e.target.value)}
-                  placeholder="Creature name *" className="as-input w-full" autoFocus
+                  placeholder="Creature name *" className="w-full" autoFocus
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomCombatant(); } }} />
               </div>
-              <input type="text" value={customCreatureType}
+              <Input look="inline" type="text" value={customCreatureType}
                 onChange={e => setCustomCreatureType(e.target.value)}
-                placeholder="Type (optional)" className="as-input" />
-              <input type="text" value={customCreatureCR}
+                placeholder="Type (optional)" />
+              <Input look="inline" type="text" value={customCreatureCR}
                 onChange={e => setCustomCreatureCR(e.target.value)}
-                placeholder="CR (optional)" className="as-input" />
+                placeholder="CR (optional)" />
             </div>
             <div className="flex gap-2">
               <button onClick={addCustomCombatant} className="text-xs px-3 py-1 rounded enc-btn-add">Add</button>

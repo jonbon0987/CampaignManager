@@ -97,7 +97,7 @@ export function ModuleOverview({ module, submodules, deps, onSelect, onDeleted }
         <div className="as-meta" style={{ marginTop: 12 }}>
           <label className="as-mi">
             <span className="as-ml">Chapter</span>
-            <input className="md-mini-in" style={{ width: 64 }} value={form.chapter}
+            <input className="md-mini-in is-chapter" value={form.chapter}
               onChange={e => set('chapter', e.target.value)} placeholder="—" maxLength={limitFor('modules', 'chapter')} />
           </label>
           <div className="as-mi">

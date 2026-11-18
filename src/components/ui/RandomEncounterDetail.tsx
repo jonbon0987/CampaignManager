@@ -42,6 +42,7 @@ import type { EncounterSaveData } from '../../lib/encounters';
 import type { RandomEncounterTable, RandomEncounterEntry, MonsterStatblock, EncounterCombatant } from '../../lib/database.types';
 import { difficultyColor, randomEntryTypeColors } from '../../lib/theme';
 import './randomTables.css';
+import { Input, Select } from './Input';
 
 // Data the save callback receives — the caller injects world_id / campaign_id.
 export type RandomEncounterSaveData = {
@@ -88,15 +89,15 @@ function RollParamsControls({ params, onChange }: { params: RollParams; onChange
     <div className="rnd-params">
       <label className="rnd-param">
         <span className="as-ml">Party size</span>
-        <input type="number" min={1} max={10} value={params.size}
+        <Input look="inline" type="number" min={1} max={10} value={params.size}
           onChange={e => onChange({ ...params, size: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-          className="as-input rnd-param-num" />
+          className="rnd-param-num" />
       </label>
       <label className="rnd-param">
         <span className="as-ml">Avg level</span>
-        <input type="number" min={1} max={20} value={params.level}
+        <Input look="inline" type="number" min={1} max={20} value={params.level}
           onChange={e => onChange({ ...params, level: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-          className="as-input rnd-param-num" />
+          className="rnd-param-num" />
       </label>
       <div className="rnd-param">
         <span className="as-ml">Difficulty</span>
@@ -400,23 +401,23 @@ export function RandomEncounterDetail({
       <div className="as-meta rnd-spaced">
         <div className="as-mi">
           <div className="as-ml">Kind</div>
-          <select className="as-select" value={form.kind}
+          <Select look="inline" value={form.kind}
             onChange={e => { setForm(prev => ({ ...prev, kind: e.target.value })); setRolled(null); setBuilt(null); }}>
             {RANDOM_TABLE_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="as-mi">
           <div className="as-ml">Region</div>
-          <input className="as-input rnd-env-input" value={form.environment}
+          <Input look="inline" className="rnd-env-input" value={form.environment}
             onChange={e => setForm(prev => ({ ...prev, environment: e.target.value }))}
             placeholder="Anywhere" maxLength={limitFor('random_encounter_tables', 'environment')} />
         </div>
         <div className="as-mi">
           <div className="as-ml">Die</div>
-          <select className="as-select" value={form.die_size}
+          <Select look="inline" value={form.die_size}
             onChange={e => setForm(prev => ({ ...prev, die_size: parseInt(e.target.value, 10) }))}>
             {DIE_SIZES.map(d => <option key={d} value={d}>d{d}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="as-mi">
           <div className="as-ml">Weighting</div>
@@ -606,12 +607,12 @@ function EntryRow({
         {/* Treasure fields */}
         {kind === 'treasure' && (
           <div className="rnd-haul-grid">
-            <input type="text" value={entry.coins ?? ''} onChange={e => onPatch({ coins: e.target.value })}
-              placeholder="Coin — e.g. 4d6 × 100 gp" className="as-input rnd-input-sm" aria-label="Coin" />
-            <input type="text" value={entry.valuables ?? ''} onChange={e => onPatch({ valuables: e.target.value })}
-              placeholder="Valuables" className="as-input rnd-input-sm" aria-label="Valuables" />
-            <input type="text" value={entry.magicItem ?? ''} onChange={e => onPatch({ magicItem: e.target.value })}
-              placeholder="Magic item" className="as-input rnd-input-sm" aria-label="Magic item" />
+            <Input look="inline" type="text" value={entry.coins ?? ''} onChange={e => onPatch({ coins: e.target.value })}
+              placeholder="Coin — e.g. 4d6 × 100 gp" className="rnd-input-sm" aria-label="Coin" />
+            <Input look="inline" type="text" value={entry.valuables ?? ''} onChange={e => onPatch({ valuables: e.target.value })}
+              placeholder="Valuables" className="rnd-input-sm" aria-label="Valuables" />
+            <Input look="inline" type="text" value={entry.magicItem ?? ''} onChange={e => onPatch({ magicItem: e.target.value })}
+              placeholder="Magic item" className="rnd-input-sm" aria-label="Magic item" />
           </div>
         )}
 
@@ -619,8 +620,8 @@ function EntryRow({
         {kind === 'magic' && (
           <div className="rnd-item">
             <div className="rnd-item-row">
-              <input type="text" value={entry.itemType ?? ''} onChange={e => onPatch({ itemType: e.target.value })}
-                placeholder="Item type — e.g. Wondrous item" className="as-input rnd-input-sm rnd-grow" aria-label="Item type" />
+              <Input look="inline" type="text" value={entry.itemType ?? ''} onChange={e => onPatch({ itemType: e.target.value })}
+                placeholder="Item type — e.g. Wondrous item" className="rnd-input-sm rnd-grow" aria-label="Item type" />
               <label className="rnd-attune">
                 <input type="checkbox" checked={!!entry.attunement} onChange={e => onPatch({ attunement: e.target.checked })} />
                 Attunement
@@ -645,12 +646,12 @@ function EntryRow({
         {kind === 'custom' && (
           <div className="rnd-card-row">
             <span className="as-ml">Card</span>
-            <select className="as-select rnd-select-sm" value={entry.cardKind ?? ''}
+            <Select look="inline" className="rnd-select-sm" value={entry.cardKind ?? ''}
               onChange={e => onPatch({ cardKind: (e.target.value || undefined) as RandomEncounterEntry['cardKind'] })} aria-label="Card kind">
               <option value="">Read-aloud (no card)</option>
               <option value="fortune">Fortune (good)</option>
               <option value="doom">Doom (bad)</option>
-            </select>
+            </Select>
           </div>
         )}
       </div>
@@ -659,15 +660,15 @@ function EntryRow({
       <div>
         <div className="rnd-weight-row">
           {rarityMode ? (
-            <select className="as-select rnd-select-sm" value={entry.rarity ?? 'common'} onChange={e => onSetRarity(e.target.value)} aria-label="Rarity">
+            <Select look="inline" className="rnd-select-sm" value={entry.rarity ?? 'common'} onChange={e => onSetRarity(e.target.value)} aria-label="Rarity">
               {RARITIES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
-            </select>
+            </Select>
           ) : (
             <div className="rnd-weight">
               <span className="rnd-weight-label">weight</span>
-              <input type="number" min={1} value={entry.weight}
+              <Input look="inline" type="number" min={1} value={entry.weight}
                 onChange={e => onPatch({ weight: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-                className="as-input rnd-weight-input" aria-label="Weight" />
+                className="rnd-weight-input" aria-label="Weight" />
             </div>
           )}
           <span className="rnd-weight-pct">

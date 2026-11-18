@@ -8,6 +8,7 @@ import { extractClientSide, parseGoogleDocsUrl, type DocumentInput } from '../li
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
 import { useEscape } from '../hooks/useEscape';
+import { Input } from './ui/Input';
 
 interface Props {
   disabled: boolean;
@@ -104,6 +105,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               type="file"
               accept=".txt,.md,.docx,.pdf,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileChange}
+              // eslint-disable-next-line no-restricted-syntax -- hidden file input behind the Choose file button
               style={{ display: 'none' }}
             />
 
@@ -124,7 +126,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
               <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--rule)' }} />
             </div>
 
-            <input
+            <Input
               type="text"
               placeholder="Paste Google Docs URL…"
               value={gdocsUrl}
@@ -136,18 +138,7 @@ export default function DocumentUploadButton({ disabled, onAttach, onError }: Pr
                 }
               }}
               disabled={loading}
-              style={{
-                width: '100%',
-                backgroundColor: 'var(--paper-2)',
-                color: 'var(--ink)',
-                border: '1px solid var(--rule)',
-                borderRadius: 'var(--radius)',
-                padding: '8px 10px',
-                fontSize: 'var(--fs-xs)',
-                fontFamily: 'inherit',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              style={{ padding: '8px 10px', fontSize: 'var(--fs-xs)', fontFamily: 'inherit' }}
             />
             <Button variant="secondary" size="sm" className="w-full mt-2" type="button" onClick={handleGdocsSubmit} disabled={loading || !gdocsUrl.trim()}>
               Parse Google Doc

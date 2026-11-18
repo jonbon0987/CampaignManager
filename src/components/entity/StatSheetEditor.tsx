@@ -21,6 +21,7 @@ import { AbilityInput } from '../tabs/CreatureStatblocks';
 import { ABILITY_KEYS, CREATURE_TYPES, type MonsterForm } from '../../lib/statblocks';
 import type { EntityScope } from './types';
 import type { MonsterStatblock } from '../../lib/database.types';
+import { Input, Select } from '../ui/Input';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -78,7 +79,7 @@ export function StatSheetEditor({ statblock, scope, save, remove, onDeleted, onV
   const text = (key: keyof MonsterForm, label: string, hint: string) => (
     <div className="as-fl">
       <label className="as-ll" htmlFor={`sb-${key}-${statblock.id}`}>{label}</label>
-      <input id={`sb-${key}-${statblock.id}`} className="as-input" value={form[key]} onChange={field(key)} placeholder={hint}
+      <Input look="inline" id={`sb-${key}-${statblock.id}`} value={form[key]} onChange={field(key)} placeholder={hint}
         maxLength={limitFor('monster_statblocks', key)} />
     </div>
   );
@@ -105,13 +106,13 @@ export function StatSheetEditor({ statblock, scope, save, remove, onDeleted, onV
       <div className="as-meta">
         <div className="as-mi">
           <label className="as-ml" htmlFor={`sb-type-${statblock.id}`}>Type</label>
-          <select id={`sb-type-${statblock.id}`} className="as-select" value={form.creature_type} onChange={field('creature_type')}>
+          <Select look="inline" id={`sb-type-${statblock.id}`} value={form.creature_type} onChange={field('creature_type')}>
             {CREATURE_TYPES.map(t => <option key={t} value={t}>{cap(t)}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="as-mi">
           <label className="as-ml" htmlFor={`sb-cr-${statblock.id}`}>CR</label>
-          <input id={`sb-cr-${statblock.id}`} className="as-input" value={form.challenge_rating} onChange={field('challenge_rating')}
+          <Input look="inline" id={`sb-cr-${statblock.id}`} value={form.challenge_rating} onChange={field('challenge_rating')}
             placeholder="e.g. 1/4" maxLength={limitFor('monster_statblocks', 'challenge_rating')} style={{ width: 72 }} />
         </div>
       </div>
@@ -121,13 +122,13 @@ export function StatSheetEditor({ statblock, scope, save, remove, onDeleted, onV
       <div className="as-grid-3">
         <div className="as-fl">
           <label className="as-ll" htmlFor={`sb-ac-${statblock.id}`}>Armor class</label>
-          <input id={`sb-ac-${statblock.id}`} className="as-input" type="number" inputMode="numeric" min={1} max={30} value={form.armor_class} onChange={field('armor_class')} placeholder="e.g. 15" />
-          <input className="as-input" value={form.ac_descriptor} onChange={field('ac_descriptor')} placeholder="e.g. natural armor" maxLength={limitFor('monster_statblocks', 'ac_descriptor')} aria-label="Armor" />
+          <Input look="inline" id={`sb-ac-${statblock.id}`} type="number" inputMode="numeric" min={1} max={30} value={form.armor_class} onChange={field('armor_class')} placeholder="e.g. 15" />
+          <Input look="inline" value={form.ac_descriptor} onChange={field('ac_descriptor')} placeholder="e.g. natural armor" maxLength={limitFor('monster_statblocks', 'ac_descriptor')} aria-label="Armor" />
         </div>
         <div className="as-fl">
           <label className="as-ll" htmlFor={`sb-hp-${statblock.id}`}>Hit points</label>
-          <input id={`sb-hp-${statblock.id}`} className="as-input" type="number" inputMode="numeric" min={1} max={maxFor('monster_statblocks', 'hit_points')} value={form.hit_points} onChange={field('hit_points')} placeholder="e.g. 45" />
-          <input className="as-input" value={form.hit_dice} onChange={field('hit_dice')} placeholder="e.g. 6d10+12" maxLength={limitFor('monster_statblocks', 'hit_dice')} aria-label="Hit dice" />
+          <Input look="inline" id={`sb-hp-${statblock.id}`} type="number" inputMode="numeric" min={1} max={maxFor('monster_statblocks', 'hit_points')} value={form.hit_points} onChange={field('hit_points')} placeholder="e.g. 45" />
+          <Input look="inline" value={form.hit_dice} onChange={field('hit_dice')} placeholder="e.g. 6d10+12" maxLength={limitFor('monster_statblocks', 'hit_dice')} aria-label="Hit dice" />
         </div>
         {text('speed', 'Speed', 'e.g. 30 ft., fly 60 ft.')}
       </div>

@@ -10,6 +10,7 @@ import { CULTURES, makeName, npcIdeaText, quickNpc, ROLES, TRAITS, VOICES, type 
 import { normalizeDie, parseEntries, rollWeighted } from '../../lib/randomEncounter';
 import { Button } from '../ui/Button';
 import type { RandomEncounterEntry } from '../../lib/database.types';
+import { Input, Select } from '../ui/Input';
 
 const pick = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)];
 
@@ -49,10 +50,10 @@ export function PlayImprov() {
       <section className="pim-section" aria-label="Names">
         <div className="pim-head">
           <span className="pim-title">Names</span>
-          <select className="as-select pim-culture" value={culture} aria-label="Culture"
+          <Select look="inline" className="pim-culture" value={culture} aria-label="Culture"
             onChange={e => { const c = e.target.value as CultureKey; setCulture(c); rollNames(c); setNpc(n => ({ ...n, name: makeName(c) })); }}>
             {(Object.keys(CULTURES) as CultureKey[]).map(k => <option key={k} value={k}>{CULTURES[k].label}</option>)}
-          </select>
+          </Select>
           <Button size="xs" variant="ghost" onClick={() => rollNames()} title="New names">↻</Button>
         </div>
         <ul className="pim-names">
@@ -75,7 +76,7 @@ export function PlayImprov() {
             <div key={k} className="pim-npc-row">
               <dt>{k}</dt>
               <dd>
-                <input className="as-input" value={npc[k]} aria-label={k} onChange={e => setNpc(n => ({ ...n, [k]: e.target.value }))} />
+                <Input look="inline" value={npc[k]} aria-label={k} onChange={e => setNpc(n => ({ ...n, [k]: e.target.value }))} />
                 <Button size="xs" variant="ghost" onClick={() => reroll(k)} title={`Another ${k}`} aria-label={`Another ${k}`}>↻</Button>
               </dd>
             </div>
@@ -94,9 +95,9 @@ export function PlayImprov() {
         ) : (
           <>
             <div className="pt-row">
-              <select className="as-select" value={table?.id ?? ''} aria-label="Random table" onChange={e => { setTableId(e.target.value); setRolled(null); }}>
+              <Select look="inline" value={table?.id ?? ''} aria-label="Random table" onChange={e => { setTableId(e.target.value); setRolled(null); }}>
                 {randomEncounterTables.map(t => <option key={t.id} value={t.id}>{t.name || 'Untitled table'}</option>)}
-              </select>
+              </Select>
               <Button size="sm" variant="primary" onClick={rollTable}>Roll</Button>
             </div>
             {rolled && (

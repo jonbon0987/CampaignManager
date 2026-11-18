@@ -19,6 +19,7 @@ import { useOptionalSections } from './useOptionalSections';
 import { AddSections } from './AddSections';
 import type { Item } from '../../lib/database.types';
 import { TogglePill } from '../ui/SegmentedControl';
+import { Input, Select } from '../ui/Input';
 
 export type ItemFields = Pick<Item, 'name' | 'item_type' | 'rarity' | 'attunement' | 'attunement_note' | 'value' | 'description' | 'dm_notes' | 'image_path'>;
 
@@ -80,17 +81,17 @@ export function ItemEditor({ item, save, remove, onDeleted }: {
       <div className="as-meta">
         <div className="as-mi">
           <label className="as-ml" htmlFor={`item-type-${item.id}`}>Type</label>
-          <select id={`item-type-${item.id}`} className="as-select" value={form.item_type ?? ''} onChange={e => set('item_type', e.target.value || null)}>
+          <Select look="inline" id={`item-type-${item.id}`} value={form.item_type ?? ''} onChange={e => set('item_type', e.target.value || null)}>
             <option value="">—</option>
             {ITEM_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="as-mi">
           <label className="as-ml" htmlFor={`item-rarity-${item.id}`}>Rarity</label>
-          <select id={`item-rarity-${item.id}`} className="as-select" value={form.rarity ?? ''} onChange={e => set('rarity', e.target.value || null)}>
+          <Select look="inline" id={`item-rarity-${item.id}`} value={form.rarity ?? ''} onChange={e => set('rarity', e.target.value || null)}>
             <option value="">Not magic</option>
             {RARITIES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="as-mi">
           <span className="as-ml">Attunement</span>
@@ -98,7 +99,7 @@ export function ItemEditor({ item, save, remove, onDeleted }: {
             {form.attunement ? 'Required' : 'Not needed'}
           </TogglePill>
           {form.attunement && (
-            <input className="as-input item-attune-note" value={form.attunement_note ?? ''} onChange={e => set('attunement_note', e.target.value || null)}
+            <Input look="inline" className="item-attune-note" value={form.attunement_note ?? ''} onChange={e => set('attunement_note', e.target.value || null)}
               placeholder="by a wizard…" maxLength={limitFor('items', 'attunement_note')} aria-label="Attunement by" />
           )}
         </div>

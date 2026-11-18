@@ -8,6 +8,7 @@ import { useItems } from '../../context/items';
 import { blankItem } from '../../lib/items';
 import { limitFor, maxFor } from '../../lib/fieldLimits';
 import { Button } from '../ui/Button';
+import { Input, Select } from '../ui/Input';
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -53,7 +54,7 @@ export function GiveItem({ itemId, pcId, sessionId, label }: {
     <form className="inv-give" onSubmit={e => void submit(e)}>
       {!itemId && (
         <>
-          <input className="as-input inv-give-name" list={listId} value={name} onChange={e => setName(e.target.value)}
+          <Input look="inline" className="inv-give-name" list={listId} value={name} onChange={e => setName(e.target.value)}
             placeholder="An item, or a new one’s name…" aria-label="Item" maxLength={limitFor('items', 'name')} />
           <datalist id={listId}>
             {ctx.items.filter(i => i.name.trim()).map(i => <option key={i.id} value={i.name} />)}
@@ -61,12 +62,12 @@ export function GiveItem({ itemId, pcId, sessionId, label }: {
         </>
       )}
       {pcId === undefined && (
-        <select className="as-select inv-holder" value={to} onChange={e => setTo(e.target.value)} aria-label="Give to">
+        <Select look="inline" className="inv-holder" value={to} onChange={e => setTo(e.target.value)} aria-label="Give to">
           <option value="">The party</option>
           {pcs.filter(p => p.is_active).map(p => <option key={p.id} value={p.id}>{p.character_name || 'Unnamed character'}</option>)}
-        </select>
+        </Select>
       )}
-      <input className="as-input inv-qty" type="number" min={1} max={maxFor('item_holdings', 'quantity')} value={qty} aria-label="How many"
+      <Input look="inline" className="inv-qty" type="number" min={1} max={maxFor('item_holdings', 'quantity')} value={qty} aria-label="How many"
         onChange={e => setQty(Math.max(1, Math.round(Number(e.target.value)) || 1))} />
       <Button type="submit" size="xs" variant="secondary" disabled={busy || (!itemId && !name.trim())}>{busy ? 'Saving…' : label}</Button>
       {error && <p className="inv-error" role="alert">{error}</p>}

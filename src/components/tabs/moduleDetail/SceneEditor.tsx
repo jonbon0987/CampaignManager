@@ -20,6 +20,7 @@ import type { Module, Submodule, Scene, MonsterStatblock } from '../../../lib/da
 import { TypeTag, InlinePicker } from './pickers';
 import { getModuleTypeInfo } from '../../../lib/theme';
 import { parseLinkedIds, SCENE_TYPES } from '../../../lib/moduleStructure';
+import { Input } from '../../ui/Input';
 
 interface SceneForm { title: string; scene_type: string; summary: string; content: string; dm_notes: string; read_aloud: string; }
 
@@ -120,7 +121,7 @@ export function SceneEditor({ scene, part, module, index, total, prev, next, onO
 
         <div className="as-fl" style={{ marginTop: 10 }}>
           <label className="as-ll" htmlFor={`scene-beat-${scene.id}`}>The beat</label>
-          <input id={`scene-beat-${scene.id}`} className="as-input" value={form.summary} placeholder="What happens here, in a line"
+          <Input look="inline" id={`scene-beat-${scene.id}`} value={form.summary} placeholder="What happens here, in a line"
             onChange={e => set('summary', e.target.value)} maxLength={limitFor('scenes', 'summary')} />
         </div>
 

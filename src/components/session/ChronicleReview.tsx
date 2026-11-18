@@ -27,6 +27,7 @@ import { ChangeCard, type ChangeState, type ChangeView } from '../review/ChangeC
 import { ReviewTally } from '../review/ReviewTally';
 import { PlayerBar } from './PlayerBar';
 import './session.css';
+import { Input, Select, Textarea } from '../ui/Input';
 
 // --------------- Labels ---------------
 
@@ -171,7 +172,7 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
   const area = (value: string, onChange: (v: string) => void, label: string, rows = 3) => (
     <label className="flex flex-col">
       <span className="as-ll">{label}</span>
-      <textarea className="as-input chg-edit-text" rows={rows} value={value} onChange={e => onChange(e.target.value)} />
+      <Textarea look="inline" className="chg-edit-text" rows={rows} value={value} onChange={e => onChange(e.target.value)} />
     </label>
   );
 
@@ -194,8 +195,7 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
           {a.entity_type !== 'pc' && (
             <label className="flex flex-col">
               <span className="as-ll">Goes to</span>
-              <select
-                className="as-select"
+              <Select look="inline"
                 value={a.matched_id ?? '__new'}
                 onChange={e => {
                   const id = e.target.value === '__new' ? null : e.target.value;
@@ -204,14 +204,13 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
               >
                 <option value="__new">+ New {NOUN[a.entity_type]}</option>
                 {lookup.lists[a.entity_type].map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
-              </select>
+              </Select>
             </label>
           )}
           {isNew && (
             <label className="flex flex-col">
               <span className="as-ll">Name</span>
-              <input
-                className="as-input"
+              <Input look="inline"
                 value={a.name}
                 onChange={e => {
                   const nameField = a.entity_type === 'lore' || a.entity_type === 'hook' ? 'title' : 'name';
@@ -224,24 +223,24 @@ function EditForm({ draft, setDraft, lookup, onCancel, onSave, saving }: {
             <>
               <label className="flex flex-col">
                 <span className="as-ll">Attitude toward the party</span>
-                <input className="as-input" value={String(a.set.disposition ?? '')} placeholder="No change" onChange={e => setField('disposition', e.target.value)} />
+                <Input look="inline" value={String(a.set.disposition ?? '')} placeholder="No change" onChange={e => setField('disposition', e.target.value)} />
               </label>
               <label className="flex flex-col">
                 <span className="as-ll">Status</span>
-                <select className="as-select" value={String(a.set.status ?? '')} onChange={e => setField('status', e.target.value)}>
+                <Select look="inline" value={String(a.set.status ?? '')} onChange={e => setField('status', e.target.value)}>
                   {!isNew && <option value="">No change</option>}
                   {NPC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                </Select>
               </label>
             </>
           )}
           {a.entity_type === 'hook' && (
             <label className="flex flex-col">
               <span className="as-ll">Thread state</span>
-              <select className="as-select" value={String(a.set.state ?? '')} onChange={e => setField('state', e.target.value)}>
+              <Select look="inline" value={String(a.set.state ?? '')} onChange={e => setField('state', e.target.value)}>
                 {!isNew && <option value="">No change</option>}
                 {THREAD_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </Select>
             </label>
           )}
         </div>

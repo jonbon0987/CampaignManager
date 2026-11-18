@@ -437,6 +437,7 @@ function LoginScreen() {
               onChange={e => setEmail(e.target.value)}
               required
               className="px-4 py-2 rounded text-md outline-none"
+              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
               style={inputStyle}
               data-testid="login-email"
             />
@@ -447,6 +448,7 @@ function LoginScreen() {
               onChange={e => setPassword(e.target.value)}
               required
               className="px-4 py-2 rounded text-md outline-none"
+              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
               style={inputStyle}
               data-testid="login-password"
             />
@@ -474,6 +476,7 @@ function LoginScreen() {
               onChange={e => setEmail(e.target.value)}
               required
               className="px-4 py-2 rounded text-md outline-none"
+              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
               style={inputStyle}
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
@@ -558,6 +561,7 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
               required
               minLength={6}
               className="px-4 py-2 rounded text-md outline-none"
+              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
               style={inputStyle}
             />
             <input
@@ -567,6 +571,7 @@ function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
               onChange={e => setConfirm(e.target.value)}
               required
               className="px-4 py-2 rounded text-md outline-none"
+              // eslint-disable-next-line no-restricted-syntax -- sign-in screen field: its own look (paper background, Tailwind sizing), not the form or inline look
               style={inputStyle}
             />
             {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}

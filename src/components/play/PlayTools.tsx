@@ -18,6 +18,7 @@ import { HouseRulesList } from '../rules/HouseRules';
 import { rulesOf, writtenRules } from '../../lib/houseRules';
 import { d20Natural, parseDice, roll } from '../../lib/dice';
 import { noteStamp } from '../../lib/playTime';
+import { Input } from '../ui/Input';
 
 const TABS: { id: PlayTab; label: string; glyph: string }[] = [
   { id: 'dice', label: 'Dice', glyph: '⚄' },
@@ -48,7 +49,7 @@ function DiceTray() {
         ))}
       </div>
       <div className="pt-row">
-        <input className="as-input" value={expr} onChange={e => setExpr(e.target.value)} placeholder="2d6+3"
+        <Input look="inline" value={expr} onChange={e => setExpr(e.target.value)} placeholder="2d6+3"
           aria-label="Dice to roll" onKeyDown={e => { if (e.key === 'Enter' && spec) { rollExpr(expr); setExpr(''); } }} />
         <Button size="sm" variant="primary" disabled={!spec} onClick={() => { rollExpr(expr); setExpr(''); }}>Roll</Button>
       </div>
@@ -81,7 +82,7 @@ function TableNotes() {
   return (
     <div className="pt-pane">
       <div className="pt-row">
-        <input className="as-input" value={text} onChange={e => setText(e.target.value)} placeholder="What just happened…"
+        <Input look="inline" value={text} onChange={e => setText(e.target.value)} placeholder="What just happened…"
           aria-label="Table note" onKeyDown={e => { if (e.key === 'Enter') save(); }} />
         <Button size="sm" variant="primary" disabled={!text.trim()} onClick={save}>Add</Button>
       </div>

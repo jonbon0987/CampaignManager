@@ -8,6 +8,7 @@ import { Button } from '../ui/Button';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { MAX_PINS, movePin, pointOnMap, removePin, updatePin, type MapPin } from '../../lib/mapPins';
 import { limitFor } from '../../lib/fieldLimits';
+import { Input } from '../ui/Input';
 
 export interface PinPlace { id: string; label: string; detail?: string }
 
@@ -132,7 +133,7 @@ export function MapPins({ url, pins, onChange, places, disabled, onOpenPlace, on
           {!selected.place_id && (
             <div className="mp-edit-field">
               <label className="as-ll" htmlFor={`pin-label-${selected.id}`}>Or a label</label>
-              <input id={`pin-label-${selected.id}`} className="as-input" value={selected.label ?? ''} placeholder="The old well"
+              <Input look="inline" id={`pin-label-${selected.id}`} value={selected.label ?? ''} placeholder="The old well"
                 maxLength={limitFor('locations', 'name')} onChange={e => onChange(updatePin(pins, selected.id, { label: e.target.value || null }))} />
             </div>
           )}

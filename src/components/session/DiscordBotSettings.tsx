@@ -15,6 +15,7 @@ import { useDiscordBot, type BotStatus } from '../../hooks/useDiscordBot';
 import type { DiscordTarget } from '../../lib/database.types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Input';
 
 const BADGE: Record<BotStatus, [string, 'muted' | 'yellow' | 'green' | 'red']> = {
   checking: ['Checking…', 'muted'],
@@ -99,11 +100,11 @@ export function DiscordBotSettings() {
                 </>
               ) : (
                 <>
-                  <select className="as-select dbot-select" aria-label="Voice channel to join" value={picked?.channelId ?? ''}
+                  <Select look="inline" className="dbot-select" aria-label="Voice channel to join" value={picked?.channelId ?? ''}
                     onChange={e => setPick(e.target.value)}>
                     <option value="">Choose a voice channel…</option>
                     {channels.map(c => <option key={c.channelId} value={c.channelId}>{c.label}</option>)}
-                  </select>
+                  </Select>
                   <Button size="sm" variant="secondary" disabled={!picked}
                     onClick={() => picked && ask({ voice: { guildId: picked.guildId, channelId: picked.channelId, channelName: picked.channelName } })}>
                     Join

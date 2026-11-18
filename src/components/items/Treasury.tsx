@@ -14,6 +14,7 @@ import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import type { TreasuryEntry } from '../../lib/database.types';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Input, Select } from '../ui/Input';
 
 /** A line to add: gained or spent, how much, and what for. */
 function CoinEntry({ sessionId, defaultSessionId, idPrefix }: {
@@ -53,15 +54,15 @@ function CoinEntry({ sessionId, defaultSessionId, idPrefix }: {
       <SegmentedControl aria-label="Gained or spent" value={spent}
         options={[{ value: false, label: 'Gained' }, { value: true, label: 'Spent' }]}
         onChange={setSpent} />
-      <input id={`${idPrefix}-amount`} className="as-input tr-amount" value={amount} placeholder="120 gp, 5 sp" aria-label="How much" aria-invalid={!!error}
+      <Input look="inline" id={`${idPrefix}-amount`} className="tr-amount" value={amount} placeholder="120 gp, 5 sp" aria-label="How much" aria-invalid={!!error}
         onChange={e => { setAmount(e.target.value); setError(''); }} onKeyDown={onEnter} />
-      <input className="as-input tr-note" value={note} placeholder={spent ? 'What on: passage to Waterdeep' : 'From where: the harbormaster’s bribe'} aria-label="What for"
+      <Input look="inline" className="tr-note" value={note} placeholder={spent ? 'What on: passage to Waterdeep' : 'From where: the harbormaster’s bribe'} aria-label="What for"
         maxLength={limitFor('treasury_entries', 'note')} onChange={e => setNote(e.target.value)} onKeyDown={onEnter} />
       {sessionId === undefined && (
-        <select className="as-select tr-session" value={session} aria-label="Session" onChange={e => setSession(e.target.value)}>
+        <Select look="inline" className="tr-session" value={session} aria-label="Session" onChange={e => setSession(e.target.value)}>
           <option value="">No session</option>
           {[...sessions].sort((a, b) => b.session_number - a.session_number).map(s => <option key={s.id} value={s.id}>{sessionName(s)}</option>)}
-        </select>
+        </Select>
       )}
       <Button size="sm" variant="secondary" onClick={() => void add()} disabled={saving || !amount.trim()}>Add</Button>
       {error && <p className="tr-error" role="alert">{error}</p>}

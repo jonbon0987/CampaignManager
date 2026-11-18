@@ -21,6 +21,7 @@ import { REPEATS, expectedNext, formatWhen } from '../../lib/schedule';
 import type { Session, SessionRepeat } from '../../lib/database.types';
 import type { Tab } from '../../App';
 import { onActivate } from '../../lib/activate';
+import { Input, Select } from '../ui/Input';
 
 interface OverviewProps {
   onNavigate: (tab: Tab) => void;
@@ -86,25 +87,22 @@ function NextSession({ next, runMode, onToggleRun }: { next: Session | null; run
         <div className="ov-next-name">{sessionName(next)}</div>
         <p className="ov-card-sub ov-next-when">{next.session_date ? formatWhen(next.session_date, next.session_time) : 'No date yet.'}</p>
         <div className="ov-next-date">
-          <input
+          <Input look="inline"
             type="date"
-            className="as-input"
             aria-label={`Date of Session ${next.session_number}`}
             style={{ colorScheme: 'dark', width: 150 }}
             value={next.session_date ?? ''}
             onChange={e => void updateSession(next.id, { session_date: e.target.value || null }).catch(() => {})}
           />
-          <input
+          <Input look="inline"
             type="time"
-            className="as-input"
             aria-label={`Time of Session ${next.session_number}`}
             style={{ colorScheme: 'dark', width: 120 }}
             value={next.session_time ?? ''}
             onChange={e => void updateSession(next.id, { session_time: e.target.value || null }).catch(() => {})}
           />
           {selectedCampaign && (
-            <select
-              className="as-select"
+            <Select look="inline"
               aria-label="How often you meet"
               value={repeat ?? ''}
               onChange={e => void updateCampaign(selectedCampaign.id, { session_repeat: (e.target.value || null) as SessionRepeat | null })
@@ -112,7 +110,7 @@ function NextSession({ next, runMode, onToggleRun }: { next: Session | null; run
             >
               <option value="">Doesn’t repeat</option>
               {REPEATS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-            </select>
+            </Select>
           )}
         </div>
         <div className="ov-next-actions">

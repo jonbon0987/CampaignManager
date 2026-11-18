@@ -16,7 +16,6 @@ import { SlashField } from '../ui/SlashField';
 import { limitFor } from '../../lib/fieldLimits';
 import { useCampaign } from '../../context/CampaignContext';
 import { FormField } from '../FormField';
-import { inputStyle } from '../formStyles';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
@@ -25,6 +24,7 @@ import type { Module, Faction } from '../../lib/database.types';
 import { factionTypeColors } from '../../lib/theme';
 import ModuleDetail from './ModuleDetail';
 import ModuleWeb from './ModuleWeb';
+import { Input, Select } from '../ui/Input';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -50,11 +50,6 @@ const FACTION_TYPE_COLORS: Record<string, string> = Object.fromEntries(
   Object.entries(factionTypeColors).map(([k, v]) => [k, v.text]),
 );
 
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-};
 
 // ─── module list ──────────────────────────────────────────────────────────────
 
@@ -164,32 +159,32 @@ function ModuleCreatePanel({
       <div className="cm-detail-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Module ID">
-            <input type="text" value={form.chapter ?? ''} onChange={e => setForm(p => ({ ...p, chapter: e.target.value }))} placeholder="e.g., 1" maxLength={limitFor('modules', 'chapter')} style={inputStyle} autoFocus />
+            <Input type="text" value={form.chapter ?? ''} onChange={e => setForm(p => ({ ...p, chapter: e.target.value }))} placeholder="e.g., 1" maxLength={limitFor('modules', 'chapter')} autoFocus />
           </FormField>
           <FormField label="Status">
-            <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as Module['status'] }))} style={inputStyle}>
+            <Select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as Module['status'] }))}>
               <option value="planned">Planned</option>
               <option value="active">Active</option>
               <option value="completed">Completed</option>
-            </select>
+            </Select>
           </FormField>
         </div>
         <FormField label="Name">
-          <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Train Heist" maxLength={limitFor('modules', 'title')} style={inputStyle} />
+          <Input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., The Train Heist" maxLength={limitFor('modules', 'title')} />
         </FormField>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Faction / Storyline">
-            <select value={form.faction_id ?? ''} onChange={e => setForm(p => ({ ...p, faction_id: e.target.value || null }))} style={selectStyle}>
+            <Select className="is-plain" value={form.faction_id ?? ''} onChange={e => setForm(p => ({ ...p, faction_id: e.target.value || null }))}>
               <option value="">-- No Faction --</option>
               {factions.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
+            </Select>
           </FormField>
           <FormField label="Node Role">
-            <select value={form.node_role ?? ''} onChange={e => setForm(p => ({ ...p, node_role: (e.target.value || null) as 'start' | 'boss' | null }))} style={selectStyle}>
+            <Select className="is-plain" value={form.node_role ?? ''} onChange={e => setForm(p => ({ ...p, node_role: (e.target.value || null) as 'start' | 'boss' | null }))}>
               <option value="">Normal</option>
               <option value="start">Starting Mission</option>
               <option value="boss">Final Boss</option>
-            </select>
+            </Select>
           </FormField>
         </div>
         <FormField label="Synopsis">
