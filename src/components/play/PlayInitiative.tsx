@@ -43,13 +43,13 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
         </IconButton>
       </div>
 
-      <HpControl className="pi-indent" combatant={c}
+      <HpControl density="rail" className="pi-indent" combatant={c}
         onDamage={n => f.damage(c.id, n)} onHeal={n => f.heal(c.id, n)} onTemp={n => f.addTemp(c.id, n)} onSetMax={n => f.setMax(c.id, n)}>
         {c.ac != null && <span className="pi-ac">AC {c.ac}</span>}
       </HpControl>
 
       {c.isPC && down && !dead && !stable && (
-        <DeathSavePips className="pi-indent" successes={c.deathSaves.s} failures={c.deathSaves.f} onSet={(k, v) => f.deathSave(c.id, k, v)} />
+        <DeathSavePips density="rail" className="pi-indent" successes={c.deathSaves.s} failures={c.deathSaves.f} onSet={(k, v) => f.deathSave(c.id, k, v)} />
       )}
 
       {c.conCheck != null && (
@@ -60,7 +60,7 @@ function Row({ c, current, started, f }: { c: Combatant; current: boolean; start
         </div>
       )}
 
-      <ConditionChips className="pi-indent" combatant={c}
+      <ConditionChips density="rail" className="pi-indent" combatant={c}
         onToggle={cond => f.toggleCondition(c.id, cond)} onSetRounds={(cond, n) => f.setConditionRounds(c.id, cond, n)} />
     </li>
   );
