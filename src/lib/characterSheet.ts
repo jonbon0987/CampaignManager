@@ -102,15 +102,20 @@ export function parseClassLevel(raw: string): { class: string | null; level: num
   return { class: cls, level: total };
 }
 
-/** A sheet's form fields (name → value) as PC values. Unknown fields are ignored. */
-export function fromFormFields(fields: Record<string, string>): SheetValues {
+/** Looks up a sheet's form fields by any of their normalized names; the first with a value wins. */
+export function fieldLookup(fields: Record<string, string>) {
   const byName = new Map<string, string>();
   for (const [name, value] of Object.entries(fields)) {
     const v = (value ?? '').toString().trim();
     const key = normalizeFieldName(name);
     if (v && !byName.has(key)) byName.set(key, v);
   }
-  const first = (names: string[]) => names.map(n => byName.get(n)).find(v => !!v) ?? null;
+  return (names: readonly string[]): string | null => names.map(n => byName.get(n)).find(v => !!v) ?? null;
+}
+
+/** A sheet's form fields (name → value) as PC values. Unknown fields are ignored. */
+export function fromFormFields(fields: Record<string, string>): SheetValues {
+  const first = fieldLookup(fields);
   const out: SheetValues = {};
 
   for (const [field, names] of Object.entries(ALIASES) as [keyof typeof ALIASES, string[]][]) {
@@ -167,7 +172,7 @@ export function cleanSheetValues(raw: unknown): SheetValues {
   return out;
 }
 
-const sameName = (a: string, b: string) => normalizeFieldName(a) === normalizeFieldName(b);
+export const sameName = (a: string, b: string) => normalizeFieldName(a) === normalizeFieldName(b);
 
 /** The existing PC a sheet is for, by character name. */
 export function matchPC<T extends Pick<PlayerCharacter, 'id' | 'character_name'>>(values: SheetValues, pcs: T[]): T | null {
@@ -177,27 +182,48 @@ export function matchPC<T extends Pick<PlayerCharacter, 'id' | 'character_name'>
 }
 
 export interface FieldChange {
-  key: SheetField;
+  key: string;
   label: string;
+  /** Which record the change is for, when a sheet fills more than one (an NPC and its stat sheet). */
+  group?: string;
   current: string | number | null;
   next: string | number;
-  /** Ticked to begin with: the PC had nothing there, or the sheet differs. */
+  /**
+   * Ticked to begin with when the sheet differs, except a longer text the
+   * record already has (a description, story hooks, a stat sheet's actions):
+   * replacing what the DM wrote is opted into, not out of.
+   */
   apply: boolean;
 }
 
-/** What importing `values` would change on `pc` (or on a new PC, with no `pc`). Unchanged fields are left out. */
-export function sheetChanges(values: SheetValues, pc?: Partial<Pick<PlayerCharacter, SheetField>> | null): FieldChange[] {
+const LONG_TEXT = new Set(['story_hooks', 'description', 'hooks_motivations', 'content']);
+
+/**
+ * What importing `values` would change on `current` (or on a new record, with
+ * none), field by field in the order of `fields`. Unchanged fields are left out.
+ */
+export function diffValues(
+  values: Record<string, unknown>,
+  current: Record<string, unknown> | null | undefined,
+  fields: { key: string; label: string }[],
+  group?: string,
+): FieldChange[] {
   const changes: FieldChange[] = [];
-  for (const { key, label } of SHEET_FIELDS) {
+  for (const { key, label } of fields) {
     const next = values[key];
     if (next == null || next === '') continue;
-    const current = (pc?.[key] ?? null) as string | number | null;
-    if (current != null && String(current).trim() === String(next).trim()) continue;
-    changes.push({ key, label, current: current === '' ? null : current, next: next as string | number, apply: true });
+    const now = (current?.[key] ?? null) as string | number | null;
+    if (now != null && String(now).trim() === String(next).trim()) continue;
+    const hasText = now != null && String(now).trim() !== '';
+    changes.push({ key, label, group, current: now === '' ? null : now, next: next as string | number, apply: !(LONG_TEXT.has(key) && hasText) });
   }
   return changes;
 }
 
-/** The patch the ticked changes make. */
-export const patchFrom = (changes: FieldChange[]): SheetValues =>
-  Object.fromEntries(changes.filter(c => c.apply).map(c => [c.key, c.next])) as SheetValues;
+/** What importing `values` would change on `pc` (or on a new PC, with no `pc`). Unchanged fields are left out. */
+export const sheetChanges = (values: SheetValues, pc?: Partial<Pick<PlayerCharacter, SheetField>> | null): FieldChange[] =>
+  diffValues(values, pc, SHEET_FIELDS);
+
+/** The patch the ticked changes make (for one group, when given). */
+export const patchFrom = <T = SheetValues>(changes: FieldChange[], group?: string): T =>
+  Object.fromEntries(changes.filter(c => c.apply && c.group === group).map(c => [c.key, c.next])) as T;

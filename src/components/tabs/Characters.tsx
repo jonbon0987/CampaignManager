@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { firstNamed } from '../../lib/firstNamed';
 import { useOpenRecord, useReportRecord } from '../../context/NavigationContext';
 import { useCampaign } from '../../context/CampaignContext';
@@ -17,6 +17,10 @@ import { NPCEditor } from '../entity/NPCEditor';
 import { FactionEditor } from '../entity/FactionEditor';
 import { PCEditor } from '../entity/PCEditor';
 import { SheetImportDialog, type SheetImport } from '../entity/SheetImportDialog';
+import { npcSheetKind, pcSheetKind } from '../entity/sheetKinds';
+import type { NPCSheetImport } from '../entity/NPCEditor';
+import { patchFrom, type SheetValues } from '../../lib/characterSheet';
+import { mergedStatblock, NPC_GROUP, STATBLOCK_GROUP, type NpcSheet, type NpcSheetValues, type StatSheetValues } from '../../lib/npcSheet';
 import { NO_NPC_DETAILS } from '../../lib/npcDetails';
 import type { NPC, Faction, PlayerCharacter } from '../../lib/database.types';
 
@@ -146,7 +150,7 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
     setSelectedId(result.id);
   };
   // Player characters from sheet PDFs (CastSheetImport, below).
-  const [sheetsOpen, setSheetsOpen] = useState(false);
+  const [sheetsOpen, setSheetsOpen] = useState<'pc' | 'npc' | null>(null);
   const [importStamp, setImportStamp] = useState(0);
   const addNPC = async () => {
     const result = await upsertNPC({ name: '', status: 'active', met_by_pcs: false, faction_ids: [] });
@@ -171,8 +175,9 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       addLabel={filter === 'faction' ? '+ Add faction' : filter === 'npc' ? '+ Add NPC' : filter === 'pc' ? '+ Add PC' : '+ Add'}
       addOptions={filter === 'all' ? [
         { label: 'PC', onClick: addPC },
-        { label: 'PCs from sheet PDFs…', onClick: () => setSheetsOpen(true) },
+        { label: 'PCs from sheet PDFs…', onClick: () => setSheetsOpen('pc') },
         { label: 'NPC', onClick: addNPC },
+        { label: 'NPCs from sheet PDFs…', onClick: () => setSheetsOpen('npc') },
         { label: 'Faction', onClick: addFaction },
       ] : undefined}
       onImport={onImportFromWorld && (filter === 'all' || filter === 'npc') ? onImportFromWorld : undefined}
@@ -240,8 +245,8 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
       }
     />
     <CastSheetImport
-      isOpen={sheetsOpen}
-      onClose={() => setSheetsOpen(false)}
+      kind={sheetsOpen}
+      onClose={() => setSheetsOpen(null)}
       // An open editor holds its own copy of the PC; remount it on what was just saved.
       onImported={id => { setImportStamp(n => n + 1); if (id) { setFilter('all'); setSelectedId(id); } }}
     />
@@ -250,23 +255,72 @@ function CastList({ onImportFromWorld, openId, onOpenConsumed }: { onImportFromW
 }
 
 /** Player characters from sheet PDFs: each updates the PC it was matched to, or makes a new one. */
-function CastSheetImport({ isOpen, onClose, onImported }: { isOpen: boolean; onClose: () => void; onImported: (firstId: string | null) => void }) {
-  const { pcs, upsertPC, updatePC } = useCampaign();
-  const importSheets = async (imports: SheetImport[]) => {
+function CastSheetImport({ kind, onClose, onImported }: { kind: 'pc' | 'npc' | null; onClose: () => void; onImported: (firstId: string | null) => void }) {
+  const { pcs, upsertPC, updatePC, npcs, upsertNPC } = useCampaign();
+  const sheetImport = useCampaignSheetImport();
+  const fileName = (file: string) => file.replace(/\.pdf$/i, '');
+
+  const pcKind = useMemo(() => pcSheetKind(id => pcs.find(p => p.id === id)), [pcs]);
+  const npcKind = useMemo(() => npcSheetKind(id => npcs.find(n => n.id === id), sheetImport.statblockById), [npcs, sheetImport.statblockById]);
+
+  const importPCs = async (imports: SheetImport<SheetValues>[]) => {
     let first: string | null = null;
     for (const imp of imports) {
-      if (imp.pcId) {
-        await updatePC(imp.pcId, imp.patch);
-        first ??= imp.pcId;
+      const patch = patchFrom(imp.changes);
+      if (imp.targetId) {
+        await updatePC(imp.targetId, patch);
+        first ??= imp.targetId;
       } else {
-        const name = imp.patch.character_name || imp.file.replace(/\.pdf$/i, '');
-        const pc = await upsertPC({ is_active: true, faction_ids: [], ...imp.patch, character_name: name });
+        const pc = await upsertPC({ is_active: true, faction_ids: [], ...patch, character_name: patch.character_name || fileName(imp.file) });
         first ??= pc.id;
       }
     }
     onImported(first);
   };
-  return <SheetImportDialog isOpen={isOpen} onClose={onClose} pcs={pcs} onApply={importSheets} />;
+
+  const importNPCs = async (imports: SheetImport<NpcSheet>[]) => {
+    let first: string | null = null;
+    for (const imp of imports) {
+      const npcPatch = patchFrom<NpcSheetValues>(imp.changes, NPC_GROUP);
+      const sbPatch = patchFrom<StatSheetValues>(imp.changes, STATBLOCK_GROUP);
+      const existing = imp.targetId ? npcs.find(n => n.id === imp.targetId) : undefined;
+      const name = npcPatch.name || existing?.name || fileName(imp.file);
+      const statblockId = Object.keys(sbPatch).length
+        ? await sheetImport.saveStatblock(sbPatch, existing?.statblock_id ?? null, name)
+        : existing?.statblock_id ?? null;
+      if (existing) {
+        const { id, user_id: _u, created_at: _c, updated_at: _m, ...rest } = existing;
+        await upsertNPC({ ...rest, ...npcPatch, id, statblock_id: statblockId });
+        first ??= id;
+      } else {
+        const npc = await upsertNPC({ status: 'active', met_by_pcs: false, faction_ids: [], ...npcPatch, name, statblock_id: statblockId });
+        first ??= npc.id;
+      }
+    }
+    onImported(first);
+  };
+
+  if (kind === 'npc') {
+    return <SheetImportDialog isOpen onClose={onClose} kind={npcKind} targets={npcs.map(n => ({ id: n.id, name: n.name }))} onApply={importNPCs} />;
+  }
+  return <SheetImportDialog isOpen={kind === 'pc'} onClose={onClose} kind={pcKind} targets={pcs.map(p => ({ id: p.id, name: p.character_name }))} onApply={importPCs} />;
+}
+
+/** Saving an imported NPC's stat sheet in this campaign: the ticked changes on top of what it has. */
+function useCampaignSheetImport(): NPCSheetImport {
+  const { monsterStatblocks, upsertMonsterStatblock } = useCampaign();
+  const statblockById = useCallback((id: string) => monsterStatblocks.find(m => m.id === id), [monsterStatblocks]);
+  const saveStatblock = useCallback(async (patch: StatSheetValues, existingId: string | null, npcName: string) => {
+    const existing = existingId ? monsterStatblocks.find(m => m.id === existingId) : undefined;
+    const saved = await upsertMonsterStatblock({
+      ...mergedStatblock(existing, patch, npcName),
+      world_id: existing?.world_id ?? null,
+      sort_order: existing?.sort_order ?? 0,
+      ...(existing ? { id: existing.id } : {}),
+    });
+    return saved.id;
+  }, [monsterStatblocks, upsertMonsterStatblock]);
+  return useMemo(() => ({ statblockById, saveStatblock }), [statblockById, saveStatblock]);
 }
 
 /* ── Cast Detail Panel ── */
@@ -307,6 +361,7 @@ function CampaignNPC({ npc, factions, statblocks, openStatBlock, onDeselect }: {
   // the canon row ('global'), not accidentally re-scope it to this campaign.
   const origin: Origin = linkedNPCIds.includes(npc.id) ? 'imported' : 'local';
   type Insert = Parameters<typeof upsertNPC>[0];
+  const sheetImport = useCampaignSheetImport();
 
   return (
     <NPCEditor
@@ -320,6 +375,7 @@ function CampaignNPC({ npc, factions, statblocks, openStatBlock, onDeselect }: {
       remove={deleteNPC}
       onDeleted={onDeselect}
       onOpenStatBlock={openStatBlock}
+      sheetImport={sheetImport}
       canon={{
         origin,
         onOpenInCanon: () => { setWorldSelected('npcs', npc.id); setWorldTab('npcs'); backToWorld(); },

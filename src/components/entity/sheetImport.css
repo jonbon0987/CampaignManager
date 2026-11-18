@@ -18,3 +18,4 @@
 .shi-now { color: var(--ink-3); }
 .shi-next { color: var(--ink); white-space: pre-wrap; }
 .shi-table tr.is-off .shi-next { color: var(--ink-3); text-decoration: line-through; }
+.shi-table .shi-group th { padding-top: 12px; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--gold); font-weight: 400; border-top: none; }

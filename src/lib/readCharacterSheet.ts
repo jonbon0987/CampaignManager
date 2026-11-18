@@ -6,6 +6,7 @@
 import { authHeaders } from './apiClient';
 import { getAIProvider } from './aiProvider';
 import { cleanSheetValues, fromFormFields, readEnough, type SheetValues } from './characterSheet';
+import { cleanNpcSheet, npcFromFormFields, npcReadEnough, type NpcSheet } from './npcSheet';
 
 export interface SheetRead {
   file: string;
@@ -48,30 +49,45 @@ export async function readPdf(data: Uint8Array): Promise<{ fields: Record<string
   }
 }
 
-/** Reads a sheet: its form fields when it has them, else the assistant reads its text. */
-export async function readCharacterSheet(file: File): Promise<SheetRead> {
+async function openSheet(file: File): Promise<{ fields: Record<string, string>; text: string }> {
   if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') throw new Error(`${file.name} isn’t a PDF.`);
   if (file.size > MAX_BYTES) throw new Error(`${file.name} is over 8 MB.`);
-  const bytes = new Uint8Array(await file.arrayBuffer());
-
-  let pdf: { fields: Record<string, string>; text: string };
   try {
-    pdf = await readPdf(bytes);
+    return await readPdf(new Uint8Array(await file.arrayBuffer()));
   } catch {
     throw new Error(`${file.name} couldn’t be opened as a PDF.`);
   }
-  const fromForm = fromFormFields(pdf.fields);
-  if (readEnough(fromForm)) return { file: file.name, values: fromForm, source: 'form' };
-  if (pdf.text.length < 40) {
+}
+
+/** The assistant's reading of a sheet's text (see api/parse-character-sheet). */
+async function askAssistant(file: File, text: string, target: 'pc' | 'npc'): Promise<unknown> {
+  if (text.length < 40) {
     throw new Error(`${file.name} has no text to read; it may be a scan. Export the sheet again as a PDF, or use a fillable sheet.`);
   }
-
   const res = await fetch('/api/parse-character-sheet', {
     method: 'POST',
     headers: await authHeaders(),
-    body: JSON.stringify({ text: pdf.text.slice(0, MAX_TEXT), filename: file.name, provider: getAIProvider() }),
+    body: JSON.stringify({ text: text.slice(0, MAX_TEXT), filename: file.name, provider: getAIProvider(), target }),
   });
   const data = await res.json().catch(() => ({})) as { values?: unknown; error?: string };
   if (!res.ok || data.error) throw new Error(data.error ?? `Server error: ${res.status}`);
-  return { file: file.name, values: cleanSheetValues(data.values), source: 'ai' };
+  return data.values;
+}
+
+/** Reads a sheet as a player character: its form fields when it has them, else the assistant reads its text. */
+export async function readCharacterSheet(file: File): Promise<SheetRead> {
+  const pdf = await openSheet(file);
+  const fromForm = fromFormFields(pdf.fields);
+  if (readEnough(fromForm)) return { file: file.name, values: fromForm, source: 'form' };
+  return { file: file.name, values: cleanSheetValues(await askAssistant(file, pdf.text, 'pc')), source: 'ai' };
+}
+
+export interface NpcSheetRead { file: string; sheet: NpcSheet; source: 'form' | 'ai' }
+
+/** Reads a character sheet (or, through the assistant, a creature stat block) as an NPC and its stat sheet. */
+export async function readNpcSheet(file: File): Promise<NpcSheetRead> {
+  const pdf = await openSheet(file);
+  const fromForm = npcFromFormFields(pdf.fields);
+  if (npcReadEnough(fromForm)) return { file: file.name, sheet: fromForm, source: 'form' };
+  return { file: file.name, sheet: cleanNpcSheet(await askAssistant(file, pdf.text, 'npc')), source: 'ai' };
 }

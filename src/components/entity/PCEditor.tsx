@@ -1,7 +1,7 @@
 // The player character editor: a campaign's own, on the same pattern as the
 // NPC, faction, place and lore editors.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
@@ -23,6 +23,8 @@ import { xpProgress } from '../../lib/levelling';
 import type { Faction, Levelling, NPC, PlayerCharacter } from '../../lib/database.types';
 import { Input } from '../ui/Input';
 import { SheetImportDialog } from './SheetImportDialog';
+import { pcSheetKind } from './sheetKinds';
+import { patchFrom } from '../../lib/characterSheet';
 
 export type PCFields = Pick<PlayerCharacter,
   'character_name' | 'player_name' | 'race' | 'class' | 'background' | 'story_hooks' | 'key_npcs' | 'key_npc_ids'
@@ -72,6 +74,7 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
 
   const set = <K extends keyof PCFields>(key: K, val: PCFields[K]) => setForm(f => ({ ...f, [key]: val }));
   const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetKind = useMemo(() => pcSheetKind(() => ({ ...pc, ...form })), [pc, form]);
   const sheetHref = form.sheet_url && /^https?:\/\//i.test(form.sheet_url) ? form.sheet_url : null;
   const xpNote = xpProgress(form.xp, form.level);
 
@@ -95,9 +98,10 @@ export function PCEditor({ pc, factions, npcs, statblocks, save, remove, onDelet
       <SheetImportDialog
         isOpen={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        pcs={[]}
-        target={{ ...pc, ...form, id: pc.id }}
-        onApply={([imp]) => { if (imp) setForm(f => ({ ...f, ...imp.patch })); }}
+        kind={sheetKind}
+        targets={[]}
+        target={{ id: pc.id, name: form.character_name }}
+        onApply={([imp]) => { if (imp) setForm(f => ({ ...f, ...patchFrom(imp.changes) })); }}
       />
 
       <SessionUpdateBand entityType="pc" entityId={pc.id} />
