@@ -1,22 +1,74 @@
-/* Shared combatant parts: HpControl, DeathSavePips, ConditionChips.
-   Used by the Play rail's tracker (and, from phase 8b, the full-screen one). */
+/* Shared combatant parts: HpControl, DeathSavePips, ConditionChips / ConditionPicker.
+   Two densities: rail (Play's docked tracker) and full (the full-screen tracker). */
 
-/* HP entry */
+/* ── HP: rail ── */
 .cbt-hp-rail { display: flex; align-items: center; gap: 4px; }
 .cbt-amount { width: 48px; height: 24px; text-align: center; background: var(--bg-2); border: 1px solid var(--rule); border-radius: var(--radius); color: var(--ink); font-family: var(--mono); font-size: var(--fs-xs); outline: none; }
 .cbt-amount:focus { border-color: var(--gold); }
 
-/* Death saves */
-.cbt-saves { display: flex; gap: 14px; }
+/* ── HP: full ── */
+.cbt-hp { flex-shrink: 0; width: 334px; }
+.cbt-hp-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.cbt-hp-read { display: flex; align-items: baseline; gap: 2px; }
+.cbt-hp-editable { cursor: pointer; border-radius: 4px; transition: background .1s; }
+.cbt-hp-editable:hover { background: var(--gold-dim); text-decoration: underline dotted; text-underline-offset: 3px; }
+.cbt-hp-num { font-family: var(--mono); font-weight: 700; font-size: var(--fs-h2); line-height: 1; letter-spacing: -.01em; }
+.cbt-hp-max { font-family: var(--mono); font-size: var(--fs-md); color: var(--ink-3); }
+.cbt-hp-edit { font-family: var(--mono); font-weight: 700; background: var(--bg-2); border: 1px solid var(--gold-line); border-radius: 5px; color: var(--ink); outline: none; text-align: center; padding: 0 2px; }
+.cbt-hp-edit.is-num { font-size: var(--fs-h2); width: 64px; height: 32px; line-height: 1; }
+.cbt-hp-edit.is-max { font-size: var(--fs-md); width: 48px; height: 24px; color: var(--ink-3); margin-left: 2px; }
+.cbt-hp-temp { font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .04em; color: var(--info); background: rgba(112,160,224,.12); border: 1px solid rgba(112,160,224,.4); border-radius: 999px; padding: 2px 8px; margin-left: 10px; white-space: nowrap; }
+.cbt-hp-status { font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.cbt-hp-status.is-bloodied { color: var(--orange); }
+.cbt-hp-status.is-down { color: var(--red); }
+.cbt-bar { position: relative; height: 9px; border-radius: 5px; background: var(--rule-soft); overflow: hidden; margin-bottom: 9px; }
+.cbt-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; transition: width .25s ease; }
+.cbt-bar.has-temp { box-shadow: 0 0 0 1px rgba(112,160,224,.5); }
+.cbt-hp-ctrl { display: flex; align-items: stretch; gap: 7px; }
+.cbt-dh { flex: 1; display: flex; align-items: center; border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: var(--paper); min-width: 0; }
+.cbt-dh-btn { flex-shrink: 0; width: 52px; border: none; cursor: pointer; font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 0; height: 40px; transition: .12s; }
+.cbt-dh-btn.is-dmg { background: rgba(224,92,92,.14); color: var(--red); }
+.cbt-dh-btn.is-dmg:hover { background: rgba(224,92,92,.26); }
+.cbt-dh-btn.is-heal { background: rgba(106,184,122,.14); color: var(--success); }
+.cbt-dh-btn.is-heal:hover { background: rgba(106,184,122,.26); }
+.cbt-dh input { flex: 1; min-width: 0; width: 100%; border: none; background: var(--bg-2); color: var(--ink); font-family: var(--mono); font-size: var(--fs-lg); font-weight: 700; text-align: center; outline: none; height: 40px; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+.cbt-dh input::placeholder { color: var(--ink-3); font-weight: 400; }
+.cbt-nudge { display: flex; flex-direction: column; gap: 4px; }
+.cbt-nudge button { font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-2); background: var(--paper); border: 1px solid var(--rule); border-radius: 5px; cursor: pointer; transition: .12s; line-height: 1; width: 34px; height: 18px; }
+.cbt-nudge button:hover { border-color: var(--gold-line); color: var(--gold); }
+.cbt-tempbtn { font-family: var(--mono); font-size: var(--fs-micro); background: var(--paper); border: 1px solid rgba(112,160,224,.3); border-radius: 5px; cursor: pointer; transition: .12s; width: 44px; height: 40px; display: grid; place-items: center; color: var(--info); }
+.cbt-tempbtn:hover { background: rgba(112,160,224,.12); border-color: var(--info); }
+.cbt-temppop { display: flex; gap: 6px; align-items: center; margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(112,160,224,.35); background: rgba(112,160,224,.06); border-radius: var(--radius); }
+.cbt-temppop input { width: 56px; height: 30px; text-align: center; font-family: var(--mono); font-weight: 700; background: var(--bg-2); border: 1px solid var(--rule); border-radius: 5px; color: var(--ink); outline: none; }
+.cbt-temppop-btn { font-family: var(--mono); font-size: var(--fs-micro); padding: 6px 10px; border-radius: 5px; border: 1px solid var(--info); background: rgba(112,160,224,.14); color: var(--info); cursor: pointer; }
+.cbt-temppop-btn.is-quiet { border-color: var(--rule); background: none; color: var(--ink-3); }
+.cbt-temppop-hint { font-family: var(--serif); font-style: italic; font-size: var(--fs-xs); color: var(--ink-3); }
+
+/* ── Death saves ── */
+.cbt-saves { display: flex; align-items: center; gap: 14px; }
+.cbt-saves.is-full { margin-top: 9px; }
+.cbt-saves-label { font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
 .cbt-pips { display: inline-flex; align-items: center; gap: 4px; }
+.cbt-saves.is-full .cbt-pips { gap: 5px; }
 .cbt-pips-label { font-family: var(--mono); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin-right: 2px; }
 .cbt-pip { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--rule-hover); background: transparent; padding: 0; cursor: pointer; }
+.cbt-saves.is-full .cbt-pip { width: 14px; height: 14px; transition: .1s; }
 .cbt-pip.is-s.on { background: var(--moss); border-color: var(--moss); }
+.cbt-saves.is-full .cbt-pip.is-s.on { background: var(--success); border-color: var(--success); }
 .cbt-pip.is-f.on { background: var(--red); border-color: var(--red); }
 
-/* Conditions */
+/* ── Conditions ── (--cc is the condition's colour, set inline) */
 .cbt-conds { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.cbt-cond { font-family: var(--mono); font-size: var(--fs-micro); padding: 1px 7px; border: 1px solid; border-radius: 999px; background: transparent; cursor: pointer; }
+.cbt-conds.is-full { gap: 5px; margin-top: 7px; }
+.cbt-cond { font-family: var(--mono); font-size: var(--fs-micro); padding: 1px 7px; color: var(--cc); border: 1px solid var(--cc); border-radius: 999px; background: transparent; cursor: pointer; }
+.cbt-conds.is-full .cbt-cond { font-weight: 700; text-transform: uppercase; letter-spacing: .1em; padding: 2px 7px; border-radius: 3px; background: color-mix(in srgb, var(--cc) 12%, transparent); border-color: color-mix(in srgb, var(--cc) 33%, transparent); }
 .cbt-cond-left { opacity: .8; }
 .cbt-cond-add { font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-3); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; cursor: pointer; color-scheme: dark; }
 .cbt-cond-rounds { width: 46px; font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-2); background: transparent; border: 1px dashed var(--rule); border-radius: 999px; padding: 1px 6px; color-scheme: dark; }
+
+/* The full tracker's condition grid */
+.cbt-picker { display: flex; flex-wrap: wrap; gap: 4px; }
+.cbt-picker-rounds { display: inline-flex; align-items: center; gap: 5px; margin-right: 6px; font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+.cbt-picker-rounds input { width: 48px; font-family: var(--mono); font-size: var(--fs-label); color: var(--ink); background: var(--bg-2); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 4px; color-scheme: dark; }
+.cbt-pick { font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 2px; cursor: pointer; background: transparent; color: var(--ink-3); border: 1px solid var(--rule-soft); transition: all .1s; }
+.cbt-pick.on { color: var(--cc); background: color-mix(in srgb, var(--cc) 9%, transparent); border-color: color-mix(in srgb, var(--cc) 33%, transparent); }

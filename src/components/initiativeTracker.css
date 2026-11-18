@@ -1,51 +1,45 @@
-/* Initiative tracker rows: HP zone, damage / heal, temp HP, death saves, conditions.
-   Was an embedded <style> in InitiativeTracker.tsx (ported from the design prototype).
-   Phase 8's shared combatant parts will take these over. */
-.itk-rounds{display:inline-flex;align-items:center;gap:5px;margin-right:6px;font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
-.itk-rounds input{width:48px;font-family:var(--mono);font-size:var(--fs-label);color:var(--ink);background:var(--bg-2);border:1px solid var(--rule);border-radius:3px;padding:2px 4px;color-scheme:dark}
-.itk-con{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px;padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:var(--fs-label);color:var(--info);background:var(--info-bg);border:1px solid var(--info-line)}
-.itk-con button{font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-2);background:transparent;border:1px solid var(--rule);border-radius:3px;padding:1px 7px;cursor:pointer}
-.itk-con button:hover{color:var(--ink);border-color:var(--rule-hover)}
-.itk-hp{flex-shrink:0;width:334px}
-.itk-hp-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
-.itk-hp-read{display:flex;align-items:baseline;gap:2px}
-.itk-hp-num{font-family:var(--mono);font-weight:700;font-size:var(--fs-h2);line-height:1;letter-spacing:-.01em}
-.itk-hp-max{font-family:var(--mono);font-size:var(--fs-md);color:var(--ink-3)}
-.itk-hp-editable{cursor:pointer;border-radius:4px;transition:background .1s}
-.itk-hp-editable:hover{background:var(--gold-dim);text-decoration:underline dotted;text-underline-offset:3px}
-.itk-hp-edit{font-family:var(--mono);font-weight:700;background:var(--bg-2);border:1px solid var(--gold-line);border-radius:5px;color:var(--ink);outline:none;text-align:center;padding:0 2px}
-.itk-hp-edit.num{font-size:var(--fs-h2);width:64px;height:32px;line-height:1}
-.itk-hp-edit.max{font-size:var(--fs-md);width:48px;height:24px;color:var(--ink-3);margin-left:2px}
-.itk-hp-temp{font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.04em;color:var(--info);background:rgba(112,160,224,.12);border:1px solid rgba(112,160,224,.4);border-radius:999px;padding:2px 8px;margin-left:10px;white-space:nowrap}
-.itk-hp-status{font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
-.itk-hp-status.bloodied{color:var(--orange)}
-.itk-hp-status.down{color:var(--red)}
-.itk-bar{position:relative;height:9px;border-radius:5px;background:var(--rule-soft);overflow:hidden;margin-bottom:9px}
-.itk-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;transition:width .25s ease}
-.itk-bar.hastemp{box-shadow:0 0 0 1px rgba(112,160,224,.5)}
-.itk-hp-ctrl{display:flex;align-items:stretch;gap:7px}
-.itk-dh{flex:1;display:flex;align-items:center;border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;background:var(--paper);min-width:0}
-.itk-dh button{flex-shrink:0;width:52px;border:none;cursor:pointer;font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:0;height:40px;transition:.12s}
-.itk-dh .dmg{background:rgba(224,92,92,.14);color:var(--red)}
-.itk-dh .dmg:hover{background:rgba(224,92,92,.26)}
-.itk-dh .heal{background:rgba(106,184,122,.14);color:var(--success)}
-.itk-dh .heal:hover{background:rgba(106,184,122,.26)}
-.itk-dh input{flex:1;min-width:0;width:100%;border:none;background:var(--bg-2);color:var(--ink);font-family:var(--mono);font-size:var(--fs-lg);font-weight:700;text-align:center;outline:none;height:40px;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
-.itk-dh input::placeholder{color:var(--ink-3);font-weight:400}
-.itk-nudge{display:flex;flex-direction:column;gap:4px}
-.itk-nudge button{font-family:var(--mono);font-size:var(--fs-micro);color:var(--ink-2);background:var(--paper);border:1px solid var(--rule);border-radius:5px;cursor:pointer;transition:.12s;line-height:1;width:34px;height:18px}
-.itk-nudge button:hover{border-color:var(--gold-line);color:var(--gold)}
-.itk-tempbtn{font-family:var(--mono);font-size:var(--fs-micro);background:var(--paper);border:1px solid rgba(112,160,224,.3);border-radius:5px;cursor:pointer;transition:.12s;width:44px;height:40px;display:grid;place-items:center;color:var(--info)}
-.itk-tempbtn:hover{background:rgba(112,160,224,.12);border-color:var(--info)}
-.itk-death{display:flex;align-items:center;gap:14px;margin-top:9px}
-.itk-death .lab{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
-.itk-pips{display:flex;gap:5px;align-items:center}
-.itk-pip{width:14px;height:14px;border-radius:50%;border:1px solid var(--rule-hover);cursor:pointer;background:transparent;transition:.1s;padding:0}
-.itk-pip.s.on{background:var(--success);border-color:var(--success)}
-.itk-pip.f.on{background:var(--red);border-color:var(--red)}
-.itk-verdict{font-family:var(--mono);font-size:var(--fs-micro);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.itk-temppop{display:flex;gap:6px;align-items:center;margin-top:8px;padding:8px 10px;border:1px solid rgba(112,160,224,.35);background:rgba(112,160,224,.06);border-radius:var(--radius)}
-.itk-temppop input{width:56px;height:30px;text-align:center;font-family:var(--mono);font-weight:700;background:var(--bg-2);border:1px solid var(--rule);border-radius:5px;color:var(--ink);outline:none}
-.itk-temppop button{font-family:var(--mono);font-size:var(--fs-micro);padding:6px 10px;border-radius:5px;border:1px solid var(--info);background:rgba(112,160,224,.14);color:var(--info);cursor:pointer}
-.itk-temppop .x{border-color:var(--rule);background:none;color:var(--ink-3)}
-.itk-temppop .hint{font-family:var(--serif);font-style:italic;font-size:var(--fs-xs);color:var(--ink-3)}
+/* The full-screen initiative tracker's own layout: header, rows, add form.
+   Its HP, death-save and condition controls are the shared parts in
+   components/combat (combat.css, .cbt-). */
+.itk { display: flex; height: 100%; background: var(--bg); color: var(--ink); }
+.itk-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.itk-sheet { width: 340px; flex-shrink: 0; }
+
+/* Header */
+.itk-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 28px 32px 20px; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
+.itk-eyebrow { color: var(--ink-3); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .18em; text-transform: uppercase; font-family: var(--mono); margin-bottom: 4px; }
+.itk-title { color: var(--ink); font-size: var(--fs-h2); font-weight: 700; font-family: var(--display); margin: 0; line-height: 1.2; }
+.itk-sub { color: var(--ink-3); font-size: var(--fs-xs); margin-top: 4px; font-family: var(--serif); font-style: italic; }
+.itk-sub.is-expired { color: var(--gold); margin-top: 2px; }
+.itk-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* Rows */
+.itk-list { flex: 1; overflow-y: auto; }
+.itk-row { display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-bottom: 1px solid var(--rule-soft); border-left: 3px solid transparent; background: transparent; transition: background .15s, opacity .2s; }
+.itk-row.is-current { padding-left: 21px; border-left-color: var(--gold); background: var(--gold-dim); }
+.itk-row.is-down { opacity: .7; }
+.itk-init { width: 46px; flex-shrink: 0; text-align: center; }
+input.itk-init-input { width: 44px; text-align: center; font-size: var(--fs-body); font-weight: 700; color: var(--gold); background: var(--bg-2); border: 1px solid var(--rule); border-radius: var(--radius); padding: 2px 4px; outline: none; font-family: var(--mono); }
+.itk-init-num { font-size: var(--fs-lg); font-weight: 700; color: var(--ink-3); font-family: var(--mono); }
+.itk-init-num.is-current { color: var(--gold); }
+.itk-who { flex: 1; min-width: 0; }
+.itk-name-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.itk-kind { font-size: var(--fs-xs); color: var(--accent); }
+.itk-kind.is-pc { color: var(--moss); }
+.itk-name { color: var(--ink-2); font-size: var(--fs-body); font-weight: 600; font-family: var(--display); }
+.itk-name.is-current { color: var(--ink); }
+.itk-name.is-down { color: var(--ink-3); }
+.itk-name.is-link { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--rule-hover); }
+.itk-meta { font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-3); margin-top: 3px; display: flex; gap: 12px; }
+.itk-con { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; padding: 3px 8px; border-radius: 4px; font-family: var(--mono); font-size: var(--fs-label); color: var(--info); background: var(--info-bg); border: 1px solid var(--info-line); }
+.itk-con button { font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 3px; padding: 1px 7px; cursor: pointer; }
+.itk-con button:hover { color: var(--ink); border-color: var(--rule-hover); }
+.itk-verdict { margin-top: 9px; font-family: var(--mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--moss); }
+.itk-verdict.is-dead { color: var(--red); }
+.itk-trail { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; align-items: center; }
+.itk-picker { margin: 0 24px; padding: 10px 0; border-bottom: 1px solid var(--rule-soft); }
+
+/* Add a combatant */
+.itk-add { padding: 12px 14px; }
+.itk-add-row { display: flex; align-items: center; gap: 8px; }
+.itk-add-input.cm-input { flex: 1; width: auto; font-size: var(--fs-md); background: var(--bg-2); padding: 6px 10px; }
