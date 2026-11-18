@@ -2,7 +2,7 @@
 // it says where the NPC lives and how to save it; in a campaign it also shows
 // where the NPC came from (canon or this table) and what sessions did with it.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TitleInput } from '../ui/TitleInput';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAutoSave } from '../../hooks/useAutoSave';
@@ -27,6 +27,11 @@ import type { Faction, Location, NPC } from '../../lib/database.types';
 import { SingleLink, WasText } from './LinkPicker';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { Input } from '../ui/Input';
+import { SheetImportDialog } from './SheetImportDialog';
+import { npcSheetKind } from './sheetKinds';
+import { patchFrom } from '../../lib/characterSheet';
+import { NPC_GROUP, STATBLOCK_GROUP, type NpcSheetValues, type StatSheetValues } from '../../lib/npcSheet';
+import type { MonsterStatblock } from '../../lib/database.types';
 
 /** What the editor writes back: every field it shows. */
 export type NPCFields = Pick<NPC,
@@ -62,7 +67,14 @@ const isEmpty = (v: string | null | undefined) => !v?.trim();
 type Optional = 'hooks' | 'voice' | 'notes' | 'statblock';
 const OPTIONAL_LABEL: Record<Optional, string> = { hooks: 'Hooks & motivations', voice: 'Voice', notes: 'DM notes', statblock: 'Stat sheet' };
 
-export function NPCEditor({ npc, scope, factions, locations, statblocks, save, remove, onDeleted, onOpenStatBlock, onOpenLocation, canon, usedIn, onOpenCampaign }: {
+/** What importing a character sheet onto an NPC needs: its stat sheets, and a way to save one. */
+export interface NPCSheetImport {
+  statblockById: (id: string) => MonsterStatblock | undefined;
+  /** Saves the ticked changes onto the NPC's stat sheet (or a new one) and returns its id. */
+  saveStatblock: (patch: StatSheetValues, existingId: string | null, npcName: string) => Promise<string>;
+}
+
+export function NPCEditor({ npc, scope, factions, locations, statblocks, save, remove, onDeleted, onOpenStatBlock, onOpenLocation, canon, usedIn, onOpenCampaign, sheetImport }: {
   npc: NPC;
   scope: EntityScope;
   /** Factions it can belong to, in the same scope. */
@@ -79,6 +91,8 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
   /** In the world: the campaigns that have imported it (null while loading). */
   usedIn?: { id: string; name: string }[] | null;
   onOpenCampaign?: (id: string) => void;
+  /** Offers "Import from a sheet PDF…" when given. */
+  sheetImport?: NPCSheetImport;
 }) {
   const confirm = useConfirm();
   const [form, setForm] = useState<NPCFields>(() => toFields(npc));
@@ -105,6 +119,22 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
 
   const set = <K extends keyof NPCFields>(key: K, val: NPCFields[K]) => setForm(f => ({ ...f, [key]: val }));
 
+  // A character sheet (or a creature's stat block) onto this NPC and its stat sheet.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetKind = useMemo(() => sheetImport && npcSheetKind(
+    () => ({ ...npc, ...form }),
+    id => sheetImport.statblockById(id),
+  ), [sheetImport, npc, form]);
+  const importSheet = async (changes: Parameters<typeof patchFrom>[0]) => {
+    if (!sheetImport) return;
+    const npcPatch = patchFrom<NpcSheetValues>(changes, NPC_GROUP);
+    const sbPatch = patchFrom<StatSheetValues>(changes, STATBLOCK_GROUP);
+    const statblockId = Object.keys(sbPatch).length
+      ? await sheetImport.saveStatblock(sbPatch, form.statblock_id, npcPatch.name ?? form.name)
+      : form.statblock_id;
+    setForm(f => ({ ...f, ...npcPatch, statblock_id: statblockId }));
+  };
+
   const handleDelete = async () => {
     const message = canon?.origin === 'imported'
       ? 'This is world canon: deleting it removes it from the world and every campaign. To drop it from this campaign only, detach it instead.'
@@ -126,8 +156,21 @@ export function NPCEditor({ npc, scope, factions, locations, statblocks, save, r
         <SaveStatusIndicator status={status} onRetry={saveNow} />
         <div className="as-spacer" />
         {scope === 'campaign' && <ShareToggle kind="npc" id={npc.id} />}
-        <OverflowMenu items={[{ label: 'Delete NPC', danger: true, onClick: handleDelete }]} />
+        <OverflowMenu items={[
+          ...(sheetKind && !locked ? [{ label: 'Import from a sheet PDF…', onClick: () => setSheetOpen(true) }] : []),
+          { label: 'Delete NPC', danger: true, onClick: handleDelete },
+        ]} />
       </div>
+      {sheetKind && (
+        <SheetImportDialog
+          isOpen={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          kind={sheetKind}
+          targets={[]}
+          target={{ id: npc.id, name: form.name }}
+          onApply={async ([imp]) => { if (imp) await importSheet(imp.changes); }}
+        />
+      )}
 
       {scope === 'campaign' && <SessionUpdateBand entityType="npc" entityId={npc.id} />}
 

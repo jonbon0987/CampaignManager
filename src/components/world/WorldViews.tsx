@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { plural } from '../../lib/plural';
 import { firstNamed } from '../../lib/firstNamed';
 import { useWorld } from '../../context/WorldContext';
@@ -26,7 +26,11 @@ import { markDraft } from '../../hooks/useDiscardBlankDraft';
 import type { WorldLocation } from '../../types/world';
 import type { NPC } from '../../lib/database.types';
 import { CampaignNPCs } from '../../lib/db';
-import { NPCEditor } from '../entity/NPCEditor';
+import { NPCEditor, type NPCSheetImport } from '../entity/NPCEditor';
+import { SheetImportDialog, type SheetImport } from '../entity/SheetImportDialog';
+import { npcSheetKind } from '../entity/sheetKinds';
+import { patchFrom } from '../../lib/characterSheet';
+import { mergedStatblock, NPC_GROUP, STATBLOCK_GROUP, type NpcSheet, type NpcSheetValues, type StatSheetValues } from '../../lib/npcSheet';
 import { LocationEditor } from '../entity/LocationEditor';
 import { LoreEditor } from '../entity/LoreEditor';
 import { FactionEditor } from '../entity/FactionEditor';
@@ -65,6 +69,9 @@ export function WorldNPCsView() {
 
   const addCharacter = async () => { const id = await createNPC(); if (id) { markDraft(id); setSelected('npcs', id); } };
   const addFaction = async () => { const id = await createFaction(); if (id) { markDraft(id); setSelected('npcs', id); } };
+  // NPCs from sheet PDFs; an open editor remounts on what was just saved.
+  const [sheetsOpen, setSheetsOpen] = useState(false);
+  const [importStamp, setImportStamp] = useState(0);
 
   type ListItem = { id: string; name: string; kind: 'npc' | 'faction'; role?: string; type?: string; status?: string; era?: string; desc?: string; factions?: string[]; location?: string | null; tags?: string[]; tone?: string; portrait?: string | null };
 
@@ -87,6 +94,7 @@ export function WorldNPCsView() {
   const sel = items.find(x => x.id === selected.npcs) || firstNamed(items, x => x.name);
 
   return (
+    <>
     <ListDetail
       title="Cast"
       count={items.length}
@@ -96,6 +104,7 @@ export function WorldNPCsView() {
       addLabel={filter === 'faction' ? '+ Add faction' : filter === 'npc' ? '+ Add NPC' : '+ Add'}
       addOptions={filter === 'all' ? [
         { label: 'NPC', onClick: addCharacter },
+        { label: 'NPCs from sheet PDFs…', onClick: () => setSheetsOpen(true) },
         { label: 'Faction', onClick: addFaction },
       ] : undefined}
       empty={npcs.length + factions.length === 0 ? {
@@ -132,9 +141,60 @@ export function WorldNPCsView() {
           ))}
         </div>
       }
-      detail={sel ? <WorldNPCDetail entity={sel} /> : <EmptyDetail noun="character" />}
+      detail={sel ? <WorldNPCDetail key={`${sel.id}:${importStamp}`} entity={sel} /> : <EmptyDetail noun="character" />}
     />
+    {sheetsOpen && (
+      <WorldSheetImport
+        onClose={() => setSheetsOpen(false)}
+        onImported={id => { setImportStamp(n => n + 1); if (id) { setFilter('all'); setSelected('npcs', id); } }}
+      />
+    )}
+    </>
   );
+}
+
+/** Saving an imported NPC's stat sheet in the world: the ticked changes on top of what it has. */
+function useWorldSheetImport(): NPCSheetImport {
+  const { worldStatblocks, upsertWorldStatblock } = useWorld();
+  const statblockById = useCallback((id: string) => worldStatblocks.find(m => m.id === id), [worldStatblocks]);
+  const saveStatblock = useCallback(async (patch: StatSheetValues, existingId: string | null, npcName: string) => {
+    const existing = existingId ? worldStatblocks.find(m => m.id === existingId) : undefined;
+    const saved = await upsertWorldStatblock({
+      ...mergedStatblock(existing, patch, npcName),
+      sort_order: existing?.sort_order ?? 0,
+      ...(existing ? { id: existing.id } : {}),
+    });
+    return saved.id;
+  }, [worldStatblocks, upsertWorldStatblock]);
+  return useMemo(() => ({ statblockById, saveStatblock }), [statblockById, saveStatblock]);
+}
+
+/** Canon NPCs from character sheets (or stat blocks): each updates the NPC it matches, or makes a new one. */
+function WorldSheetImport({ onClose, onImported }: { onClose: () => void; onImported: (firstId: string | null) => void }) {
+  const { npcs, createNPC, upsertWorldNPC } = useWorld();
+  const sheetImport = useWorldSheetImport();
+  const rows = useMemo(() => npcs.flatMap(n => (n.row ? [n.row] : [])), [npcs]);
+  const kind = useMemo(() => npcSheetKind(id => rows.find(r => r.id === id), sheetImport.statblockById), [rows, sheetImport.statblockById]);
+
+  const importNPCs = async (imports: SheetImport<NpcSheet>[]) => {
+    let first: string | null = null;
+    for (const imp of imports) {
+      const npcPatch = patchFrom<NpcSheetValues>(imp.changes, NPC_GROUP);
+      const sbPatch = patchFrom<StatSheetValues>(imp.changes, STATBLOCK_GROUP);
+      const existing = imp.targetId ? rows.find(r => r.id === imp.targetId) : undefined;
+      const name = npcPatch.name || existing?.name || imp.file.replace(/\.pdf$/i, '');
+      const id = existing?.id ?? await createNPC();
+      if (!id) continue;
+      const statblockId = Object.keys(sbPatch).length
+        ? await sheetImport.saveStatblock(sbPatch, existing?.statblock_id ?? null, name)
+        : existing?.statblock_id ?? null;
+      await upsertWorldNPC({ id, ...npcPatch, name, statblock_id: statblockId });
+      first ??= id;
+    }
+    onImported(first);
+  };
+
+  return <SheetImportDialog isOpen onClose={onClose} kind={kind} targets={rows.map(r => ({ id: r.id, name: r.name }))} onApply={importNPCs} />;
 }
 
 // The world's NPCs and factions, in the same editors a campaign uses.
@@ -174,6 +234,7 @@ function WorldNPC({ row }: { row: NPC }) {
     return () => { live = false; };
   }, [row.id]);
   const usedIn = campaignIds && campaigns.filter(c => campaignIds.includes(c.id)).map(c => ({ id: c.id, name: c.name }));
+  const sheetImport = useWorldSheetImport();
   return (
     <NPCEditor
       npc={row}
@@ -184,6 +245,7 @@ function WorldNPC({ row }: { row: NPC }) {
       locations={locations.flatMap(l => (l.row ? [l.row] : []))}
       onOpenLocation={id => { setWorldTab('locations'); setSelected('locations', id); }}
       statblocks={worldStatblocks.map(s => ({ id: s.id, name: s.name }))}
+      sheetImport={sheetImport}
       save={fields => upsertWorldNPC({ id: row.id, ...fields })}
       remove={deleteWorldNPC}
     />
