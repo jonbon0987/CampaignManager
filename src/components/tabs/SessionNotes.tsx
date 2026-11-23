@@ -22,10 +22,11 @@ import { useEndSession } from '../play/useEndSession';
 import { usePlay } from '../../context/PlayContext';
 import { SessionPrep } from '../session/SessionPrep';
 import { SessionChronicles } from '../session/SessionChronicles';
+import { PlayerRecap } from '../session/PlayerRecap';
 import { LeftOpenToInbox } from '../session/LeftOpenToInbox';
 import { formatSessionDate, nextBlankSession, plainText, clip, STATUS_LABEL } from '../../lib/sessionLifecycle';
 import { noteStamp } from '../../lib/playTime';
-import type { Session, SessionPlan, SessionStatus } from '../../lib/database.types';
+import type { PlayerRecapStatus, Session, SessionPlan, SessionStatus } from '../../lib/database.types';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { Input } from '../ui/Input';
 
@@ -42,6 +43,8 @@ type SessionForm = {
   loot_rewards: string | null;
   hooks_notes: string | null;
   dm_notes: string | null;
+  player_recap: string | null;
+  player_recap_status: PlayerRecapStatus | null;
 };
 
 const toForm = (s: Session): SessionForm => ({
@@ -57,6 +60,8 @@ const toForm = (s: Session): SessionForm => ({
   loot_rewards: s.loot_rewards,
   hooks_notes: s.hooks_notes,
   dm_notes: s.dm_notes,
+  player_recap: s.player_recap ?? null,
+  player_recap_status: s.player_recap_status ?? null,
 });
 
 // The plan is an object, so compare by value.
@@ -327,6 +332,15 @@ function SessionDetail({
                 maxLength={limitFor('sessions', 'summary')}
               />
             </div>
+
+            {/* The longer telling for the players, written from the recording */}
+            <PlayerRecap
+              session={session}
+              value={form.player_recap}
+              status={form.player_recap_status}
+              onChange={v => set('player_recap', v)}
+              onStatus={st => set('player_recap_status', st)}
+            />
 
             {/* What the recording's chronicle wrote into the campaign */}
             <SessionChronicles sessionId={session.id} />

@@ -102,6 +102,30 @@ describe('PlayerPage', () => {
     });
   });
 
+  describe('the player recap', () => {
+    const story = '### At the ford\n\n- The party reached the ford.\n  > “You will not take me alive” — Brenna';
+
+    it('opens the whole story under the short recap', async () => {
+      load.mockResolvedValue({ ...full, recaps: [{ ...full.recaps[0], story }] });
+      const { container } = render(<PlayerPage token={'x'.repeat(32)} />);
+      expect(await screen.findByText('The whole session, scene by scene')).toBeTruthy();
+      const details = container.querySelector('details.pp-story') as HTMLDetailsElement;
+      expect(details.open).toBe(false);
+      expect(details.querySelector('h3')?.textContent).toBe('At the ford');
+      expect(details.querySelector('blockquote')?.textContent).toContain('You will not take me alive');
+      expect(screen.getByText(/We met Brenna at the docks/)).toBeTruthy();
+    });
+
+    it('shows the story by itself when only it is published', async () => {
+      load.mockResolvedValue({ ...full, recaps: [{ ...full.recaps[0], summary: null, loot: null, story }] });
+      const { container } = render(<PlayerPage token={'x'.repeat(32)} />);
+      expect(await screen.findByRole('heading', { name: 'At the ford' })).toBeTruthy();
+      expect(container.querySelector('details')).toBeNull();
+      expect(screen.queryByText('No recap written yet.')).toBeNull();
+      expect(screen.queryByText('Loot and rewards')).toBeNull();
+    });
+  });
+
   it('says the page is gone when the link is wrong or turned off', async () => {
     load.mockResolvedValue(null);
     render(<PlayerPage token={'x'.repeat(32)} />);

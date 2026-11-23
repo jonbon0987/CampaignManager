@@ -60,6 +60,7 @@ export const TEXT_LIMITS: Record<string, Record<string, number>> = {
     dm_notes: LIMIT.BODY,
     title: LIMIT.NAME,
     prep_notes: LIMIT.BODY,
+    player_recap: LIMIT.BODY,
   },
   items: {
     name: LIMIT.NAME,

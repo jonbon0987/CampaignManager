@@ -40,3 +40,19 @@ export async function writeChronicle(recordingId: string, campaignContext: strin
   if (!res.ok) throw new Error(body.error ?? `Writing the chronicle failed (${res.status}).`);
   return body;
 }
+
+/**
+ * Writes the session's player recap from a recording and saves it as a draft
+ * (see api/player-recap.ts). Takes a minute or two. With onlyIfEmpty (the
+ * automatic run) it leaves a session that already has one alone: skipped.
+ */
+export async function writePlayerRecap(recordingId: string, names: string, provider: string, onlyIfEmpty = false): Promise<{ recap?: string; skipped?: boolean }> {
+  const res = await fetch('/api/player-recap', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ recordingId, names, provider, onlyIfEmpty }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `Writing the player recap failed (${res.status}).`);
+  return body;
+}

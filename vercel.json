@@ -11,6 +11,9 @@
     },
     "api/chronicle.ts": {
       "maxDuration": 300
+    },
+    "api/player-recap.ts": {
+      "maxDuration": 300
     }
   },
   "rewrites": [

@@ -107,3 +107,21 @@
 .chg-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 26px; }
 .chg-accepted { white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
 .chg-play { flex: 0 0 auto; font-style: normal; }
+
+/* Player recap: the longer telling for players, under the session's recap (session/PlayerRecap.tsx). */
+.prc-head { margin-bottom: 2px; }
+.prc-status { font-size: var(--fs-micro); font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule); border-radius: 999px; padding: 1px 8px; }
+.prc-status.is-published { color: var(--gold); border-color: var(--gold-line); }
+.prc-note { margin: 0; font-size: var(--fs-sm); color: var(--ink-3); }
+.prc-note.is-error { color: var(--red); }
+.prc-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: var(--fs-sm); color: var(--ink-3); }
+.prc-empty p { margin: 0; max-width: 62ch; }
+.prc-text { background: var(--paper-2); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 16px; max-height: 480px; overflow-y: auto; color: var(--ink-2); line-height: 1.6; }
+.prc-text h3:first-child { margin-top: 0; }
+.prc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.prc-hint { font-size: var(--fs-xs); color: var(--ink-3); }
+.prc-sheet-text, .prc-sheet-text * { color: var(--print-ink) !important; }
+.prc-sheet-text h3 { margin-top: 1em; font-size: 1.15em; border-bottom: 1px solid var(--print-ink-2); padding-bottom: 2px; }
+.prc-sheet-text h3:first-child { margin-top: 0; }
+.prc-sheet-text li { margin: 0.3em 0; break-inside: avoid; }
+.prc-sheet-text blockquote { border-left-color: var(--print-accent); }

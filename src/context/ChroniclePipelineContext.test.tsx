@@ -11,9 +11,11 @@ const h = vi.hoisted(() => ({
   proposals: vi.fn(),
   transcription: vi.fn(),
   write: vi.fn(),
+  recap: vi.fn(),
   toast: vi.fn(),
+  sessions: { value: [] as { id: string; session_number: number; player_recap?: string | null }[] },
 }));
-vi.mock('./CampaignContext', () => ({ useCampaign: () => ({ selectedCampaignId: 'c1', sessions: [{ id: 's6', session_number: 6 }] }) }));
+vi.mock('./CampaignContext', () => ({ useCampaign: () => ({ selectedCampaignId: 'c1', sessions: h.sessions.value }) }));
 vi.mock('./RecordingContext', () => ({ useRecording: () => ({ version: 0 }) }));
 vi.mock('./ToastContext', () => ({ useToast: () => h.toast }));
 vi.mock('../lib/db', () => ({
@@ -22,6 +24,7 @@ vi.mock('../lib/db', () => ({
   ChronicleProposals: { getByRecording: h.proposals },
 }));
 vi.mock('../lib/recording/transcriptionApi', () => ({ transcription: h.transcription }));
+vi.mock('../hooks/useWritePlayerRecap', () => ({ useWritePlayerRecap: () => h.recap }));
 vi.mock('../hooks/useWriteChronicle', () => ({
   useWriteChronicle: () => h.write,
   savedChronicleSettings: () => ({ depth: 'thorough', dropTableTalk: true, asidesToDmNotes: true }),
@@ -37,7 +40,9 @@ const wrapper = ({ children }: { children: React.ReactNode }) => <ChroniclePipel
 const run = () => renderHook(() => useChroniclePipeline(), { wrapper });
 
 beforeEach(() => {
-  Object.values(h).forEach(fn => fn.mockReset());
+  Object.values(h).forEach(fn => { if (typeof fn === 'function') fn.mockReset(); });
+  h.sessions.value = [{ id: 's6', session_number: 6 }];
+  h.recap.mockResolvedValue(true);
   h.proposals.mockResolvedValue([]);
   h.update.mockResolvedValue({});
 });
@@ -98,5 +103,42 @@ describe('the chronicle pipeline', () => {
     h.getInProgress.mockResolvedValue([recording({ settings: { autoChronicle: false } })]);
     result.current.refresh();
     await waitFor(() => expect(result.current.entries[0]).toMatchObject({ stage: 'transcribed', error: 'The AI is busy.' }));
+  });
+
+  it('writes the player recap alongside the chronicle, as a draft that leaves one already there alone', async () => {
+    h.getInProgress.mockResolvedValue([recording()]);
+    h.tracks.mockResolvedValue(done);
+    h.claim.mockImplementation(async (r: SessionRecording) => ({ ...r, settings: { autoChronicle: false, chronicleStartedAt: 'now' } }));
+    h.write.mockReturnValue(new Promise(() => {}));
+    run();
+    await waitFor(() => expect(h.recap).toHaveBeenCalledTimes(1));
+    expect(h.recap.mock.calls[0][0]).toMatchObject({ id: 'r1', session_id: 's6' });
+    expect(h.recap.mock.calls[0][1]).toEqual({ onlyIfEmpty: true });
+    await waitFor(() => expect(h.toast).toHaveBeenCalledWith('The player recap of Session 6 is ready to read', 'success'));
+  });
+
+  it('doesn’t write a player recap for a session that has one', async () => {
+    h.sessions.value = [{ id: 's6', session_number: 6, player_recap: '### Edited by the DM' }];
+    h.getInProgress.mockResolvedValue([recording()]);
+    h.tracks.mockResolvedValue(done);
+    h.claim.mockImplementation(async (r: SessionRecording) => ({ ...r, settings: { autoChronicle: false, chronicleStartedAt: 'now' } }));
+    h.write.mockReturnValue(new Promise(() => {}));
+    run();
+    await waitFor(() => expect(h.write).toHaveBeenCalledTimes(1));
+    expect(h.recap).not.toHaveBeenCalled();
+  });
+
+  it('shows a player recap being written, and why it failed', async () => {
+    h.getInProgress.mockResolvedValue([]);
+    let fail: (e: Error) => void = () => {};
+    h.recap.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    const { result } = run();
+    let done!: Promise<void>;
+    await waitFor(() => { done = result.current.writeRecap({ id: 'r1', session_id: 's6' }); });
+    await waitFor(() => expect(result.current.recapFor('s6')).toEqual({ writing: true, error: null }));
+    fail(new Error('Gemini is busy.'));
+    await done;
+    await waitFor(() => expect(result.current.recapFor('s6')).toEqual({ writing: false, error: 'Gemini is busy.' }));
+    expect(h.toast).not.toHaveBeenCalled();
   });
 });

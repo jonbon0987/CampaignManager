@@ -1,7 +1,8 @@
 // src/components/session/PostRecapModal.tsx
 // -----------------------------------------------------------
 // Posts the player recap to a Discord text channel: the DM reads and edits it
-// first, it's queued in discord_posts, and the bot sends it.
+// first, it's queued in discord_posts, and the bot sends it. A text longer
+// than one post is queued as several, split between scenes, sent in order.
 // -----------------------------------------------------------
 
 import { useEffect, useState } from 'react';
@@ -11,6 +12,7 @@ import { useToast } from '../../context/ToastContext';
 import { DiscordPosts } from '../../lib/db';
 import type { DiscordPost, Session, SessionRecording } from '../../lib/database.types';
 import { playerRecap, textChannels } from '../../lib/discord';
+import { splitRecap } from '../../lib/recording/playerRecap';
 import { useDiscordBot } from '../../hooks/useDiscordBot';
 import { limitFor } from '../../lib/fieldLimits';
 import { Modal } from '../Modal';
@@ -22,7 +24,14 @@ import { Select, Textarea } from '../ui/Input';
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const LAST_TEXT = (campaignId: string) => `cm-discord-recap-channel:${campaignId}`;
 
-export function PostRecapModal({ recording, session, onClose }: { recording: SessionRecording; session: Session; onClose: () => void }) {
+export function PostRecapModal({ recording, session, text: initialText, title = 'Post the recap to Discord', onClose }: {
+  recording: SessionRecording;
+  session: Session;
+  /** What to post, to start with; the session's short recap, loot and what's left open when not given. */
+  text?: string;
+  title?: string;
+  onClose: () => void;
+}) {
   const { selectedCampaignId } = useCampaign();
   const toast = useToast();
   const bot = useDiscordBot();
@@ -30,7 +39,8 @@ export function PostRecapModal({ recording, session, onClose }: { recording: Ses
   const [channelId, setChannelId] = useState<string>(() => {
     try { return localStorage.getItem(LAST_TEXT(recording.campaign_id)) ?? ''; } catch { return ''; }
   });
-  const [text, setText] = useState(() => playerRecap(session));
+  const [text, setText] = useState(() => initialText ?? playerRecap(session));
+  const parts = splitRecap(text, limitFor('discord_posts', 'content') ?? 8000);
   const [posts, setPosts] = useState<DiscordPost[]>([]);
   const [sending, setSending] = useState(false);
   const pending = posts.some(p => p.status === 'pending');
@@ -50,8 +60,12 @@ export function PostRecapModal({ recording, session, onClose }: { recording: Ses
     setSending(true);
     try {
       try { localStorage.setItem(LAST_TEXT(recording.campaign_id), chosen.id); } catch { /* not remembered */ }
-      const post = await DiscordPosts.queue({ campaign_id: recording.campaign_id, recording_id: recording.id, channel_id: chosen.id, content: text.trim() });
-      setPosts(prev => [post, ...prev]);
+      // One at a time, so they're queued (and sent) in order.
+      const queued: DiscordPost[] = [];
+      for (const content of parts) {
+        queued.push(await DiscordPosts.queue({ campaign_id: recording.campaign_id, recording_id: recording.id, channel_id: chosen.id, content }));
+      }
+      setPosts(prev => [...queued.reverse(), ...prev]);
       toast(bot.online ? 'Sending to Discord…' : 'Queued. It’s sent once the bot is signed in.', 'success');
     } catch (e) {
       toast(errorMessage(e), 'error');
@@ -66,7 +80,7 @@ export function PostRecapModal({ recording, session, onClose }: { recording: Ses
     <Modal
       isOpen
       onClose={onClose}
-      title="Post the recap to Discord"
+      title={title}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Close</Button>
@@ -91,12 +105,12 @@ export function PostRecapModal({ recording, session, onClose }: { recording: Ses
             id="recap-text"
             rows={12}
             value={text}
-            maxLength={limitFor('discord_posts', 'content')}
             onChange={e => setText(e.target.value)}
             style={{ resize: 'vertical', fontFamily: 'inherit' }}
           />
           <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
-            The recap, loot and what’s left open. Your DM notes are never included. Long recaps are split into several messages.
+            {initialText ? 'Your DM notes are never included.' : 'The recap, loot and what’s left open. Your DM notes are never included.'} Long recaps are split into several messages.
+            {parts.length > 1 ? ` This one goes as ${parts.length} posts.` : ''}
           </span>
         </div>
         {posts.length > 0 && (
