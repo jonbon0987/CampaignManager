@@ -3227,6 +3227,8 @@ body.is-resizing-rail, body.is-resizing-rail * { cursor: col-resize; user-select
 .dbot-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .dbot-label { flex: 0 0 64px; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
 .dbot-select { flex: 1 1 220px; width: auto; min-width: 0; }
+.dbot-hint { flex: 1 1 100%; padding-left: 76px; color: var(--ink-3); }
+@media (max-width: 560px) { .dbot-hint { padding-left: 0; } }
 .th-known { resize: vertical; font-family: var(--serif); font-size: var(--fs-body); line-height: 1.5; }
 
 /* House rules */

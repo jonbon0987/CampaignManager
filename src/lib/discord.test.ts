@@ -9,7 +9,7 @@ const presence = {
 describe('discord helpers', () => {
   it('lists the channels the bot can see', () => {
     expect(voiceChannels(presence)).toEqual([{ guildId: 'g', channelId: 'v', channelName: 'session-voice', members: [{ id: 'u', name: 'dana' }], label: 'The Lair · #session-voice' }]);
-    expect(textChannels(presence)).toEqual([{ id: 't', label: 'The Lair · #recaps' }]);
+    expect(textChannels(presence)).toEqual([{ id: 't', label: 'The Lair · #recaps', guildId: 'g', channelName: 'recaps' }]);
     expect(voiceChannels(null)).toEqual([]);
   });
 

@@ -9,8 +9,8 @@
 import {
   EndBehaviorType, VoiceConnectionStatus, entersState, joinVoiceChannel, type VoiceConnection,
 } from '@discordjs/voice';
-import type { Client, Guild, VoiceBasedChannel } from 'discord.js';
-import { ANNOUNCE_START, ANNOUNCE_STOP } from './messages.js';
+import type { Client, Guild, SendableChannels, VoiceBasedChannel } from 'discord.js';
+import { announcements } from './messages.js';
 import type { RecordingRow, Speaker, Store } from './store.js';
 import { DiscordTrackWriter, type WrittenChunk } from './trackWriter.js';
 
@@ -30,6 +30,8 @@ const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 export class Capture {
   private connection: VoiceConnection | null = null;
   private channel: VoiceBasedChannel | null = null;
+  /** Where the recording notices go: the campaign's post channel, else the voice channel's chat. */
+  private notices: { channel: SendableChannels; start: string; stop: string } | null = null;
   private players = new Map<string, PlayerTrack>();
   private subscribed = new Set<string>();
   private speakers = new Map<string, Speaker>();
@@ -52,7 +54,19 @@ export class Capture {
     this.paused = !!this.recording.paused_at;
     await this.connect();
     await this.store.setDiscord(this.id, 'recording', this.detail());
-    await this.channel.send(ANNOUNCE_START).catch(() => this.log('Couldn’t post the recording notice (the bot needs Send Messages in that channel).'));
+    this.notices = await this.noticeChannel(channel);
+    await this.notices.channel.send(this.notices.start).catch(() => this.log('Couldn’t post the recording notice (the bot needs Send Messages in that channel).'));
+  }
+
+  /** The campaign's post channel when it has one the bot can post in; otherwise the voice channel's own chat. */
+  private async noticeChannel(voice: VoiceBasedChannel): Promise<{ channel: SendableChannels; start: string; stop: string }> {
+    const posts = this.recording.settings.discordPosts;
+    if (posts && posts.channelId !== voice.id) {
+      const channel = await this.client.channels.fetch(posts.channelId).catch(() => null);
+      if (channel?.isSendable()) return { channel, ...announcements(voice.name) };
+      this.log(`Can’t post in #${posts.channelName}; posting the recording notice in ${voice.name} instead.`);
+    }
+    return { channel: voice, ...announcements(null) };
   }
 
   /** Brings the capture in line with the recording row (pause, who may be recorded). */
@@ -79,7 +93,7 @@ export class Capture {
     this.stopped = true;
     await this.store.setDiscord(this.id, 'finishing', 'Saving the Discord audio…');
     for (const p of this.players.values()) p.writer.finish();
-    await this.channel?.send(ANNOUNCE_STOP).catch(() => {});
+    if (this.notices) await this.notices.channel.send(this.notices.stop).catch(() => {});
     this.disconnect();
     let saved = 0;
     for (const p of this.players.values()) {

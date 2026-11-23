@@ -46,7 +46,7 @@ The bot runs in the background on your Mac, started at login, and you sign it in
 - You don't have to sign it in to record: a recording that uses Discord signs it in by itself, and it stays signed in until that recording is done.
 - In Sessions, **Record this session** now has a **Players on Discord** section. Pick the voice channel and say who each person plays; that's remembered for the campaign.
 - Tick **Agreed to recording** for Discord players too. The bot only records people linked to a character whose player has agreed, or linked as the DM. Anyone else in the channel is never recorded.
-- The bot posts a notice in the channel when recording starts and stops. **Pause** in the app pauses the bot too.
+- The bot posts a notice when recording starts and stops: in the campaign's posts channel if one is set (Settings → Discord → Posts), otherwise in the voice channel's own chat. **Pause** in the app pauses the bot too.
 - **End & save** waits for the bot to upload the Discord audio before transcription starts.
 - From a session's **Chronicle**, **Post to Discord** sends the player recap to a text channel. You can edit it first; DM notes are never included.
 

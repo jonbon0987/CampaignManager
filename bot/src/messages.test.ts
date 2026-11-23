@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitMessage } from './messages.js';
+import { ANNOUNCE_START, ANNOUNCE_STOP, announcements, splitMessage } from './messages.js';
 
 describe('splitMessage', () => {
   it('leaves a short message whole', () => {
@@ -14,5 +14,17 @@ describe('splitMessage', () => {
     expect(parts[0].startsWith('Paragraph 1')).toBe(true);
     expect(parts.join(' ').replace(/\s+/g, ' ')).toBe(text.replace(/\s+/g, ' '));
     expect(splitMessage('x'.repeat(450), 200).map(p => p.length)).toEqual([200, 200, 50]);
+  });
+});
+
+describe('announcements', () => {
+  it('needs no more in the voice channel’s own chat', () => {
+    expect(announcements(null)).toEqual({ start: ANNOUNCE_START, stop: ANNOUNCE_STOP });
+  });
+
+  it('names the voice channel when posted somewhere else', () => {
+    const { start, stop } = announcements('Tavern');
+    expect(start).toBe('🔴 **DM Lair is recording this session** in 🔊 Tavern for the campaign notes.');
+    expect(stop).toBe('⏹️ Recording stopped in 🔊 Tavern.');
   });
 });

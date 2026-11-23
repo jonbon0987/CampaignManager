@@ -211,7 +211,10 @@ export default function SettingsView() {
                 <span className="cm-section-title">Discord</span>
                 <span className="cm-section-rule" />
               </div>
-              <DiscordBotSettings />
+              <DiscordBotSettings posts={selectedCampaign ? {
+                channel: selectedCampaign.discord_post_channel ?? null,
+                onChange: channel => updateCampaignRow(selectedCampaign.id, { discord_post_channel: channel }),
+              } : undefined} />
             </section>
 
             {/* Account */}

@@ -27,8 +27,8 @@ export function rememberChannel(campaignId: string | null, channelId: string | n
 }
 
 /** All text channels the bot can post in, as "Server · #channel". */
-export function textChannels(presence: DiscordBotPresence | null): { id: string; label: string }[] {
-  return (presence?.guilds ?? []).flatMap(g => g.text.map(t => ({ id: t.id, label: `${g.name} · #${t.name}` })));
+export function textChannels(presence: DiscordBotPresence | null): { id: string; label: string; guildId: string; channelName: string }[] {
+  return (presence?.guilds ?? []).flatMap(g => g.text.map(t => ({ id: t.id, label: `${g.name} · #${t.name}`, guildId: g.id, channelName: t.name })));
 }
 
 /** `@[Brenna](npc:…)` → `Brenna`: Discord can't open the app's links. */

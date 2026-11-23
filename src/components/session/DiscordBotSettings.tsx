@@ -2,17 +2,18 @@
 // -----------------------------------------------------------
 // Settings → Discord: the bot's controls. It runs in the background (a login
 // helper on this Mac, see bot/README.md), and these buttons sign it in and out
-// of Discord and seat it in a voice channel, through a row it reads.
+// of Discord and seat it in a voice channel, through a row it reads. In a
+// campaign, it also sets the text channel the bot posts in for that campaign.
 // -----------------------------------------------------------
 
 import { useEffect, useState } from 'react';
 import { Copy } from 'lucide-react';
 import { getCurrentUser } from '../../lib/auth';
 import { errorMessage } from '../../lib/errors';
-import { voiceChannels } from '../../lib/discord';
+import { textChannels, voiceChannels } from '../../lib/discord';
 import { useToast } from '../../context/ToastContext';
 import { useDiscordBot, type BotStatus } from '../../hooks/useDiscordBot';
-import type { DiscordTarget } from '../../lib/database.types';
+import type { DiscordChannel, DiscordTarget } from '../../lib/database.types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
@@ -28,7 +29,10 @@ const BADGE: Record<BotStatus, [string, 'muted' | 'yellow' | 'green' | 'red']> =
 
 const INSTALL = 'npm run bot:install';
 
-export function DiscordBotSettings() {
+export function DiscordBotSettings({ posts }: {
+  /** The open campaign's post channel, to show and change; leave out outside a campaign. */
+  posts?: { channel: DiscordChannel | null; onChange: (channel: DiscordChannel | null) => Promise<unknown> };
+} = {}) {
   const bot = useDiscordBot();
   const toast = useToast();
   const [userId, setUserId] = useState<string | null>(null);
@@ -39,6 +43,19 @@ export function DiscordBotSettings() {
   };
   const ask = (patch: { online?: boolean; voice?: DiscordTarget | null }) => {
     void bot.setControl(patch).catch(e => toast(errorMessage(e), 'error'));
+  };
+
+  const texts = textChannels(bot.presence);
+  const saved = posts?.channel ?? null;
+  const setPosts = (id: string) => {
+    if (!posts) return;
+    const t = texts.find(c => c.id === id);
+    const next = t ? { guildId: t.guildId, channelId: t.id, channelName: t.channelName } : null;
+    if (id && !next) return; // the saved one, picked again
+    void posts.onChange(next).then(
+      () => toast(next ? `The bot posts in #${next.channelName} for this campaign` : 'The bot posts in the voice channel’s chat', 'success'),
+      e => toast(errorMessage(e), 'error'),
+    );
   };
 
   const servers = bot.presence?.guilds ?? [];
@@ -118,6 +135,23 @@ export function DiscordBotSettings() {
               It sits there muted and deafened, and records nothing until you start a recording. A recording takes over its voice connection while it runs.
             </p>
           )}
+          {posts && (
+            <div className="dbot-row">
+              <span className="dbot-label">Posts</span>
+              <Select look="inline" className="dbot-select" aria-label="Text channel the bot posts in for this campaign"
+                value={saved?.channelId ?? ''} disabled={!texts.length} onChange={e => setPosts(e.target.value)}>
+                <option value="">The voice channel’s chat</option>
+                {/* Kept in the list while the bot is offline, or if the channel is gone. */}
+                {saved && !texts.some(t => t.id === saved.channelId) && <option value={saved.channelId}>#{saved.channelName}</option>}
+                {texts.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </Select>
+              <span className="text-xs dbot-hint">
+                {texts.length
+                  ? 'For this campaign: where the recording notices go, and where recaps are posted unless you pick another channel for one.'
+                  : 'Sign the bot in to choose a channel.'}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -155,7 +189,7 @@ export function DiscordBotSettings() {
         </details>
       )}
       <p className="text-xs" style={{ margin: 0, color: 'var(--ink-3)' }}>
-        Only people you link to a character whose player has agreed to recording (or link as the DM) are recorded. The bot posts a notice in the channel when recording starts and stops.
+        Only people you link to a character whose player has agreed to recording (or link as the DM) are recorded. The bot posts a notice when recording starts and stops, in the campaign’s posts channel if it has one, otherwise in the voice channel’s chat.
       </p>
     </div>
   );

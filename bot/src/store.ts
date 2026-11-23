@@ -26,7 +26,8 @@ export interface RecordingRow {
   status: string;
   started_at: string;
   paused_at: string | null;
-  settings: { discord?: DiscordTarget } & Record<string, unknown>;
+  /** discordPosts: the campaign's post channel, for the recording notices (null: the voice channel's chat). */
+  settings: { discord?: DiscordTarget; discordPosts?: DiscordTarget } & Record<string, unknown>;
   discord_state: DiscordState | null;
 }
 

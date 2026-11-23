@@ -24,3 +24,16 @@ export function splitMessage(text: string, limit = DISCORD_LIMIT): string[] {
 
 export const ANNOUNCE_START = '🔴 **DM Lair is recording this session** for the campaign notes.';
 export const ANNOUNCE_STOP = '⏹️ Recording stopped.';
+
+/**
+ * The recording notices, for where they're posted: in the voice channel's own
+ * chat they need no more, but posted in another channel they say which voice
+ * channel is being recorded.
+ */
+export function announcements(voiceChannel: string | null): { start: string; stop: string } {
+  if (!voiceChannel) return { start: ANNOUNCE_START, stop: ANNOUNCE_STOP };
+  return {
+    start: `🔴 **DM Lair is recording this session** in 🔊 ${voiceChannel} for the campaign notes.`,
+    stop: `⏹️ Recording stopped in 🔊 ${voiceChannel}.`,
+  };
+}

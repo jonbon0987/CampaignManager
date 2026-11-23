@@ -3,6 +3,8 @@
 // Posts the player recap to a Discord text channel: the DM reads and edits it
 // first, it's queued in discord_posts, and the bot sends it. A text longer
 // than one post is queued as several, split between scenes, sent in order.
+// It starts on the campaign's posts channel (Settings → Discord) when it has
+// one; picking another here sends just this post there.
 // -----------------------------------------------------------
 
 import { useEffect, useState } from 'react';
@@ -32,11 +34,13 @@ export function PostRecapModal({ recording, session, text: initialText, title = 
   title?: string;
   onClose: () => void;
 }) {
-  const { selectedCampaignId } = useCampaign();
+  const { selectedCampaignId, selectedCampaign } = useCampaign();
+  const saved = selectedCampaign?.discord_post_channel ?? null;
   const toast = useToast();
   const bot = useDiscordBot();
   const channels = textChannels(bot.presence);
   const [channelId, setChannelId] = useState<string>(() => {
+    if (saved) return saved.channelId;
     try { return localStorage.getItem(LAST_TEXT(recording.campaign_id)) ?? ''; } catch { return ''; }
   });
   const [text, setText] = useState(() => initialText ?? playerRecap(session));
@@ -54,12 +58,15 @@ export function PostRecapModal({ recording, session, text: initialText, title = 
     return () => { cancelled = true; if (timer) clearInterval(timer); };
   }, [recording.id, pending]);
 
-  const chosen = channels.find(c => c.id === channelId) ?? null;
+  // The posts channel can be queued for even while the bot is signed out and can't list channels.
+  const savedOption = saved && !channels.some(c => c.id === saved.channelId) ? { id: saved.channelId, label: `#${saved.channelName}` } : null;
+  const chosen = channels.find(c => c.id === channelId) ?? (savedOption?.id === channelId ? savedOption : null);
   const send = async () => {
     if (!chosen || !selectedCampaignId) return;
     setSending(true);
     try {
-      try { localStorage.setItem(LAST_TEXT(recording.campaign_id), chosen.id); } catch { /* not remembered */ }
+      // Without a posts channel, this browser remembers the last one used.
+      if (!saved) { try { localStorage.setItem(LAST_TEXT(recording.campaign_id), chosen.id); } catch { /* not remembered */ } }
       // One at a time, so they're queued (and sent) in order.
       const queued: DiscordPost[] = [];
       for (const content of parts) {
@@ -74,7 +81,7 @@ export function PostRecapModal({ recording, session, text: initialText, title = 
     }
   };
 
-  const channelName = (id: string) => channels.find(c => c.id === id)?.label ?? 'a Discord channel';
+  const channelName = (id: string) => channels.find(c => c.id === id)?.label ?? (saved?.channelId === id ? `#${saved.channelName}` : 'a Discord channel');
 
   return (
     <Modal
@@ -91,13 +98,21 @@ export function PostRecapModal({ recording, session, text: initialText, title = 
       }
     >
       <div className="flex flex-col gap-4">
-        {!bot.online && <BotNotReady bot={bot} purpose={channels.length ? 'A post waits until it’s signed in.' : 'Sign it in to choose a channel.'} />}
+        {!bot.online && <BotNotReady bot={bot} purpose={channels.length || saved ? 'A post waits until it’s signed in.' : 'Sign it in to choose a channel.'} />}
         <div className="as-fl">
           <label className="as-ll" htmlFor="recap-channel">Channel</label>
           <Select look="inline" id="recap-channel" value={chosen?.id ?? ''} onChange={e => setChannelId(e.target.value)}>
             <option value="">Choose a text channel…</option>
+            {savedOption && <option value={savedOption.id}>{savedOption.label}</option>}
             {channels.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </Select>
+          {saved && (
+            <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+              {chosen?.id === saved.channelId
+                ? 'This campaign’s posts channel. Pick another to send just this post there.'
+                : `Just this post. The campaign’s posts channel is #${saved.channelName} (Settings → Discord).`}
+            </span>
+          )}
         </div>
         <div className="as-fl">
           <label className="as-ll" htmlFor="recap-text">What players see</label>

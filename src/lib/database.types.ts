@@ -56,6 +56,7 @@ export type Campaign = {
   archived_at: string | null;        // when it was archived; null while in use
   session_repeat: SessionRepeat | null; // how often the table meets; null for no pattern
   house_rules?: Json | null;         // what this table plays differently; see lib/houseRules
+  discord_post_channel?: DiscordChannel | null; // the text channel the bot posts in for this campaign; null: the voice channel's chat
   created_at: string;
   updated_at: string;
 };
@@ -750,6 +751,7 @@ export interface RecordingSettings {
   postRecapToDiscord?: boolean;
   tablePcIds?: string[];        // PCs whose players were at the table (not on Discord)
   discord?: DiscordTarget;      // also record this Discord voice channel (the bot does it)
+  discordPosts?: DiscordChannel; // post the recording notices here, not in the voice channel's chat (the campaign's post channel)
   chronicleMissing?: ('session' | 'people' | 'places')[]; // chronicle parts that couldn't be written (ChroniclePart)
   autoChronicle?: boolean;      // write the chronicle as soon as the transcript is done (cleared once taken on)
   chronicleStartedAt?: string;  // when the automatic write began, so a stalled one can be offered again
@@ -765,6 +767,9 @@ export interface DiscordTarget {
   /** Where to post the player recap afterwards (a text channel), if anywhere. */
   recapChannelId?: string | null;
 }
+
+/** A Discord channel, by server and id, with its name to show. */
+export type DiscordChannel = Pick<DiscordTarget, 'guildId' | 'channelId' | 'channelName'>;
 
 export type DiscordState = 'connecting' | 'recording' | 'finishing' | 'done' | 'failed';
 

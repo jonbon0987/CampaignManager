@@ -108,7 +108,8 @@ function isTypingTarget(t: EventTarget | null): boolean {
 }
 
 export function RecordingProvider({ userId, children }: { userId: string; children: ReactNode }) {
-  const { selectedCampaignId } = useCampaign();
+  const { selectedCampaignId, selectedCampaign } = useCampaign();
+  const postChannel = selectedCampaign?.discord_post_channel ?? null;
   const [live, setLive] = useState<Live | null>(null);
   const [interrupted, setInterrupted] = useState<SessionRecording[]>([]);
   const [busy, setBusy] = useState(false);
@@ -228,7 +229,8 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
       recording = await SessionRecordings.upsert({
         campaign_id: selectedCampaignId, session_id: sessionId, status: 'recording', status_detail: null,
         ended_at: null, duration_ms: null, audio_expires_at: null,
-        settings: { tablePcIds, ...(discord ? { discord } : {}), autoChronicle: autoChroniclePref(selectedCampaignId) },
+        // The bot posts its notices in the campaign's post channel, when it has one.
+        settings: { tablePcIds, ...(discord ? { discord } : {}), ...(discord && postChannel ? { discordPosts: postChannel } : {}), autoChronicle: autoChroniclePref(selectedCampaignId) },
         // The Discord bot watches for this and joins the channel.
         ...(discord ? { discord_state: 'connecting' as const, discord_detail: `Waiting for the bot to join #${discord.channelName}…` } : {}),
       });
@@ -240,7 +242,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     } finally {
       setBusy(false);
     }
-  }, [selectedCampaignId, startTrack, bump]);
+  }, [selectedCampaignId, postChannel, startTrack, bump]);
 
   const resumeInterrupted = useCallback<RecordingContextValue['resumeInterrupted']>(async (recording, deviceId) => {
     if (liveRef.current) throw new Error('A recording is already running.');
