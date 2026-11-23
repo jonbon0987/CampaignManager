@@ -2,7 +2,8 @@
 // recording ends, its audio is saved and sent for transcription (the recorder
 // does that); this watches every recording on its way, checks on transcription
 // while it runs, and writes the chronicle as soon as the transcript is ready,
-// for recordings started with that turned on. Home and the session's Recap
+// for recordings started with that turned on, and the player recap beside it
+// (a draft the DM reads before players see it). Home and the session's Recap
 // read where each one is.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -13,6 +14,7 @@ import { useToast } from './ToastContext';
 import { ChronicleProposals, RecordingTracks, SessionRecordings } from '../lib/db';
 import { transcription } from '../lib/recording/transcriptionApi';
 import { savedChronicleSettings, useWriteChronicle } from '../hooks/useWriteChronicle';
+import { useWritePlayerRecap } from '../hooks/useWritePlayerRecap';
 import { pipelineStage, type PipelineStage } from '../lib/recording/pipeline';
 import type { SessionRecording } from '../lib/database.types';
 
@@ -27,11 +29,21 @@ export interface PipelineEntry {
   error: string | null;
 }
 
+/** Where a session's player recap is, while it's being written or after that failed. */
+export interface RecapWriting { writing: boolean; error: string | null }
+
 interface PipelineValue {
   entries: PipelineEntry[];
   entryFor: (recordingId: string) => PipelineEntry | undefined;
   /** Look again now (after a manual step, say). */
   refresh: () => void;
+  /** The session's player recap, while it's written here or when that failed; undefined otherwise. */
+  recapFor: (sessionId: string) => RecapWriting | undefined;
+  /**
+   * Writes a session's player recap from the recording, as a draft. With
+   * onlyIfEmpty it leaves one already written alone. Failures show on recapFor.
+   */
+  writeRecap: (recording: Pick<SessionRecording, 'id' | 'session_id'>, opts?: { onlyIfEmpty?: boolean }) => Promise<void>;
 }
 
 const PipelineContext = createContext<PipelineValue | null>(null);
@@ -43,13 +55,34 @@ export function ChroniclePipelineProvider({ children }: { children: ReactNode })
   const { version } = useRecording();
   const toast = useToast();
   const write = useWriteChronicle();
+  const writePlayerRecap = useWritePlayerRecap();
   const [entries, setEntries] = useState<PipelineEntry[]>([]);
+  const [recaps, setRecaps] = useState<Record<string, RecapWriting>>({});
 
   // Read through refs: the writer and toast are re-made each render.
   const writeRef = useRef(write);
   const toastRef = useRef(toast);
   const sessionsRef = useRef(sessions);
-  useEffect(() => { writeRef.current = write; toastRef.current = toast; sessionsRef.current = sessions; });
+  const writeRecapRef = useRef(writePlayerRecap);
+  useEffect(() => { writeRef.current = write; writeRecapRef.current = writePlayerRecap; toastRef.current = toast; sessionsRef.current = sessions; });
+
+  const writeRecap = useCallback(async (recording: Pick<SessionRecording, 'id' | 'session_id'>, opts: { onlyIfEmpty?: boolean } = {}) => {
+    const id = recording.session_id;
+    const before = sessionsRef.current.find(s => s.id === id);
+    const rewriting = !!before?.player_recap?.trim();
+    setRecaps(prev => ({ ...prev, [id]: { writing: true, error: null } }));
+    try {
+      const wrote = await writeRecapRef.current(recording, opts);
+      setRecaps(prev => { const { [id]: _done, ...rest } = prev; void _done; return rest; });
+      // Said wherever the DM is by then: it takes a minute or two.
+      if (wrote) {
+        const of = before?.session_number ? ` of Session ${before.session_number}` : '';
+        toastRef.current(rewriting ? `The player recap${of} is rewritten` : `The player recap${of} is ready to read`, 'success');
+      }
+    } catch (e) {
+      setRecaps(prev => ({ ...prev, [id]: { writing: false, error: errorMessage(e) } }));
+    }
+  }, []);
 
   const failed = useRef(new Map<string, string>());
   const ready = useRef<Set<string> | null>(null);
@@ -86,6 +119,10 @@ export function ChroniclePipelineProvider({ children }: { children: ReactNode })
           if (claimed) {
             recording = claimed;
             stage = 'writing';
+            // The player recap is written alongside, unless the session has one already.
+            if (!sessionsRef.current.find(s => s.id === claimed.session_id)?.player_recap?.trim()) {
+              void writeRecap(claimed, { onlyIfEmpty: true });
+            }
             void writeRef.current(claimed, savedChronicleSettings(claimed))
               .catch(async e => {
                 failed.current.set(claimed.id, errorMessage(e));
@@ -121,7 +158,7 @@ export function ChroniclePipelineProvider({ children }: { children: ReactNode })
       busy.current = false;
       if (again.current) { again.current = false; void tickRef.current(); }
     }
-  }, [selectedCampaignId]);
+  }, [selectedCampaignId, writeRecap]);
 
   const tickRef = useRef(tick);
   useEffect(() => { tickRef.current = tick; });
@@ -146,7 +183,9 @@ export function ChroniclePipelineProvider({ children }: { children: ReactNode })
     entries,
     entryFor: id => entries.find(e => e.recording.id === id),
     refresh,
-  }), [entries, refresh]);
+    recapFor: sessionId => recaps[sessionId],
+    writeRecap,
+  }), [entries, refresh, recaps, writeRecap]);
 
   return <PipelineContext.Provider value={value}>{children}</PipelineContext.Provider>;
 }
@@ -157,7 +196,7 @@ export function useChroniclePipeline(): PipelineValue {
   return ctx;
 }
 
-const EMPTY: PipelineValue = { entries: [], entryFor: () => undefined, refresh: () => {} };
+const EMPTY: PipelineValue = { entries: [], entryFor: () => undefined, refresh: () => {}, recapFor: () => undefined, writeRecap: async () => {} };
 
 /** The pipeline, or nothing outside the campaign shell (tests, the world). */
 export function useChroniclePipelineMaybe(): PipelineValue {

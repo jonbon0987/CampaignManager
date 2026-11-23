@@ -20,9 +20,10 @@ import './_env.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { requireAuth, userSupabase } from './_auth.js';
 import { resolveProvider, structuredExtract, friendlyError, type AIProvider } from './_ai.js';
+import { HttpError, loadTranscript, must } from './_transcript.js';
 import {
-  formatTranscript, itemsToProposals, clockLabel, entityKey, mergeEntityChange, partsLabel,
-  type ChronicleAction, type ChroniclePart, type EntityChange, type KnownIds, type ProposalDraft, type TranscriptLine,
+  formatTranscript, itemsToProposals, entityKey, mergeEntityChange, partsLabel,
+  type ChronicleAction, type ChroniclePart, type EntityChange, type KnownIds, type ProposalDraft,
 } from '../src/lib/recording/chronicle.js';
 
 type Supa = ReturnType<typeof userSupabase>;
@@ -34,16 +35,6 @@ const MAX_OUTPUT_TOKENS = 16_384;
 const INSERT_BATCH = 200;
 // Stop retrying a busy AI in time to save what was written (maxDuration is 300 s).
 const TIME_BUDGET_MS = 260_000;
-
-class HttpError extends Error {
-  constructor(public status: number, message: string) { super(message); }
-}
-
-async function must<T>(p: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<NonNullable<T>> {
-  const { data, error } = await p;
-  if (error) throw new Error(error.message);
-  return data as NonNullable<T>;
-}
 
 // --------------- Schema ---------------
 
@@ -258,21 +249,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const setDetail = (patch: Record<string, unknown>) => sb.from('session_recordings').update(patch).eq('id', recordingId);
 
   try {
-    const [segments, pcs, moments] = await Promise.all([
-      must(sb.from('transcript_segments').select('start_ms, speaker_label, pc_id, is_dm, text').eq('recording_id', recordingId).eq('dropped_as_echo', false).order('start_ms')),
-      must(sb.from('player_characters').select('id, character_name, player_name').eq('campaign_id', rec.campaign_id)),
-      must(sb.from('recording_moments').select('at_ms, label').eq('recording_id', recordingId).order('at_ms')),
-    ]);
-    if (segments.length === 0) throw new HttpError(409, 'This recording has no transcript yet.');
-
-    const pcById = new Map((pcs as { id: string; character_name: string; player_name: string | null }[]).map(p => [p.id, p]));
-    const lines: TranscriptLine[] = (segments as { start_ms: number; speaker_label: string | null; pc_id: string | null; is_dm: boolean; text: string }[]).map(s => {
-      const pc = s.pc_id ? pcById.get(s.pc_id) : undefined;
-      const speaker = s.is_dm ? 'DM' : pc ? (pc.player_name ? `${pc.character_name} (${pc.player_name})` : pc.character_name) : s.speaker_label ?? 'Unknown';
-      return { start_ms: s.start_ms, speaker, text: s.text };
-    });
-    const momentText = (moments as { at_ms: number; label: string | null }[])
-      .map(m => `- ${clockLabel(m.at_ms)}${m.label ? ` ${m.label}` : ''}`).join('\n');
+    const { lines, moments: momentText, pcs } = await loadTranscript(sb, recordingId, rec.campaign_id);
 
     const missing: ChroniclePart[] = rec.settings?.chronicleMissing ?? [];
     const toRun = body.missingOnly && missing.length ? passes(settings).filter(p => missing.includes(p.key)) : passes(settings);
@@ -308,7 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lines,
       known,
       current,
-      pcNames: new Map([...pcById.values()].map(p => [p.id, p.character_name])),
+      pcNames: new Map(pcs.map(p => [p.id, p.character_name])),
     });
 
     let toInsert: ProposalDraft[] = drafts;

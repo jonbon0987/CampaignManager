@@ -176,7 +176,16 @@ function Page({ data }: { data: PlayerPageData }) {
             <article key={r.id} className="pp-item" id={`recap-${r.id}`}>
               <div className="pp-eyebrow">Session {r.number}{r.date ? ` · ${formatSessionDate(r.date)}` : ''}</div>
               <h3 className="pp-h3">{r.title?.trim() || `Session ${r.number}`}</h3>
-              {r.summary?.trim() ? <Prose text={r.summary} /> : <p className="pp-sub">No recap written yet.</p>}
+              {r.summary?.trim() ? <Prose text={r.summary} /> : !r.story?.trim() && <p className="pp-sub">No recap written yet.</p>}
+              {r.story?.trim() && (r.summary?.trim() ? (
+                // Under a short recap, the whole story opens on request.
+                <details className="pp-story">
+                  <summary>The whole session, scene by scene</summary>
+                  <Prose text={r.story} />
+                </details>
+              ) : (
+                <div className="pp-story is-open"><Prose text={r.story} /></div>
+              ))}
               {r.loot?.trim() && (
                 <div className="pp-loot">
                   <div className="pp-label">Loot and rewards</div>

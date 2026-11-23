@@ -146,14 +146,4 @@ export async function exportCampaign(campaignId: string, onProgress?: (p: Export
   };
 }
 
-/** Hands the browser a file to save. */
-export function saveFile(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
+export { saveFile } from './saveFile';

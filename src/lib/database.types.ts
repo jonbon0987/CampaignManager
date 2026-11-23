@@ -114,6 +114,8 @@ export type CampaignLoreLink = {
 
 // --------------- Row shapes (what comes back from SELECT) ---------------
 
+export type PlayerRecapStatus = 'draft' | 'published';
+
 export type Session = {
   id: string;
   user_id: string;
@@ -134,6 +136,10 @@ export type Session = {
   world_start: Json | null;          // in-world date it began, { year, day }
   world_end: Json | null;
   timeline_event_id: string | null;  // the world Timeline event it was posted as
+  /** The player recap (lib/recording/playerRecap): Markdown, scene by scene. Null until written. */
+  player_recap?: string | null;
+  /** 'draft': only the DM sees it. 'published': on the player page. */
+  player_recap_status?: PlayerRecapStatus | null;
   created_at: string;
   updated_at: string;
 };
@@ -617,7 +623,8 @@ export type PlayerShare = {
 export interface PlayerPageData {
   campaign: { name: string; title: string | null };
   party: { id: string; name: string; player: string | null; race: string | null; class: string | null; level: number | null; portrait: string | null }[];
-  recaps: { id: string; number: number; title: string | null; date: string | null; summary: string | null; loot: string | null }[];
+  /** summary and loot when the recap is shared; story when the player recap is published. */
+  recaps: { id: string; number: number; title: string | null; date: string | null; summary: string | null; loot: string | null; story?: string | null }[];
   handouts: { id: string; title: string; image: string }[];
   people: { id: string; name: string; role: string | null; status: NPC['status']; description: string | null; portrait: string | null }[];
   places: { id: string; name: string; type: string | null; region: string | null; description: string | null; map: string | null }[];
