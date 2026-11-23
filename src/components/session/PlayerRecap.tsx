@@ -1,9 +1,10 @@
 // src/components/session/PlayerRecap.tsx
 // -----------------------------------------------------------
 // The session's player recap: a longer telling for the players, scene by
-// scene, written from the recording (lib/recording/playerRecap). It arrives as
-// a draft only the DM sees; the DM reads it, edits it, and publishes it to the
-// player page, copies it, downloads it, or prints it.
+// scene, then the moments to remember, written from the recording
+// (lib/recording/playerRecap). It arrives as a draft only the DM sees; the DM
+// reads it, edits it, and publishes it to the player page, copies it,
+// downloads it, or prints it.
 //
 // Its text and status are fields of the session form, so they autosave with
 // the rest of the session (SessionNotes).
@@ -126,8 +127,9 @@ export function PlayerRecap({ session, value, status, onChange, onStatus }: {
       {!text && !writing && (
         <div className="prc-empty">
           <p>
-            A longer telling of the session for your players, scene by scene, with a few lines quoted as they were said.
-            It’s written from the recording once it’s transcribed, and stays a draft until you publish it.
+            A longer telling of the session for your players, scene by scene, with a few lines quoted as they were said,
+            and the moments to remember at the end. It’s written from the recording once it’s transcribed, and stays a
+            draft until you publish it.
           </p>
           {source && <Button variant="secondary" size="sm" onClick={() => void write()}>Write it from the recording</Button>}
         </div>

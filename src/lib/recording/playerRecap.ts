@@ -4,10 +4,13 @@
 // the assistant from the recording (api/player-recap). A heading per scene,
 // then what happened in order, one line each, with a few lines quoted as they
 // were spoken. Story only: no table talk, no dice, nothing only the DM knows.
+// After the scenes, "Moments to remember": a handful of the session's fun or
+// notable moments, in character or at the table (a big laugh, a natural 1 at
+// the worst time).
 //
-// The AI returns scenes and beats, each beat citing its transcript line; this
-// turns them into the Markdown the DM edits and players read, and keeps a
-// quote only when its words really are in the line it cites.
+// The AI returns scenes and beats, and the moments, each citing its transcript
+// line; this turns them into the Markdown the DM edits and players read, and
+// keeps a quote only when its words really are in the line it cites.
 //
 // Shared by /api/player-recap and the app, so it imports nothing.
 // -----------------------------------------------------------
@@ -18,9 +21,15 @@ type TranscriptLine = { text: string };
 export interface RecapQuote { speaker: string; words: string }
 export interface RecapBeat { text: string; quote: RecapQuote | null; source_line: number | null }
 export interface RecapScene { title: string; beats: RecapBeat[] }
+/** A fun or notable moment, in character or at the table. */
+export type RecapMoment = RecapBeat;
+export interface PlayerRecapContent { scenes: RecapScene[]; moments: RecapMoment[] }
 
-/** At most this many quotes in a recap: a few memorable lines, not a script. */
+/** At most this many quotes in the scenes: a few memorable lines, not a script. */
 export const MAX_QUOTES = 6;
+/** At most this many moments to remember (the assistant is asked for three to six). */
+export const MAX_MOMENTS = 6;
+export const MOMENTS_HEADING = 'Moments to remember';
 
 const str = (v: unknown) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
 
@@ -43,45 +52,68 @@ export function quoteSaid(words: string, line: number | null, lines: TranscriptL
 /** "Kutter (Sam)" → "Kutter": players are named by their characters. */
 const characterName = (speaker: string) => speaker.replace(/\s*\([^)]*\)\s*$/, '').trim();
 
+/** A quote's speaker no one can be named as: a speaker speech-to-text couldn't place. */
+const UNPLACED = /^(unknown|speaker [a-z0-9]+)$/i;
+
+/**
+ * One beat or moment, cleaned: its text, its line, and its quote if the
+ * transcript has those words there and `quoteOk` allows one more. The DM's
+ * lines are only quoted as the DM at the table (allowDm), never in the story,
+ * where the DM speaks as the NPCs.
+ */
+function cleanItem(b: unknown, lines: TranscriptLine[], allowDm: boolean, quoteOk: boolean): RecapBeat | null {
+  const text = str((b as { text?: unknown })?.text);
+  if (!text) return null;
+  const n = (b as { source_line?: unknown })?.source_line;
+  const source_line = typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : null;
+  const q = (b as { quote?: unknown })?.quote as { speaker?: unknown; words?: unknown } | null | undefined;
+  const words = str(q?.words).replace(/^["“”'‘’]+|["“”'‘’]+$/g, '').trim();
+  let speaker = characterName(str(q?.speaker));
+  if (/^(the )?dm$/i.test(speaker)) speaker = allowDm ? 'the DM' : '';
+  const keep = quoteOk && !!words && !!speaker && !UNPLACED.test(speaker) && quoteSaid(words, source_line, lines);
+  return { text, quote: keep ? { speaker, words } : null, source_line };
+}
+
 /**
  * What the AI returned, made safe to show: scenes with a title and at least one
- * beat, quotes only where the transcript has them (and no more than
- * MAX_QUOTES), and nobody quoted as "DM" or an unknown speaker.
+ * beat, up to MAX_MOMENTS moments, quotes only where the transcript has them
+ * (no more than MAX_QUOTES in the scenes), and nobody quoted as an unknown
+ * speaker, nor as the DM outside the moments.
  */
-export function cleanPlayerRecap(raw: unknown, lines: TranscriptLine[]): RecapScene[] {
-  const scenes = (raw as { scenes?: unknown } | null)?.scenes;
-  if (!Array.isArray(scenes)) return [];
+export function cleanPlayerRecap(raw: unknown, lines: TranscriptLine[]): PlayerRecapContent {
+  const rawScenes = (raw as { scenes?: unknown } | null)?.scenes;
+  const rawMoments = (raw as { moments?: unknown } | null)?.moments;
   let quotes = 0;
-  const out: RecapScene[] = [];
-  for (const s of scenes) {
+  const scenes: RecapScene[] = [];
+  for (const s of Array.isArray(rawScenes) ? rawScenes : []) {
     const title = str((s as { title?: unknown })?.title);
     const rawBeats = (s as { beats?: unknown })?.beats;
     const beats: RecapBeat[] = [];
     for (const b of Array.isArray(rawBeats) ? rawBeats : []) {
-      const text = str((b as { text?: unknown })?.text);
-      if (!text) continue;
-      const n = (b as { source_line?: unknown })?.source_line;
-      const source_line = typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : null;
-      const q = (b as { quote?: unknown })?.quote as { speaker?: unknown; words?: unknown } | null | undefined;
-      const words = str(q?.words).replace(/^["“”'‘’]+|["“”'‘’]+$/g, '').trim();
-      const speaker = characterName(str(q?.speaker));
-      const keep = !!words && !!speaker && !/^(dm|unknown|speaker [a-z0-9]+)$/i.test(speaker)
-        && quotes < MAX_QUOTES && quoteSaid(words, source_line, lines);
-      if (keep) quotes++;
-      beats.push({ text, quote: keep ? { speaker, words } : null, source_line });
+      const beat = cleanItem(b, lines, false, quotes < MAX_QUOTES);
+      if (!beat) continue;
+      if (beat.quote) quotes++;
+      beats.push(beat);
     }
-    if (beats.length) out.push({ title: title || `Scene ${out.length + 1}`, beats });
+    if (beats.length) scenes.push({ title: title || `Scene ${scenes.length + 1}`, beats });
   }
-  return out;
+  const moments = (Array.isArray(rawMoments) ? rawMoments : [])
+    .map(m => cleanItem(m, lines, true, true))
+    .filter((m): m is RecapMoment => !!m)
+    .slice(0, MAX_MOMENTS);
+  return { scenes, moments };
 }
 
-/** The recap as Markdown: "### Scene", then "- beat", a quote under its beat. */
-export function recapMarkdown(scenes: RecapScene[]): string {
-  return scenes.map(s => [
-    `### ${s.title}`,
-    '',
-    ...s.beats.map(b => (b.quote ? `- ${b.text}\n  > “${b.quote.words}” — ${b.quote.speaker}` : `- ${b.text}`)),
-  ].join('\n')).join('\n\n');
+const bullet = (b: RecapBeat) => (b.quote ? `- ${b.text}\n  > “${b.quote.words}” — ${b.quote.speaker}` : `- ${b.text}`);
+
+/**
+ * The recap as Markdown: "### Scene", then "- beat", a quote under its beat;
+ * then "### Moments to remember" the same way, when there are any.
+ */
+export function recapMarkdown({ scenes, moments }: PlayerRecapContent): string {
+  const parts = scenes.map(s => [`### ${s.title}`, '', ...s.beats.map(bullet)].join('\n'));
+  if (moments.length) parts.push([`### ${MOMENTS_HEADING}`, '', ...moments.map(bullet)].join('\n'));
+  return parts.join('\n\n');
 }
 
 /**
