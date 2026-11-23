@@ -112,6 +112,11 @@
 .prc-head { margin-bottom: 2px; }
 .prc-status { font-size: var(--fs-micro); font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule); border-radius: 999px; padding: 1px 8px; }
 .prc-status.is-published { color: var(--gold); border-color: var(--gold-line); }
+.prc-status.is-writing { color: var(--gold); border-color: var(--gold-line); background: var(--gold-dim); }
+.prc-banner { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border: 1px solid var(--gold-line); border-radius: var(--radius); background: var(--gold-dim); color: var(--ink-2); font-size: var(--fs-sm); }
+.prc-banner svg { flex-shrink: 0; margin-top: 2px; color: var(--gold); }
+.prc-banner strong { color: var(--gold); font-weight: 500; }
+.prc-body.is-busy { opacity: .4; pointer-events: none; user-select: none; transition: opacity 200ms ease; }
 .prc-note { margin: 0; font-size: var(--fs-sm); color: var(--ink-3); }
 .prc-note.is-error { color: var(--red); }
 .prc-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: var(--fs-sm); color: var(--ink-3); }

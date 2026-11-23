@@ -141,4 +141,14 @@ describe('the chronicle pipeline', () => {
     await waitFor(() => expect(result.current.recapFor('s6')).toEqual({ writing: false, error: 'Gemini is busy.' }));
     expect(h.toast).not.toHaveBeenCalled();
   });
+
+  it('says when a rewrite is done', async () => {
+    h.sessions.value = [{ id: 's6', session_number: 6, player_recap: '### The old one' }];
+    h.getInProgress.mockResolvedValue([]);
+    const { result } = run();
+    await waitFor(() => expect(result.current.entries).toEqual([]));
+    await result.current.writeRecap({ id: 'r1', session_id: 's6' });
+    expect(h.toast).toHaveBeenCalledWith('The player recap of Session 6 is rewritten', 'success');
+    expect(result.current.recapFor('s6')).toBeUndefined();
+  });
 });

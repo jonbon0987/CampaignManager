@@ -11,6 +11,7 @@
 // -----------------------------------------------------------
 
 import { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useChroniclePipelineMaybe } from '../../context/ChroniclePipelineContext';
 import { usePlayerShares } from '../../context/playerShares';
@@ -97,7 +98,7 @@ export function PlayerRecap({ session, value, status, onChange, onStatus }: {
     { label: 'Download as Markdown', onClick: download },
     { label: 'Print or save as PDF', onClick: () => setPrinting(true) },
     ...(PLAYER_RECAP_DISCORD && source ? [{ label: 'Post to Discord', onClick: () => setPosting(true) }] : []),
-    ...(source ? [{ label: 'Write it again from the recording', onClick: () => void write() }] : []),
+    ...(source && !writing ? [{ label: 'Write it again from the recording', onClick: () => void write() }] : []),
   ];
 
   return (
@@ -105,17 +106,21 @@ export function PlayerRecap({ session, value, status, onChange, onStatus }: {
       <div className="cm-section-head prc-head">
         <span className="cm-section-title" id={`prc-${session.id}`}>Player recap</span>
         {text && (
-          <span className={`prc-status${published ? ' is-published' : ''}`}>
-            {published ? 'On the player page' : 'Draft · only you can see it'}
+          <span className={`prc-status${writing ? ' is-writing' : published ? ' is-published' : ''}`}>
+            {writing ? 'Rewriting…' : published ? 'On the player page' : 'Draft · only you can see it'}
           </span>
         )}
         <div className="cm-section-rule" />
       </div>
 
       {writing && (
-        <p className="prc-note" role="status">
-          Writing the player recap from the recording… a minute or two. You can leave this page.
-        </p>
+        <div className="prc-banner" role="status">
+          <Loader2 size={15} className="animate-spin" aria-hidden />
+          <span>
+            <strong>{text ? 'Rewriting the player recap from the recording…' : 'Writing the player recap from the recording…'}</strong>{' '}
+            A minute or two. {text ? 'The new one replaces this when it’s done. ' : ''}You can leave this page.
+          </span>
+        </div>
       )}
       {state?.error && !writing && (
         <p className="prc-note is-error" role="alert">
@@ -144,7 +149,10 @@ export function PlayerRecap({ session, value, status, onChange, onStatus }: {
               maxLength={limitFor('sessions', 'player_recap')}
             />
           ) : (
-            <MarkdownContent className="prc-text" text={text} />
+            // The one being replaced stays in view, faded, while the new one is written.
+            <div className={`prc-body${writing ? ' is-busy' : ''}`} aria-busy={writing || undefined}>
+              <MarkdownContent className="prc-text" text={text} />
+            </div>
           )}
 
           <div className="prc-actions">
@@ -157,7 +165,7 @@ export function PlayerRecap({ session, value, status, onChange, onStatus }: {
               </Button>
             )}
             <Button variant="secondary" size="sm" onClick={() => setEditing(e => !e)} disabled={writing}>{editing ? 'Done editing' : 'Edit'}</Button>
-            <Button variant="secondary" size="sm" onClick={copy}>Copy text</Button>
+            <Button variant="secondary" size="sm" onClick={copy} disabled={writing}>Copy text</Button>
             <OverflowMenu items={menu} />
             {noPage && !published && <span className="prc-hint">Make the player page on the Overview to publish it there.</span>}
           </div>

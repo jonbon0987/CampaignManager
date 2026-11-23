@@ -68,13 +68,16 @@ export function ChroniclePipelineProvider({ children }: { children: ReactNode })
 
   const writeRecap = useCallback(async (recording: Pick<SessionRecording, 'id' | 'session_id'>, opts: { onlyIfEmpty?: boolean } = {}) => {
     const id = recording.session_id;
+    const before = sessionsRef.current.find(s => s.id === id);
+    const rewriting = !!before?.player_recap?.trim();
     setRecaps(prev => ({ ...prev, [id]: { writing: true, error: null } }));
     try {
       const wrote = await writeRecapRef.current(recording, opts);
       setRecaps(prev => { const { [id]: _done, ...rest } = prev; void _done; return rest; });
-      if (wrote && opts.onlyIfEmpty) {
-        const n = sessionsRef.current.find(s => s.id === id)?.session_number;
-        toastRef.current(`The player recap${n ? ` of Session ${n}` : ''} is ready to read`, 'success');
+      // Said wherever the DM is by then: it takes a minute or two.
+      if (wrote) {
+        const of = before?.session_number ? ` of Session ${before.session_number}` : '';
+        toastRef.current(rewriting ? `The player recap${of} is rewritten` : `The player recap${of} is ready to read`, 'success');
       }
     } catch (e) {
       setRecaps(prev => ({ ...prev, [id]: { writing: false, error: errorMessage(e) } }));

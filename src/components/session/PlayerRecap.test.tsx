@@ -78,6 +78,21 @@ describe('PlayerRecap', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/Gemini is busy/);
   });
 
+  it('makes a rewrite plain: a banner, the old one faded and locked, and no second rewrite', () => {
+    h.recapFor.mockReturnValue({ writing: true, error: null });
+    const { container } = render(<PlayerRecap session={session} value={RECAP} status="draft" onChange={vi.fn()} onStatus={vi.fn()} />);
+    expect(screen.getByText('Rewriting…')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toMatch(/Rewriting the player recap from the recording… A minute or two\. The new one replaces this/);
+    const body = container.querySelector('.prc-body') as HTMLElement;
+    expect(body.className).toContain('is-busy');
+    expect(body.getAttribute('aria-busy')).toBe('true');
+    for (const name of ['Publish to the player page', 'Edit', 'Copy text']) {
+      expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true);
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(screen.queryByRole('menuitem', { name: 'Write it again from the recording' })).toBeNull();
+  });
+
   it('shows a draft for the DM to read, and publishes it', () => {
     const { onStatus } = show(RECAP);
     expect(screen.getByText('Draft · only you can see it')).toBeTruthy();
